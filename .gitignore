@@ -1,4 +1,4 @@
-﻿# Secrets
+# Secrets
 .env
 .env.*
 !.env.example
@@ -18,17 +18,26 @@ env/
 
 # Logs and bulky generated run artifacts
 *.log
+**/japanese_accuracy.log
+**/logs/**/*.jsonl
 troubleshooting/runs/**/logs/
 **/troubleshooting/runs/**/logs/
 **/quarantine/
 troubleshooting/**/staging*/
 **/troubleshooting/**/staging*/
 
-# Audio / temp
+# Audio / capture / temp
 *.wav
 *.mp3
+*.ogg
 *.flac
 *.m4a
+*.aac
+*.wma
+*.aiff
+*.opus
+*.pcm
+*.raw
 tmp/
 temp/
 *.tmp
@@ -44,6 +53,5 @@ desktop.ini
 
 # Local helpers
 _scan_summary.txt
-
 git_add_stderr.txt
 _*.txt

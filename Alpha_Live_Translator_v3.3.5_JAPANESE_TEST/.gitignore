@@ -7,10 +7,11 @@ __pycache__/
 venv/
 env/
 *.log
+**/japanese_accuracy.log
 .DS_Store
 Thumbs.db
 
-# Phase 1 caches / staging / temp / audio / zips (do not ignore source or manifests)
+# Phase 1 caches / staging / temp / audio (do not ignore source or manifests)
 __pycache__/
 *.py[cod]
 .pytest_cache/
@@ -26,8 +27,16 @@ troubleshooting/**/staging*/
 troubleshooting/**/__pycache__/
 *.wav
 *.mp3
+*.ogg
 *.flac
 *.m4a
+*.aac
+*.wma
+*.aiff
+*.opus
+*.pcm
+*.raw
+**/logs/**/*.jsonl
 troubleshooting/full_project_audit/staging_*/
 .venv/
 venv/
