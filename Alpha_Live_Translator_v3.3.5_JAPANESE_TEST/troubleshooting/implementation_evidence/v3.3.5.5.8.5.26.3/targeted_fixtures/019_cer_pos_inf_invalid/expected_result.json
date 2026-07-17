@@ -1,6 +1,0 @@
-{
-  "expect_failures": [
-    "stable_cer_invalid"
-  ],
-  "expect_pass": false
-}

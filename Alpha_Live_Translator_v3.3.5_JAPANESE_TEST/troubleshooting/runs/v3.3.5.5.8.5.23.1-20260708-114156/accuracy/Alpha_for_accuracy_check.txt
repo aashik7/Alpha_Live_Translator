@@ -1,9 +1,0 @@
-# Alpha Live Translator Accuracy Export
-# app_version: 3.3.5.5.8.5.23.1
-# run_id: live-v3.3.5.5.8.5.23.1-20260708-114156-d3ca483d
-# run_timestamp: 20260708-114156
-# language: ja
-# source: stable_alpha_output
-# raw_deepgram_mutated: false
-# audio_reference_folder: C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\runs\v3.3.5.5.8.5.23.1-20260708-114156\audio_temp
-# note: no transcript captured during this session

@@ -1,2 +1,0 @@
-{"event": "LOG_INITIALIZED", "timestamp": 1783563889.6539419, "app_version": "3.3.5.5.8.5.23.4"}
-{"text": "では始めましょう", "speaker": 2, "commit_reason": "stop_flush_incomplete_tail", "incomplete_reason": "no_sentence_boundary", "classification": "incomplete_suppressed", "suppressed_from_alpha": true, "raw_deepgram_mutated": false, "timestamp": 1783565049.7995682}

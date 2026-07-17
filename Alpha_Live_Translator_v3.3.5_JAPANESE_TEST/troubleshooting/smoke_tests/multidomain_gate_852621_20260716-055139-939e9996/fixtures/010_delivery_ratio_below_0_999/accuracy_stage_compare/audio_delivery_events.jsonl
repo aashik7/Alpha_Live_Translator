@@ -1,2 +1,0 @@
-{"event": "normalized_chunk_queued", "delivery_chunk_id": 1, "run_id": "fixture", "monotonic_ns": 1000000, "frame_count": 320, "byte_count": 640, "sample_rate": 16000, "channels": 1}
-{"event": "normalized_chunk_queued", "delivery_chunk_id": 2, "run_id": "fixture", "monotonic_ns": 2000000, "frame_count": 320, "byte_count": 640, "sample_rate": 16000, "channels": 1}

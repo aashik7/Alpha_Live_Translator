@@ -1,2 +1,0 @@
-{"event": "CORRECTION_LAYER_INACTIVE_FOR_8_5_20_3", "timestamp": 1783475953.1757276, "app_version": "3.3.5.5.8.5.22.2"}
-{"raw_input_text": "こそどうどうぞよろしくお願いいたします。", "stable_output_text": "こちらこそどうぞよろしくお願いいたします。", "transform_type": "polite_closing", "transform_reason": "koso_douzo_yoroshiku", "previous_text_before": "", "previous_text_after": "", "fragment_text": "", "raw_mutated": false, "timestamp": 1783476239.576487}

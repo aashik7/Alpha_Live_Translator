@@ -1,6 +1,0 @@
-{
-  "test_number": 11,
-  "test_name": "malformed_jsonl_fails",
-  "expected_pass_or_fail": "fail",
-  "expected_failure_reason": "malformed_jsonl"
-}

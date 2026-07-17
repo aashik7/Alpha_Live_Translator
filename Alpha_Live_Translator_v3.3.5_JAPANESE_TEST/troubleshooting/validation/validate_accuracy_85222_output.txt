@@ -1,6 +1,0 @@
-V3.3.5.5.8.5.22.2 BUSINESS ACCURACY EXPANSION VALIDATION
-Result: PASSED
-APP_VERSION: 3.3.5.5.8.5.22.2
-pointer_status: completed
-index_status: completed
-Warnings: upload_zip_not_created_yet_offline_package_pending, translation_ready_ratio_below_target=0.7

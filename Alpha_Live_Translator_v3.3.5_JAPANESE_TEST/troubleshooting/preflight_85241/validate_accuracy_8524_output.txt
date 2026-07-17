@@ -1,4 +1,0 @@
-V3.3.5.5.8.5.24 JAPANESE BOUNDARY STABILIZER VALIDATION
-Result: PASSED
-APP_VERSION: 3.3.5.5.8.5.24
-Warnings: translation_ready_ratio_below_80, cer_still_not_trusted, no_new_live_19min_test_after_implementation

@@ -1,6 +1,0 @@
-{
-  "test_number": 32,
-  "test_name": "audio_files_excluded_from_package",
-  "expected_pass_or_fail": "pass",
-  "expected_failure_reason": ""
-}

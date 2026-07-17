@@ -1,9 +1,0 @@
-# Alpha Live Translator Accuracy Export
-# app_version: 3.3.5.5.8.5.25.3.3
-# run_id: unknown
-# run_timestamp: unknown
-# language: ja
-# source: stable_alpha_output
-# raw_deepgram_mutated: false
-# audio_reference_folder: audio_temp
-# note: no transcript captured during this session

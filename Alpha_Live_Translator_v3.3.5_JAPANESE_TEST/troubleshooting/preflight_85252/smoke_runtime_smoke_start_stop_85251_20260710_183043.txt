@@ -1,7 +1,0 @@
-{
-  "result": "PASSED",
-  "elapsed_seconds": 0.45,
-  "live_alpha_protected": true,
-  "lossless_export_gate_ok": true,
-  "glossary_summary_not_blocking_stop": true
-}

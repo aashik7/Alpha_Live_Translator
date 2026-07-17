@@ -1,7 +1,0 @@
-# Visible Error Audit (audit-only — no auto-correction)
-# app_version: 3.3.5.5.8.5.25.2
-# run_id: live-v3.3.5.5.8.5.25.2-20260713-091703-23fb3a9d
-# visible_error_count: 1
-# high: 0 medium: 0 low: 1
-
-line=1 severity=low pattern=company_number_risk category=meaning_risk snippet=皆さんこんにちは株式会社さくら+代表の中山です。本日は2026年7月期第3四半期決算についてご案内申し上げます。は二千二十六年七月期、第三四半期決算概要についてお知らせいたします。売上高については百三十六億七千九百万となり前年同期比五点四パ

@@ -1,6 +1,0 @@
-{
-  "test_number": 17,
-  "test_name": "keyterm_count_above_zero_fails",
-  "expected_pass_or_fail": "fail",
-  "expected_failure_reason": "keyterm"
-}

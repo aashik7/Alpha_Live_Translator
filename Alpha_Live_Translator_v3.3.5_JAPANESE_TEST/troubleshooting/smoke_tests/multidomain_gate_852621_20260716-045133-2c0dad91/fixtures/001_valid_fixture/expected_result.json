@@ -1,6 +1,0 @@
-{
-  "test_number": 1,
-  "test_name": "valid_fixture_produces_implementation_ready_verification",
-  "expected_pass_or_fail": "pass",
-  "expected_failure_reason": ""
-}

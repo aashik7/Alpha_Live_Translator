@@ -1,4 +1,4 @@
-# Secrets
+﻿# Secrets
 .env
 .env.*
 !.env.example
@@ -20,11 +20,34 @@ env/
 *.log
 **/japanese_accuracy.log
 **/logs/**/*.jsonl
-troubleshooting/runs/**/logs/
-**/troubleshooting/runs/**/logs/
-**/quarantine/
-troubleshooting/**/staging*/
+**/orchestrator_stdout.txt
+**/orchestrator_stderr.txt
+
+# Troubleshooting evidence / runs / packages (keep local; do not track)
+troubleshooting/
+**/troubleshooting/
+**/troubleshooting/runs/
+**/troubleshooting/**/FINAL_UPLOAD/
 **/troubleshooting/**/staging*/
+**/quarantine/
+**/_cleanup_archive/
+**/implementation_evidence/
+**/LATEST_LIVE_RUN_ARTIFACTS_INDEX.txt
+**/UPLOAD_PACKAGE_INDEX.txt
+
+# Archives / checksums / dumps
+**/*.zip
+**/*.7z
+**/*.sha256
+**/*.jsonl
+*.csv
+
+# Probe / temp junk
+_probe_*
+**/_probe_*
+_*.txt
+**/_scan_summary.txt
+git_add_stderr.txt
 
 # Audio / capture / temp
 *.wav
@@ -50,8 +73,3 @@ desktop.ini
 .cursor/
 .vscode/
 *.swp
-
-# Local helpers
-_scan_summary.txt
-git_add_stderr.txt
-_*.txt

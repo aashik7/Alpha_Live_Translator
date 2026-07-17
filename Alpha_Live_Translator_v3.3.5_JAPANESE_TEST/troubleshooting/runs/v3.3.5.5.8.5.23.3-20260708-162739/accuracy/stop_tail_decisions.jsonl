@@ -1,3 +1,0 @@
-{"event": "LOG_INITIALIZED", "timestamp": 1783495659.802133, "app_version": "3.3.5.5.8.5.23.3"}
-{"text": "直接会った時メールを送る時この", "speaker": 2, "commit_reason": "stop_flush_incomplete_tail", "incomplete_reason": "ends_with_の", "classification": "incomplete_suppressed", "suppressed_from_alpha": true, "raw_deepgram_mutated": false, "timestamp": 1783496617.6946158}
-{"text": "ぜひこちらの表現についても覚えておいてください", "speaker": 2, "commit_reason": "stop_flush_incomplete_tail", "incomplete_reason": "no_sentence_boundary", "classification": "incomplete_suppressed", "suppressed_from_alpha": true, "raw_deepgram_mutated": false, "timestamp": 1783497413.1879585}

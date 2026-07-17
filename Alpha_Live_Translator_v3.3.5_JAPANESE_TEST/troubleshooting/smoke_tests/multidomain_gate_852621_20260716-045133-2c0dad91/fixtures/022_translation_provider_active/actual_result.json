@@ -1,8 +1,0 @@
-{
-  "test_number": 22,
-  "test_name": "translation_provider_active_fails",
-  "actual_pass_or_fail": "pass",
-  "actual_failure_reason": "",
-  "passed": true,
-  "detail": ""
-}

@@ -1,8 +1,0 @@
-{
-  "test_number": 25,
-  "test_name": "number_accuracy_below_85_fails",
-  "actual_pass_or_fail": "pass",
-  "actual_failure_reason": "",
-  "passed": true,
-  "detail": ""
-}

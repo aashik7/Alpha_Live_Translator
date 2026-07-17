@@ -1,8 +1,0 @@
-{
-  "test_number": 7,
-  "test_name": "missing_sent_chunk_fails",
-  "actual_pass_or_fail": "pass",
-  "actual_failure_reason": "",
-  "passed": true,
-  "detail": ""
-}

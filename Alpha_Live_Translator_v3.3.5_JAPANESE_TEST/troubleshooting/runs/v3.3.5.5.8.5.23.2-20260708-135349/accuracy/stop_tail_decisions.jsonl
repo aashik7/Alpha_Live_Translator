@@ -1,2 +1,0 @@
-{"event": "LOG_INITIALIZED", "timestamp": 1783486429.8000572, "app_version": "3.3.5.5.8.5.23.2"}
-{"text": "ぜひこちらの表現についても覚えておいてください", "speaker": 2, "commit_reason": "stop_flush_incomplete_tail", "incomplete_reason": "no_sentence_boundary", "classification": "incomplete_suppressed", "suppressed_from_alpha": true, "raw_deepgram_mutated": false, "timestamp": 1783487215.4896781}

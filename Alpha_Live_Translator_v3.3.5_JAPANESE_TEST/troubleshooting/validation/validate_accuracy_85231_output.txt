@@ -1,6 +1,0 @@
-V3.3.5.5.8.5.23.1 ACCURACY DIRECTION SETTLEMENT VALIDATION
-Result: PASSED
-APP_VERSION: 3.3.5.5.8.5.23.1
-auto_correction_level: minimal
-pointer_status: completed
-Warnings: cer_not_calculated_yet, no_reference_transcript_provided, translation_ready_ratio_below_target=0.684

@@ -1,3 +1,0 @@
-file_count=1725
-directory_count=536
-bytes=140607245

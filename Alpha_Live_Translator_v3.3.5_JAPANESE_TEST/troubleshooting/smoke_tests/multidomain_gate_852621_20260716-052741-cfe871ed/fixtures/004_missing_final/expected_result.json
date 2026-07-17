@@ -1,6 +1,0 @@
-{
-  "test_number": 4,
-  "test_name": "missing_final_file_fails",
-  "expected_pass_or_fail": "fail",
-  "expected_failure_reason": "missing_final"
-}

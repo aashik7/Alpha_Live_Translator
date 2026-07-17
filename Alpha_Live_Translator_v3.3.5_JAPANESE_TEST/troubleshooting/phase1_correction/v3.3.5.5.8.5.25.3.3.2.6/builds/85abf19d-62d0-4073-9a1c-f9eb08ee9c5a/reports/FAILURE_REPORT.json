@@ -1,6 +1,0 @@
-{
-  "build_id": "85abf19d-62d0-4073-9a1c-f9eb08ee9c5a",
-  "error": "correction_regression_failed:1:REGRESSION_TOTAL=65\nREGRESSION_PASSED=64\nREGRESSION_FAILED=1\nSTATUS=FAILED\nFAIL=t07_deleted_path_absent:\n",
-  "generated_at": "2026-07-14T15:59:11Z",
-  "patch_version": "3.3.5.5.8.5.25.3.3.2.6"
-}

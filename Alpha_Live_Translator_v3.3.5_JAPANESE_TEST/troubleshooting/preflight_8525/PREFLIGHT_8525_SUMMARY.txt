@@ -1,8 +1,0 @@
-PREFLIGHT 8525 SUMMARY
-collected_at=2026-07-10T15:09:44
-app_version_before_change=3.3.5.5.8.5.24.2
-latest_run_id=
-latest_alpha_lines=0
-residual_duplicate_after=0
-punctuation_artifact_after=0
-warnings=['critical_missing:latest_accuracy_evidence_index.json']

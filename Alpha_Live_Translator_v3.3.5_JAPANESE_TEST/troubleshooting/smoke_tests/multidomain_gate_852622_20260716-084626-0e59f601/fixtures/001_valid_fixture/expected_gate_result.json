@@ -1,8 +1,0 @@
-{
-  "test_number": 1,
-  "test_name": "valid_fixture_produces_implementation_ready_verification",
-  "expected_gate_status": "PASSED",
-  "expected_failure_codes": [],
-  "expected_policy_result": "",
-  "single_mutation_description": "no mutation; fixture uses a complete, unmutated reference/stable/final/audio/request/isolation baseline"
-}

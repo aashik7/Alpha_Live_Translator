@@ -1,9 +1,0 @@
-PREFLIGHT 85242 SUMMARY
-collected_at=2026-07-10T11:27:48
-app_version_before_change=3.3.5.5.8.5.24.1
-latest_run_id=live-v3.3.5.5.8.5.24.1-20260710-091750-129000a8
-latest_alpha_sha256=3d5ea0bf66d313eb...
-boundary_decisions_path=troubleshooting\runs\_pending\accuracy\boundary_stabilizer_decisions.jsonl
-clean_active_transcript_path=missing
-stable_revision_history_path=missing
-warnings=['missing_before_85242:clean_active_transcript.jsonl', 'missing_before_85242:stable_revision_history.jsonl']

@@ -1,7 +1,0 @@
-Reference Transcript Quality Report
-verdict: valid_for_cer
-char_count_ratio: 1.0561
-shared_char_overlap_ratio: 0.687
-business_term_overlap_ratio: 0.0
-should_run_cer: True
-recommendation: Reference appears aligned enough for trusted CER scoring.

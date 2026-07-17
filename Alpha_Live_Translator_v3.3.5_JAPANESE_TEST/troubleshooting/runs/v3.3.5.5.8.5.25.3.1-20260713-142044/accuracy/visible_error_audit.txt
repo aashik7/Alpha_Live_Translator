@@ -1,9 +1,0 @@
-# Visible Error Audit (audit-only — no auto-correction)
-# app_version: 3.3.5.5.8.5.25.3.1
-# run_id: live-v3.3.5.5.8.5.25.3.1-20260713-142044-9155a4c5
-# visible_error_count: 3
-# high: 0 medium: 0 low: 3
-
-line=15 severity=low pattern=company_number_risk category=meaning_risk snippet=続いて2026年7月期軽トピックスをお知らせいたし保育サービスにおいては大阪市中国で桜咲く未来東平を予定通り解説しております桜咲く未来晴海においても予定通り増長を行い定員数が増加しまた。
-line=16 severity=low pattern=company_number_risk category=meaning_risk snippet=他人口増加で保育所が不足しいる晴海エリアから月島エリア親子で乗れる送迎バスの運行も開始しておりまた2027年7月期では東京都中央区にて一施設の新規保育所の開設を予定しております。
-line=17 severity=low pattern=company_number_risk category=meaning_risk snippet=フェムケアフェムテックサービスにおいては連結子会社のイェールにて2026年夏頃に新製品の発売予定しておりますこの新製品の発売により量産サプリメント市場でさらなるケアの拡大を見込ん続いて各子会社の取締役の就任についてお知らせいします。

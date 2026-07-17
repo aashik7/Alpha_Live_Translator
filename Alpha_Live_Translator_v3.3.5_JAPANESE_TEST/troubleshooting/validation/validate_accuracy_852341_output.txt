@@ -1,4 +1,0 @@
-V3.3.5.5.8.5.23.4.1 ALIGNMENT COVERAGE REPAIR VALIDATION
-Result: PASSED
-APP_VERSION: 3.3.5.5.8.5.23.4.1
-Warnings: translation_ready_ratio_below_80, score_not_trusted_yet, no_18min_business_test_run_yet

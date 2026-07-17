@@ -1,9 +1,0 @@
-{
-  "checks": {
-    "raw_mutation_count": 0
-  },
-  "runtime_regressions": [],
-  "warnings": [],
-  "evidence_paths": [],
-  "runtime_passed": true
-}

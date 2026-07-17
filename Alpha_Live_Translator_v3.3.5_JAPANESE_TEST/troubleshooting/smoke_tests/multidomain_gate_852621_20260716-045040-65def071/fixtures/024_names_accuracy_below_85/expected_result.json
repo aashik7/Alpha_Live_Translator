@@ -1,6 +1,0 @@
-{
-  "test_number": 24,
-  "test_name": "names_accuracy_below_85_fails",
-  "expected_pass_or_fail": "fail",
-  "expected_failure_reason": "names"
-}

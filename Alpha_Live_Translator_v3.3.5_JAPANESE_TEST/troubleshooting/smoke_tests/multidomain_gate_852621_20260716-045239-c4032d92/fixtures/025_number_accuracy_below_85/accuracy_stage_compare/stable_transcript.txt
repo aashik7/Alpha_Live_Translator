@@ -1,6 +1,0 @@
-# PLACEHOLDER_NOT_AUTHORITATIVE — offline fixture scoring only; replace before live benchmark
-[Speaker 1] 本日はアルファソリューションズ株式会社の田中健さんと、東都物流株式会社の佐藤美咲さんが参加しています。
-[Speaker 2] APIとJSONを使ったSSOの多要素認証について、情報システム部で回帰テストを実施します。
-[Speaker 3] 初回相談の提案書では年間契約金額不明、月額利用料不明を想定しています。
-[Speaker 4] 検索広告のクリック率改善のため、2026年7月16日午前10時にA/Bテストを開始します。
-[Speaker 5] 鈴木大輔さんと高橋彩さんは、株式会社ネクストワークスのWebhook連携とCRMのSLAを確認します。

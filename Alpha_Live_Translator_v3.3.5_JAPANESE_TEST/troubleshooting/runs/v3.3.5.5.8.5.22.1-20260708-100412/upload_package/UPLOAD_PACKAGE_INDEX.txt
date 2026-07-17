@@ -1,9 +1,0 @@
-run_folder=C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\runs\v3.3.5.5.8.5.22.1-20260708-100412
-manifest_exists=True
-zip_path=C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\runs\v3.3.5.5.8.5.22.1-20260708-100412\upload_package\UPLOAD_PACKAGE_v3.3.5.5.8.5.22.1_20260708-101920.zip
-file_count=40
-wav_excluded_count=0
-wav_exclusion_policy=EXCLUDED_BY_POLICY_TEMP_AUDIO
-optional_missing=[]
-wav_files_excluded=true
-temp_audio_include_in_upload=False

@@ -1,6 +1,0 @@
-{
-  "test_number": 30,
-  "test_name": "fixture_run_cannot_create_version_accepted",
-  "expected_pass_or_fail": "pass",
-  "expected_failure_reason": ""
-}

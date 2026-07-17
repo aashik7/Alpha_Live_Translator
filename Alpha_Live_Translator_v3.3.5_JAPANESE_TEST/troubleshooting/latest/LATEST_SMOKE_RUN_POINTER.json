@@ -1,7 +1,0 @@
-{
-  "run_type": "smoke_test",
-  "timestamp": "20260713_123212",
-  "smoke_alpha_path": "troubleshooting\\smoke_tests\\20260713_123212\\Alpha_smoke_test.txt",
-  "smoke_status_path": "troubleshooting\\smoke_tests\\20260713_123212\\smoke_test_status.json",
-  "updated_at": "2026-07-13T12:32:12"
-}

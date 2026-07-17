@@ -1,2 +1,0 @@
-{"event": "LOG_INITIALIZED", "timestamp": 1783963525.0416973, "app_version": "3.3.5.5.8.5.25.3.3"}
-{"text": "当期予想に対し、順調に進捗しておりますので引き続き教えの程よろしくお願いいます", "speaker": 2, "commit_reason": "stop_flush_incomplete_tail", "incomplete_reason": "no_sentence_boundary", "classification": "incomplete_suppressed", "suppressed_from_alpha": true, "suppression_reason": "no_sentence_boundary", "raw_deepgram_mutated": false, "raw_mutation": false, "stable_commit_id": "stable-35", "source_commit_id": "stable-35", "canonical_line_id": "", "source": "stop_tail", "timestamp": 1783964026.8423424}

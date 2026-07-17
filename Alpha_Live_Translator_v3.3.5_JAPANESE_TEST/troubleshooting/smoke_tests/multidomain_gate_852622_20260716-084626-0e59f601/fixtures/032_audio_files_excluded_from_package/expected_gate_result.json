@@ -1,8 +1,0 @@
-{
-  "test_number": 32,
-  "test_name": "audio_files_excluded_from_package",
-  "expected_gate_status": "PASSED",
-  "expected_failure_codes": [],
-  "expected_policy_result": "AUDIO_FILES_EXCLUDED",
-  "single_mutation_description": "dummy .wav/.mp3/.m4a/.pcm/.raw files placed beside evidence before packaging"
-}

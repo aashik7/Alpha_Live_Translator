@@ -1,5 +1,0 @@
-Reference Cleanup Suggestions
-verdict: valid_for_cer
-formatting_risk_flags: lesson_notes_summary_style
-
-Reference appears usable for trusted CER.

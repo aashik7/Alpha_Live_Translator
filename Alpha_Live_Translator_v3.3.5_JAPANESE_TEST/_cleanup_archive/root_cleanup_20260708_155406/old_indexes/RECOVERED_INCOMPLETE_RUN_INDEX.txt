@@ -1,4 +1,0 @@
-# Recovered incomplete live runs — do not overwrite
-
-folder=C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\run_artifacts\v3.3.5.5.8.5.17-20260706-161017
-status=incomplete_final_index

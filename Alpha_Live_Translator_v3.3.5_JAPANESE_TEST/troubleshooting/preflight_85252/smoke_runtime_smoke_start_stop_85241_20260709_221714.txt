@@ -1,1 +1,0 @@
-PASSED elapsed=0.92s live_alpha_protected=True smoke_pointer=True live_pointer_unchanged=True

@@ -1,2 +1,0 @@
-{"event": "LOG_INITIALIZED", "reason": "no_events_yet", "timestamp": 1784134755.4760356, "app_version": "3.3.5.5.8.5.26.1"}
-{"raw_text": "投機予想に対し", "compact_length": 7, "time_since_last_good_commit_ms": 0.0, "source_activity": "unknown", "quarantine_decision": "quarantined", "reason": "noise_fragment", "later_committed_to_stable": false, "raw_mutated": false, "timestamp": 1784135091.5487013}

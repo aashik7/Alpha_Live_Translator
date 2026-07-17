@@ -1,4 +1,0 @@
-{"event": "LOG_INITIALIZED", "reason": "no_events_yet", "timestamp": 1783859443.1423147, "app_version": "3.3.5.5.8.5.25.1"}
-{"raw_text": "当期も不動産売却は実施したものの", "compact_length": 16, "time_since_last_good_commit_ms": 0.0, "source_activity": "unknown", "quarantine_decision": "quarantined", "reason": "noise_fragment", "later_committed_to_stable": false, "raw_mutated": false, "timestamp": 1783859501.6856842}
-{"raw_text": "通期予算を前倒しして達成しました", "compact_length": 16, "time_since_last_good_commit_ms": 0.0, "source_activity": "unknown", "quarantine_decision": "quarantined", "reason": "noise_fragment", "later_committed_to_stable": false, "raw_mutated": false, "timestamp": 1783859600.1464472}
-{"raw_text": "草の部は主に", "compact_length": 6, "time_since_last_good_commit_ms": 0.0, "source_activity": "unknown", "quarantine_decision": "quarantined", "reason": "noise_fragment", "later_committed_to_stable": false, "raw_mutated": false, "timestamp": 1783859625.1788352}

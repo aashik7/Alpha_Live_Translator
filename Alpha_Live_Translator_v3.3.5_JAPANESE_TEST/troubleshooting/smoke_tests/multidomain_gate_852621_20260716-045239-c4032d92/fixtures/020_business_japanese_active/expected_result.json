@@ -1,6 +1,0 @@
-{
-  "test_number": 20,
-  "test_name": "business_japanese_profile_active_fails",
-  "expected_pass_or_fail": "fail",
-  "expected_failure_reason": "business_profile"
-}

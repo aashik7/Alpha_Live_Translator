@@ -1,6 +1,0 @@
-V3.3.5.5.8.5.22.3 ACCURACY REGRESSION ROLLBACK VALIDATION
-Result: PASSED
-APP_VERSION: 3.3.5.5.8.5.22.3
-pointer_status: completed
-index_status: completed
-Warnings: post_run_85223_metrics_deferred_run_version=3.3.5.5.8.5.22.2

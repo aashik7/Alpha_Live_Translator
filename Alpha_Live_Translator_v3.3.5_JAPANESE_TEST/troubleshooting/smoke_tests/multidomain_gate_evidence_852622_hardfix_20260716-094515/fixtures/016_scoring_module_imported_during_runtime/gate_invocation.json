@@ -1,8 +1,0 @@
-{
-  "test_number": 16,
-  "invocation_mode": "direct_callable",
-  "callable_module": "regression_multidomain_gate_85262",
-  "callable_name": "_run_fixture_pipeline",
-  "python_invocation": "regression_multidomain_gate_evidence_852622.b_016_scoring_module_imported_during_runtime('016_scoring_module_imported_during_runtime')",
-  "invoked_at_utc": "2026-07-16T09:45:51Z"
-}

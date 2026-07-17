@@ -1,7 +1,0 @@
-Reference Transcript Quality Report
-verdict: invalid_for_cer
-char_count_ratio: 47.9189
-shared_char_overlap_ratio: 0.0971
-business_term_overlap_ratio: 0.0
-should_run_cer: False
-recommendation: Reference appears to be lesson notes/summary, not verbatim transcript.

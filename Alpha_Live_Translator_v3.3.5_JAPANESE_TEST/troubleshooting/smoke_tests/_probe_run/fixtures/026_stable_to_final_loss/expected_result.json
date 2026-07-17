@@ -1,6 +1,0 @@
-{
-  "test_number": 26,
-  "test_name": "stable_to_final_loss_above_zero_fails",
-  "expected_pass_or_fail": "fail",
-  "expected_failure_reason": "stf_loss"
-}

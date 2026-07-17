@@ -1,6 +1,0 @@
-{
-  "test_number": 5,
-  "test_name": "altered_transcript_hash_fails",
-  "expected_pass_or_fail": "fail",
-  "expected_failure_reason": "hash_mismatch"
-}

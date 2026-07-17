@@ -1,6 +1,0 @@
-{
-  "test_number": 15,
-  "test_name": "reference_opened_before_runtime_exit_fails",
-  "expected_pass_or_fail": "fail",
-  "expected_failure_reason": "ref_early"
-}

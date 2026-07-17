@@ -1,9 +1,0 @@
-{
-  "action": "deleted_after_manifest",
-  "build_id": "32f73399-c932-4033-93b0-9101bd992411",
-  "file_count": 1220,
-  "generated_at": "2026-07-14T15:19:16Z",
-  "patch_version": "3.3.5.5.8.5.25.3.3.2.6",
-  "sample_identity_files": [],
-  "source": "troubleshooting/full_project_audit/staging_20260714-164300"
-}

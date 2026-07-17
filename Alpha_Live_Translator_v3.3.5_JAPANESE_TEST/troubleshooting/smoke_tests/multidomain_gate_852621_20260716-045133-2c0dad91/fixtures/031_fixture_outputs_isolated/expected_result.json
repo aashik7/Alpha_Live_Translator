@@ -1,6 +1,0 @@
-{
-  "test_number": 31,
-  "test_name": "fixture_outputs_cannot_overwrite_latest_live_run_artifacts",
-  "expected_pass_or_fail": "pass",
-  "expected_failure_reason": ""
-}

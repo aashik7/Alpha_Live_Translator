@@ -1,7 +1,0 @@
-status=stopped_runtime_minimal
-run_id=
-run_timestamp=
-app_version=
-stop_core_completed=true
-stop_finalize_completed=true
-evidence_package_status=disabled_during_runtime

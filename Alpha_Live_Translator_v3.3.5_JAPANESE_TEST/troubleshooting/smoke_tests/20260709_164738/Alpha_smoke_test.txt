@@ -1,4 +1,0 @@
-# Alpha Live Translator Smoke Test Export
-# run_type: smoke_test
-# timestamp: 20260709_164738
-# note: no transcript captured during this session

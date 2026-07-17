@@ -1,4 +1,0 @@
-V3.3.5.5.8.5.24.2 RESIDUAL DUPLICATE & PUNCTUATION CLEANUP VALIDATION
-Result: PASSED
-APP_VERSION: 3.3.5.5.8.5.24.2
-Warnings: translation_ready_ratio_below_80, cer_still_not_trusted, no_new_live_test_after_24_2, reference_transcript_not_human_cleaned

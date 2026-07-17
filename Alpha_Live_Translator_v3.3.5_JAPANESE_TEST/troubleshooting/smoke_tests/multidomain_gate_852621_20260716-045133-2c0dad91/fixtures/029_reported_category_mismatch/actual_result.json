@@ -1,8 +1,0 @@
-{
-  "test_number": 29,
-  "test_name": "reported_category_score_mismatch_fails",
-  "actual_pass_or_fail": "pass",
-  "actual_failure_reason": "",
-  "passed": true,
-  "detail": ""
-}

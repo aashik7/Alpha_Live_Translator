@@ -1,4 +1,0 @@
-V3.3.5.5.8.5.24.1 BOUNDARY MERGE REVISION VALIDATION
-Result: PASSED
-APP_VERSION: 3.3.5.5.8.5.24.1
-Warnings: no_new_live_test_after_24_1

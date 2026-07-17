@@ -1,8 +1,0 @@
-status=completed
-run_id=live-v3.3.5.5.8.5.24-20260709-165605-6ea259ed
-run_timestamp=20260709-165605
-app_version=3.3.5.5.8.5.24
-stop_core_completed=true
-stop_finalize_completed=true
-evidence_package_status=disabled_during_runtime
-finalized_at=2026-07-09T17:18:13

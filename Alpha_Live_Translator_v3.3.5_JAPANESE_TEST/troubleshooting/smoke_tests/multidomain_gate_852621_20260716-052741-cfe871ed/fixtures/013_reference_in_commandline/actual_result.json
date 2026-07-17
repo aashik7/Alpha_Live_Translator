@@ -1,8 +1,0 @@
-{
-  "test_number": 13,
-  "test_name": "reference_path_in_runtime_child_command_line_fails",
-  "actual_pass_or_fail": "pass",
-  "actual_failure_reason": "",
-  "passed": true,
-  "detail": ""
-}
