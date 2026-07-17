@@ -1,0 +1,24 @@
+{
+  "build_id": "be77c0ec-1972-4aaa-b166-8323475d1f30",
+  "patch_version": "3.3.5.5.8.5.25.3.3.2.4",
+  "generated_at": "2026-07-14T07:23:19Z",
+  "total_files": 1875,
+  "total_size_bytes": 137569602,
+  "size_by_category": {
+    "source": 4779991,
+    "virtual_environment": 145,
+    "git": 0,
+    "troubleshooting": 131416832,
+    "audio": 0,
+    "logs": 63779,
+    "packages": 87336,
+    "caches": 69550,
+    "temporary": 0,
+    "documentation": 0,
+    "UI Design": 0,
+    "other": 1151969
+  },
+  "skipped_hash_count": 1,
+  "venv_marked_protected": true,
+  "note": "Deep hashing of .venv/.git skipped for speed; sizes counted."
+}

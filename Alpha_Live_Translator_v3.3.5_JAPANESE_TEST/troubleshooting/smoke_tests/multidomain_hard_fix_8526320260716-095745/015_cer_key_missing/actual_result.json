@@ -1,0 +1,10 @@
+{
+  "passed": true,
+  "failures": [
+    "stable_cer_missing"
+  ],
+  "stable_cer_percent": 100.0,
+  "ready_for_translation_beta": false,
+  "ignored_failure_codes": [],
+  "normalized_away_failure_codes": []
+}

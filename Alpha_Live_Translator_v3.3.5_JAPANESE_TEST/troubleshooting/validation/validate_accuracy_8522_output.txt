@@ -1,0 +1,4 @@
+V3.3.5.5.8.5.22 JAPANESE BUSINESS ACCURACY EVIDENCE VALIDATION
+Result: FAILED
+APP_VERSION: 3.3.5.5.8.5.22
+Failed: stop_tail_debug_written, incomplete_tail_not_in_alpha

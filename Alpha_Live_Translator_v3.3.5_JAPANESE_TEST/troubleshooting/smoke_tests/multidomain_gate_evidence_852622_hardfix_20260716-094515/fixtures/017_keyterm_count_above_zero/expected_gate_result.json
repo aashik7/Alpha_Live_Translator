@@ -1,0 +1,10 @@
+{
+  "test_number": 17,
+  "test_name": "keyterm_count_above_zero_fails",
+  "expected_gate_status": "FAILED",
+  "expected_failure_codes": [
+    "KEYTERM_COUNT_NOT_ZERO"
+  ],
+  "expected_policy_result": "",
+  "single_mutation_description": "deepgram_request_actual.json keyterm_count set to 3"
+}

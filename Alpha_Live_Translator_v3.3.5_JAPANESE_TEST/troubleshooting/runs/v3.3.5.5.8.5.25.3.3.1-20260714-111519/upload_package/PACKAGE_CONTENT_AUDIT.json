@@ -1,0 +1,20 @@
+{
+  "archive_paths_unique": true,
+  "duplicate_archive_paths": [],
+  "current_run_only": true,
+  "unexpected_external_paths": [],
+  "old_version_files": [],
+  "smoke_files": [],
+  "preflight_files": [],
+  "required_files_missing": [],
+  "secret_scan_passed": true,
+  "secret_files": [],
+  "audio_exclusion_passed": true,
+  "audio_files": [],
+  "authoritative_writer_count": 1,
+  "package_complete": true,
+  "zip_path": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\runs\\v3.3.5.5.8.5.25.3.3.1-20260714-111519\\upload_package\\UPLOAD_PACKAGE_v3.3.5.5.8.5.25.3.3.2_20260714-131705.zip",
+  "staging_zip_path_match": true,
+  "staging_zip_hash_match": true,
+  "zip_entry_count": 35
+}

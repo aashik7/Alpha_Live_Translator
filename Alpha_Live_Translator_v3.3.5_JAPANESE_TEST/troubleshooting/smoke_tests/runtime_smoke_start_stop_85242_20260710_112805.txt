@@ -1,0 +1,9 @@
+{
+  "result": "PASSED",
+  "elapsed_seconds": 0.43,
+  "live_alpha_protected": true,
+  "smoke_pointer_written": true,
+  "live_pointer_unchanged": true,
+  "cleanup_sweep_ok": true,
+  "residual_duplicate_after_count": 0
+}

@@ -1,0 +1,257 @@
+{
+  "app_version": "3.3.5.5.8.5.25.3.3",
+  "pre_correction_candidates_count": 58,
+  "pre_correction_blocked_count": 21,
+  "pre_correction_allowed_count": 37,
+  "blocked_items": [
+    {
+      "text_preview": "止まってけ編み込みこし取ばいな止まってけみ",
+      "source_commit_id": "stable-1",
+      "source": "ui_exported_segments",
+      "reason": "source_represented_by_corrected_line"
+    },
+    {
+      "text_preview": "本日は2026年7月期、第3四半期決算についてご案内申し上げます。",
+      "source_commit_id": "stable-2",
+      "source": "ui_exported_segments",
+      "reason": "source_represented_by_corrected_line"
+    },
+    {
+      "text_preview": "これは既存円の在籍率向上や工程価格の上昇による",
+      "source_commit_id": "stable-3",
+      "source": "ui_exported_segments",
+      "reason": "source_represented_by_corrected_line"
+    },
+    {
+      "text_preview": "不採算事業の撤退や中核事業の合理化業務効率化により営業利益率は七点五パーセントから七に向上",
+      "source_commit_id": "stable-5",
+      "source": "ui_exported_segments",
+      "reason": "source_represented_by_corrected_line"
+    },
+    {
+      "text_preview": "親会社株主に属する当期純利前年度",
+      "source_commit_id": "stable-7",
+      "source": "ui_exported_segments",
+      "reason": "source_represented_by_corrected_line"
+    },
+    {
+      "text_preview": "営業利益は通期予算に対し対応のない成果や",
+      "source_commit_id": "stable-9",
+      "source": "ui_exported_segments",
+      "reason": "source_represented_by_corrected_line"
+    },
+    {
+      "text_preview": "連結子会社のサクラ作未来で石川祐介氏が取締役なお石川氏は桜咲くプラス経営管理本部長も兼任しております石川市の就任により佐久未来及びグループ全体の財務戦略及びガバナンス体制をより強固に補強・向上させるための経営管理体制の刷新をいたしまた",
+      "source_commit_id": "stable-20",
+      "source": "ui_exported_segments",
+      "reason": "source_represented_by_corrected_line"
+    },
+    {
+      "text_preview": "氏の取締役就任により専門的な学術的知見を経営統保育研修へ直接反映させてまいります。",
+      "source_commit_id": "stable-21",
+      "source": "ui_exported_segments",
+      "reason": "source_represented_by_corrected_line"
+    },
+    {
+      "text_preview": "不動産企画開発ではマンション開発事業と買取再販事業ホテル再生事業も計画通り進捗しており",
+      "source_commit_id": "stable-22",
+      "source": "ui_exported_segments",
+      "reason": "source_represented_by_corrected_line"
+    },
+    {
+      "text_preview": "止まってけ編み込みこし取ばいな止まってけみ",
+      "source_commit_id": "stable-1",
+      "source": "stable_commits",
+      "reason": "source_represented_by_corrected_line"
+    },
+    {
+      "text_preview": "本日は2026年7月期、第3四半期決算についてご案内申し上げます。",
+      "source_commit_id": "stable-3",
+      "source": "stable_commits",
+      "reason": "source_represented_by_corrected_line"
+    },
+    {
+      "text_preview": "これは既存円の在籍率向上や工程価格の上昇による",
+      "source_commit_id": "stable-5",
+      "source": "stable_commits",
+      "reason": "source_represented_by_corrected_line"
+    },
+    {
+      "text_preview": "これは既存円の在籍率向上や工程価格の上昇による補助金増額、保育所の新規開設や増床が寄与し主力の保育サービスにおいて増収となりました",
+      "source_commit_id": "stable-6",
+      "source": "stable_commits",
+      "reason": "source_represented_by_corrected_line"
+    },
+    {
+      "text_preview": "これは既存円の在籍率向上や工程価格の上昇による補助金増額、保育所の新規開設や増床が寄与し主力の保育サービスにおいて増収となりました一方不動産事業は前期に計上した大型不動産売却案件の反動により当期も不動産売却は実施したものの全体としては減少と",
+      "source_commit_id": "stable-7",
+      "source": "stable_commits",
+      "reason": "source_represented_by_corrected_line"
+    },
+    {
+      "text_preview": "不採算事業の撤退や中核事業の合理化業務効率化により営業利益率は七点五パーセントから七に向上",
+      "source_commit_id": "stable-10",
+      "source": "stable_commits",
+      "reason": "source_represented_by_corrected_line"
+    },
+    {
+      "text_preview": "親会社株主に属する当期純利前年度",
+      "source_commit_id": "stable-13",
+      "source": "stable_commits",
+      "reason": "source_represented_by_corrected_line"
+    },
+    {
+      "text_preview": "営業利益は通期予算に対し対応のない成果や",
+      "source_commit_id": "stable-16",
+      "source": "stable_commits",
+      "reason": "source_represented_by_corrected_line"
+    },
+    {
+      "text_preview": "営業利益は通期予算に対し対応のない成果や不採算事業の定義といった毎期継続している費用削減の施策が確実に成果を創出し、収益が概ね予算通りに推移する中、これらの施策が利益の上振れをけん引し",
+      "source_commit_id": "stable-17",
+      "source": "stable_commits",
+      "reason": "source_represented_by_corrected_line"
+    },
+    {
+      "text_preview": "連結子会社のサクラ作未来で石川祐介氏が取締役なお石川氏は桜咲くプラス経営管理本部長も兼任しております石川市の就任により佐久未来及びグループ全体の財務戦略及びガバナンス体制をより強固に補強・向上させるための経営管理体制の刷新をいたしまた",
+      "source_commit_id": "stable-29",
+      "source": "stable_commits",
+      "reason": "source_represented_by_corrected_line"
+    },
+    {
+      "text_preview": "氏の取締役就任により専門的な学術的知見を経営統保育研修へ直接反映させてまいります。",
+      "source_commit_id": "stable-31",
+      "source": "stable_commits",
+      "reason": "source_represented_by_corrected_line"
+    },
+    {
+      "text_preview": "不動産企画開発ではマンション開発事業と買取再販事業ホテル再生事業も計画通り進捗しており",
+      "source_commit_id": "stable-33",
+      "source": "stable_commits",
+      "reason": "source_represented_by_corrected_line"
+    }
+  ],
+  "allowed_items": [
+    {
+      "text_preview": "止まってけ編み込みこし取ばいな止まってけみて皆さん、こんにちは。株式会社サクラプラス代表の中山です。",
+      "source_commit_id": "stable-1",
+      "source": "ui_exported_segments",
+      "reason": "already_in_canonical_export"
+    },
+    {
+      "text_preview": "営業利益は十億六千百万円となり前年同期比一点五パーセントの原因となりました。",
+      "source_commit_id": "stable-4",
+      "source": "ui_exported_segments",
+      "reason": "already_in_canonical_export"
+    },
+    {
+      "text_preview": "保育所の新規開設や蔵書の実施によりこれらに伴う開演前の補助金収入が加算されたことにより増益となります。",
+      "source_commit_id": "stable-6",
+      "source": "ui_exported_segments",
+      "reason": "already_in_canonical_export"
+    },
+    {
+      "text_preview": "売上高は通期予算に対して各サービス等も堅調に成長しており、当四半期累計機関におて順調に推移しております。",
+      "source_commit_id": "stable-8",
+      "source": "ui_exported_segments",
+      "reason": "already_in_canonical_export"
+    },
+    {
+      "text_preview": "資産合計は二十八億7100万円増加しました。",
+      "source_commit_id": "stable-10",
+      "source": "ui_exported_segments",
+      "reason": "already_in_canonical_export"
+    },
+    {
+      "text_preview": "スタエノブは主に禁忌不動産負債合計は二十一億三千三百万円増加しました。",
+      "source_commit_id": "stable-11",
+      "source": "ui_exported_segments",
+      "reason": "already_in_canonical_export"
+    },
+    {
+      "text_preview": "らの結果、自己資本比率は43。",
+      "source_commit_id": "stable-12",
+      "source": "ui_exported_segments",
+      "reason": "already_in_canonical_export"
+    },
+    {
+      "text_preview": "9から40。7に低下いたしました。",
+      "source_commit_id": "stable-13",
+      "source": "ui_exported_segments",
+      "reason": "already_in_canonical_export"
+    },
+    {
+      "text_preview": "続いて2026年7月期、軽トピックスをお知らせいたし。",
+      "source_commit_id": "stable-14",
+      "source": "ui_exported_segments",
+      "reason": "already_in_canonical_export"
+    },
+    {
+      "text_preview": "保育サービスにおいては大阪市中区で桜咲く未来東平を予定通り解説して。",
+      "source_commit_id": "stable-15",
+      "source": "ui_exported_segments",
+      "reason": "already_in_canonical_export"
+    },
+    {
+      "text_preview": "桜咲く未来晴海におても予定通り増長を行い自動定員数が増加しました他人口増加で保育所が不足してる晴海エリアから月島エリアへ親子で乗れる送迎バスの運行も開始しております。",
+      "source_commit_id": "stable-16",
+      "source": "ui_exported_segments",
+      "reason": "already_in_canonical_export"
+    },
+    {
+      "text_preview": "2027年7月期では、東京都中国にて1施設の新居保育所の開設を予定しております。",
+      "source_commit_id": "stable-17",
+      "source": "ui_exported_segments",
+      "reason": "already_in_canonical_export"
+    },
+    {
+      "text_preview": "フェムケア、フェムテックサービスにおいては、連結子会社のイェールにて二千二十六年夏頃に新製品の発売を予定しております。",
+      "source_commit_id": "stable-18",
+      "source": "ui_exported_segments",
+      "reason": "already_in_canonical_export"
+    },
+    {
+      "text_preview": "新製品の発売により、量産サプリメント市場でさらなるペアの拡大を見込ん続いて各子会社の取締役の就任についてお知らせいたします。",
+      "source_commit_id": "stable-19",
+      "source": "ui_exported_segments",
+      "reason": "already_in_canonical_export"
+    },
+    {
+      "text_preview": "止まってけ編み込みこし取ばいな止まってけみて皆さん、こんにちは。株式会社サクラプラス代表の中山です。",
+      "source_commit_id": "stable-2",
+      "source": "stable_commits",
+      "reason": "already_in_canonical_export"
+    },
+    {
+      "text_preview": "本日は2026年7月期、第3四半期決算についてご案内申し上げます。は二千二十六年七月期第三四半期決算概要についてお知らせいたします。売上高についは百三十六億七千九百万となり前年同期比五点四パーセントの減収となりました。",
+      "source_commit_id": "stable-4",
+      "source": "stable_commits",
+      "reason": "already_in_canonical_export"
+    },
+    {
+      "text_preview": "これは既存円の在籍率向上や工程価格の上昇による補助金増額、保育所の新規開設や増床が寄与し主力の保育サービスにおいて増収となりました一方不動産事業は前期に計上した大型不動産売却案件の反動により当期も不動産売却は実施したものの全体としては減少と",
+      "source_commit_id": "stable-8",
+      "source": "stable_commits",
+      "reason": "already_in_canonical_export"
+    },
+    {
+      "text_preview": "営業利益は十億六千百万円となり前年同期比一点五パーセントの原因となりました。",
+      "source_commit_id": "stable-9",
+      "source": "stable_commits",
+      "reason": "already_in_canonical_export"
+    },
+    {
+      "text_preview": "不採算事業の撤退や中核事業の合理化業務効率化により営業利益率は七点五パーセントから七に向上経常利益は十一億二千八百万円となり前年同期比9。5の増益となりました。",
+      "source_commit_id": "stable-11",
+      "source": "stable_commits",
+      "reason": "already_in_canonical_export"
+    },
+    {
+      "text_preview": "保育所の新規開設や蔵書の実施によりこれらに伴う開演前の補助金収入が加算されたことにより増益となります。",
+      "source_commit_id": "stable-12",
+      "source": "stable_commits",
+      "reason": "already_in_canonical_export"
+    }
+  ],
+  "warnings": []
+}

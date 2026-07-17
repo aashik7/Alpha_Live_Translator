@@ -1,0 +1,19 @@
+{
+  "test_number": 15,
+  "test_name": "reference_opened_before_runtime_exit_fails",
+  "actual_gate_status": "FAILED",
+  "actual_failure_codes": [
+    "REFERENCE_OPENED_BEFORE_RUNTIME_EXIT"
+  ],
+  "actual_failure_messages": [
+    "verification.reported_value_mismatches=reference_not_opened_after_exit -> REFERENCE_OPENED_BEFORE_RUNTIME_EXIT"
+  ],
+  "actual_gate_exit_code": 0,
+  "actual_acceptance_version": "NOT_ACCEPTED",
+  "actual_acceptance_status": "FIXTURE_ONLY",
+  "source_result_file": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\smoke_tests\\multidomain_gate_evidence_852622_hardfix_20260716-095745\\fixtures\\015_reference_opened_before_runtime_exit\\accuracy_stage_compare\\independent_verification.json",
+  "source_result_file_sha256": "08e000325d9d5d9d99139fea00170abf95534c0e8d333d86ad6682bd074cf220",
+  "unhandled_exception": false,
+  "exception_class": "",
+  "exception_message": ""
+}

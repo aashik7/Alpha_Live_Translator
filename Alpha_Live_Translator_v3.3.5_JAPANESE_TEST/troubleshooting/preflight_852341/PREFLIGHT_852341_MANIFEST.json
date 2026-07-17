@@ -1,0 +1,15 @@
+{
+  "collected_at": "2026-07-09T13:24:59",
+  "app_version_before_change": "3.3.5.5.8.5.23.4",
+  "latest_run_id": "live-v3.3.5.5.8.5.23.4-20260709-112449-8f93fbc5",
+  "latest_alpha_path": "troubleshooting\\latest\\latest_live_alpha_output.txt",
+  "latest_alpha_size_bytes": 13586,
+  "latest_alpha_sha256": "26aa2edab22d3db1bbd625cbe2592ab5db185bc8f1515a44deb90369a3639467",
+  "latest_reference_path": "troubleshooting\\accuracy_benchmark\\reference_transcripts\\test01.txt",
+  "latest_reference_sha256": "2bf8a6f08975334d14f5b6d29f8f2270fb46856949c7246564f95081ef0d88bf",
+  "latest_score_report_path": "troubleshooting\\accuracy_benchmark\\latest_reports\\latest_accuracy_score_report.json",
+  "latest_alignment_report_path": "troubleshooting\\accuracy_benchmark\\latest_reports\\latest_alignment_report.json",
+  "latest_boundary_report_path": "troubleshooting\\accuracy_benchmark\\latest_reports\\latest_boundary_error_report.json",
+  "latest_upload_package_path_if_known": "troubleshooting\\runs\\v3.3.5.5.8.5.23.4-20260709-112449\\upload_package\\UPLOAD_PACKAGE_v3.3.5.5.8.5.23.4_20260709-115601.zip",
+  "warnings": []
+}

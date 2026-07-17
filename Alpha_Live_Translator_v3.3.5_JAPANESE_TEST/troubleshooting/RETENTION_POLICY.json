@@ -1,0 +1,263 @@
+{
+  "archive_root": "troubleshooting/archive/phase1_v3.3.5.5.8.5.25.3.3.2.6/",
+  "build_id": "238eeb44-f420-4d93-b846-24f1268f63bd",
+  "categories": {
+    "accepted_packages": {
+      "archive_conditions": [
+        "older_than_latest_two"
+      ],
+      "classification": "accepted_packages",
+      "contains_sensitive_content": false,
+      "default_action": "retain_latest_two_per_family",
+      "deletion_conditions": [
+        "beyond_retain_window"
+      ],
+      "manual_override_allowed": true,
+      "maximum_retention": "latest_2",
+      "minimum_retention": "latest_2",
+      "protection_conditions": [
+        "latest_two"
+      ],
+      "required_manifest": true
+    },
+    "accepted_run_evidence": {
+      "archive_conditions": [],
+      "classification": "accepted_run_evidence",
+      "contains_sensitive_content": true,
+      "default_action": "protect",
+      "deletion_conditions": [
+        "never_auto_delete"
+      ],
+      "manual_override_allowed": true,
+      "maximum_retention": "indefinite",
+      "minimum_retention": "until_manually_superseded",
+      "protection_conditions": [
+        "authoritative_accepted_run"
+      ],
+      "required_manifest": true
+    },
+    "audit_packages": {
+      "archive_conditions": [
+        "older_verified"
+      ],
+      "classification": "audit_packages",
+      "contains_sensitive_content": false,
+      "default_action": "retain_latest_two_verified",
+      "deletion_conditions": [
+        "beyond_retain_window"
+      ],
+      "manual_override_allowed": true,
+      "maximum_retention": "latest_2",
+      "minimum_retention": "latest_2",
+      "protection_conditions": [
+        "verified"
+      ],
+      "required_manifest": true
+    },
+    "cleanup_builds": {
+      "archive_conditions": [
+        "age_gt_90d"
+      ],
+      "classification": "cleanup_builds",
+      "contains_sensitive_content": false,
+      "default_action": "retain",
+      "deletion_conditions": [
+        "duplicate_build_artifacts"
+      ],
+      "manual_override_allowed": true,
+      "maximum_retention": "365d",
+      "minimum_retention": "30d",
+      "protection_conditions": [
+        "current_patch_builds"
+      ],
+      "required_manifest": true
+    },
+    "crash_dumps": {
+      "archive_conditions": [
+        "unique_diagnostic"
+      ],
+      "classification": "crash_dumps",
+      "contains_sensitive_content": true,
+      "default_action": "archive_unique",
+      "deletion_conditions": [
+        "duplicate_verified"
+      ],
+      "manual_override_allowed": true,
+      "maximum_retention": "365d",
+      "minimum_retention": "30d",
+      "protection_conditions": [],
+      "required_manifest": true
+    },
+    "failed_run_evidence": {
+      "archive_conditions": [
+        "unique_hash"
+      ],
+      "classification": "failed_run_evidence",
+      "contains_sensitive_content": true,
+      "default_action": "archive_unique",
+      "deletion_conditions": [
+        "duplicate_after_hash_verify"
+      ],
+      "manual_override_allowed": true,
+      "maximum_retention": "180d",
+      "minimum_retention": "14d",
+      "protection_conditions": [],
+      "required_manifest": true
+    },
+    "package_staging": {
+      "archive_conditions": [
+        "status_manifest_required"
+      ],
+      "classification": "package_staging",
+      "contains_sensitive_content": false,
+      "default_action": "delete_after_verified_package",
+      "deletion_conditions": [
+        "verified_final_package_exists"
+      ],
+      "manual_override_allowed": true,
+      "maximum_retention": "until_verified_package",
+      "minimum_retention": "0d",
+      "protection_conditions": [],
+      "required_manifest": true
+    },
+    "pending_runs": {
+      "archive_conditions": [
+        "unique_pending_evidence"
+      ],
+      "classification": "pending_runs",
+      "contains_sensitive_content": true,
+      "default_action": "classify_before_removal",
+      "deletion_conditions": [
+        "classified_duplicate"
+      ],
+      "manual_override_allowed": true,
+      "maximum_retention": "30d",
+      "minimum_retention": "7d",
+      "protection_conditions": [
+        "unclassified"
+      ],
+      "required_manifest": true
+    },
+    "quarantine": {
+      "archive_conditions": [
+        "after_disposition"
+      ],
+      "classification": "quarantine",
+      "contains_sensitive_content": true,
+      "default_action": "retain_until_disposition",
+      "deletion_conditions": [
+        "explicit_verified_disposition"
+      ],
+      "manual_override_allowed": true,
+      "maximum_retention": "indefinite",
+      "minimum_retention": "until_disposition",
+      "protection_conditions": [
+        "no_disposition"
+      ],
+      "required_manifest": true
+    },
+    "reference_transcripts": {
+      "archive_conditions": [],
+      "classification": "reference_transcripts",
+      "contains_sensitive_content": true,
+      "default_action": "protect",
+      "deletion_conditions": [
+        "never"
+      ],
+      "manual_override_allowed": true,
+      "maximum_retention": "indefinite",
+      "minimum_retention": "indefinite",
+      "protection_conditions": [
+        "always"
+      ],
+      "required_manifest": true
+    },
+    "runtime_logs": {
+      "archive_conditions": [
+        "age_gt_30d"
+      ],
+      "classification": "runtime_logs",
+      "contains_sensitive_content": false,
+      "default_action": "retain",
+      "deletion_conditions": [
+        "duplicate_verified"
+      ],
+      "manual_override_allowed": true,
+      "maximum_retention": "90d",
+      "minimum_retention": "7d",
+      "protection_conditions": [
+        "authoritative_run_bound"
+      ],
+      "required_manifest": true
+    },
+    "source_snapshots": {
+      "archive_conditions": [
+        "intentional_snapshot"
+      ],
+      "classification": "source_snapshots",
+      "contains_sensitive_content": false,
+      "default_action": "protect",
+      "deletion_conditions": [
+        "never_auto"
+      ],
+      "manual_override_allowed": true,
+      "maximum_retention": "indefinite",
+      "minimum_retention": "indefinite",
+      "protection_conditions": [
+        "source_tree"
+      ],
+      "required_manifest": true
+    },
+    "temporary_audio": {
+      "archive_conditions": [],
+      "classification": "temporary_audio",
+      "contains_sensitive_content": true,
+      "default_action": "delete",
+      "deletion_conditions": [
+        "age_gt_3h_and_unprotected"
+      ],
+      "manual_override_allowed": true,
+      "maximum_retention": "3h",
+      "minimum_retention": "0h",
+      "protection_conditions": [
+        "manual_protect_flag"
+      ],
+      "required_manifest": true
+    },
+    "transcript_bearing_logs": {
+      "archive_conditions": [
+        "explicit_archive_request"
+      ],
+      "classification": "transcript_bearing_logs",
+      "contains_sensitive_content": true,
+      "default_action": "retain",
+      "deletion_conditions": [
+        "never_auto_upload"
+      ],
+      "manual_override_allowed": true,
+      "maximum_retention": "manual",
+      "minimum_retention": "indefinite_until_review",
+      "protection_conditions": [
+        "contains_transcript"
+      ],
+      "required_manifest": true
+    }
+  },
+  "default_mode": "dry-run",
+  "generated_at": "2026-07-15T06:49:31Z",
+  "notes": [
+    "temporary audio: delete after 3 hours unless protected",
+    "authoritative accepted run: retain until manually superseded",
+    "reference transcripts: protected",
+    "transcript-bearing logs: sensitive; never upload automatically",
+    "pending runs: classify before removal",
+    "unique failed evidence: archive",
+    "duplicate failed evidence: removable after hash verification",
+    "accepted packages: retain latest two per active family",
+    "package staging: remove after verified final package exists",
+    "quarantine: retain until explicit verified disposition",
+    "crash dumps: archive unique diagnostic evidence",
+    "audit packages: retain latest two verified outputs per family"
+  ],
+  "patch_version": "3.3.5.5.8.5.25.3.3.2.6"
+}

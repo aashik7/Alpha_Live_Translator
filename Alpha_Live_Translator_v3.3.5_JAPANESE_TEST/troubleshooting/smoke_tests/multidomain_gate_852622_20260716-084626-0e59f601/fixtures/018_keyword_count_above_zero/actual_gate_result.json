@@ -1,0 +1,20 @@
+{
+  "test_number": 18,
+  "test_name": "keyword_count_above_zero_fails",
+  "actual_gate_status": "FAILED",
+  "actual_failure_codes": [
+    "KEYWORD_COUNT_NOT_ZERO"
+  ],
+  "actual_failure_messages": [
+    "acceptance.failures=keyword_count_nonzero -> KEYWORD_COUNT_NOT_ZERO",
+    "verification.reported_value_mismatches=request_keyword_count_nonzero -> KEYWORD_COUNT_NOT_ZERO"
+  ],
+  "actual_gate_exit_code": 0,
+  "actual_acceptance_version": "NOT_ACCEPTED",
+  "actual_acceptance_status": "FIXTURE_ONLY",
+  "source_result_file": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\smoke_tests\\multidomain_gate_852622_20260716-084626-0e59f601\\fixtures\\018_keyword_count_above_zero\\accuracy_stage_compare\\multidomain_gate_acceptance.json",
+  "source_result_file_sha256": "19d908ecfa073e56435d3878986df9f4dae605321b97c47e15322a2b5359942a",
+  "unhandled_exception": false,
+  "exception_class": "",
+  "exception_message": ""
+}

@@ -1,0 +1,21 @@
+{
+  "test_number": 12,
+  "test_name": "api_key_in_request_evidence_fails",
+  "regression_test_status": "PASSED",
+  "expected_gate_status": "FAILED",
+  "actual_gate_status": "FAILED",
+  "expected_failure_codes": [
+    "SECRET_PRESENT_IN_REQUEST_EVIDENCE"
+  ],
+  "actual_failure_codes": [
+    "SECRET_PRESENT_IN_REQUEST_EVIDENCE"
+  ],
+  "exact_failure_code_match": true,
+  "unexpected_failure_codes": [],
+  "missing_failure_codes": [],
+  "unrelated_exception_detected": false,
+  "assertion_messages": [
+    "expected_gate_status=FAILED actual_gate_status=FAILED",
+    "expected_failure_codes=['SECRET_PRESENT_IN_REQUEST_EVIDENCE'] actual_failure_codes=['SECRET_PRESENT_IN_REQUEST_EVIDENCE']"
+  ]
+}

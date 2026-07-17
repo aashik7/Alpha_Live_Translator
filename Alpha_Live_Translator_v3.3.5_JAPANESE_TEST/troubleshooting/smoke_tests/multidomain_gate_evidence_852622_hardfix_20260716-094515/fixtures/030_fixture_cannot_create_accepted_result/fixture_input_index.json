@@ -1,0 +1,123 @@
+{
+  "test_number": 30,
+  "test_name": "fixture_run_cannot_create_version_accepted",
+  "kind": "policy",
+  "single_mutation_description": "no mutation; verifies fixture_mode structurally blocks VERSION=ACCEPTED",
+  "files": [
+    {
+      "relative_path": "accuracy_stage_compare/audio_delivery_events.jsonl",
+      "byte_size": 1960,
+      "sha256": "f798ebaff2c63a5aa83627fa94fc202f969e59a0d9b53e3e5ad23d69b074e5aa"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/audio_delivery_summary.json",
+      "byte_size": 1125,
+      "sha256": "81770047ff03ef3d37bae8ef9eb77e19b01af99da6e521ce6e93f549b2f712d0"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/Cursor final report.txt",
+      "byte_size": 16,
+      "sha256": "e25d9e87a10d0c32265dc21eedccd081076a638fb70023cf7ec4a74a55f7f2e9"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/deepgram_request_actual.json",
+      "byte_size": 926,
+      "sha256": "71764bb979cb16c2a6c69ff274daa6c00954bf35065f33d3ca11669ed2116966"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/domain_category_score.json",
+      "byte_size": 4823,
+      "sha256": "47f54057a4ad9bd3131464adb3f9cd5a7d862bf242fc12d7d21ff712d2fb63f0"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/final_alpha_output.txt",
+      "byte_size": 1450,
+      "sha256": "f5f7ba4480ee10dc408e2f24d3e2865520a1d666a57bbbdaeea50c4dc6c0a5b7"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/independent_verification.json",
+      "byte_size": 2403,
+      "sha256": "44a554922662fa1a9695bf5c5061ae2623a79e45f96504979ca99ce8046280d2"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/meaning_equivalent_score.json",
+      "byte_size": 3838,
+      "sha256": "e55d9c8b372b733c9c43d89f9700c4c0d6248ec50c9fc8e5244aa7e26f452fbb"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/multidomain_gate_acceptance.json",
+      "byte_size": 1203,
+      "sha256": "d168f2c789198ffc4eec55b0d6347a3d9725d65d353ed7123ed4c2a9877f64c5"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/noise.wav",
+      "byte_size": 4,
+      "sha256": "a40ff3d5900fb7698b8c865041347cb49eccedc8f93945f89629ad104aaecce4"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/raw_deepgram.txt",
+      "byte_size": 1450,
+      "sha256": "f5f7ba4480ee10dc408e2f24d3e2865520a1d666a57bbbdaeea50c4dc6c0a5b7"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/reference_isolation_actual.json",
+      "byte_size": 781,
+      "sha256": "a490ac7d7683244125a55f31a0459a5ec0ea73057a1d2053eb38077e2494baa4"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/runtime_regression_report.json",
+      "byte_size": 156,
+      "sha256": "42e8a3380243101dbe0511f33d1a51704171586771f3e96cb1179f2ef2ec71c3"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/stable_transcript.txt",
+      "byte_size": 1450,
+      "sha256": "f5f7ba4480ee10dc408e2f24d3e2865520a1d666a57bbbdaeea50c4dc6c0a5b7"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/strict_score.json",
+      "byte_size": 1838,
+      "sha256": "e44c785ca43efe844e33d333e0d27133c0ff9e4d8d84317f75f140938210b194"
+    },
+    {
+      "relative_path": "actual_gate_result.json",
+      "byte_size": 885,
+      "sha256": "de8240f8a7e7e1949ee43843e8e20dae092e2bf8056518c327bcbd04eef83d04"
+    },
+    {
+      "relative_path": "expected_gate_result.json",
+      "byte_size": 327,
+      "sha256": "36b7c8e50bb443d1be3fdba07e364834789be7ad4f490a9ebb0ef3ac114a0748"
+    },
+    {
+      "relative_path": "MULTIDOMAIN_GATE_ANALYSIS_PACKAGE_030_fixture_cannot_create_accepted_result.sha256",
+      "byte_size": 66,
+      "sha256": "1656a2452e4d4a2e8d75698bbf568ec94b097ecf1a616f7da2accea52e3f2e78"
+    },
+    {
+      "relative_path": "MULTIDOMAIN_GATE_ANALYSIS_PACKAGE_030_fixture_cannot_create_accepted_result.size.txt",
+      "byte_size": 7,
+      "sha256": "a27088ff73d95bf96446ac5f375c00d227eb53684f85a014e0eb30e14eed0982"
+    },
+    {
+      "relative_path": "MULTIDOMAIN_GATE_ANALYSIS_PACKAGE_030_fixture_cannot_create_accepted_result.zip",
+      "byte_size": 12113,
+      "sha256": "f0ed4f2eda259a95bc3515b5bf0e7bddb025598bd0b87aaea32cc3aa0ec8721e"
+    },
+    {
+      "relative_path": "reference_copy/multidomain_meeting_v1.txt",
+      "byte_size": 1450,
+      "sha256": "f5f7ba4480ee10dc408e2f24d3e2865520a1d666a57bbbdaeea50c4dc6c0a5b7"
+    },
+    {
+      "relative_path": "reference_copy/multidomain_meeting_v1_truth.json",
+      "byte_size": 2000,
+      "sha256": "ecfbe03916714bd6978dcf926b66def33fb881b394a6ea9594df538f608b2112"
+    },
+    {
+      "relative_path": "regression_assertion.json",
+      "byte_size": 668,
+      "sha256": "db72563551d88662caab18b327ae1834752c6081d70e3291b0e35b8f993544d4"
+    }
+  ]
+}

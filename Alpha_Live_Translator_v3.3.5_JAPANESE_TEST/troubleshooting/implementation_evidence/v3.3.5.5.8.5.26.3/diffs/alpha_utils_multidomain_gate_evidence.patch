@@ -1,0 +1,184 @@
+--- a/alpha/utils/multidomain_gate_evidence.py
++++ b/alpha/utils/multidomain_gate_evidence.py
+@@ -20,22 +20,9 @@
+ 
+ ACCURACY_PROFILE_DOMAIN_AGNOSTIC = "domain_agnostic_no_hints"
+ ACCURACY_PROFILE_TEST01_MEETING = "target_85_meeting_context"
+-MULTIDOMAIN_VERSION = "3.3.5.5.8.5.26.2"
++MULTIDOMAIN_VERSION = "3.3.5.5.8.5.26.3"
+ FROZEN_INFRASTRUCTURE = "3.3.5.5.8.5.25.3.3.2.8"
+ NORMALIZATION_RULES_VERSION = "mdg_meaning_equiv_v1"
+-
+-REFERENCE_REL = Path(
+-    "troubleshooting/accuracy_benchmark/reference_transcripts/multidomain_meeting_v1.txt"
+-)
+-TRUTH_REL = Path(
+-    "troubleshooting/accuracy_benchmark/reference_transcripts/multidomain_meeting_v1_truth.json"
+-)
+-ISOLATION_POLICY_REL = Path(
+-    "troubleshooting/accuracy_benchmark/multidomain_gate/REFERENCE_ISOLATION_POLICY.json"
+-)
+-TEST01_PROFILE_STATUS_REL = Path(
+-    "troubleshooting/accuracy_benchmark/multidomain_gate/test01_meeting_context_status.json"
+-)
+ 
+ _lock = threading.Lock()
+ _next_delivery_chunk_id = 1
+@@ -471,157 +458,6 @@
+     }
+ 
+ 
+-def build_reference_isolation_policy() -> dict[str, Any]:
+-    return {
+-        "policy_version": "multidomain_gate_85262",
+-        "rules": [
+-            "The application child process must not receive the reference path.",
+-            "The application child process must not receive the truth metadata path.",
+-            "The application child environment must not contain reference text.",
+-            "The application child environment must not contain a reference SHA.",
+-            "The reference must not be opened until the application process exits.",
+-            "Benchmark scoring modules must not be imported by the live application.",
+-            "Benchmark truth metadata must be used only after runtime exit.",
+-            "Deepgram request construction must not import benchmark files.",
+-        ],
+-        "reference_path": str(REFERENCE_REL).replace("\\", "/"),
+-        "truth_metadata_path": str(TRUTH_REL).replace("\\", "/"),
+-        "orchestrator_may_receive_paths": True,
+-        "orchestrator_may_open_before_exit": False,
+-    }
+-
+-
+-def build_truth_metadata_template() -> dict[str, Any]:
+-    return {
+-        "benchmark_id": "multidomain_meeting_v1",
+-        "runtime_usage_allowed": False,
+-        "deepgram_usage_allowed": False,
+-        "correction_usage_allowed": False,
+-        "participant_and_person_names": [
+-            "田中健",
+-            "佐藤美咲",
+-            "鈴木大輔",
+-            "高橋彩",
+-            "山本部長",
+-            "斉藤課長",
+-            "佐藤主任",
+-            "小林さん",
+-            "中村恵子",
+-        ],
+-        "company_names": [
+-            "アルファソリューションズ株式会社",
+-            "東都物流株式会社",
+-            "青葉商事株式会社",
+-            "北星テクノロジー株式会社",
+-            "株式会社ネクストワークス",
+-        ],
+-        "it_terms": [
+-            "API",
+-            "CSV",
+-            "JSON",
+-            "SSO",
+-            "MFA",
+-            "Webhook",
+-            "CPU",
+-            "CRM",
+-            "SLA",
+-            "シングルサインオン",
+-            "多要素認証",
+-            "バックグラウンド処理",
+-            "タイムアウト",
+-            "回帰テスト",
+-            "外部ライブラリ",
+-            "クラウド環境",
+-        ],
+-        "sales_terms": [
+-            "初回相談",
+-            "提案書",
+-            "価格交渉",
+-            "社内承認",
+-            "契約手続き",
+-            "年間契約金額",
+-            "初期費用",
+-            "値引き",
+-            "契約期間",
+-            "月額利用料",
+-            "見積書",
+-            "個別見積もり",
+-        ],
+-        "marketing_terms": [
+-            "検索広告",
+-            "SNS広告",
+-            "オンラインセミナー",
+-            "表示回数",
+-            "クリック数",
+-            "クリック率",
+-            "問い合わせ件数",
+-            "見込み客",
+-            "転換率",
+-            "A/Bテスト",
+-            "CPA",
+-            "ランディングページ",
+-        ],
+-        "general_business_terms": [
+-            "進捗率",
+-            "負荷テスト",
+-            "情報システム部",
+-            "営業企画部",
+-            "購買部",
+-            "プロジェクト管理ツール",
+-            "重要度",
+-            "一次回答",
+-            "経営会議",
+-        ],
+-        "numeric_entities": "extract_from_reference_after_runtime",
+-        "dates_times": "extract_from_reference_after_runtime",
+-        "money_percentages": "extract_from_reference_after_runtime",
+-    }
+-
+-
+-def scan_production_for_reference_leaks(project_root: Path) -> dict[str, Any]:
+-    """Fail if production runtime files embed multidomain reference/truth content."""
+-    roots = [
+-        project_root / "alpha",
+-        project_root / "main.py",
+-    ]
+-    forbidden_needles = [
+-        "multidomain_meeting_v1.txt",
+-        "multidomain_meeting_v1_truth.json",
+-    ]
+-    # Term arrays / correction tables that would prove memorization wiring
+-    forbidden_snippets = [
+-        '"participant_and_person_names"',
+-        "アルファソリューションズ株式会社",
+-        "BENCHMARK_CORRECTION_TABLE",
+-        "multidomain_term_array",
+-    ]
+-    allow_paths = {
+-        str((project_root / "alpha" / "utils" / "multidomain_gate_evidence.py").resolve()),
+-    }
+-    hits: list[dict[str, str]] = []
+-    files: list[Path] = []
+-    for root in roots:
+-        if root.is_file():
+-            files.append(root)
+-        elif root.is_dir():
+-            files.extend(root.rglob("*.py"))
+-    for path in files:
+-        if str(path.resolve()) in allow_paths:
+-            continue
+-        # Scoring scripts live at project root — not under alpha; skip gate scripts
+-        name = path.name
+-        if name.startswith(("score_multidomain", "verify_multidomain", "run_multidomain", "prepare_multidomain", "regression_multidomain")):
+-            continue
+-        try:
+-            text = path.read_text(encoding="utf-8", errors="replace")
+-        except Exception:
+-            continue
+-        for needle in forbidden_needles + forbidden_snippets:
+-            if needle in text:
+-                hits.append({"path": str(path.relative_to(project_root)), "needle": needle})
+-    return {"ok": not hits, "hits": hits}
+-
+-
+ def normalize_transcript_text(text: str) -> str:
+     lines: list[str] = []
+     for raw in text.splitlines():

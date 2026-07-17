@@ -1,0 +1,77 @@
+{
+  "result": "PASSED",
+  "app_version": "3.3.5.5.8.5.25.3.3.2.1",
+  "timestamp": "2026-07-14T15:10:47",
+  "checks": {
+    "start_stop_start_stop": true,
+    "finalizer_once_per_run": true,
+    "audio_queue_drain_before_deepgram_close": true,
+    "transcript_gate_after_final_drain": true,
+    "ui_drain_barrier": true,
+    "worker_stop_restart": true,
+    "stop_flags_false": true,
+    "no_tk_from_stop_worker": true,
+    "fixture_package_isolation_policy": true,
+    "no_runs_or_latest_writes": true
+  },
+  "cycles": [
+    {
+      "cycle": 1,
+      "core_completed": true,
+      "ui_restored": true,
+      "finalize_calls": 1,
+      "step_order": [
+        "session_stop_logs",
+        "stop_audio_capture",
+        "stop_audio_producers",
+        "drain_audio_queue",
+        "deepgram_graceful_stop",
+        "close_transcript_gate",
+        "japanese_assembler_flush",
+        "cancel_scheduled_tasks",
+        "language_worker_stop",
+        "ui_transcript_drain",
+        "transcript_commit_confirm",
+        "translation_unit_final_flush",
+        "canonical_pipeline_finalize",
+        "write_final_alpha",
+        "three_stage_finalize"
+      ],
+      "gate_after_deepgram": true,
+      "audio_drained_before_gate": true,
+      "ui_drain_step": true,
+      "worker_restarted": true,
+      "stop_flags_false": true
+    },
+    {
+      "cycle": 2,
+      "core_completed": true,
+      "ui_restored": true,
+      "finalize_calls": 1,
+      "step_order": [
+        "session_stop_logs",
+        "stop_audio_capture",
+        "stop_audio_producers",
+        "drain_audio_queue",
+        "deepgram_graceful_stop",
+        "close_transcript_gate",
+        "japanese_assembler_flush",
+        "cancel_scheduled_tasks",
+        "language_worker_stop",
+        "ui_transcript_drain",
+        "transcript_commit_confirm",
+        "translation_unit_final_flush",
+        "canonical_pipeline_finalize",
+        "write_final_alpha",
+        "three_stage_finalize"
+      ],
+      "gate_after_deepgram": true,
+      "audio_drained_before_gate": true,
+      "ui_drain_step": true,
+      "worker_restarted": true,
+      "stop_flags_false": true
+    }
+  ],
+  "warnings": [],
+  "output_dir": "troubleshooting\\validation\\v3.3.5.5.8.5.25.3.3.2.1\\fixtures"
+}

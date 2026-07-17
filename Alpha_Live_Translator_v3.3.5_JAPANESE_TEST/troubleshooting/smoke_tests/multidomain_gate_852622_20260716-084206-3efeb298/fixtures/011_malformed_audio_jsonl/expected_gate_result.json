@@ -1,0 +1,10 @@
+{
+  "test_number": 11,
+  "test_name": "malformed_jsonl_fails",
+  "expected_gate_status": "FAILED",
+  "expected_failure_codes": [
+    "AUDIO_DELIVERY_JSONL_PARSE_ERROR"
+  ],
+  "expected_policy_result": "",
+  "single_mutation_description": "one malformed (non-JSON) line appended to audio_delivery_events.jsonl"
+}

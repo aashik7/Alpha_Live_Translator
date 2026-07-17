@@ -1,0 +1,11 @@
+{
+  "run_id": "live-v3.3.5.5.8.5.26.1-20260716-015915-cad94efc",
+  "BENCHMARK_AUDIO_SOURCE": "system_audio_only",
+  "BENCHMARK_AUDIO_SOURCE_ACTIVE": true,
+  "system_audio_enabled": true,
+  "microphone_mix_enabled": false,
+  "benchmark_mode": true,
+  "audio_format": "linear16",
+  "sample_rate": 16000,
+  "channels": 1
+}

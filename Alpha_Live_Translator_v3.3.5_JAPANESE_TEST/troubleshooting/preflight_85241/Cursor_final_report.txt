@@ -1,0 +1,259 @@
+================================================================================
+CURSOR FINAL REPORT — V3.3.5.5.8.5.24 Japanese Boundary Stabilizer
+LIVE TEST COMPLETE
+================================================================================
+Generated: 2026-07-09 (post live test)
+Baseline: V3.3.5.5.8.5.23.4.1 — Alignment Coverage Repair & Evidence Index Sync
+
+================================================================================
+EXECUTIVE VERDICT
+================================================================================
+
+V3.3.5.5.8.5.24 is CONDITIONALLY SUCCESSFUL.
+
+Runtime baseline: PASSED — Start/Stop completed, no freeze, raw Deepgram untouched.
+Boundary stabilizer: ACTIVE and working — leading-particle fragments reduced sharply,
+  safe merges applied live, stable commits carry boundary metadata.
+CER benchmark: NOT TRUSTED for this run — different lesson content vs 23.4.1 baseline;
+  do not compare raw CER numbers across versions without matching audio/reference.
+
+Ready for V3.3.5.5.8.5.25 with focus on: duplicate-after-merge guard tuning,
+  boundary_stabilizer_summary path fix, translation_ready target >= 80%.
+
+================================================================================
+1. LIVE RUN IDENTITY
+================================================================================
+
+run_id:        live-v3.3.5.5.8.5.24-20260709-165605-6ea259ed
+app_version:   3.3.5.5.8.5.24
+codename:      Japanese Boundary Stabilizer
+run_folder:    troubleshooting/runs/v3.3.5.5.8.5.24-20260709-165605/
+started:       2026-07-09 16:56:06
+completed:     2026-07-09 17:18:13
+duration:      ~22 minutes
+final_status:  completed
+stop_finalize: completed (no timeout, no failure)
+lesson:        第五回目ビジネス会話クラス (Lesson 5 — NOT Lesson 4 from 23.4.1)
+
+================================================================================
+2. RUNTIME BASELINE — PASSED
+================================================================================
+
+Start/Stop:              PASSED
+STOP_UI_RESTORE_CONFIRMED: logged at 17:18:13
+App close:               normal
+Runtime upload package:  not triggered during Stop (correct)
+Validation during Stop:  not triggered (correct)
+EvidencePackageWorker:   not triggered during Stop (correct)
+Live Alpha protection:   active (latest_live_alpha_protected=true)
+raw_mutation_count:    0
+dangerous_correction_count: 0
+business_correction_count:  0
+auto_business_correction_level: minimal
+
+Deepgram config (unchanged):
+  model=nova-3, language=ja, endpointing=500, utterance_end_ms=1500
+  JAPANESE_STT_PROFILE=no_diarize, JAPANESE_KEYTERM_PROFILE=business_japanese
+  diarize_model=absent
+
+================================================================================
+3. ALPHA OUTPUT
+================================================================================
+
+latest_live_alpha_output.txt:
+  path:       troubleshooting/latest/latest_live_alpha_output.txt
+  lines:      136
+  size:       22,241 bytes
+  sha256:     33e289ebe9cf662ee86eb1ee5642d40716418d45d401a9668b178d3b53f0bf18
+  updated_by: live-v3.3.5.5.8.5.24-20260709-165605-6ea259ed
+
+stable_commits: 136 commits, all with boundary_stabilizer metadata
+clean_alpha_output_line_count: 96 (UI export layer)
+
+================================================================================
+4. BOUNDARY STABILIZER LIVE METRICS
+================================================================================
+
+Source: boundary_stabilizer_summary.json (written at Stop)
+Path note: written to troubleshooting/runs/_pending/accuracy/ (run-folder path bug — fix in 25)
+
+input_stable_candidate_count:   147
+output_stable_commit_count:     136
+held_fragment_count:            11
+merge_previous_count:           36
+merge_pending_count:            11
+duplicate_suppressed_count:     0
+punctuation_cleanup_count:      0
+timeout_emit_count:             8
+stop_flush_emit_count:          0
+stop_flush_drop_count:          0
+raw_mutation_count:             0
+dangerous_correction_count:     0
+
+Before/after (stabilizer internal shadow metrics):
+  leading_fragment_before_count:  40
+  leading_fragment_after_count:   8     (80% reduction)
+  translation_ready_before_ratio: 66.7%
+  translation_ready_after_ratio:  89.0%
+  boundary_risk_estimate_before:  40
+  boundary_risk_estimate_after:   18    (55% reduction)
+
+Stable commit action breakdown:
+  emit_unchanged:          81
+  merge_with_previous:     36
+  hold_leading_fragment:      8
+  merge_pending_and_current: 11
+
+Evidence index translation_ready_ratio (final Alpha lines): 69.9%
+  (95 of 136 lines translation-ready)
+
+================================================================================
+5. BOUNDARY ERROR REPORT — vs 23.4.1 BASELINE
+================================================================================
+
+Reference: test01.txt (sha aba724e6... — UPDATED since 23.4.1 run)
+
+                        23.4.1 (Lesson 4)    8.5.24 (Lesson 5)    Change
+total_boundary_risks:        66                  60               -6  (improved)
+leading_fragment_count:      39                   9               -30 (77% reduced) ✓
+duplicate_continuation:       1                  41               +40 (merge side-effect) ✗
+punctuation_artifact:           —                   5               new
+assembler_candidate:         50                  50               same
+short_fragment_count:         0                   0               maintained ✓
+incomplete_tail_count:        0                   0               maintained ✓
+punctuation_start_count:      0                   1               +1
+
+Leading-particle problem: substantially improved.
+Duplicate continuation diagnostic: increased because merge_with_previous creates
+  consecutive lines where current contains previous prefix — diagnostic flags these
+  even when grammatically correct. Tuning needed in 8.5.25.
+
+================================================================================
+6. ACCURACY SCORING — CER NOT TRUSTED
+================================================================================
+
+score_report: troubleshooting/accuracy_benchmark/latest_reports/latest_accuracy_score_report.json
+scored_at:    2026-07-09T17:40:55
+
+cer_score:                 57.76%  (DO NOT compare to 23.4.1's 19% — different lesson)
+final_trusted_score:       false
+score_should_be_used:      false
+score_trust_reason:        v2_alignment_coverage_failed
+score_blockers:
+  - average_window_overlap_too_low
+  - alignment_integrity_v2_not_acceptable
+
+                        23.4.1              8.5.24
+line_count_alpha:           126               136
+alpha_char_count:          3948              6787
+reference_sha256:      2bf8a6f0...       aba724e6...  (DIFFERENT REFERENCE)
+unaligned_alpha_char_ratio: 0.79             0.1874   (much improved) ✓
+average_window_overlap:     0.26             0.464    (improved) ✓
+matched_window_count:        —                21
+visible_error_count:        18                54
+
+IMPORTANT: This run used Lesson 5 audio against an updated test01.txt reference.
+The 23.4.1 baseline used Lesson 4. CER comparison across versions is invalid.
+Alignment coverage metrics (char ratio, window overlap) did improve significantly.
+
+================================================================================
+7. POLICY COMPLIANCE — PASSED
+================================================================================
+
+raw_deepgram_finals.jsonl:     immutable (raw_mutation_count=0)
+auto_business_correction:      minimal (136 skipped, 0 applied)
+anti_overfit_mode:             enabled
+lesson_specific_corrections:   disabled
+no broad word correction:      confirmed
+no DeepL/Groq/MeetingBaaS:     confirmed
+no diarization:                confirmed
+full accuracy logging:         enabled
+
+================================================================================
+8. EVIDENCE ARTIFACTS
+================================================================================
+
+Upload package:
+  troubleshooting/runs/v3.3.5.5.8.5.24-20260709-165605/upload_package/
+  UPLOAD_PACKAGE_v3.3.5.5.8.5.24_20260709-174121.zip (102 files)
+
+Latest reports synced: troubleshooting/accuracy_benchmark/latest_reports/
+  LATEST_REPORT_SET_INDEX.json — report_set_consistent=true
+  latest_accuracy_score_report.json
+  latest_alignment_report.json / .txt
+  latest_boundary_error_report.json
+  latest_business_term_risk_report.json
+  latest_glossary_candidates.json
+  latest_reference_quality_report.json
+
+Evidence index: troubleshooting/latest/latest_accuracy_evidence_index.json
+
+Boundary stabilizer logs:
+  japanese_accuracy.log — BOUNDARY_STABILIZER_* events throughout run
+  stable_commits.jsonl — boundary_action/boundary_reason on every commit
+  boundary_stabilizer_summary.json — _pending path (see warning)
+  boundary_stabilizer_decisions.jsonl — not in run folder (logged via japanese_accuracy.log)
+
+Preflight baseline: troubleshooting/preflight_8524/
+
+================================================================================
+9. WHAT WORKED
+================================================================================
+
+✓ Runtime stable — 22-minute session, clean Stop, UI restored
+✓ Leading-particle fragments: 39 → 9 (77% reduction in boundary diagnostic)
+✓ Stabilizer merges active: 36 previous merges + 11 pending merges live
+✓ Fuller sentence units — average line length increased, short_fragment_count=0
+✓ Translation-ready internal ratio: 66.7% → 89.0% (stabilizer shadow)
+✓ Alignment char coverage: unaligned_alpha_char_ratio 0.79 → 0.1874
+✓ Window overlap: 0.26 → 0.464
+✓ Raw Deepgram untouched, zero corrections applied
+✓ Stable commits include full boundary metadata
+✓ Upload package includes all analyzer reports
+
+================================================================================
+10. WHAT NEEDS IMPROVEMENT (8.5.25 TARGETS)
+================================================================================
+
+✗ duplicate_continuation diagnostic: 1 → 41 (merge creates prefix-overlap lines)
+✗ duplicate_suppressed_count: 0 (guard threshold may be too conservative)
+✗ translation_ready_ratio on final Alpha: 69.9% (target >= 80%)
+✗ CER not trustworthy — need matched lesson/reference for fair benchmark
+✗ boundary_stabilizer_summary written to _pending not run folder
+✗ boundary_stabilizer_decisions.jsonl not copied to run accuracy folder
+✗ Some merged lines still very long (e.g. line 3-4 duplicate prefix pattern)
+
+================================================================================
+11. FILES TO UPLOAD
+================================================================================
+
+1.  UPLOAD_PACKAGE_v3.3.5.5.8.5.24_20260709-174121.zip
+2.  troubleshooting/latest/latest_accuracy_evidence_index.json
+3.  troubleshooting/accuracy_benchmark/latest_reports/LATEST_REPORT_SET_INDEX.json
+4.  troubleshooting/accuracy_benchmark/latest_reports/latest_accuracy_score_report.json
+5.  troubleshooting/accuracy_benchmark/latest_reports/latest_alignment_report.json
+6.  troubleshooting/accuracy_benchmark/latest_reports/latest_alignment_report.txt
+7.  troubleshooting/accuracy_benchmark/latest_reports/latest_boundary_error_report.json
+8.  troubleshooting/accuracy_benchmark/latest_reports/latest_business_term_risk_report.json
+9.  troubleshooting/accuracy_benchmark/latest_reports/latest_glossary_candidates.json
+10. troubleshooting/latest/latest_live_alpha_output.txt
+11. troubleshooting/runs/_pending/accuracy/boundary_stabilizer_summary.json
+12. troubleshooting/Cursor final report.txt (this file)
+
+Do not upload WAV/audio unless requested.
+
+================================================================================
+12. RECOMMENDATION FOR V3.3.5.5.8.5.25
+================================================================================
+
+Proceed to glossary-aware business accuracy (8.5.25) with these prerequisites:
+
+1. Re-run Lesson 4 (第四回) with same reference as 23.4.1 for fair CER comparison
+2. Fix boundary_stabilizer_summary/decisions path to write into active run folder
+3. Add post-merge duplicate prefix deduplication (when line N starts with line N-1 text)
+4. Tune duplicate_continuation guard to catch merge-created prefix overlaps
+5. Target translation_ready_ratio >= 80% on final Alpha export
+
+================================================================================
+END OF REPORT — V3.3.5.5.8.5.24 LIVE TEST COMPLETE
+================================================================================

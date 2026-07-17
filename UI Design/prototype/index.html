@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alpha Live Translator — UI Showcase</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <span class="brand-icon">α</span>
+        <div>
+          <div class="brand-name">Alpha Live</div>
+          <div class="brand-sub">Translator</div>
+        </div>
+      </div>
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-screen="meeting">
+          <span class="nav-icon">📋</span> Meeting
+        </button>
+        <button class="nav-item" data-screen="settings">
+          <span class="nav-icon">⚙</span> Settings
+        </button>
+        <button class="nav-item" data-screen="review">
+          <span class="nav-icon">📄</span> Review
+        </button>
+        <button class="nav-item" data-screen="summary">
+          <span class="nav-icon">📝</span> Summary
+        </button>
+      </nav>
+      <div class="sidebar-footer">
+        <span class="badge badge-muted">UI Showcase Only</span>
+        <span class="sidebar-note">No backend connected</span>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main">
+
+      <!-- ==================== MEETING SCREEN ==================== -->
+      <section id="screen-meeting" class="screen active">
+        <header class="screen-header">
+          <div>
+            <h1>Alpha Live Translator</h1>
+            <p class="subtitle">Japanese meeting capture workspace</p>
+          </div>
+          <div class="header-badges">
+            <span class="badge badge-mode">Japanese Accuracy Mode</span>
+            <span class="badge badge-capture">🔊 WASAPI + 🎤 Mic</span>
+          </div>
+        </header>
+
+        <div class="status-bar">
+          <div class="status-left">
+            <span class="status-dot" id="status-dot"></span>
+            <span id="status-label">Ready</span>
+          </div>
+          <div class="status-right">
+            <span class="timer" id="timer">00:00:00</span>
+          </div>
+        </div>
+
+        <div class="control-bar">
+          <button class="btn btn-start" id="btn-start">▶ Start</button>
+          <button class="btn btn-pause" id="btn-pause" disabled>⏸ Pause</button>
+          <button class="btn btn-stop" id="btn-stop" disabled>⏹ Stop</button>
+        </div>
+
+        <div class="panel-grid">
+          <!-- Live Japanese -->
+          <div class="panel panel-live">
+            <div class="panel-header">
+              <h2>Live Japanese</h2>
+              <span class="badge badge-active">● Live</span>
+            </div>
+            <div class="transcript-area" id="live-transcript">
+              <p class="transcript-line stable-line">お世話になっております。</p>
+              <p class="transcript-line stable-line">本日は会議にご参加いただきありがとうございます。</p>
+              <p class="transcript-line interim-line">こちらの内容について確認させてください。<span class="cursor-blink">|</span></p>
+            </div>
+          </div>
+
+          <!-- Stable Japanese -->
+          <div class="panel panel-stable">
+            <div class="panel-header">
+              <h2>Stable Japanese</h2>
+              <span class="badge badge-stable">✓ Stabilized</span>
+            </div>
+            <div class="transcript-area" id="stable-transcript">
+              <p class="transcript-line">お世話になっております。</p>
+              <p class="transcript-line">本日は会議にご参加いただきありがとうございます。</p>
+            </div>
+          </div>
+
+          <!-- English Translation (Planned) -->
+          <div class="panel panel-planned">
+            <div class="panel-header">
+              <h2>English Translation</h2>
+              <span class="badge badge-planned">⏳ Coming later</span>
+            </div>
+            <div class="planned-content">
+              <div class="planned-icon">🌐</div>
+              <p class="planned-title">DeepL Translation — Planned</p>
+              <p class="planned-desc">English translation will appear here after stable Japanese transcript is finalized. Translation depends on accuracy pipeline completion.</p>
+            </div>
+          </div>
+
+          <!-- Meeting Summary (Planned) -->
+          <div class="panel panel-planned">
+            <div class="panel-header">
+              <h2>Meeting Summary</h2>
+              <span class="badge badge-planned">⏳ Coming later</span>
+            </div>
+            <div class="planned-content">
+              <div class="planned-icon">📝</div>
+              <p class="planned-title">AI Summary — Planned</p>
+              <p class="planned-desc">Key points, decisions, and action items will be generated from the stable transcript. See the Summary screen for a preview of this future feature.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== SETTINGS SCREEN ==================== -->
+      <section id="screen-settings" class="screen">
+        <header class="screen-header">
+          <div>
+            <h1>Settings Preview</h1>
+            <p class="subtitle">Current configuration and planned integrations</p>
+          </div>
+        </header>
+
+        <div class="settings-grid">
+          <div class="setting-card setting-active">
+            <div class="setting-icon">🇯🇵</div>
+            <div class="setting-info">
+              <h3>Language</h3>
+              <p>Japanese</p>
+            </div>
+            <span class="badge badge-active-sm">Active</span>
+          </div>
+
+          <div class="setting-card setting-active">
+            <div class="setting-icon">🎙</div>
+            <div class="setting-info">
+              <h3>Speech-to-Text</h3>
+              <p>Deepgram Nova-3</p>
+            </div>
+            <span class="badge badge-active-sm">Active</span>
+          </div>
+
+          <div class="setting-card setting-active">
+            <div class="setting-icon">🔊</div>
+            <div class="setting-info">
+              <h3>Capture</h3>
+              <p>System Audio + Mic</p>
+            </div>
+            <span class="badge badge-active-sm">Active</span>
+          </div>
+
+          <div class="setting-card setting-active">
+            <div class="setting-icon">🎯</div>
+            <div class="setting-info">
+              <h3>Accuracy Mode</h3>
+              <p>Japanese accuracy pipeline enabled</p>
+            </div>
+            <span class="badge badge-active-sm">On</span>
+          </div>
+
+          <div class="setting-card setting-active">
+            <div class="setting-icon">⚡</div>
+            <div class="setting-info">
+              <h3>UI Performance Mode</h3>
+              <p>Optimized rendering for long sessions</p>
+            </div>
+            <span class="badge badge-active-sm">On</span>
+          </div>
+
+          <div class="setting-card setting-planned">
+            <div class="setting-icon">🌐</div>
+            <div class="setting-info">
+              <h3>DeepL Translation</h3>
+              <p>English translation from stable Japanese</p>
+            </div>
+            <span class="badge badge-planned">Planned</span>
+          </div>
+
+          <div class="setting-card setting-planned">
+            <div class="setting-icon">✨</div>
+            <div class="setting-info">
+              <h3>Groq Cleanup</h3>
+              <p>AI-assisted transcript refinement</p>
+            </div>
+            <span class="badge badge-planned">Planned</span>
+          </div>
+
+          <div class="setting-card setting-future">
+            <div class="setting-icon">📡</div>
+            <div class="setting-info">
+              <h3>MeetingBaaS</h3>
+              <p>Cloud meeting bot integration</p>
+            </div>
+            <span class="badge badge-future">Future optional</span>
+          </div>
+        </div>
+
+        <div class="settings-note">
+          <p>⚠ This is a read-only preview. Settings are not editable in this UI showcase.</p>
+        </div>
+      </section>
+
+      <!-- ==================== REVIEW SCREEN ==================== -->
+      <section id="screen-review" class="screen">
+        <header class="screen-header">
+          <div>
+            <h1>Transcript Review</h1>
+            <p class="subtitle">Compare and export meeting transcripts</p>
+          </div>
+          <div class="session-meta">
+            <span>Session: 2026-07-09</span>
+            <span>Duration: 00:42:15</span>
+            <span>Lines: 24 stable / 31 raw</span>
+          </div>
+        </header>
+
+        <div class="review-grid">
+          <div class="panel panel-review">
+            <div class="panel-header">
+              <h2>Raw Japanese Transcript</h2>
+              <span class="badge badge-muted">Interim capture</span>
+            </div>
+            <div class="transcript-area transcript-scroll">
+              <p class="transcript-line">お世話になっております。</p>
+              <p class="transcript-line">本日は会議にご参加いただきありがとうございます。</p>
+              <p class="transcript-line">こちらの内容について確認させてください。</p>
+              <p class="transcript-line">そもそも話すことがあるかどうかという点が重要です。</p>
+              <p class="transcript-line">次のステップについてご意見をお聞かせください。</p>
+              <p class="transcript-line">資料は後ほど共有いたします。</p>
+              <p class="transcript-line">ご質問がございましたらお知らせください。</p>
+              <p class="transcript-line">それでは本日の会議は以上となります。</p>
+            </div>
+            <div class="export-bar">
+              <button class="btn btn-ghost export-btn" data-format="TXT" data-type="raw">⬇ Export TXT</button>
+              <button class="btn btn-ghost export-btn" data-format="JSON" data-type="raw">⬇ Export JSON</button>
+              <button class="btn btn-ghost export-btn" data-format="Copy" data-type="raw">📋 Copy</button>
+            </div>
+          </div>
+
+          <div class="panel panel-review panel-stable">
+            <div class="panel-header">
+              <h2>Stable Japanese Transcript</h2>
+              <span class="badge badge-stable">✓ Accuracy processed</span>
+            </div>
+            <div class="transcript-area transcript-scroll">
+              <p class="transcript-line">お世話になっております。</p>
+              <p class="transcript-line">本日は会議にご参加いただきありがとうございます。</p>
+              <p class="transcript-line">こちらの内容について確認させてください。</p>
+              <p class="transcript-line">そもそも話すことがあるかどうかという点が重要です。</p>
+              <p class="transcript-line">次のステップについてご意見をお聞かせください。</p>
+              <p class="transcript-line">資料は後ほど共有いたします。</p>
+            </div>
+            <div class="export-bar">
+              <button class="btn btn-ghost export-btn" data-format="TXT" data-type="stable">⬇ Export TXT</button>
+              <button class="btn btn-ghost export-btn" data-format="JSON" data-type="stable">⬇ Export JSON</button>
+              <button class="btn btn-ghost export-btn" data-format="Copy" data-type="stable">📋 Copy</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="export-toast" class="toast hidden">Export preview — no file generated (UI showcase only)</div>
+      </section>
+
+      <!-- ==================== SUMMARY SCREEN ==================== -->
+      <section id="screen-summary" class="screen">
+        <header class="screen-header">
+          <div>
+            <h1>Summary Preview</h1>
+            <p class="subtitle">Future AI-generated meeting summary</p>
+          </div>
+        </header>
+
+        <div class="future-banner">
+          <span class="future-banner-icon">🚧</span>
+          <div>
+            <strong>Future Feature</strong>
+            <p>Meeting summary generation is not yet available. This screen shows the planned layout and content structure.</p>
+          </div>
+        </div>
+
+        <div class="summary-grid">
+          <div class="panel panel-summary">
+            <div class="panel-header">
+              <h2>Meeting Summary</h2>
+              <span class="badge badge-planned">⏳ Planned</span>
+            </div>
+            <div class="summary-placeholder">
+              <p class="placeholder-label">Narrative summary will appear here</p>
+              <p class="placeholder-text">本日の会議では、プロジェクトの進捗状況について確認が行われました。参加者全員が次のステップに合意し、資料の共有が予定されています。</p>
+              <p class="placeholder-note">↑ Sample placeholder text — not generated by AI</p>
+            </div>
+          </div>
+
+          <div class="panel panel-summary">
+            <div class="panel-header">
+              <h2>Key Points</h2>
+              <span class="badge badge-planned">⏳ Planned</span>
+            </div>
+            <ul class="key-points-list">
+              <li>プロジェクト進捗の確認が完了</li>
+              <li>次のステップについて合意形成</li>
+              <li>資料は会議後に共有予定</li>
+              <li>フォローアップ会議の日程を調整</li>
+            </ul>
+            <p class="placeholder-note">Sample key points — future AI extraction</p>
+          </div>
+
+          <div class="panel panel-summary">
+            <div class="panel-header">
+              <h2>Action Items</h2>
+              <span class="badge badge-planned">⏳ Planned</span>
+            </div>
+            <ul class="action-items-list">
+              <li><span class="checkbox">☐</span> 会議資料をチームに共有する</li>
+              <li><span class="checkbox">☐</span> 次回会議の日程を確定する</li>
+              <li><span class="checkbox">☐</span> ステークホルダーへ進捗報告</li>
+            </ul>
+            <p class="placeholder-note">Sample action items — future AI extraction</p>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

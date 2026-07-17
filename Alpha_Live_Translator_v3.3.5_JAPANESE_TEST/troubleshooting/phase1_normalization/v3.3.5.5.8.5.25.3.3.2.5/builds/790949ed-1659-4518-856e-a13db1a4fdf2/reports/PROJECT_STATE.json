@@ -1,0 +1,77 @@
+{
+  "registry": "PROJECT_STATE",
+  "sole_authoritative": true,
+  "patch_version": "3.3.5.5.8.5.25.3.3.2.5",
+  "build_id": "790949ed-1659-4518-856e-a13db1a4fdf2",
+  "generated_at": "2026-07-14T09:05:16Z",
+  "app_version": null,
+  "authoritative_run_id": "v3.3.5.5.8.5.25.3.3.1-20260714-111519",
+  "authoritative_final_path": "troubleshooting/runs/v3.3.5.5.8.5.25.3.3.1-20260714-111519/transcripts/Alpha_output_FINAL.txt",
+  "authoritative_reference_path": "troubleshooting/accuracy_benchmark/reference_transcripts/test01.txt",
+  "authoritative_final_sha256": "6e70dd171862527da2f2de0305ab82154cf9c1591b73860e4fd75e06f570c178",
+  "expected_final_sha256": "6e70dd171862527da2f2de0305ab82154cf9c1591b73860e4fd75e06f570c178",
+  "paths": {
+    "authoritative_run": "troubleshooting/runs/v3.3.5.5.8.5.25.3.3.1-20260714-111519",
+    "authoritative_reference": "troubleshooting/accuracy_benchmark/reference_transcripts/test01.txt",
+    "authoritative_final": "troubleshooting/runs/v3.3.5.5.8.5.25.3.3.1-20260714-111519/transcripts/Alpha_output_FINAL.txt",
+    "final_export_seal": "troubleshooting/runs/v3.3.5.5.8.5.25.3.3.1-20260714-111519/transcripts/FINAL_EXPORT_SEAL.json",
+    "run_manifest": "troubleshooting/runs/v3.3.5.5.8.5.25.3.3.1-20260714-111519/RUN_MANIFEST.json",
+    "three_stage_accuracy_report": "troubleshooting/runs/v3.3.5.5.8.5.25.3.3.1-20260714-111519/accuracy_stage_compare/three_stage_accuracy_report.json",
+    "default_ja_business_keyterms": "alpha/resources/keyterms/default_ja_business.json",
+    "test01_keyterms": "troubleshooting/accuracy_benchmark/profiles/test01_keyterms.json",
+    "tools_current": "tools/TOOLS_CURRENT.json",
+    "stt_settings": "alpha/stt_settings.py",
+    "phase1_build_identity": "alpha/utils/phase1_build_identity.py"
+  },
+  "hashes": {
+    "authoritative_reference": "09634a0da9ff86ce4825fb8326c3bca99e64be955c971d7e2db7f7b7823e5b8b",
+    "authoritative_final": "6e70dd171862527da2f2de0305ab82154cf9c1591b73860e4fd75e06f570c178",
+    "final_export_seal": "f643a50a7a0f35eef01463e2e47fbf71406b9ad6fa5a5383ff25af02fe1d6e38",
+    "run_manifest": "4a89903359512353a7d997dec23035065e56e744b9a8f3048523a90eed7f3e12",
+    "three_stage_accuracy_report": "7cc23804fdf200dbbde74574290598042a89e6f637093601fefe595462a70b5b",
+    "default_ja_business_keyterms": "1cbdec29c98fb7430f7fd055aa43ce97b77045921a15a1015d85a7579c3736a2",
+    "test01_keyterms": "14bbddaf523651e0d8a59b8771a7625a8a42c41e287d0f0b44d3dc79d5c2deb0",
+    "tools_current": "4a5b41c422bea82f2a37b5892fcf4495fb0a35b9bf4e41bdd6dda3fb25377145",
+    "stt_settings": "821de7390dfa6001595d89355ff23074653ba765a9eed03df7b4144c0500e033",
+    "phase1_build_identity": "df574b54ff35d5bf20041744e2d4a575d946fbbf4047f99da718bcacf1faf1fe"
+  },
+  "trusted_cer": {
+    "trusted_score": true,
+    "final_alpha_cer": 0.274676,
+    "final_alpha_accuracy_percent": 72.53,
+    "raw_deepgram_cer": 0.274112,
+    "raw_deepgram_accuracy_percent": 72.59,
+    "stable_assembler_cer": 0.274676,
+    "stable_assembler_accuracy_percent": 72.53,
+    "score_should_be_used_for_decision": true,
+    "source_report": "troubleshooting/runs/v3.3.5.5.8.5.25.3.3.1-20260714-111519/accuracy_stage_compare/three_stage_accuracy_report.json"
+  },
+  "phase1_findings_closed": [
+    "project_state_registry",
+    "latest_alias_drift",
+    "silent_scorer_fallbacks",
+    "deepgram_dual_truth",
+    "benchmark_names_in_default_keyterms",
+    "glossary_missing_failsafe",
+    "cn_ru_ui_language_scope",
+    "tools_current_registry",
+    "stale_readme_docs",
+    "thin_gitignore",
+    "retention_policy",
+    "obsolete_root_tools",
+    "runtime_environment_contract"
+  ],
+  "phase2_findings_pending": [
+    "bounded_queues_writer_lifecycle",
+    "silent_exception_remediation"
+  ],
+  "deferred_structural_findings": [
+    "large_module_splitting",
+    "monkey_patch_replacement"
+  ],
+  "validation": {
+    "core_paths_exist": true,
+    "final_sha_matches_expected": true,
+    "later_path_checks_deferred_until_creation": []
+  }
+}

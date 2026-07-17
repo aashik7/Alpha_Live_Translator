@@ -1,0 +1,15 @@
+{
+  "test_number": 1,
+  "test_name": "valid_fixture_produces_implementation_ready_verification",
+  "actual_gate_status": "PASSED",
+  "actual_failure_codes": [],
+  "actual_failure_messages": [],
+  "actual_gate_exit_code": 0,
+  "actual_acceptance_version": "NOT_ACCEPTED",
+  "actual_acceptance_status": "FIXTURE_ONLY",
+  "source_result_file": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\smoke_tests\\multidomain_gate_852622_20260716-084206-3efeb298\\fixtures\\001_valid_fixture\\accuracy_stage_compare\\multidomain_gate_acceptance.json",
+  "source_result_file_sha256": "b4a7c3eae5831f579527a2cde591c220b121233ec223dc591305351df029fd72",
+  "unhandled_exception": false,
+  "exception_class": "",
+  "exception_message": ""
+}

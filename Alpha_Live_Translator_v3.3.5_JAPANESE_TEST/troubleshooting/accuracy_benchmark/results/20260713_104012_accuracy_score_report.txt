@@ -1,0 +1,11 @@
+Alpha Live Translator — Accuracy Score Report
+app_version: 3.3.5.5.8.5.25.2.1
+trusted_score: False
+reference_quality_verdict: invalid_for_cer
+CER: None
+trusted_CER: None
+rough_accuracy_percent: None
+score_warning: Reference appears to be lesson notes/summary, not verbatim transcript. CER trust downgraded after alignment check.
+final_trusted_score: False
+score_trust_reason: v2_alignment_coverage_failed
+score_should_be_used_for_decision: False

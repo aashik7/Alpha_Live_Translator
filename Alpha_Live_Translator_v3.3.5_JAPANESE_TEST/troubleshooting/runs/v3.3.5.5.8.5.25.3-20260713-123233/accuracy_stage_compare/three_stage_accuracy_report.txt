@@ -1,0 +1,13 @@
+THREE-STAGE JAPANESE ACCURACY VERDICT
+
+Raw Deepgram accuracy: 73.89%
+Assembler-only accuracy: 63.06%
+Final Alpha accuracy: 63.06%
+Largest accuracy loss: assembler_stage
+Likely bottleneck: assembler_stage
+Reference trust status: valid_for_cer
+
+Exact recommended next engineering target:
+  -> assembler_stage
+
+Warning: 

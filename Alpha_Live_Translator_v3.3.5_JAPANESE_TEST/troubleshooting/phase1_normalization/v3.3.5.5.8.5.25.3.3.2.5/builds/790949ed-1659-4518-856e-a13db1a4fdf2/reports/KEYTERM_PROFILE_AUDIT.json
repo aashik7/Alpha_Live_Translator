@@ -1,0 +1,20 @@
+{
+  "default_profile": "business_japanese",
+  "default_json_exists": true,
+  "test01_profile_exists": true,
+  "default_keyterm_count": 32,
+  "benchmark_names_removed_from_defaults": true,
+  "leaked_benchmark_names": [],
+  "banned_names": [
+    "オリエンタル商事",
+    "永井",
+    "木村",
+    "チン",
+    "シュウメイ",
+    "江藤"
+  ],
+  "test01_names_present_in_profile": true,
+  "build_id": "790949ed-1659-4518-856e-a13db1a4fdf2",
+  "patch_version": "3.3.5.5.8.5.25.3.3.2.5",
+  "generated_at": "2026-07-14T09:05:09Z"
+}

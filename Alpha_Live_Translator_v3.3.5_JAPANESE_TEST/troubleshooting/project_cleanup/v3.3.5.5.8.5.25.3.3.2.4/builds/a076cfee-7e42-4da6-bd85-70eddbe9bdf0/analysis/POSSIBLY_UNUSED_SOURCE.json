@@ -1,0 +1,278 @@
+{
+  "items": [
+    {
+      "relative_path": "_cleanup_archive/root_cleanup_20260708_155406/old_runtime_smoke_scripts/runtime_smoke_start_stop_8520_5.py",
+      "reason": "no_static_importers_or_entrypoint_refs",
+      "disposition": "quarantine_only_never_permanent_delete",
+      "confidence": "medium"
+    },
+    {
+      "relative_path": "_cleanup_archive/root_cleanup_20260708_155406/old_runtime_smoke_scripts/runtime_smoke_start_stop_8521.py",
+      "reason": "no_static_importers_or_entrypoint_refs",
+      "disposition": "quarantine_only_never_permanent_delete",
+      "confidence": "medium"
+    },
+    {
+      "relative_path": "_cleanup_archive/root_cleanup_20260708_155406/old_runtime_smoke_scripts/runtime_smoke_start_stop_8522.py",
+      "reason": "no_static_importers_or_entrypoint_refs",
+      "disposition": "quarantine_only_never_permanent_delete",
+      "confidence": "medium"
+    },
+    {
+      "relative_path": "_cleanup_archive/root_cleanup_20260708_155406/old_runtime_smoke_scripts/runtime_smoke_start_stop_85221.py",
+      "reason": "no_static_importers_or_entrypoint_refs",
+      "disposition": "quarantine_only_never_permanent_delete",
+      "confidence": "medium"
+    },
+    {
+      "relative_path": "_cleanup_archive/root_cleanup_20260708_155406/old_runtime_smoke_scripts/runtime_smoke_start_stop_85222.py",
+      "reason": "no_static_importers_or_entrypoint_refs",
+      "disposition": "quarantine_only_never_permanent_delete",
+      "confidence": "medium"
+    },
+    {
+      "relative_path": "_cleanup_archive/root_cleanup_20260708_155406/old_runtime_smoke_scripts/runtime_smoke_start_stop_85223.py",
+      "reason": "no_static_importers_or_entrypoint_refs",
+      "disposition": "quarantine_only_never_permanent_delete",
+      "confidence": "medium"
+    },
+    {
+      "relative_path": "_cleanup_archive/root_cleanup_20260708_155406/old_runtime_smoke_scripts/runtime_smoke_start_stop_85231.py",
+      "reason": "no_static_importers_or_entrypoint_refs",
+      "disposition": "quarantine_only_never_permanent_delete",
+      "confidence": "medium"
+    },
+    {
+      "relative_path": "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8511.py",
+      "reason": "no_static_importers_or_entrypoint_refs",
+      "disposition": "quarantine_only_never_permanent_delete",
+      "confidence": "medium"
+    },
+    {
+      "relative_path": "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8511_1.py",
+      "reason": "no_static_importers_or_entrypoint_refs",
+      "disposition": "quarantine_only_never_permanent_delete",
+      "confidence": "medium"
+    },
+    {
+      "relative_path": "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8512.py",
+      "reason": "no_static_importers_or_entrypoint_refs",
+      "disposition": "quarantine_only_never_permanent_delete",
+      "confidence": "medium"
+    },
+    {
+      "relative_path": "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8513.py",
+      "reason": "no_static_importers_or_entrypoint_refs",
+      "disposition": "quarantine_only_never_permanent_delete",
+      "confidence": "medium"
+    },
+    {
+      "relative_path": "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8514.py",
+      "reason": "no_static_importers_or_entrypoint_refs",
+      "disposition": "quarantine_only_never_permanent_delete",
+      "confidence": "medium"
+    },
+    {
+      "relative_path": "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8515.py",
+      "reason": "no_static_importers_or_entrypoint_refs",
+      "disposition": "quarantine_only_never_permanent_delete",
+      "confidence": "medium"
+    },
+    {
+      "relative_path": "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8516.py",
+      "reason": "no_static_importers_or_entrypoint_refs",
+      "disposition": "quarantine_only_never_permanent_delete",
+      "confidence": "medium"
+    },
+    {
+      "relative_path": "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8517.py",
+      "reason": "no_static_importers_or_entrypoint_refs",
+      "disposition": "quarantine_only_never_permanent_delete",
+      "confidence": "medium"
+    },
+    {
+      "relative_path": "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8518.py",
+      "reason": "no_static_importers_or_entrypoint_refs",
+      "disposition": "quarantine_only_never_permanent_delete",
+      "confidence": "medium"
+    },
+    {
+      "relative_path": "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8519.py",
+      "reason": "no_static_importers_or_entrypoint_refs",
+      "disposition": "quarantine_only_never_permanent_delete",
+      "confidence": "medium"
+    },
+    {
+      "relative_path": "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8520.py",
+      "reason": "no_static_importers_or_entrypoint_refs",
+      "disposition": "quarantine_only_never_permanent_delete",
+      "confidence": "medium"
+    },
+    {
+      "relative_path": "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8520_1.py",
+      "reason": "no_static_importers_or_entrypoint_refs",
+      "disposition": "quarantine_only_never_permanent_delete",
+      "confidence": "medium"
+    },
+    {
+      "relative_path": "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8520_2.py",
+      "reason": "no_static_importers_or_entrypoint_refs",
+      "disposition": "quarantine_only_never_permanent_delete",
+      "confidence": "medium"
+    },
+    {
+      "relative_path": "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8520_4.py",
+      "reason": "no_static_importers_or_entrypoint_refs",
+      "disposition": "quarantine_only_never_permanent_delete",
+      "confidence": "medium"
+    },
+    {
+      "relative_path": "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_8521.py",
+      "reason": "no_static_importers_or_entrypoint_refs",
+      "disposition": "quarantine_only_never_permanent_delete",
+      "confidence": "medium"
+    },
+    {
+      "relative_path": "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_8522.py",
+      "reason": "no_static_importers_or_entrypoint_refs",
+      "disposition": "quarantine_only_never_permanent_delete",
+      "confidence": "medium"
+    },
+    {
+      "relative_path": "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_85221.py",
+      "reason": "no_static_importers_or_entrypoint_refs",
+      "disposition": "quarantine_only_never_permanent_delete",
+      "confidence": "medium"
+    },
+    {
+      "relative_path": "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_85222.py",
+      "reason": "no_static_importers_or_entrypoint_refs",
+      "disposition": "quarantine_only_never_permanent_delete",
+      "confidence": "medium"
+    },
+    {
+      "relative_path": "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_85223.py",
+      "reason": "no_static_importers_or_entrypoint_refs",
+      "disposition": "quarantine_only_never_permanent_delete",
+      "confidence": "medium"
+    },
+    {
+      "relative_path": "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_85231.py",
+      "reason": "no_static_importers_or_entrypoint_refs",
+      "disposition": "quarantine_only_never_permanent_delete",
+      "confidence": "medium"
+    },
+    {
+      "relative_path": "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_runtime_8520_5.py",
+      "reason": "no_static_importers_or_entrypoint_refs",
+      "disposition": "quarantine_only_never_permanent_delete",
+      "confidence": "medium"
+    },
+    {
+      "relative_path": "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_startup_8520_3.py",
+      "reason": "no_static_importers_or_entrypoint_refs",
+      "disposition": "quarantine_only_never_permanent_delete",
+      "confidence": "medium"
+    },
+    {
+      "relative_path": "alpha/__init__.py",
+      "reason": "no_static_importers_found",
+      "disposition": "protect_or_quarantine_only",
+      "confidence": "low"
+    },
+    {
+      "relative_path": "alpha/audio/__init__.py",
+      "reason": "no_static_importers_found",
+      "disposition": "protect_or_quarantine_only",
+      "confidence": "low"
+    },
+    {
+      "relative_path": "alpha/core/__init__.py",
+      "reason": "no_static_importers_found",
+      "disposition": "protect_or_quarantine_only",
+      "confidence": "low"
+    },
+    {
+      "relative_path": "alpha/summary/__init__.py",
+      "reason": "no_static_importers_found",
+      "disposition": "protect_or_quarantine_only",
+      "confidence": "low"
+    },
+    {
+      "relative_path": "alpha/transcription/__init__.py",
+      "reason": "no_static_importers_found",
+      "disposition": "protect_or_quarantine_only",
+      "confidence": "low"
+    },
+    {
+      "relative_path": "alpha/translation/__init__.py",
+      "reason": "no_static_importers_found",
+      "disposition": "protect_or_quarantine_only",
+      "confidence": "low"
+    },
+    {
+      "relative_path": "alpha/ui/__init__.py",
+      "reason": "no_static_importers_found",
+      "disposition": "protect_or_quarantine_only",
+      "confidence": "low"
+    },
+    {
+      "relative_path": "replay_revision_decisions_852531.py",
+      "reason": "no_static_importers_or_entrypoint_refs",
+      "disposition": "quarantine_only_never_permanent_delete",
+      "confidence": "medium"
+    },
+    {
+      "relative_path": "tests/test_build_deepgram_url_startup_85253.py",
+      "reason": "no_static_importers_or_entrypoint_refs",
+      "disposition": "quarantine_only_never_permanent_delete",
+      "confidence": "medium"
+    },
+    {
+      "relative_path": "tests/test_final_transcript_commit_v3_2_5.py",
+      "reason": "no_static_importers_or_entrypoint_refs",
+      "disposition": "quarantine_only_never_permanent_delete",
+      "confidence": "medium"
+    },
+    {
+      "relative_path": "tests/test_graceful_stop_v3_2_2.py",
+      "reason": "no_static_importers_or_entrypoint_refs",
+      "disposition": "quarantine_only_never_permanent_delete",
+      "confidence": "medium"
+    },
+    {
+      "relative_path": "tests/test_package_glossary_flags_85253.py",
+      "reason": "no_static_importers_or_entrypoint_refs",
+      "disposition": "quarantine_only_never_permanent_delete",
+      "confidence": "medium"
+    },
+    {
+      "relative_path": "tests/test_stop_finalize_v3_2_3.py",
+      "reason": "no_static_importers_or_entrypoint_refs",
+      "disposition": "quarantine_only_never_permanent_delete",
+      "confidence": "medium"
+    },
+    {
+      "relative_path": "tests/test_stop_queue_flush_v3_2_4.py",
+      "reason": "no_static_importers_or_entrypoint_refs",
+      "disposition": "quarantine_only_never_permanent_delete",
+      "confidence": "medium"
+    },
+    {
+      "relative_path": "tests/test_transcript_hotfix_v3_2.py",
+      "reason": "no_static_importers_or_entrypoint_refs",
+      "disposition": "quarantine_only_never_permanent_delete",
+      "confidence": "medium"
+    },
+    {
+      "relative_path": "tests/test_transcript_stability_v3_2.py",
+      "reason": "no_static_importers_or_entrypoint_refs",
+      "disposition": "quarantine_only_never_permanent_delete",
+      "confidence": "medium"
+    }
+  ],
+  "disposition_policy": "quarantine_only",
+  "build_id": "a076cfee-7e42-4da6-bd85-70eddbe9bdf0",
+  "patch_version": "3.3.5.5.8.5.25.3.3.2.4",
+  "generated_at": "2026-07-14T07:10:06Z"
+}

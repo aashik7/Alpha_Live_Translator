@@ -1,0 +1,16 @@
+{
+  "build_id": "d10ffca1-778e-4524-9e51-b4acb6d2500c",
+  "file_count": 7,
+  "files": {
+    "acceptance/ISSUE12_READINESS_PENDING_ACCEPTANCE.json": "7df3946ca04cd5a8ae210d2384365b86c84a4e05ec668a9c012c5d7061f36274",
+    "evidence/FROZEN_NINE_ISSUE_SOURCE_OUTER_BUNDLE.zip": "9dce35baa0caf67b075d1e519455bc39c1abc64955f825b122f52b0e057a64ef",
+    "metadata/LATEST_EVIDENCE_INDEX.json": "fe2d27a0daa355b3b1f8599e5277e1489f0b996f1ca3f6a8ab476c28473e2623",
+    "metadata/PROJECT_STATE.json": "115320656817c3f5b71c37327e516f66d837781e6d629916dc57e996179ca7cf",
+    "metadata/PROJECT_STATE_BINDING.json": "5b71338f133aa356c288d33fb5053d2357e6f5cb38e0ab787a76091e6a1e88ad",
+    "verification/METADATA_HASH_VERIFICATION.json": "bd8149057b1877bbcd069ca38e5ac647860dfb917d18753630463620d43886e0",
+    "verification/SOURCE_OUTER_BUNDLE_VERIFICATION.json": "40995f5ab72a825bd21117b092c0590cc64db02e24b0fc3e7c6bd24336bcd5d7"
+  },
+  "generated_at": "2026-07-15T08:02:14Z",
+  "manifest_excludes_self": true,
+  "version": "3.3.5.5.8.5.25.3.3.2.8"
+}

@@ -1,0 +1,180 @@
+{
+  "normalization_rules_version": "mdg_meaning_equiv_v1",
+  "normalization_pairs_applied": [
+    {
+      "from": "120万円",
+      "to": "百二十万円"
+    },
+    {
+      "from": "3.2%",
+      "to": "三点二パーセント"
+    },
+    {
+      "from": "午前10時",
+      "to": "午前十時"
+    },
+    {
+      "from": "API",
+      "to": "エーピーアイ"
+    },
+    {
+      "from": "CSV",
+      "to": "シーエスブイ"
+    },
+    {
+      "from": "SSO",
+      "to": "エスエスオー"
+    },
+    {
+      "from": "JSON",
+      "to": "ジェイソン"
+    },
+    {
+      "from": "MFA",
+      "to": "エムエフエー"
+    }
+  ],
+  "raw": {
+    "reference_character_count": 516,
+    "hypothesis_character_count": 516,
+    "substitutions": 0,
+    "deletions": 0,
+    "insertions": 0,
+    "total_edit_distance": 0,
+    "cer": 0.0,
+    "cer_percent": 0.0,
+    "accuracy_percent": 100.0,
+    "accuracy_percent_display": 100.0,
+    "cer_percent_display": 0.0,
+    "normalization_pairs_applied": [
+      {
+        "from": "120万円",
+        "to": "百二十万円"
+      },
+      {
+        "from": "3.2%",
+        "to": "三点二パーセント"
+      },
+      {
+        "from": "午前10時",
+        "to": "午前十時"
+      },
+      {
+        "from": "API",
+        "to": "エーピーアイ"
+      },
+      {
+        "from": "CSV",
+        "to": "シーエスブイ"
+      },
+      {
+        "from": "SSO",
+        "to": "エスエスオー"
+      },
+      {
+        "from": "JSON",
+        "to": "ジェイソン"
+      },
+      {
+        "from": "MFA",
+        "to": "エムエフエー"
+      }
+    ]
+  },
+  "stable": {
+    "reference_character_count": 516,
+    "hypothesis_character_count": 516,
+    "substitutions": 9,
+    "deletions": 4,
+    "insertions": 4,
+    "total_edit_distance": 17,
+    "cer": 0.03294573643410853,
+    "cer_percent": 3.2945736434108532,
+    "accuracy_percent": 96.70542635658914,
+    "accuracy_percent_display": 96.71,
+    "cer_percent_display": 3.29,
+    "normalization_pairs_applied": [
+      {
+        "from": "120万円",
+        "to": "百二十万円"
+      },
+      {
+        "from": "3.2%",
+        "to": "三点二パーセント"
+      },
+      {
+        "from": "午前10時",
+        "to": "午前十時"
+      },
+      {
+        "from": "API",
+        "to": "エーピーアイ"
+      },
+      {
+        "from": "CSV",
+        "to": "シーエスブイ"
+      },
+      {
+        "from": "SSO",
+        "to": "エスエスオー"
+      },
+      {
+        "from": "JSON",
+        "to": "ジェイソン"
+      },
+      {
+        "from": "MFA",
+        "to": "エムエフエー"
+      }
+    ]
+  },
+  "final": {
+    "reference_character_count": 516,
+    "hypothesis_character_count": 516,
+    "substitutions": 9,
+    "deletions": 4,
+    "insertions": 4,
+    "total_edit_distance": 17,
+    "cer": 0.03294573643410853,
+    "cer_percent": 3.2945736434108532,
+    "accuracy_percent": 96.70542635658914,
+    "accuracy_percent_display": 96.71,
+    "cer_percent_display": 3.29,
+    "normalization_pairs_applied": [
+      {
+        "from": "120万円",
+        "to": "百二十万円"
+      },
+      {
+        "from": "3.2%",
+        "to": "三点二パーセント"
+      },
+      {
+        "from": "午前10時",
+        "to": "午前十時"
+      },
+      {
+        "from": "API",
+        "to": "エーピーアイ"
+      },
+      {
+        "from": "CSV",
+        "to": "シーエスブイ"
+      },
+      {
+        "from": "SSO",
+        "to": "エスエスオー"
+      },
+      {
+        "from": "JSON",
+        "to": "ジェイソン"
+      },
+      {
+        "from": "MFA",
+        "to": "エムエフエー"
+      }
+    ]
+  },
+  "meaning_equivalent_score_trusted": true,
+  "warnings": []
+}

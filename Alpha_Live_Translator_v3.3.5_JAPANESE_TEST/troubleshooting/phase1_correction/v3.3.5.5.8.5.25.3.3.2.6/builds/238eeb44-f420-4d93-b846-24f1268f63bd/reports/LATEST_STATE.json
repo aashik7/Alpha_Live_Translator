@@ -1,0 +1,50 @@
+{
+  "alias_sha256_results": [
+    {
+      "path": "troubleshooting/Alpha.txt",
+      "rewritten": false,
+      "sha256_after": "6e70dd171862527da2f2de0305ab82154cf9c1591b73860e4fd75e06f570c178",
+      "sha256_before": "6e70dd171862527da2f2de0305ab82154cf9c1591b73860e4fd75e06f570c178"
+    },
+    {
+      "path": "troubleshooting/latest_alpha_output.txt",
+      "rewritten": false,
+      "sha256_after": "6e70dd171862527da2f2de0305ab82154cf9c1591b73860e4fd75e06f570c178",
+      "sha256_before": "6e70dd171862527da2f2de0305ab82154cf9c1591b73860e4fd75e06f570c178"
+    },
+    {
+      "path": "troubleshooting/latest/latest_alpha_output.txt",
+      "rewritten": false,
+      "sha256_after": "6e70dd171862527da2f2de0305ab82154cf9c1591b73860e4fd75e06f570c178",
+      "sha256_before": "6e70dd171862527da2f2de0305ab82154cf9c1591b73860e4fd75e06f570c178"
+    },
+    {
+      "path": "troubleshooting/latest/latest_live_alpha_output.txt",
+      "rewritten": false,
+      "sha256_after": "6e70dd171862527da2f2de0305ab82154cf9c1591b73860e4fd75e06f570c178",
+      "sha256_before": "6e70dd171862527da2f2de0305ab82154cf9c1591b73860e4fd75e06f570c178"
+    }
+  ],
+  "aliases": [
+    "troubleshooting/Alpha.txt",
+    "troubleshooting/latest_alpha_output.txt",
+    "troubleshooting/latest/latest_alpha_output.txt",
+    "troubleshooting/latest/latest_live_alpha_output.txt"
+  ],
+  "all_aliases_match": true,
+  "all_aliases_match_expected": true,
+  "authoritative_final": "C:/Users/islamm/Documents/Tariqul/Alpha_Translator V 1.0/Alpha_Live_Translator_v3.3.5_JAPANESE_TEST/troubleshooting/runs/v3.3.5.5.8.5.25.3.3.1-20260714-111519/transcripts/Alpha_output_FINAL.txt",
+  "authoritative_final_rewritten": false,
+  "authoritative_final_sha256": "6e70dd171862527da2f2de0305ab82154cf9c1591b73860e4fd75e06f570c178",
+  "authoritative_run_id": "v3.3.5.5.8.5.25.3.3.1-20260714-111519",
+  "backup_created": true,
+  "build_id": "238eeb44-f420-4d93-b846-24f1268f63bd",
+  "expected_final_sha256": "6e70dd171862527da2f2de0305ab82154cf9c1591b73860e4fd75e06f570c178",
+  "generated_at": "2026-07-15T06:49:32Z",
+  "generation_id": "c3a7fc92-8a99-4b0d-8333-ad21cbe2d54c",
+  "patch_version": "3.3.5.5.8.5.25.3.3.2.6",
+  "source_final_path": "troubleshooting/runs/v3.3.5.5.8.5.25.3.3.1-20260714-111519/transcripts/Alpha_output_FINAL.txt",
+  "source_final_sha256": "6e70dd171862527da2f2de0305ab82154cf9c1591b73860e4fd75e06f570c178",
+  "temporary_files_verified": true,
+  "transaction_completed": true
+}

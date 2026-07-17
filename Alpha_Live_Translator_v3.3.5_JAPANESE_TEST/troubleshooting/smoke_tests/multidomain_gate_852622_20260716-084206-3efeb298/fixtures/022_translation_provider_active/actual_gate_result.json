@@ -1,0 +1,19 @@
+{
+  "test_number": 22,
+  "test_name": "translation_provider_active_fails",
+  "actual_gate_status": "FAILED",
+  "actual_failure_codes": [
+    "TRANSLATION_PROVIDER_ACTIVE"
+  ],
+  "actual_failure_messages": [
+    "runtime_regression_report.runtime_regressions=translation_provider_active -> TRANSLATION_PROVIDER_ACTIVE"
+  ],
+  "actual_gate_exit_code": 0,
+  "actual_acceptance_version": "NOT_ACCEPTED",
+  "actual_acceptance_status": "FIXTURE_ONLY",
+  "source_result_file": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\smoke_tests\\multidomain_gate_852622_20260716-084206-3efeb298\\fixtures\\022_translation_provider_active\\accuracy_stage_compare\\runtime_regression_report.json",
+  "source_result_file_sha256": "293cecbfafad34ce3c36d73bbc8d09d5717d6bd4c97bfe0a02831a1e75315e8f",
+  "unhandled_exception": false,
+  "exception_class": "",
+  "exception_message": ""
+}

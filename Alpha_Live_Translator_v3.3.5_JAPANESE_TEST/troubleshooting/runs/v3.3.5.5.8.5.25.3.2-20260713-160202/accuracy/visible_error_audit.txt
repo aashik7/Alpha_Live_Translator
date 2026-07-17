@@ -1,0 +1,10 @@
+# Visible Error Audit (audit-only — no auto-correction)
+# app_version: 3.3.5.5.8.5.25.3.2
+# run_id: live-v3.3.5.5.8.5.25.3.2-20260713-160202-82039569
+# visible_error_count: 4
+# high: 0 medium: 0 low: 4
+
+line=3 severity=low pattern=company_number_risk category=meaning_risk snippet=本日は2026年7月期第3四半期決戦についてご案内申し上げます。
+line=15 severity=low pattern=company_number_risk category=meaning_risk snippet=続いて2026年7月期軽トピックスをお知らせいたし保育サービスにおいては大阪市中国で桜咲く未来東平を予定通り解説しており。桜咲く未来晴海老いでも予定通り増長を行い定員数が増加しまた。
+line=16 severity=low pattern=company_number_risk category=meaning_risk snippet=他人口増加で保育所が不足してる晴海エリアから月島エリアへ親子で乗れる送迎バスの運行も開始しております2027年7月期では、東京都中国にて1施設の新規保育所の開設を予定しております。
+line=22 severity=low pattern=company_number_risk category=meaning_risk snippet=不動産企画開発ではマンション開発事業と買取再販事業ホテル再生事業も計画通り進捗しており以上2026年7月期第3四半期決算の投機予想に対し順調に進捗しておますので引き続き教えの程お願い

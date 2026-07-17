@@ -1,0 +1,13 @@
+Issue 12 Stage 1 — Cursor final report
+VERSION=NOT_ACCEPTED
+STATUS=TARGET_NOT_REACHED
+stable_accuracy_percent=81.1618725324309
+combined_critical_term_accuracy_percent=87.5
+stable_to_final_loss_percent=0.0
+runtime_regressions=4
+ready_for_step2=False
+profile_status=experimental_only
+failures=['stable_accuracy_below_85', 'stable_cer_above_15', 'combined_critical_term_below_90', 'runtime_regressions_present', 'independent_verification_failed']
+highest_impact_edit_categories=[{'category': 'financial_term', 'missing_term_count': 5}, {'category': 'raw_substitutions', 'missing_term_count': 76}, {'category': 'raw_deletions', 'missing_term_count': 242}]
+live_tests_completed=1
+production_profile_unchanged=True

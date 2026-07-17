@@ -1,0 +1,3472 @@
+{
+  "file_count_analyzed": 249,
+  "imports": {
+    "analyze_alpha_vs_reference.py": [
+      "alpha/constants.py",
+      "alpha/transcription/final_output_cleanup.py",
+      "alpha/utils/accuracy_report_sync.py",
+      "alpha/utils/alignment_v2.py",
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/reference_alpha_hash.py",
+      "reference_transcript_quality_check.py"
+    ],
+    "audit_final_alpha_writers_8525331.py": [
+      "alpha/constants.py"
+    ],
+    "build_persisted_stage_manifest_8525332.py": [
+      "alpha/constants.py",
+      "alpha/utils/canonical_content_hash.py",
+      "alpha/utils/path_types.py",
+      "alpha/utils/persisted_run_evidence.py"
+    ],
+    "collect_preflight_85234.py": [
+      "alpha/constants.py"
+    ],
+    "collect_preflight_852341.py": [
+      "alpha/constants.py"
+    ],
+    "collect_preflight_8524.py": [],
+    "collect_preflight_85241.py": [],
+    "collect_preflight_85242.py": [],
+    "collect_preflight_8525.py": [],
+    "collect_preflight_85251.py": [],
+    "collect_preflight_85252.py": [],
+    "create_benchmark_manifest.py": [
+      "alpha/constants.py",
+      "alpha/utils/reference_alpha_hash.py"
+    ],
+    "main.py": [
+      "alpha/constants.py",
+      "alpha/transcription/japanese_accuracy_cleaner.py",
+      "alpha/transcription/japanese_business_accuracy.py",
+      "alpha/transcription/japanese_final_chunk_stabilizer.py",
+      "alpha/ui/main_window.py",
+      "alpha/utils/async_debug_log.py",
+      "alpha/utils/audio_temp_capture.py",
+      "alpha/utils/crash_guard_log.py",
+      "alpha/utils/diagnostic_test_log.py",
+      "alpha/utils/flight_recorder.py",
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/language_pipeline_worker.py",
+      "alpha/utils/logging_utils.py",
+      "alpha/utils/run_artifacts.py",
+      "alpha/utils/session_watchdog.py",
+      "alpha/utils/thread_safety.py",
+      "alpha/utils/tk_thread_guard.py",
+      "alpha/utils/troubleshooting_paths.py",
+      "alpha/utils/ui_event_bus.py"
+    ],
+    "package_latest_troubleshooting_run.py": [
+      "alpha/constants.py",
+      "alpha/utils/latest_completed_live_run.py",
+      "alpha/utils/path_types.py"
+    ],
+    "prepare_accuracy_benchmark_852532.py": [
+      "alpha/constants.py",
+      "alpha/utils/canonical_content_hash.py",
+      "alpha/utils/validation_version.py",
+      "reference_transcript_quality_check.py"
+    ],
+    "reference_transcript_quality_check.py": [
+      "alpha/constants.py",
+      "alpha/utils/accuracy_report_sync.py",
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/reference_alpha_hash.py"
+    ],
+    "regression_canonical_acceptance_bundle_85253321.py": [
+      "alpha/utils/canonical_acceptance_state.py",
+      "alpha/utils/canonical_content_hash.py",
+      "alpha/utils/package_canonical_acceptance_staging.py"
+    ],
+    "regression_canonical_pipeline_852532.py": [
+      "alpha/constants.py",
+      "alpha/transcription/canonical_transcript_ledger.py",
+      "alpha/transcription/revision_metadata.py",
+      "alpha/utils/pipeline_integrity.py"
+    ],
+    "regression_cer_852532.py": [
+      "alpha/constants.py",
+      "alpha/utils/cer_backtracking.py"
+    ],
+    "regression_eleven_issue_closure_852533.py": [
+      "alpha/constants.py",
+      "alpha/transcription/canonical_transcript_ledger.py",
+      "alpha/transcription/pipeline_commit_transaction.py",
+      "alpha/transcription/stable_revision_decision.py",
+      "alpha/utils/accuracy_stage_capture.py",
+      "alpha/utils/canonical_finalize.py",
+      "alpha/utils/component_stall_classifier.py",
+      "alpha/utils/language_pipeline_worker.py",
+      "alpha/utils/path_types.py",
+      "alpha/utils/pipeline_integrity.py",
+      "alpha/utils/runtime_audio_counters.py",
+      "alpha/utils/ui_stop_drain_barrier.py",
+      "alpha/utils/validation_version.py",
+      "package_latest_troubleshooting_run.py"
+    ],
+    "regression_final_cleanup_package_85253324.py": [
+      "alpha/utils/__init__.py",
+      "alpha/utils/cleanup_build_identity.py",
+      "alpha/utils/cleanup_protection_policy.py",
+      "alpha/utils/final_cleanup_engine.py",
+      "alpha/utils/final_cleanup_packaging.py"
+    ],
+    "regression_final_writer_stop_tail_8525331.py": [
+      "alpha/constants.py",
+      "alpha/transcription/canonical_transcript_ledger.py",
+      "alpha/transcription/pipeline_commit_transaction.py",
+      "alpha/utils/__init__.py",
+      "alpha/utils/accuracy_stage_capture.py",
+      "alpha/utils/canonical_export_writer.py",
+      "alpha/utils/final_artifact_authority.py",
+      "alpha/utils/latest_completed_live_run.py",
+      "alpha/utils/pipeline_integrity.py",
+      "audit_final_alpha_writers_8525331.py"
+    ],
+    "regression_persisted_evidence_package_closure_8525332.py": [
+      "alpha/constants.py",
+      "alpha/utils/canonical_content_hash.py",
+      "alpha/utils/immutable_evidence_contract.py",
+      "alpha/utils/persisted_run_evidence.py"
+    ],
+    "regression_run_resolution_reference_trust_8525321.py": [
+      "alpha/constants.py",
+      "alpha/utils/__init__.py",
+      "alpha/utils/latest_completed_live_run.py",
+      "alpha/utils/prepared_reference_trust.py",
+      "alpha/utils/repair_helpers.py"
+    ],
+    "regression_single_authority_packaging_85253323.py": [
+      "alpha/utils/__init__.py",
+      "alpha/utils/package_build_identity.py"
+    ],
+    "regression_three_stage_cer_852531.py": [
+      "alpha/constants.py",
+      "alpha/utils/cer_backtracking.py"
+    ],
+    "regression_zero_issue_validation_85253322.py": [
+      "alpha/utils/canonical_acceptance_state.py",
+      "alpha/utils/canonical_content_hash.py",
+      "alpha/utils/final_status_reconciliation.py",
+      "alpha/utils/finalizer_event_reconciliation.py",
+      "alpha/utils/immutable_evidence_contract.py",
+      "alpha/utils/required_regression_matrix.py",
+      "alpha/utils/stable_commit_lineage_reconciliation.py",
+      "alpha/utils/stop_timeline_reconciliation.py",
+      "alpha/utils/strict_evidence_values.py",
+      "alpha/utils/strict_package_identity.py",
+      "alpha/utils/validation_version.py",
+      "alpha/utils/zero_issue_acceptance.py",
+      "alpha/utils/zero_issue_gate.py"
+    ],
+    "repair_accuracy_stage_artifacts_85253.py": [
+      "alpha/utils/accuracy_stage_capture.py"
+    ],
+    "repair_audio_delivery_summary_8525321.py": [
+      "alpha/utils/repair_helpers.py"
+    ],
+    "repair_clean_alpha_export.py": [
+      "alpha/constants.py",
+      "alpha/transcription/corporate_ir_stable_corrector.py",
+      "alpha/transcription/final_output_cleanup.py",
+      "alpha/transcription/stable_line_revision.py",
+      "alpha/transcription/transcript_lineage.py",
+      "alpha/utils/clean_export_coverage.py"
+    ],
+    "repair_existing_run_8525321.py": [
+      "alpha/utils/accuracy_stage_capture.py",
+      "alpha/utils/latest_completed_live_run.py",
+      "alpha/utils/prepared_reference_trust.py",
+      "alpha/utils/repair_helpers.py",
+      "repair_audio_delivery_summary_8525321.py",
+      "repair_run_metadata_8525321.py"
+    ],
+    "repair_run_metadata_8525321.py": [
+      "alpha/utils/latest_completed_live_run.py",
+      "alpha/utils/repair_helpers.py"
+    ],
+    "replay_revision_decisions_852531.py": [
+      "alpha/constants.py",
+      "alpha/transcription/stable_revision_decision.py",
+      "alpha/utils/cer_backtracking.py"
+    ],
+    "runtime_smoke_accuracy_stage_isolation_85253.py": [
+      "alpha/constants.py",
+      "alpha/transcription/deepgram_client.py",
+      "alpha/utils/accuracy_stage_capture.py",
+      "alpha/utils/alpha_output_protection.py",
+      "alpha/utils/japanese_accuracy_log.py"
+    ],
+    "runtime_smoke_eleven_issue_closure_852533.py": [
+      "alpha/constants.py",
+      "alpha/utils/freeze_guard_log.py",
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/language_pipeline_worker.py",
+      "alpha/utils/stop_finalize_worker.py",
+      "alpha/utils/troubleshooting_paths.py",
+      "package_latest_troubleshooting_run.py"
+    ],
+    "runtime_smoke_start_stop_85232.py": [
+      "alpha/constants.py",
+      "alpha/transcription/japanese_business_accuracy.py",
+      "alpha/utils/alpha_output_protection.py",
+      "alpha/utils/stop_finalize_worker.py"
+    ],
+    "runtime_smoke_start_stop_85233.py": [
+      "alpha/constants.py",
+      "alpha/transcription/japanese_business_accuracy.py",
+      "alpha/utils/alpha_output_protection.py",
+      "alpha/utils/stop_finalize_worker.py"
+    ],
+    "runtime_smoke_start_stop_85234.py": [
+      "alpha/constants.py",
+      "alpha/transcription/japanese_business_accuracy.py",
+      "alpha/utils/alpha_output_protection.py",
+      "alpha/utils/stop_finalize_worker.py"
+    ],
+    "runtime_smoke_start_stop_852341.py": [
+      "alpha/constants.py",
+      "alpha/transcription/japanese_business_accuracy.py",
+      "alpha/utils/alpha_output_protection.py",
+      "alpha/utils/stop_finalize_worker.py"
+    ],
+    "runtime_smoke_start_stop_8524.py": [
+      "alpha/constants.py",
+      "alpha/transcription/japanese_business_accuracy.py",
+      "alpha/utils/alpha_output_protection.py",
+      "alpha/utils/stop_finalize_worker.py"
+    ],
+    "runtime_smoke_start_stop_85241.py": [
+      "alpha/constants.py",
+      "alpha/transcription/japanese_business_accuracy.py",
+      "alpha/utils/alpha_output_protection.py",
+      "alpha/utils/stop_finalize_worker.py"
+    ],
+    "runtime_smoke_start_stop_85242.py": [
+      "alpha/constants.py",
+      "alpha/transcription/final_output_cleanup.py",
+      "alpha/transcription/japanese_business_accuracy.py",
+      "alpha/utils/alpha_output_protection.py",
+      "alpha/utils/stop_finalize_worker.py"
+    ],
+    "runtime_smoke_start_stop_8525.py": [
+      "alpha/constants.py",
+      "alpha/transcription/corporate_ir_stable_corrector.py",
+      "alpha/transcription/japanese_business_accuracy.py",
+      "alpha/utils/alpha_output_protection.py",
+      "alpha/utils/stop_finalize_worker.py"
+    ],
+    "runtime_smoke_start_stop_85251.py": [
+      "alpha/constants.py",
+      "alpha/transcription/japanese_business_accuracy.py",
+      "alpha/utils/alpha_output_protection.py",
+      "alpha/utils/clean_export_coverage.py",
+      "alpha/utils/stop_finalize_worker.py"
+    ],
+    "runtime_smoke_start_stop_85252.py": [
+      "alpha/constants.py",
+      "alpha/transcription/japanese_business_accuracy.py",
+      "alpha/transcription/transcript_lineage.py",
+      "alpha/utils/alpha_output_protection.py",
+      "alpha/utils/stop_finalize_worker.py"
+    ],
+    "run_final_cleanup_and_package_closure_85253324.py": [
+      "alpha/utils/cleanup_build_identity.py",
+      "alpha/utils/cleanup_protection_policy.py",
+      "alpha/utils/final_cleanup_engine.py",
+      "alpha/utils/final_cleanup_packaging.py",
+      "alpha/utils/project_dependency_analyzer.py"
+    ],
+    "run_final_validation_bundle_85253321.py": [
+      "alpha/utils/canonical_acceptance_state.py",
+      "alpha/utils/canonical_content_hash.py",
+      "alpha/utils/immutable_evidence_contract.py",
+      "alpha/utils/package_canonical_acceptance_staging.py",
+      "alpha/utils/path_types.py"
+    ],
+    "run_persisted_closure_8525332.py": [
+      "alpha/constants.py",
+      "alpha/utils/canonical_content_hash.py",
+      "alpha/utils/package_persisted_staging.py",
+      "alpha/utils/path_types.py",
+      "alpha/utils/persisted_run_evidence.py",
+      "build_persisted_stage_manifest_8525332.py"
+    ],
+    "run_post_live_closure_8525331.py": [
+      "alpha/constants.py",
+      "alpha/utils/accuracy_stage_capture.py",
+      "alpha/utils/final_artifact_authority.py",
+      "alpha/utils/latest_completed_live_run.py",
+      "alpha/utils/path_types.py"
+    ],
+    "run_pre_live_gate_8525331.py": [
+      "alpha/constants.py"
+    ],
+    "run_single_authority_package_closure_85253323.py": [
+      "alpha/utils/package_build_identity.py",
+      "alpha/utils/single_authority_packaging.py"
+    ],
+    "run_zero_issue_closure_85253322.py": [
+      "alpha/utils/canonical_acceptance_state.py",
+      "alpha/utils/canonical_content_hash.py",
+      "alpha/utils/final_status_reconciliation.py",
+      "alpha/utils/finalizer_event_reconciliation.py",
+      "alpha/utils/immutable_evidence_contract.py",
+      "alpha/utils/package_zero_issue_staging.py",
+      "alpha/utils/path_types.py",
+      "alpha/utils/persisted_run_evidence.py",
+      "alpha/utils/required_regression_matrix.py",
+      "alpha/utils/stable_commit_lineage_reconciliation.py",
+      "alpha/utils/stop_timeline_reconciliation.py",
+      "alpha/utils/strict_package_identity.py",
+      "alpha/utils/strict_stop_evidence.py",
+      "alpha/utils/validation_version.py",
+      "alpha/utils/zero_issue_acceptance.py",
+      "alpha/utils/zero_issue_gate.py"
+    ],
+    "score_latest_accuracy.py": [
+      "alpha/constants.py",
+      "alpha/transcription/final_output_cleanup.py",
+      "alpha/transcription/japanese_visible_error_audit.py",
+      "alpha/utils/accuracy_report_sync.py",
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/reference_alpha_hash.py",
+      "reference_transcript_quality_check.py"
+    ],
+    "score_three_stage_accuracy.py": [
+      "alpha/constants.py",
+      "alpha/utils/cer_backtracking.py",
+      "alpha/utils/latest_completed_live_run.py",
+      "alpha/utils/prepared_reference_trust.py"
+    ],
+    "simulate_boundary_stabilizer.py": [
+      "alpha/constants.py",
+      "alpha/transcription/japanese_boundary_stabilizer.py"
+    ],
+    "validate_accuracy_85232.py": [
+      "alpha/constants.py",
+      "alpha/transcription/japanese_business_accuracy.py"
+    ],
+    "validate_accuracy_85233.py": [
+      "alpha/constants.py",
+      "alpha/transcription/japanese_business_accuracy.py",
+      "analyze_alpha_vs_reference.py"
+    ],
+    "validate_accuracy_85234.py": [
+      "alpha/constants.py",
+      "alpha/transcription/japanese_business_accuracy.py",
+      "alpha/utils/accuracy_report_sync.py"
+    ],
+    "validate_accuracy_852341.py": [
+      "alpha/constants.py",
+      "alpha/transcription/japanese_business_accuracy.py",
+      "alpha/utils/accuracy_report_sync.py"
+    ],
+    "validate_accuracy_8524.py": [
+      "alpha/constants.py",
+      "alpha/transcription/japanese_boundary_stabilizer.py",
+      "alpha/transcription/japanese_business_accuracy.py"
+    ],
+    "validate_accuracy_85241.py": [
+      "alpha/constants.py",
+      "alpha/transcription/japanese_boundary_stabilizer.py",
+      "alpha/transcription/japanese_business_accuracy.py",
+      "alpha/transcription/stable_line_revision.py"
+    ],
+    "validate_accuracy_85242.py": [
+      "alpha/constants.py",
+      "alpha/transcription/final_output_cleanup.py",
+      "alpha/transcription/japanese_business_accuracy.py"
+    ],
+    "validate_accuracy_8525.py": [
+      "alpha/constants.py",
+      "alpha/transcription/corporate_ir_glossary.py",
+      "alpha/transcription/corporate_ir_stable_corrector.py",
+      "alpha/transcription/japanese_business_accuracy.py"
+    ],
+    "validate_accuracy_85251.py": [
+      "alpha/constants.py",
+      "alpha/transcription/japanese_business_accuracy.py",
+      "alpha/utils/clean_export_coverage.py"
+    ],
+    "validate_accuracy_85252.py": [
+      "alpha/constants.py",
+      "alpha/transcription/japanese_business_accuracy.py",
+      "alpha/transcription/transcript_lineage.py"
+    ],
+    "validate_accuracy_852521.py": [
+      "alpha/constants.py"
+    ],
+    "validate_accuracy_stage_isolation_85253.py": [
+      "alpha/config.py",
+      "alpha/constants.py",
+      "alpha/transcription/deepgram_client.py",
+      "alpha/utils/accuracy_stage_capture.py"
+    ],
+    "validate_atomic_evidence_sync_852521.py": [
+      "alpha/utils/atomic_evidence_finalize.py"
+    ],
+    "validate_canonical_acceptance_85253321.py": [
+      "alpha/utils/canonical_acceptance_state.py",
+      "alpha/utils/canonical_content_hash.py",
+      "alpha/utils/immutable_evidence_contract.py",
+      "alpha/utils/path_types.py"
+    ],
+    "validate_canonical_pipeline_852532.py": [
+      "alpha/constants.py",
+      "alpha/utils/cer_backtracking.py",
+      "alpha/utils/latest_completed_live_run.py",
+      "alpha/utils/prepared_reference_trust.py"
+    ],
+    "validate_eleven_issue_closure_852533.py": [
+      "alpha/constants.py",
+      "alpha/utils/accuracy_stage_capture.py",
+      "alpha/utils/latest_completed_live_run.py",
+      "alpha/utils/path_types.py"
+    ],
+    "validate_final_writer_stop_tail_closure_8525331.py": [
+      "alpha/constants.py",
+      "alpha/utils/accuracy_stage_capture.py",
+      "alpha/utils/final_artifact_authority.py",
+      "alpha/utils/latest_completed_live_run.py",
+      "alpha/utils/path_types.py"
+    ],
+    "validate_financial_number_safety_852521.py": [
+      "alpha/transcription/financial_number_safety.py"
+    ],
+    "validate_lineage_regression_852521.py": [
+      "alpha/transcription/transcript_lineage.py"
+    ],
+    "validate_output_artifact_consistency_852521.py": [
+      "alpha/utils/canonical_export_writer.py"
+    ],
+    "validate_package_glossary_flags_85253.py": [
+      "package_latest_troubleshooting_run.py"
+    ],
+    "validate_revision_safety_852531.py": [
+      "alpha/constants.py",
+      "alpha/transcription/stable_revision_decision.py",
+      "alpha/utils/cer_backtracking.py"
+    ],
+    "alpha/config.py": [
+      "alpha/constants.py"
+    ],
+    "alpha/constants.py": [],
+    "alpha/__init__.py": [],
+    "tests/test_build_deepgram_url_startup_85253.py": [
+      "alpha/config.py",
+      "alpha/constants.py",
+      "alpha/transcription/deepgram_client.py"
+    ],
+    "tests/test_final_transcript_commit_v3_2_5.py": [
+      "alpha/transcription/deepgram_client.py"
+    ],
+    "tests/test_graceful_stop_v3_2_2.py": [
+      "alpha/transcription/deepgram_client.py"
+    ],
+    "tests/test_package_glossary_flags_85253.py": [
+      "package_latest_troubleshooting_run.py"
+    ],
+    "tests/test_stop_finalize_v3_2_3.py": [
+      "alpha/transcription/deepgram_client.py"
+    ],
+    "tests/test_stop_queue_flush_v3_2_4.py": [
+      "alpha/transcription/deepgram_client.py"
+    ],
+    "tests/test_transcript_hotfix_v3_2.py": [
+      "alpha/summary/transcript_store.py",
+      "alpha/transcription/duplicate_protection.py"
+    ],
+    "tests/test_transcript_stability_v3_2.py": [
+      "alpha/transcription/duplicate_protection.py"
+    ],
+    "_cleanup_archive/root_cleanup_20260708_155406/old_runtime_smoke_scripts/runtime_smoke_start_stop_8520_5.py": [
+      "alpha/utils/stop_finalize_worker.py"
+    ],
+    "_cleanup_archive/root_cleanup_20260708_155406/old_runtime_smoke_scripts/runtime_smoke_start_stop_8521.py": [
+      "alpha/constants.py",
+      "alpha/utils/stop_finalize_worker.py"
+    ],
+    "_cleanup_archive/root_cleanup_20260708_155406/old_runtime_smoke_scripts/runtime_smoke_start_stop_8522.py": [
+      "alpha/constants.py",
+      "alpha/utils/stop_finalize_worker.py"
+    ],
+    "_cleanup_archive/root_cleanup_20260708_155406/old_runtime_smoke_scripts/runtime_smoke_start_stop_85221.py": [
+      "alpha/constants.py",
+      "alpha/transcription/japanese_business_accuracy.py",
+      "alpha/utils/stop_finalize_worker.py"
+    ],
+    "_cleanup_archive/root_cleanup_20260708_155406/old_runtime_smoke_scripts/runtime_smoke_start_stop_85222.py": [
+      "alpha/constants.py",
+      "alpha/transcription/japanese_business_accuracy.py",
+      "alpha/utils/stop_finalize_worker.py"
+    ],
+    "_cleanup_archive/root_cleanup_20260708_155406/old_runtime_smoke_scripts/runtime_smoke_start_stop_85223.py": [
+      "alpha/constants.py",
+      "alpha/transcription/japanese_business_accuracy.py",
+      "alpha/utils/stop_finalize_worker.py"
+    ],
+    "_cleanup_archive/root_cleanup_20260708_155406/old_runtime_smoke_scripts/runtime_smoke_start_stop_85231.py": [
+      "alpha/constants.py",
+      "alpha/transcription/japanese_business_accuracy.py",
+      "alpha/transcription/japanese_visible_error_audit.py",
+      "alpha/utils/stop_finalize_worker.py"
+    ],
+    "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8511.py": [
+      "alpha/constants.py",
+      "alpha/transcription/deepgram_client.py",
+      "alpha/transcription/japanese_accuracy_cleaner.py",
+      "alpha/utils/async_debug_log.py",
+      "alpha/utils/diagnostic_test_log.py",
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/run_artifacts.py",
+      "alpha/utils/runtime_evidence.py"
+    ],
+    "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8511_1.py": [
+      "alpha/constants.py",
+      "alpha/utils/freeze_guard_log.py",
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/stop_finalize_worker.py"
+    ],
+    "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8512.py": [
+      "alpha/constants.py",
+      "alpha/utils/diagnostic_test_log.py",
+      "alpha/utils/freeze_guard_log.py",
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/run_artifacts.py",
+      "alpha/utils/run_consistency.py",
+      "alpha/utils/run_identity.py",
+      "alpha/utils/stop_finalize_worker.py"
+    ],
+    "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8513.py": [
+      "alpha/constants.py",
+      "alpha/transcription/japanese_accuracy_cleaner.py",
+      "alpha/transcription/japanese_sentence_assembler.py",
+      "alpha/utils/diagnostic_test_log.py",
+      "alpha/utils/freeze_guard_log.py",
+      "alpha/utils/japanese_accuracy_log.py"
+    ],
+    "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8514.py": [
+      "alpha/constants.py",
+      "alpha/transcription/japanese_accuracy_cleaner.py",
+      "alpha/transcription/japanese_sentence_assembler.py",
+      "alpha/utils/diagnostic_test_log.py",
+      "alpha/utils/freeze_guard_log.py",
+      "alpha/utils/japanese_accuracy_log.py"
+    ],
+    "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8515.py": [
+      "alpha/constants.py",
+      "alpha/transcription/japanese_accuracy_cleaner.py"
+    ],
+    "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8516.py": [
+      "alpha/constants.py",
+      "alpha/transcription/japanese_accuracy_cleaner.py"
+    ],
+    "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8517.py": [
+      "alpha/constants.py",
+      "alpha/transcription/japanese_accuracy_cleaner.py"
+    ],
+    "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8518.py": [
+      "alpha/constants.py",
+      "alpha/transcription/japanese_accuracy_cleaner.py",
+      "alpha/transcription/japanese_sentence_assembler.py",
+      "alpha/utils/language_pipeline_worker.py",
+      "alpha/utils/ui_event_bus.py",
+      "alpha/utils/ui_thread_guard.py"
+    ],
+    "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8519.py": [
+      "alpha/constants.py",
+      "alpha/transcription/japanese_accuracy_cleaner.py",
+      "alpha/transcription/japanese_sentence_assembler.py",
+      "alpha/utils/language_pipeline_worker.py",
+      "alpha/utils/process_health_telemetry.py",
+      "alpha/utils/stop_finalize_worker.py",
+      "alpha/utils/tk_thread_guard.py",
+      "alpha/utils/ui_event_bus.py",
+      "alpha/utils/ui_thread_guard.py"
+    ],
+    "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8520.py": [
+      "alpha/constants.py",
+      "alpha/transcription/japanese_accuracy_cleaner.py",
+      "alpha/transcription/japanese_sentence_assembler.py",
+      "alpha/utils/language_pipeline_worker.py",
+      "alpha/utils/process_health_telemetry.py",
+      "alpha/utils/stop_finalize_worker.py",
+      "alpha/utils/troubleshooting_paths.py",
+      "alpha/utils/ui_event_bus.py",
+      "alpha/utils/ui_thread_guard.py"
+    ],
+    "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8520_1.py": [
+      "alpha/constants.py",
+      "alpha/transcription/japanese_accuracy_cleaner.py",
+      "alpha/transcription/japanese_sentence_assembler.py",
+      "alpha/utils/language_pipeline_worker.py",
+      "alpha/utils/process_health_telemetry.py",
+      "alpha/utils/stop_finalize_worker.py",
+      "alpha/utils/tk_thread_guard.py",
+      "alpha/utils/troubleshooting_paths.py",
+      "alpha/utils/ui_event_bus.py",
+      "alpha/utils/ui_thread_guard.py"
+    ],
+    "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8520_2.py": [
+      "alpha/constants.py",
+      "alpha/utils/troubleshooting_paths.py"
+    ],
+    "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8520_4.py": [
+      "alpha/constants.py"
+    ],
+    "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_8521.py": [
+      "alpha/constants.py",
+      "alpha/transcription/japanese_stable_accuracy.py"
+    ],
+    "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_8522.py": [
+      "alpha/constants.py",
+      "alpha/transcription/japanese_business_accuracy.py"
+    ],
+    "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_85221.py": [
+      "alpha/constants.py",
+      "alpha/transcription/japanese_business_accuracy.py"
+    ],
+    "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_85222.py": [
+      "alpha/constants.py",
+      "alpha/transcription/japanese_business_accuracy.py"
+    ],
+    "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_85223.py": [
+      "alpha/constants.py",
+      "alpha/transcription/japanese_business_accuracy.py"
+    ],
+    "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_85231.py": [
+      "alpha/constants.py",
+      "alpha/transcription/japanese_business_accuracy.py"
+    ],
+    "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_runtime_8520_5.py": [
+      "alpha/constants.py"
+    ],
+    "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_startup_8520_3.py": [
+      "alpha/constants.py",
+      "alpha/utils/async_debug_log.py",
+      "alpha/utils/troubleshooting_paths.py"
+    ],
+    "troubleshooting/project_cleanup/v3.3.5.5.8.5.25.3.3.2.4/builds/eabcac88-e1ec-4f96-9f14-76d91189e967/restore/restore_quarantined_files_85253324.py": [],
+    "troubleshooting/project_cleanup/v3.3.5.5.8.5.25.3.3.2.4/builds/a076cfee-7e42-4da6-bd85-70eddbe9bdf0/restore/restore_quarantined_files_85253324.py": [],
+    "troubleshooting/project_cleanup/v3.3.5.5.8.5.25.3.3.2.4/builds/29585b19-29bd-49e8-a455-f7a4c1c531eb/restore/restore_quarantined_files_85253324.py": [],
+    "alpha/audio/microphone.py": [
+      "alpha/config.py",
+      "alpha/utils/queues.py",
+      "alpha/utils/runtime_audio_counters.py"
+    ],
+    "alpha/audio/processing.py": [
+      "alpha/config.py"
+    ],
+    "alpha/audio/source_gate.py": [
+      "alpha/constants.py"
+    ],
+    "alpha/audio/timeline_mixer.py": [
+      "alpha/audio/processing.py",
+      "alpha/audio/source_gate.py",
+      "alpha/config.py",
+      "alpha/utils/runtime_audio_counters.py"
+    ],
+    "alpha/audio/wasapi.py": [
+      "alpha/config.py",
+      "alpha/utils/queues.py",
+      "alpha/utils/runtime_audio_counters.py"
+    ],
+    "alpha/audio/__init__.py": [],
+    "alpha/core/events.py": [],
+    "alpha/core/event_bus.py": [
+      "alpha/utils/logging_utils.py"
+    ],
+    "alpha/core/models.py": [],
+    "alpha/core/__init__.py": [
+      "alpha/core/event_bus.py",
+      "alpha/core/events.py",
+      "alpha/core/models.py"
+    ],
+    "alpha/summary/summary_service.py": [
+      "alpha/summary/transcript_store.py"
+    ],
+    "alpha/summary/transcript_store.py": [],
+    "alpha/summary/__init__.py": [
+      "alpha/summary/summary_service.py",
+      "alpha/summary/transcript_store.py"
+    ],
+    "alpha/transcription/canonical_transcript_ledger.py": [
+      "alpha/constants.py",
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/pipeline_integrity.py"
+    ],
+    "alpha/transcription/corporate_ir_glossary.py": [
+      "alpha/constants.py",
+      "alpha/utils/japanese_accuracy_log.py"
+    ],
+    "alpha/transcription/corporate_ir_stable_corrector.py": [
+      "alpha/constants.py",
+      "alpha/transcription/corporate_ir_glossary.py",
+      "alpha/transcription/financial_number_safety.py",
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/run_identity.py"
+    ],
+    "alpha/transcription/deepgram_client.py": [
+      "alpha/audio/processing.py",
+      "alpha/config.py",
+      "alpha/constants.py",
+      "alpha/transcription/corporate_ir_glossary.py",
+      "alpha/transcription/duplicate_protection.py",
+      "alpha/transcription/japanese_final_chunk_stabilizer.py",
+      "alpha/utils/accuracy_stage_capture.py",
+      "alpha/utils/async_debug_log.py",
+      "alpha/utils/crash_guard_log.py",
+      "alpha/utils/freeze_guard_log.py",
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/logging_utils.py",
+      "alpha/utils/run_identity.py",
+      "alpha/utils/runtime_audio_counters.py",
+      "alpha/utils/runtime_evidence.py",
+      "alpha/utils/session_progress.py",
+      "alpha/utils/ui_event_bus.py"
+    ],
+    "alpha/transcription/duplicate_protection.py": [
+      "alpha/constants.py"
+    ],
+    "alpha/transcription/final_output_cleanup.py": [
+      "alpha/constants.py",
+      "alpha/transcription/japanese_stable_accuracy.py",
+      "alpha/transcription/stable_line_revision.py",
+      "alpha/utils/cjk_text.py",
+      "alpha/utils/japanese_accuracy_log.py"
+    ],
+    "alpha/transcription/financial_number_safety.py": [
+      "alpha/constants.py",
+      "alpha/utils/japanese_accuracy_log.py"
+    ],
+    "alpha/transcription/japanese_accuracy_cleaner.py": [
+      "alpha/utils/japanese_accuracy_log.py"
+    ],
+    "alpha/transcription/japanese_boundary_stabilizer.py": [
+      "alpha/constants.py",
+      "alpha/transcription/japanese_stable_accuracy.py",
+      "alpha/transcription/stable_line_revision.py",
+      "alpha/utils/cjk_text.py",
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/run_identity.py",
+      "alpha/utils/troubleshooting_paths.py"
+    ],
+    "alpha/transcription/japanese_business_accuracy.py": [
+      "alpha/constants.py",
+      "alpha/utils/accuracy_decision_log.py",
+      "alpha/utils/cjk_text.py",
+      "alpha/utils/japanese_accuracy_log.py"
+    ],
+    "alpha/transcription/japanese_final_chunk_stabilizer.py": [
+      "alpha/constants.py",
+      "alpha/transcription/japanese_boundary_stabilizer.py",
+      "alpha/transcription/japanese_sentence_assembler.py",
+      "alpha/utils/accuracy_stage_capture.py",
+      "alpha/utils/audio_temp_capture.py",
+      "alpha/utils/cjk_text.py",
+      "alpha/utils/crash_guard_log.py",
+      "alpha/utils/diagnostic_test_log.py",
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/live_runtime_metrics.py",
+      "alpha/utils/run_artifacts.py",
+      "alpha/utils/run_identity.py",
+      "alpha/utils/runtime_evidence.py",
+      "alpha/utils/transcript_evidence.py"
+    ],
+    "alpha/transcription/japanese_sentence_assembler.py": [
+      "alpha/constants.py",
+      "alpha/transcription/japanese_accuracy_cleaner.py",
+      "alpha/transcription/japanese_boundary_stabilizer.py",
+      "alpha/transcription/japanese_business_accuracy.py",
+      "alpha/transcription/japanese_stable_accuracy.py",
+      "alpha/transcription/japanese_translation_unit_builder.py",
+      "alpha/transcription/language_pipeline_base.py",
+      "alpha/transcription/pipeline_commit_transaction.py",
+      "alpha/transcription/stable_line_revision.py",
+      "alpha/transcription/stable_revision_decision.py",
+      "alpha/utils/accuracy_decision_log.py",
+      "alpha/utils/accuracy_evidence_export.py",
+      "alpha/utils/accuracy_stage_capture.py",
+      "alpha/utils/cjk_text.py",
+      "alpha/utils/crash_guard_log.py",
+      "alpha/utils/flight_recorder.py",
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/language_pipeline_worker.py",
+      "alpha/utils/lock_monitor.py",
+      "alpha/utils/partial_autosave_worker.py",
+      "alpha/utils/run_identity.py",
+      "alpha/utils/runtime_evidence.py",
+      "alpha/utils/session_progress.py",
+      "alpha/utils/transcript_evidence.py",
+      "alpha/utils/transcript_snapshot_store.py",
+      "alpha/utils/troubleshooting_paths.py"
+    ],
+    "alpha/transcription/japanese_stable_accuracy.py": [
+      "alpha/utils/cjk_text.py",
+      "alpha/utils/japanese_accuracy_log.py"
+    ],
+    "alpha/transcription/japanese_translation_unit_builder.py": [
+      "alpha/utils/japanese_accuracy_log.py"
+    ],
+    "alpha/transcription/japanese_visible_error_audit.py": [
+      "alpha/constants.py",
+      "alpha/utils/japanese_accuracy_log.py"
+    ],
+    "alpha/transcription/language_pipeline_base.py": [],
+    "alpha/transcription/pipeline_commit_transaction.py": [
+      "alpha/constants.py",
+      "alpha/transcription/canonical_transcript_ledger.py",
+      "alpha/transcription/revision_metadata.py",
+      "alpha/utils/accuracy_stage_capture.py",
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/live_runtime_metrics.py",
+      "alpha/utils/path_types.py",
+      "alpha/utils/pipeline_integrity.py",
+      "alpha/utils/run_identity.py",
+      "alpha/utils/troubleshooting_paths.py"
+    ],
+    "alpha/transcription/revision_metadata.py": [
+      "alpha/constants.py",
+      "alpha/utils/pipeline_integrity.py"
+    ],
+    "alpha/transcription/speaker_detection.py": [],
+    "alpha/transcription/stable_line_revision.py": [
+      "alpha/constants.py",
+      "alpha/utils/cjk_text.py",
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/troubleshooting_paths.py"
+    ],
+    "alpha/transcription/stable_revision_decision.py": [
+      "alpha/constants.py"
+    ],
+    "alpha/transcription/transcript_lineage.py": [
+      "alpha/constants.py",
+      "alpha/transcription/final_output_cleanup.py",
+      "alpha/transcription/financial_number_safety.py",
+      "alpha/transcription/stable_line_revision.py",
+      "alpha/utils/canonical_export_writer.py",
+      "alpha/utils/cjk_text.py",
+      "alpha/utils/japanese_accuracy_log.py"
+    ],
+    "alpha/transcription/__init__.py": [],
+    "alpha/translation/deepl_client.py": [],
+    "alpha/translation/language_map.py": [],
+    "alpha/translation/translation_worker.py": [
+      "alpha/translation/deepl_client.py",
+      "alpha/translation/language_map.py"
+    ],
+    "alpha/translation/__init__.py": [
+      "alpha/translation/deepl_client.py",
+      "alpha/translation/language_map.py",
+      "alpha/translation/translation_worker.py"
+    ],
+    "alpha/ui/main_window.py": [
+      "alpha/audio/microphone.py",
+      "alpha/audio/timeline_mixer.py",
+      "alpha/audio/wasapi.py",
+      "alpha/config.py",
+      "alpha/constants.py",
+      "alpha/core/event_bus.py",
+      "alpha/core/events.py",
+      "alpha/core/models.py",
+      "alpha/summary/summary_service.py",
+      "alpha/summary/transcript_store.py",
+      "alpha/transcription/deepgram_client.py",
+      "alpha/transcription/duplicate_protection.py",
+      "alpha/transcription/japanese_final_chunk_stabilizer.py",
+      "alpha/transcription/japanese_sentence_assembler.py",
+      "alpha/transcription/speaker_detection.py",
+      "alpha/ui/theme.py",
+      "alpha/utils/async_debug_log.py",
+      "alpha/utils/audio_temp_capture.py",
+      "alpha/utils/cjk_text.py",
+      "alpha/utils/component_stall_classifier.py",
+      "alpha/utils/crash_guard_log.py",
+      "alpha/utils/diagnostic_test_log.py",
+      "alpha/utils/flight_recorder.py",
+      "alpha/utils/freeze_guard_log.py",
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/language_pipeline_worker.py",
+      "alpha/utils/live_runtime_metrics.py",
+      "alpha/utils/logging_utils.py",
+      "alpha/utils/partial_autosave_worker.py",
+      "alpha/utils/queues.py",
+      "alpha/utils/run_artifacts.py",
+      "alpha/utils/run_identity.py",
+      "alpha/utils/runtime_audio_counters.py",
+      "alpha/utils/runtime_evidence.py",
+      "alpha/utils/session_progress.py",
+      "alpha/utils/session_watchdog.py",
+      "alpha/utils/stop_finalize_worker.py",
+      "alpha/utils/thread_dump.py",
+      "alpha/utils/tk_thread_guard.py",
+      "alpha/utils/transcript_evidence.py",
+      "alpha/utils/transcript_snapshot_store.py",
+      "alpha/utils/troubleshooting_paths.py",
+      "alpha/utils/ui_event_bus.py",
+      "alpha/utils/ui_thread_guard.py"
+    ],
+    "alpha/ui/theme.py": [],
+    "alpha/ui/__init__.py": [],
+    "alpha/utils/accuracy_decision_log.py": [
+      "alpha/utils/evidence_jsonl.py",
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/troubleshooting_paths.py"
+    ],
+    "alpha/utils/accuracy_evidence_export.py": [
+      "alpha/constants.py",
+      "alpha/transcription/japanese_visible_error_audit.py",
+      "alpha/transcription/stable_line_revision.py",
+      "alpha/utils/accuracy_report_sync.py",
+      "alpha/utils/alpha_output_protection.py",
+      "alpha/utils/atomic_evidence_finalize.py",
+      "alpha/utils/boundary_evidence_finalize.py",
+      "alpha/utils/canonical_export_writer.py",
+      "alpha/utils/evidence_jsonl.py",
+      "alpha/utils/final_artifact_authority.py",
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/run_artifacts.py",
+      "alpha/utils/run_identity.py",
+      "alpha/utils/transcript_snapshot_store.py",
+      "alpha/utils/troubleshooting_paths.py"
+    ],
+    "alpha/utils/accuracy_report_sync.py": [
+      "alpha/constants.py",
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/reference_alpha_hash.py"
+    ],
+    "alpha/utils/accuracy_stage_capture.py": [
+      "alpha/constants.py",
+      "alpha/transcription/canonical_transcript_ledger.py",
+      "alpha/utils/canonical_content_hash.py",
+      "alpha/utils/final_artifact_authority.py",
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/live_runtime_metrics.py",
+      "alpha/utils/path_types.py",
+      "alpha/utils/persisted_run_evidence.py",
+      "alpha/utils/run_identity.py",
+      "alpha/utils/runtime_audio_counters.py",
+      "alpha/utils/session_progress.py",
+      "alpha/utils/troubleshooting_paths.py"
+    ],
+    "alpha/utils/alignment_v2.py": [
+      "alpha/utils/japanese_accuracy_log.py"
+    ],
+    "alpha/utils/alpha_output_protection.py": [
+      "alpha/constants.py",
+      "alpha/utils/final_artifact_authority.py",
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/troubleshooting_paths.py"
+    ],
+    "alpha/utils/artifact_role_classifier.py": [],
+    "alpha/utils/async_debug_log.py": [
+      "alpha/constants.py",
+      "alpha/utils/freeze_guard_log.py",
+      "alpha/utils/logging_utils.py",
+      "alpha/utils/session_progress.py",
+      "alpha/utils/troubleshooting_paths.py"
+    ],
+    "alpha/utils/atomic_evidence_finalize.py": [
+      "alpha/constants.py",
+      "alpha/utils/accuracy_evidence_export.py",
+      "alpha/utils/japanese_accuracy_log.py"
+    ],
+    "alpha/utils/audio_temp_capture.py": [
+      "alpha/constants.py",
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/run_identity.py",
+      "alpha/utils/troubleshooting_paths.py"
+    ],
+    "alpha/utils/boundary_evidence_finalize.py": [
+      "alpha/constants.py",
+      "alpha/transcription/corporate_ir_stable_corrector.py",
+      "alpha/transcription/final_output_cleanup.py",
+      "alpha/transcription/japanese_boundary_stabilizer.py",
+      "alpha/transcription/stable_line_revision.py",
+      "alpha/transcription/transcript_lineage.py",
+      "alpha/utils/clean_export_coverage.py",
+      "alpha/utils/glossary_evidence_sync.py",
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/run_identity.py",
+      "alpha/utils/transcript_snapshot_store.py",
+      "alpha/utils/troubleshooting_paths.py"
+    ],
+    "alpha/utils/canonical_acceptance_state.py": [
+      "alpha/constants.py",
+      "alpha/utils/canonical_content_hash.py",
+      "alpha/utils/immutable_evidence_contract.py",
+      "alpha/utils/path_types.py",
+      "alpha/utils/persisted_run_evidence.py",
+      "alpha/utils/strict_evidence_values.py"
+    ],
+    "alpha/utils/canonical_content_hash.py": [],
+    "alpha/utils/canonical_export_writer.py": [
+      "alpha/constants.py",
+      "alpha/utils/final_artifact_authority.py",
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/troubleshooting_paths.py"
+    ],
+    "alpha/utils/canonical_finalize.py": [
+      "alpha/constants.py",
+      "alpha/transcription/canonical_transcript_ledger.py",
+      "alpha/utils/accuracy_stage_capture.py",
+      "alpha/utils/canonical_export_writer.py",
+      "alpha/utils/component_stall_classifier.py",
+      "alpha/utils/flight_recorder.py",
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/live_runtime_metrics.py",
+      "alpha/utils/path_types.py",
+      "alpha/utils/run_identity.py",
+      "alpha/utils/troubleshooting_paths.py"
+    ],
+    "alpha/utils/cer_backtracking.py": [],
+    "alpha/utils/cjk_text.py": [
+      "alpha/constants.py"
+    ],
+    "alpha/utils/cleanup_build_identity.py": [],
+    "alpha/utils/cleanup_protection_policy.py": [
+      "alpha/utils/cleanup_build_identity.py"
+    ],
+    "alpha/utils/clean_export_coverage.py": [
+      "alpha/constants.py",
+      "alpha/transcription/final_output_cleanup.py",
+      "alpha/transcription/japanese_stable_accuracy.py",
+      "alpha/transcription/stable_line_revision.py",
+      "alpha/utils/cjk_text.py",
+      "alpha/utils/japanese_accuracy_log.py"
+    ],
+    "alpha/utils/component_stall_classifier.py": [
+      "alpha/utils/flight_recorder.py",
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/path_types.py"
+    ],
+    "alpha/utils/crash_guard_log.py": [
+      "alpha/constants.py",
+      "alpha/transcription/japanese_sentence_assembler.py",
+      "alpha/utils/async_debug_log.py",
+      "alpha/utils/flight_recorder.py",
+      "alpha/utils/freeze_guard_log.py",
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/run_artifacts.py",
+      "alpha/utils/session_progress.py",
+      "alpha/utils/session_watchdog.py",
+      "alpha/utils/troubleshooting_paths.py"
+    ],
+    "alpha/utils/diagnostic_test_log.py": [
+      "alpha/audio/microphone.py",
+      "alpha/config.py",
+      "alpha/constants.py",
+      "alpha/utils/async_debug_log.py",
+      "alpha/utils/cjk_text.py",
+      "alpha/utils/run_identity.py",
+      "alpha/utils/runtime_evidence.py",
+      "alpha/utils/troubleshooting_paths.py"
+    ],
+    "alpha/utils/evidence_jsonl.py": [
+      "alpha/constants.py",
+      "alpha/utils/troubleshooting_paths.py"
+    ],
+    "alpha/utils/evidence_pointer_finalize.py": [
+      "alpha/constants.py",
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/run_artifacts.py",
+      "alpha/utils/run_identity.py",
+      "alpha/utils/stop_finalize_worker.py",
+      "alpha/utils/troubleshooting_paths.py"
+    ],
+    "alpha/utils/finalizer_event_reconciliation.py": [
+      "alpha/utils/canonical_content_hash.py",
+      "alpha/utils/path_types.py"
+    ],
+    "alpha/utils/final_artifact_authority.py": [
+      "alpha/utils/alpha_output_protection.py",
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/path_types.py",
+      "alpha/utils/troubleshooting_paths.py"
+    ],
+    "alpha/utils/final_cleanup_engine.py": [
+      "alpha/utils/artifact_role_classifier.py",
+      "alpha/utils/cleanup_build_identity.py",
+      "alpha/utils/cleanup_protection_policy.py"
+    ],
+    "alpha/utils/final_cleanup_packaging.py": [
+      "alpha/utils/artifact_role_classifier.py",
+      "alpha/utils/cleanup_build_identity.py"
+    ],
+    "alpha/utils/final_status_reconciliation.py": [
+      "alpha/utils/canonical_content_hash.py",
+      "alpha/utils/path_types.py",
+      "alpha/utils/persisted_run_evidence.py",
+      "alpha/utils/strict_evidence_values.py"
+    ],
+    "alpha/utils/flight_recorder.py": [
+      "alpha/constants.py",
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/partial_autosave_worker.py",
+      "alpha/utils/process_health_telemetry.py",
+      "alpha/utils/run_identity.py",
+      "alpha/utils/session_progress.py",
+      "alpha/utils/session_watchdog.py"
+    ],
+    "alpha/utils/freeze_guard_log.py": [
+      "alpha/constants.py",
+      "alpha/utils/run_identity.py",
+      "alpha/utils/troubleshooting_paths.py"
+    ],
+    "alpha/utils/glossary_evidence_sync.py": [
+      "alpha/constants.py",
+      "alpha/transcription/corporate_ir_glossary.py",
+      "alpha/utils/japanese_accuracy_log.py"
+    ],
+    "alpha/utils/immutable_evidence_contract.py": [
+      "alpha/utils/validation_version.py"
+    ],
+    "alpha/utils/japanese_accuracy_log.py": [
+      "alpha/constants.py",
+      "alpha/utils/accuracy_decision_log.py",
+      "alpha/utils/run_identity.py",
+      "alpha/utils/transcript_evidence.py",
+      "alpha/utils/troubleshooting_paths.py"
+    ],
+    "alpha/utils/language_pipeline_worker.py": [
+      "alpha/utils/crash_guard_log.py",
+      "alpha/utils/japanese_accuracy_log.py"
+    ],
+    "alpha/utils/latest_completed_live_run.py": [
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/path_types.py"
+    ],
+    "alpha/utils/live_runtime_metrics.py": [
+      "alpha/constants.py",
+      "alpha/utils/japanese_accuracy_log.py"
+    ],
+    "alpha/utils/lock_instrumentation.py": [
+      "alpha/utils/japanese_accuracy_log.py"
+    ],
+    "alpha/utils/lock_monitor.py": [
+      "alpha/utils/japanese_accuracy_log.py"
+    ],
+    "alpha/utils/logging_utils.py": [
+      "alpha/constants.py"
+    ],
+    "alpha/utils/package_build_identity.py": [],
+    "alpha/utils/package_canonical_acceptance_staging.py": [
+      "alpha/utils/canonical_acceptance_state.py",
+      "alpha/utils/canonical_content_hash.py",
+      "alpha/utils/immutable_evidence_contract.py",
+      "alpha/utils/path_types.py"
+    ],
+    "alpha/utils/package_persisted_staging.py": [
+      "alpha/constants.py",
+      "alpha/utils/canonical_content_hash.py",
+      "alpha/utils/path_types.py"
+    ],
+    "alpha/utils/package_zero_issue_staging.py": [
+      "alpha/utils/canonical_content_hash.py",
+      "alpha/utils/immutable_evidence_contract.py",
+      "alpha/utils/path_types.py",
+      "alpha/utils/validation_version.py"
+    ],
+    "alpha/utils/partial_autosave_worker.py": [
+      "alpha/constants.py",
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/run_artifacts.py",
+      "alpha/utils/transcript_snapshot_store.py"
+    ],
+    "alpha/utils/path_types.py": [],
+    "alpha/utils/persisted_run_evidence.py": [
+      "alpha/utils/canonical_content_hash.py",
+      "alpha/utils/path_types.py"
+    ],
+    "alpha/utils/pipeline_integrity.py": [],
+    "alpha/utils/prepared_reference_trust.py": [],
+    "alpha/utils/process_health_telemetry.py": [
+      "alpha/utils/freeze_guard_log.py",
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/troubleshooting_paths.py"
+    ],
+    "alpha/utils/project_dependency_analyzer.py": [],
+    "alpha/utils/queues.py": [],
+    "alpha/utils/reference_alpha_hash.py": [
+      "alpha/utils/japanese_accuracy_log.py"
+    ],
+    "alpha/utils/repair_helpers.py": [],
+    "alpha/utils/required_regression_matrix.py": [],
+    "alpha/utils/runtime_audio_counters.py": [
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/live_runtime_metrics.py"
+    ],
+    "alpha/utils/runtime_evidence.py": [
+      "alpha/constants.py",
+      "alpha/transcription/japanese_sentence_assembler.py",
+      "alpha/utils/async_debug_log.py",
+      "alpha/utils/diagnostic_test_log.py",
+      "alpha/utils/freeze_guard_log.py",
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/run_artifacts.py",
+      "alpha/utils/run_identity.py"
+    ],
+    "alpha/utils/run_artifacts.py": [
+      "alpha/constants.py",
+      "alpha/transcription/canonical_transcript_ledger.py",
+      "alpha/utils/async_debug_log.py",
+      "alpha/utils/canonical_export_writer.py",
+      "alpha/utils/diagnostic_test_log.py",
+      "alpha/utils/final_artifact_authority.py",
+      "alpha/utils/flight_recorder.py",
+      "alpha/utils/freeze_guard_log.py",
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/path_types.py",
+      "alpha/utils/run_identity.py",
+      "alpha/utils/session_forensics.py",
+      "alpha/utils/session_progress.py",
+      "alpha/utils/session_watchdog.py",
+      "alpha/utils/thread_dump.py",
+      "alpha/utils/transcript_snapshot_store.py",
+      "alpha/utils/troubleshooting_paths.py",
+      "alpha/utils/ui_thread_guard.py"
+    ],
+    "alpha/utils/run_consistency.py": [
+      "alpha/constants.py",
+      "alpha/utils/async_debug_log.py",
+      "alpha/utils/diagnostic_test_log.py",
+      "alpha/utils/freeze_guard_log.py",
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/run_artifacts.py",
+      "alpha/utils/run_identity.py"
+    ],
+    "alpha/utils/run_identity.py": [
+      "alpha/constants.py",
+      "alpha/transcription/canonical_transcript_ledger.py",
+      "alpha/utils/accuracy_stage_capture.py",
+      "alpha/utils/async_debug_log.py",
+      "alpha/utils/freeze_guard_log.py",
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/live_runtime_metrics.py",
+      "alpha/utils/run_artifacts.py",
+      "alpha/utils/troubleshooting_paths.py"
+    ],
+    "alpha/utils/segment_count_reconciliation.py": [
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/run_artifacts.py",
+      "alpha/utils/run_identity.py",
+      "alpha/utils/transcript_snapshot_store.py"
+    ],
+    "alpha/utils/session_forensics.py": [
+      "alpha/utils/flight_recorder.py",
+      "alpha/utils/japanese_accuracy_log.py"
+    ],
+    "alpha/utils/session_progress.py": [
+      "alpha/constants.py",
+      "alpha/transcription/japanese_sentence_assembler.py",
+      "alpha/utils/async_debug_log.py",
+      "alpha/utils/component_stall_classifier.py",
+      "alpha/utils/flight_recorder.py",
+      "alpha/utils/freeze_guard_log.py",
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/language_pipeline_worker.py",
+      "alpha/utils/lock_monitor.py",
+      "alpha/utils/partial_autosave_worker.py",
+      "alpha/utils/process_health_telemetry.py",
+      "alpha/utils/run_artifacts.py",
+      "alpha/utils/session_watchdog.py",
+      "alpha/utils/thread_dump.py",
+      "alpha/utils/tk_thread_guard.py",
+      "alpha/utils/ui_callback_tracer.py",
+      "alpha/utils/ui_event_bus.py",
+      "alpha/utils/ui_thread_guard.py"
+    ],
+    "alpha/utils/session_watchdog.py": [
+      "alpha/transcription/japanese_final_chunk_stabilizer.py",
+      "alpha/utils/async_debug_log.py",
+      "alpha/utils/component_stall_classifier.py",
+      "alpha/utils/crash_guard_log.py",
+      "alpha/utils/flight_recorder.py",
+      "alpha/utils/freeze_guard_log.py",
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/partial_autosave_worker.py",
+      "alpha/utils/run_artifacts.py",
+      "alpha/utils/run_identity.py",
+      "alpha/utils/session_progress.py",
+      "alpha/utils/thread_dump.py",
+      "alpha/utils/ui_callback_tracer.py"
+    ],
+    "alpha/utils/single_authority_packaging.py": [
+      "alpha/utils/package_build_identity.py"
+    ],
+    "alpha/utils/stable_commit_lineage_reconciliation.py": [
+      "alpha/utils/canonical_content_hash.py",
+      "alpha/utils/path_types.py",
+      "alpha/utils/persisted_run_evidence.py"
+    ],
+    "alpha/utils/stop_finalize_worker.py": [
+      "alpha/constants.py",
+      "alpha/transcription/japanese_final_chunk_stabilizer.py",
+      "alpha/transcription/japanese_sentence_assembler.py",
+      "alpha/utils/accuracy_evidence_export.py",
+      "alpha/utils/accuracy_stage_capture.py",
+      "alpha/utils/async_debug_log.py",
+      "alpha/utils/audio_temp_capture.py",
+      "alpha/utils/canonical_finalize.py",
+      "alpha/utils/component_stall_classifier.py",
+      "alpha/utils/evidence_pointer_finalize.py",
+      "alpha/utils/final_artifact_authority.py",
+      "alpha/utils/flight_recorder.py",
+      "alpha/utils/freeze_guard_log.py",
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/language_pipeline_worker.py",
+      "alpha/utils/live_runtime_metrics.py",
+      "alpha/utils/path_types.py",
+      "alpha/utils/process_health_telemetry.py",
+      "alpha/utils/run_artifacts.py",
+      "alpha/utils/run_consistency.py",
+      "alpha/utils/run_identity.py",
+      "alpha/utils/runtime_evidence.py",
+      "alpha/utils/segment_count_reconciliation.py",
+      "alpha/utils/tk_thread_guard.py",
+      "alpha/utils/troubleshooting_paths.py",
+      "alpha/utils/ui_stop_drain_barrier.py"
+    ],
+    "alpha/utils/stop_timeline_reconciliation.py": [
+      "alpha/utils/canonical_content_hash.py",
+      "alpha/utils/path_types.py",
+      "alpha/utils/persisted_run_evidence.py"
+    ],
+    "alpha/utils/strict_evidence_values.py": [],
+    "alpha/utils/strict_package_identity.py": [
+      "alpha/utils/path_types.py",
+      "alpha/utils/persisted_run_evidence.py",
+      "alpha/utils/validation_version.py"
+    ],
+    "alpha/utils/strict_stop_evidence.py": [
+      "alpha/utils/final_status_reconciliation.py",
+      "alpha/utils/path_types.py",
+      "alpha/utils/persisted_run_evidence.py",
+      "alpha/utils/strict_evidence_values.py"
+    ],
+    "alpha/utils/thread_dump.py": [
+      "alpha/utils/freeze_guard_log.py",
+      "alpha/utils/japanese_accuracy_log.py"
+    ],
+    "alpha/utils/thread_safety.py": [
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/ui_thread_guard.py"
+    ],
+    "alpha/utils/tk_thread_guard.py": [
+      "alpha/constants.py",
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/ui_event_bus.py",
+      "alpha/utils/ui_thread_guard.py"
+    ],
+    "alpha/utils/transcript_evidence.py": [
+      "alpha/constants.py",
+      "alpha/utils/evidence_jsonl.py",
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/run_identity.py",
+      "alpha/utils/troubleshooting_paths.py"
+    ],
+    "alpha/utils/transcript_snapshot_store.py": [
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/lock_instrumentation.py"
+    ],
+    "alpha/utils/troubleshooting_paths.py": [
+      "alpha/constants.py",
+      "alpha/utils/accuracy_stage_capture.py",
+      "alpha/utils/async_debug_log.py",
+      "alpha/utils/diagnostic_test_log.py",
+      "alpha/utils/evidence_jsonl.py",
+      "alpha/utils/flight_recorder.py",
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/process_health_telemetry.py",
+      "alpha/utils/ui_thread_guard.py"
+    ],
+    "alpha/utils/ui_callback_tracer.py": [
+      "alpha/utils/japanese_accuracy_log.py"
+    ],
+    "alpha/utils/ui_event_bus.py": [
+      "alpha/constants.py",
+      "alpha/utils/evidence_jsonl.py",
+      "alpha/utils/japanese_accuracy_log.py"
+    ],
+    "alpha/utils/ui_stop_drain_barrier.py": [
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/ui_event_bus.py"
+    ],
+    "alpha/utils/ui_thread_guard.py": [
+      "alpha/utils/japanese_accuracy_log.py"
+    ],
+    "alpha/utils/validation_version.py": [],
+    "alpha/utils/zero_issue_acceptance.py": [],
+    "alpha/utils/zero_issue_gate.py": [],
+    "alpha/utils/__init__.py": []
+  },
+  "imported_by": {
+    "alpha/constants.py": [
+      "_cleanup_archive/root_cleanup_20260708_155406/old_runtime_smoke_scripts/runtime_smoke_start_stop_8521.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_runtime_smoke_scripts/runtime_smoke_start_stop_8522.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_runtime_smoke_scripts/runtime_smoke_start_stop_85221.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_runtime_smoke_scripts/runtime_smoke_start_stop_85222.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_runtime_smoke_scripts/runtime_smoke_start_stop_85223.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_runtime_smoke_scripts/runtime_smoke_start_stop_85231.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8511.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8511_1.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8512.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8513.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8514.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8515.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8516.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8517.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8518.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8519.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8520.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8520_1.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8520_2.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8520_4.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_8521.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_8522.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_85221.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_85222.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_85223.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_85231.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_runtime_8520_5.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_startup_8520_3.py",
+      "alpha/audio/source_gate.py",
+      "alpha/config.py",
+      "alpha/transcription/canonical_transcript_ledger.py",
+      "alpha/transcription/corporate_ir_glossary.py",
+      "alpha/transcription/corporate_ir_stable_corrector.py",
+      "alpha/transcription/deepgram_client.py",
+      "alpha/transcription/duplicate_protection.py",
+      "alpha/transcription/final_output_cleanup.py",
+      "alpha/transcription/financial_number_safety.py",
+      "alpha/transcription/japanese_boundary_stabilizer.py",
+      "alpha/transcription/japanese_business_accuracy.py",
+      "alpha/transcription/japanese_final_chunk_stabilizer.py",
+      "alpha/transcription/japanese_sentence_assembler.py",
+      "alpha/transcription/japanese_visible_error_audit.py",
+      "alpha/transcription/pipeline_commit_transaction.py",
+      "alpha/transcription/revision_metadata.py",
+      "alpha/transcription/stable_line_revision.py",
+      "alpha/transcription/stable_revision_decision.py",
+      "alpha/transcription/transcript_lineage.py",
+      "alpha/ui/main_window.py",
+      "alpha/utils/accuracy_evidence_export.py",
+      "alpha/utils/accuracy_report_sync.py",
+      "alpha/utils/accuracy_stage_capture.py",
+      "alpha/utils/alpha_output_protection.py",
+      "alpha/utils/async_debug_log.py",
+      "alpha/utils/atomic_evidence_finalize.py",
+      "alpha/utils/audio_temp_capture.py",
+      "alpha/utils/boundary_evidence_finalize.py",
+      "alpha/utils/canonical_acceptance_state.py",
+      "alpha/utils/canonical_export_writer.py",
+      "alpha/utils/canonical_finalize.py",
+      "alpha/utils/cjk_text.py",
+      "alpha/utils/clean_export_coverage.py",
+      "alpha/utils/crash_guard_log.py",
+      "alpha/utils/diagnostic_test_log.py",
+      "alpha/utils/evidence_jsonl.py",
+      "alpha/utils/evidence_pointer_finalize.py",
+      "alpha/utils/flight_recorder.py",
+      "alpha/utils/freeze_guard_log.py",
+      "alpha/utils/glossary_evidence_sync.py",
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/live_runtime_metrics.py",
+      "alpha/utils/logging_utils.py",
+      "alpha/utils/package_persisted_staging.py",
+      "alpha/utils/partial_autosave_worker.py",
+      "alpha/utils/run_artifacts.py",
+      "alpha/utils/run_consistency.py",
+      "alpha/utils/run_identity.py",
+      "alpha/utils/runtime_evidence.py",
+      "alpha/utils/session_progress.py",
+      "alpha/utils/stop_finalize_worker.py",
+      "alpha/utils/tk_thread_guard.py",
+      "alpha/utils/transcript_evidence.py",
+      "alpha/utils/troubleshooting_paths.py",
+      "alpha/utils/ui_event_bus.py",
+      "analyze_alpha_vs_reference.py",
+      "audit_final_alpha_writers_8525331.py",
+      "build_persisted_stage_manifest_8525332.py",
+      "collect_preflight_85234.py",
+      "collect_preflight_852341.py",
+      "create_benchmark_manifest.py",
+      "main.py",
+      "package_latest_troubleshooting_run.py",
+      "prepare_accuracy_benchmark_852532.py",
+      "reference_transcript_quality_check.py",
+      "regression_canonical_pipeline_852532.py",
+      "regression_cer_852532.py",
+      "regression_eleven_issue_closure_852533.py",
+      "regression_final_writer_stop_tail_8525331.py",
+      "regression_persisted_evidence_package_closure_8525332.py",
+      "regression_run_resolution_reference_trust_8525321.py",
+      "regression_three_stage_cer_852531.py",
+      "repair_clean_alpha_export.py",
+      "replay_revision_decisions_852531.py",
+      "run_persisted_closure_8525332.py",
+      "run_post_live_closure_8525331.py",
+      "run_pre_live_gate_8525331.py",
+      "runtime_smoke_accuracy_stage_isolation_85253.py",
+      "runtime_smoke_eleven_issue_closure_852533.py",
+      "runtime_smoke_start_stop_85232.py",
+      "runtime_smoke_start_stop_85233.py",
+      "runtime_smoke_start_stop_85234.py",
+      "runtime_smoke_start_stop_852341.py",
+      "runtime_smoke_start_stop_8524.py",
+      "runtime_smoke_start_stop_85241.py",
+      "runtime_smoke_start_stop_85242.py",
+      "runtime_smoke_start_stop_8525.py",
+      "runtime_smoke_start_stop_85251.py",
+      "runtime_smoke_start_stop_85252.py",
+      "score_latest_accuracy.py",
+      "score_three_stage_accuracy.py",
+      "simulate_boundary_stabilizer.py",
+      "tests/test_build_deepgram_url_startup_85253.py",
+      "validate_accuracy_85232.py",
+      "validate_accuracy_85233.py",
+      "validate_accuracy_85234.py",
+      "validate_accuracy_852341.py",
+      "validate_accuracy_8524.py",
+      "validate_accuracy_85241.py",
+      "validate_accuracy_85242.py",
+      "validate_accuracy_8525.py",
+      "validate_accuracy_85251.py",
+      "validate_accuracy_85252.py",
+      "validate_accuracy_852521.py",
+      "validate_accuracy_stage_isolation_85253.py",
+      "validate_canonical_pipeline_852532.py",
+      "validate_eleven_issue_closure_852533.py",
+      "validate_final_writer_stop_tail_closure_8525331.py",
+      "validate_revision_safety_852531.py"
+    ],
+    "reference_transcript_quality_check.py": [
+      "analyze_alpha_vs_reference.py",
+      "prepare_accuracy_benchmark_852532.py",
+      "score_latest_accuracy.py"
+    ],
+    "alpha/utils/japanese_accuracy_log.py": [
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8511.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8511_1.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8512.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8513.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8514.py",
+      "alpha/transcription/canonical_transcript_ledger.py",
+      "alpha/transcription/corporate_ir_glossary.py",
+      "alpha/transcription/corporate_ir_stable_corrector.py",
+      "alpha/transcription/deepgram_client.py",
+      "alpha/transcription/final_output_cleanup.py",
+      "alpha/transcription/financial_number_safety.py",
+      "alpha/transcription/japanese_accuracy_cleaner.py",
+      "alpha/transcription/japanese_boundary_stabilizer.py",
+      "alpha/transcription/japanese_business_accuracy.py",
+      "alpha/transcription/japanese_final_chunk_stabilizer.py",
+      "alpha/transcription/japanese_sentence_assembler.py",
+      "alpha/transcription/japanese_stable_accuracy.py",
+      "alpha/transcription/japanese_translation_unit_builder.py",
+      "alpha/transcription/japanese_visible_error_audit.py",
+      "alpha/transcription/pipeline_commit_transaction.py",
+      "alpha/transcription/stable_line_revision.py",
+      "alpha/transcription/transcript_lineage.py",
+      "alpha/ui/main_window.py",
+      "alpha/utils/accuracy_decision_log.py",
+      "alpha/utils/accuracy_evidence_export.py",
+      "alpha/utils/accuracy_report_sync.py",
+      "alpha/utils/accuracy_stage_capture.py",
+      "alpha/utils/alignment_v2.py",
+      "alpha/utils/alpha_output_protection.py",
+      "alpha/utils/atomic_evidence_finalize.py",
+      "alpha/utils/audio_temp_capture.py",
+      "alpha/utils/boundary_evidence_finalize.py",
+      "alpha/utils/canonical_export_writer.py",
+      "alpha/utils/canonical_finalize.py",
+      "alpha/utils/clean_export_coverage.py",
+      "alpha/utils/component_stall_classifier.py",
+      "alpha/utils/crash_guard_log.py",
+      "alpha/utils/evidence_pointer_finalize.py",
+      "alpha/utils/final_artifact_authority.py",
+      "alpha/utils/flight_recorder.py",
+      "alpha/utils/glossary_evidence_sync.py",
+      "alpha/utils/language_pipeline_worker.py",
+      "alpha/utils/latest_completed_live_run.py",
+      "alpha/utils/live_runtime_metrics.py",
+      "alpha/utils/lock_instrumentation.py",
+      "alpha/utils/lock_monitor.py",
+      "alpha/utils/partial_autosave_worker.py",
+      "alpha/utils/process_health_telemetry.py",
+      "alpha/utils/reference_alpha_hash.py",
+      "alpha/utils/run_artifacts.py",
+      "alpha/utils/run_consistency.py",
+      "alpha/utils/run_identity.py",
+      "alpha/utils/runtime_audio_counters.py",
+      "alpha/utils/runtime_evidence.py",
+      "alpha/utils/segment_count_reconciliation.py",
+      "alpha/utils/session_forensics.py",
+      "alpha/utils/session_progress.py",
+      "alpha/utils/session_watchdog.py",
+      "alpha/utils/stop_finalize_worker.py",
+      "alpha/utils/thread_dump.py",
+      "alpha/utils/thread_safety.py",
+      "alpha/utils/tk_thread_guard.py",
+      "alpha/utils/transcript_evidence.py",
+      "alpha/utils/transcript_snapshot_store.py",
+      "alpha/utils/troubleshooting_paths.py",
+      "alpha/utils/ui_callback_tracer.py",
+      "alpha/utils/ui_event_bus.py",
+      "alpha/utils/ui_stop_drain_barrier.py",
+      "alpha/utils/ui_thread_guard.py",
+      "analyze_alpha_vs_reference.py",
+      "main.py",
+      "reference_transcript_quality_check.py",
+      "runtime_smoke_accuracy_stage_isolation_85253.py",
+      "runtime_smoke_eleven_issue_closure_852533.py",
+      "score_latest_accuracy.py"
+    ],
+    "alpha/transcription/final_output_cleanup.py": [
+      "alpha/transcription/transcript_lineage.py",
+      "alpha/utils/boundary_evidence_finalize.py",
+      "alpha/utils/clean_export_coverage.py",
+      "analyze_alpha_vs_reference.py",
+      "repair_clean_alpha_export.py",
+      "runtime_smoke_start_stop_85242.py",
+      "score_latest_accuracy.py",
+      "validate_accuracy_85242.py"
+    ],
+    "alpha/utils/reference_alpha_hash.py": [
+      "alpha/utils/accuracy_report_sync.py",
+      "analyze_alpha_vs_reference.py",
+      "create_benchmark_manifest.py",
+      "reference_transcript_quality_check.py",
+      "score_latest_accuracy.py"
+    ],
+    "alpha/utils/accuracy_report_sync.py": [
+      "alpha/utils/accuracy_evidence_export.py",
+      "analyze_alpha_vs_reference.py",
+      "reference_transcript_quality_check.py",
+      "score_latest_accuracy.py",
+      "validate_accuracy_85234.py",
+      "validate_accuracy_852341.py"
+    ],
+    "alpha/utils/alignment_v2.py": [
+      "analyze_alpha_vs_reference.py"
+    ],
+    "alpha/utils/canonical_content_hash.py": [
+      "alpha/utils/accuracy_stage_capture.py",
+      "alpha/utils/canonical_acceptance_state.py",
+      "alpha/utils/final_status_reconciliation.py",
+      "alpha/utils/finalizer_event_reconciliation.py",
+      "alpha/utils/package_canonical_acceptance_staging.py",
+      "alpha/utils/package_persisted_staging.py",
+      "alpha/utils/package_zero_issue_staging.py",
+      "alpha/utils/persisted_run_evidence.py",
+      "alpha/utils/stable_commit_lineage_reconciliation.py",
+      "alpha/utils/stop_timeline_reconciliation.py",
+      "build_persisted_stage_manifest_8525332.py",
+      "prepare_accuracy_benchmark_852532.py",
+      "regression_canonical_acceptance_bundle_85253321.py",
+      "regression_persisted_evidence_package_closure_8525332.py",
+      "regression_zero_issue_validation_85253322.py",
+      "run_final_validation_bundle_85253321.py",
+      "run_persisted_closure_8525332.py",
+      "run_zero_issue_closure_85253322.py",
+      "validate_canonical_acceptance_85253321.py"
+    ],
+    "alpha/utils/path_types.py": [
+      "alpha/transcription/pipeline_commit_transaction.py",
+      "alpha/utils/accuracy_stage_capture.py",
+      "alpha/utils/canonical_acceptance_state.py",
+      "alpha/utils/canonical_finalize.py",
+      "alpha/utils/component_stall_classifier.py",
+      "alpha/utils/final_artifact_authority.py",
+      "alpha/utils/final_status_reconciliation.py",
+      "alpha/utils/finalizer_event_reconciliation.py",
+      "alpha/utils/latest_completed_live_run.py",
+      "alpha/utils/package_canonical_acceptance_staging.py",
+      "alpha/utils/package_persisted_staging.py",
+      "alpha/utils/package_zero_issue_staging.py",
+      "alpha/utils/persisted_run_evidence.py",
+      "alpha/utils/run_artifacts.py",
+      "alpha/utils/stable_commit_lineage_reconciliation.py",
+      "alpha/utils/stop_finalize_worker.py",
+      "alpha/utils/stop_timeline_reconciliation.py",
+      "alpha/utils/strict_package_identity.py",
+      "alpha/utils/strict_stop_evidence.py",
+      "build_persisted_stage_manifest_8525332.py",
+      "package_latest_troubleshooting_run.py",
+      "regression_eleven_issue_closure_852533.py",
+      "run_final_validation_bundle_85253321.py",
+      "run_persisted_closure_8525332.py",
+      "run_post_live_closure_8525331.py",
+      "run_zero_issue_closure_85253322.py",
+      "validate_canonical_acceptance_85253321.py",
+      "validate_eleven_issue_closure_852533.py",
+      "validate_final_writer_stop_tail_closure_8525331.py"
+    ],
+    "alpha/utils/persisted_run_evidence.py": [
+      "alpha/utils/accuracy_stage_capture.py",
+      "alpha/utils/canonical_acceptance_state.py",
+      "alpha/utils/final_status_reconciliation.py",
+      "alpha/utils/stable_commit_lineage_reconciliation.py",
+      "alpha/utils/stop_timeline_reconciliation.py",
+      "alpha/utils/strict_package_identity.py",
+      "alpha/utils/strict_stop_evidence.py",
+      "build_persisted_stage_manifest_8525332.py",
+      "regression_persisted_evidence_package_closure_8525332.py",
+      "run_persisted_closure_8525332.py",
+      "run_zero_issue_closure_85253322.py"
+    ],
+    "alpha/utils/session_watchdog.py": [
+      "alpha/ui/main_window.py",
+      "alpha/utils/crash_guard_log.py",
+      "alpha/utils/flight_recorder.py",
+      "alpha/utils/run_artifacts.py",
+      "alpha/utils/session_progress.py",
+      "main.py"
+    ],
+    "alpha/utils/troubleshooting_paths.py": [
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8520.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8520_1.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8520_2.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_startup_8520_3.py",
+      "alpha/transcription/japanese_boundary_stabilizer.py",
+      "alpha/transcription/japanese_sentence_assembler.py",
+      "alpha/transcription/pipeline_commit_transaction.py",
+      "alpha/transcription/stable_line_revision.py",
+      "alpha/ui/main_window.py",
+      "alpha/utils/accuracy_decision_log.py",
+      "alpha/utils/accuracy_evidence_export.py",
+      "alpha/utils/accuracy_stage_capture.py",
+      "alpha/utils/alpha_output_protection.py",
+      "alpha/utils/async_debug_log.py",
+      "alpha/utils/audio_temp_capture.py",
+      "alpha/utils/boundary_evidence_finalize.py",
+      "alpha/utils/canonical_export_writer.py",
+      "alpha/utils/canonical_finalize.py",
+      "alpha/utils/crash_guard_log.py",
+      "alpha/utils/diagnostic_test_log.py",
+      "alpha/utils/evidence_jsonl.py",
+      "alpha/utils/evidence_pointer_finalize.py",
+      "alpha/utils/final_artifact_authority.py",
+      "alpha/utils/freeze_guard_log.py",
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/process_health_telemetry.py",
+      "alpha/utils/run_artifacts.py",
+      "alpha/utils/run_identity.py",
+      "alpha/utils/stop_finalize_worker.py",
+      "alpha/utils/transcript_evidence.py",
+      "main.py",
+      "runtime_smoke_eleven_issue_closure_852533.py"
+    ],
+    "alpha/utils/run_artifacts.py": [
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8511.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8512.py",
+      "alpha/transcription/japanese_final_chunk_stabilizer.py",
+      "alpha/ui/main_window.py",
+      "alpha/utils/accuracy_evidence_export.py",
+      "alpha/utils/crash_guard_log.py",
+      "alpha/utils/evidence_pointer_finalize.py",
+      "alpha/utils/partial_autosave_worker.py",
+      "alpha/utils/run_consistency.py",
+      "alpha/utils/run_identity.py",
+      "alpha/utils/runtime_evidence.py",
+      "alpha/utils/segment_count_reconciliation.py",
+      "alpha/utils/session_progress.py",
+      "alpha/utils/session_watchdog.py",
+      "alpha/utils/stop_finalize_worker.py",
+      "main.py"
+    ],
+    "alpha/transcription/japanese_accuracy_cleaner.py": [
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8511.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8513.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8514.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8515.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8516.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8517.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8518.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8519.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8520.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8520_1.py",
+      "alpha/transcription/japanese_sentence_assembler.py",
+      "main.py"
+    ],
+    "alpha/utils/diagnostic_test_log.py": [
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8511.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8512.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8513.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8514.py",
+      "alpha/transcription/japanese_final_chunk_stabilizer.py",
+      "alpha/ui/main_window.py",
+      "alpha/utils/run_artifacts.py",
+      "alpha/utils/run_consistency.py",
+      "alpha/utils/runtime_evidence.py",
+      "alpha/utils/troubleshooting_paths.py",
+      "main.py"
+    ],
+    "alpha/ui/main_window.py": [
+      "main.py"
+    ],
+    "alpha/utils/logging_utils.py": [
+      "alpha/core/event_bus.py",
+      "alpha/transcription/deepgram_client.py",
+      "alpha/ui/main_window.py",
+      "alpha/utils/async_debug_log.py",
+      "main.py"
+    ],
+    "alpha/transcription/japanese_final_chunk_stabilizer.py": [
+      "alpha/transcription/deepgram_client.py",
+      "alpha/ui/main_window.py",
+      "alpha/utils/session_watchdog.py",
+      "alpha/utils/stop_finalize_worker.py",
+      "main.py"
+    ],
+    "alpha/utils/tk_thread_guard.py": [
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8519.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8520_1.py",
+      "alpha/ui/main_window.py",
+      "alpha/utils/session_progress.py",
+      "alpha/utils/stop_finalize_worker.py",
+      "main.py"
+    ],
+    "alpha/utils/async_debug_log.py": [
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8511.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_startup_8520_3.py",
+      "alpha/transcription/deepgram_client.py",
+      "alpha/ui/main_window.py",
+      "alpha/utils/crash_guard_log.py",
+      "alpha/utils/diagnostic_test_log.py",
+      "alpha/utils/run_artifacts.py",
+      "alpha/utils/run_consistency.py",
+      "alpha/utils/run_identity.py",
+      "alpha/utils/runtime_evidence.py",
+      "alpha/utils/session_progress.py",
+      "alpha/utils/session_watchdog.py",
+      "alpha/utils/stop_finalize_worker.py",
+      "alpha/utils/troubleshooting_paths.py",
+      "main.py"
+    ],
+    "alpha/utils/audio_temp_capture.py": [
+      "alpha/transcription/japanese_final_chunk_stabilizer.py",
+      "alpha/ui/main_window.py",
+      "alpha/utils/stop_finalize_worker.py",
+      "main.py"
+    ],
+    "alpha/utils/thread_safety.py": [
+      "main.py"
+    ],
+    "alpha/utils/ui_event_bus.py": [
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8518.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8519.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8520.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8520_1.py",
+      "alpha/transcription/deepgram_client.py",
+      "alpha/ui/main_window.py",
+      "alpha/utils/session_progress.py",
+      "alpha/utils/tk_thread_guard.py",
+      "alpha/utils/ui_stop_drain_barrier.py",
+      "main.py"
+    ],
+    "alpha/utils/language_pipeline_worker.py": [
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8518.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8519.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8520.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8520_1.py",
+      "alpha/transcription/japanese_sentence_assembler.py",
+      "alpha/ui/main_window.py",
+      "alpha/utils/session_progress.py",
+      "alpha/utils/stop_finalize_worker.py",
+      "main.py",
+      "regression_eleven_issue_closure_852533.py",
+      "runtime_smoke_eleven_issue_closure_852533.py"
+    ],
+    "alpha/utils/flight_recorder.py": [
+      "alpha/transcription/japanese_sentence_assembler.py",
+      "alpha/ui/main_window.py",
+      "alpha/utils/canonical_finalize.py",
+      "alpha/utils/component_stall_classifier.py",
+      "alpha/utils/crash_guard_log.py",
+      "alpha/utils/run_artifacts.py",
+      "alpha/utils/session_forensics.py",
+      "alpha/utils/session_progress.py",
+      "alpha/utils/session_watchdog.py",
+      "alpha/utils/stop_finalize_worker.py",
+      "alpha/utils/troubleshooting_paths.py",
+      "main.py"
+    ],
+    "alpha/transcription/japanese_business_accuracy.py": [
+      "_cleanup_archive/root_cleanup_20260708_155406/old_runtime_smoke_scripts/runtime_smoke_start_stop_85221.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_runtime_smoke_scripts/runtime_smoke_start_stop_85222.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_runtime_smoke_scripts/runtime_smoke_start_stop_85223.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_runtime_smoke_scripts/runtime_smoke_start_stop_85231.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_8522.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_85221.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_85222.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_85223.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_85231.py",
+      "alpha/transcription/japanese_sentence_assembler.py",
+      "main.py",
+      "runtime_smoke_start_stop_85232.py",
+      "runtime_smoke_start_stop_85233.py",
+      "runtime_smoke_start_stop_85234.py",
+      "runtime_smoke_start_stop_852341.py",
+      "runtime_smoke_start_stop_8524.py",
+      "runtime_smoke_start_stop_85241.py",
+      "runtime_smoke_start_stop_85242.py",
+      "runtime_smoke_start_stop_8525.py",
+      "runtime_smoke_start_stop_85251.py",
+      "runtime_smoke_start_stop_85252.py",
+      "validate_accuracy_85232.py",
+      "validate_accuracy_85233.py",
+      "validate_accuracy_85234.py",
+      "validate_accuracy_852341.py",
+      "validate_accuracy_8524.py",
+      "validate_accuracy_85241.py",
+      "validate_accuracy_85242.py",
+      "validate_accuracy_8525.py",
+      "validate_accuracy_85251.py",
+      "validate_accuracy_85252.py"
+    ],
+    "alpha/utils/crash_guard_log.py": [
+      "alpha/transcription/deepgram_client.py",
+      "alpha/transcription/japanese_final_chunk_stabilizer.py",
+      "alpha/transcription/japanese_sentence_assembler.py",
+      "alpha/ui/main_window.py",
+      "alpha/utils/language_pipeline_worker.py",
+      "alpha/utils/session_watchdog.py",
+      "main.py"
+    ],
+    "alpha/utils/latest_completed_live_run.py": [
+      "package_latest_troubleshooting_run.py",
+      "regression_final_writer_stop_tail_8525331.py",
+      "regression_run_resolution_reference_trust_8525321.py",
+      "repair_existing_run_8525321.py",
+      "repair_run_metadata_8525321.py",
+      "run_post_live_closure_8525331.py",
+      "score_three_stage_accuracy.py",
+      "validate_canonical_pipeline_852532.py",
+      "validate_eleven_issue_closure_852533.py",
+      "validate_final_writer_stop_tail_closure_8525331.py"
+    ],
+    "alpha/utils/validation_version.py": [
+      "alpha/utils/immutable_evidence_contract.py",
+      "alpha/utils/package_zero_issue_staging.py",
+      "alpha/utils/strict_package_identity.py",
+      "prepare_accuracy_benchmark_852532.py",
+      "regression_eleven_issue_closure_852533.py",
+      "regression_zero_issue_validation_85253322.py",
+      "run_zero_issue_closure_85253322.py"
+    ],
+    "alpha/utils/canonical_acceptance_state.py": [
+      "alpha/utils/package_canonical_acceptance_staging.py",
+      "regression_canonical_acceptance_bundle_85253321.py",
+      "regression_zero_issue_validation_85253322.py",
+      "run_final_validation_bundle_85253321.py",
+      "run_zero_issue_closure_85253322.py",
+      "validate_canonical_acceptance_85253321.py"
+    ],
+    "alpha/utils/package_canonical_acceptance_staging.py": [
+      "regression_canonical_acceptance_bundle_85253321.py",
+      "run_final_validation_bundle_85253321.py"
+    ],
+    "alpha/transcription/canonical_transcript_ledger.py": [
+      "alpha/transcription/pipeline_commit_transaction.py",
+      "alpha/utils/accuracy_stage_capture.py",
+      "alpha/utils/canonical_finalize.py",
+      "alpha/utils/run_artifacts.py",
+      "alpha/utils/run_identity.py",
+      "regression_canonical_pipeline_852532.py",
+      "regression_eleven_issue_closure_852533.py",
+      "regression_final_writer_stop_tail_8525331.py"
+    ],
+    "alpha/transcription/revision_metadata.py": [
+      "alpha/transcription/pipeline_commit_transaction.py",
+      "regression_canonical_pipeline_852532.py"
+    ],
+    "alpha/utils/pipeline_integrity.py": [
+      "alpha/transcription/canonical_transcript_ledger.py",
+      "alpha/transcription/pipeline_commit_transaction.py",
+      "alpha/transcription/revision_metadata.py",
+      "regression_canonical_pipeline_852532.py",
+      "regression_eleven_issue_closure_852533.py",
+      "regression_final_writer_stop_tail_8525331.py"
+    ],
+    "alpha/utils/cer_backtracking.py": [
+      "regression_cer_852532.py",
+      "regression_three_stage_cer_852531.py",
+      "replay_revision_decisions_852531.py",
+      "score_three_stage_accuracy.py",
+      "validate_canonical_pipeline_852532.py",
+      "validate_revision_safety_852531.py"
+    ],
+    "alpha/transcription/pipeline_commit_transaction.py": [
+      "alpha/transcription/japanese_sentence_assembler.py",
+      "regression_eleven_issue_closure_852533.py",
+      "regression_final_writer_stop_tail_8525331.py"
+    ],
+    "alpha/transcription/stable_revision_decision.py": [
+      "alpha/transcription/japanese_sentence_assembler.py",
+      "regression_eleven_issue_closure_852533.py",
+      "replay_revision_decisions_852531.py",
+      "validate_revision_safety_852531.py"
+    ],
+    "alpha/utils/accuracy_stage_capture.py": [
+      "alpha/transcription/deepgram_client.py",
+      "alpha/transcription/japanese_final_chunk_stabilizer.py",
+      "alpha/transcription/japanese_sentence_assembler.py",
+      "alpha/transcription/pipeline_commit_transaction.py",
+      "alpha/utils/canonical_finalize.py",
+      "alpha/utils/run_identity.py",
+      "alpha/utils/stop_finalize_worker.py",
+      "alpha/utils/troubleshooting_paths.py",
+      "regression_eleven_issue_closure_852533.py",
+      "regression_final_writer_stop_tail_8525331.py",
+      "repair_accuracy_stage_artifacts_85253.py",
+      "repair_existing_run_8525321.py",
+      "run_post_live_closure_8525331.py",
+      "runtime_smoke_accuracy_stage_isolation_85253.py",
+      "validate_accuracy_stage_isolation_85253.py",
+      "validate_eleven_issue_closure_852533.py",
+      "validate_final_writer_stop_tail_closure_8525331.py"
+    ],
+    "alpha/utils/runtime_audio_counters.py": [
+      "alpha/audio/microphone.py",
+      "alpha/audio/timeline_mixer.py",
+      "alpha/audio/wasapi.py",
+      "alpha/transcription/deepgram_client.py",
+      "alpha/ui/main_window.py",
+      "alpha/utils/accuracy_stage_capture.py",
+      "regression_eleven_issue_closure_852533.py"
+    ],
+    "alpha/utils/ui_stop_drain_barrier.py": [
+      "alpha/utils/stop_finalize_worker.py",
+      "regression_eleven_issue_closure_852533.py"
+    ],
+    "alpha/utils/canonical_finalize.py": [
+      "alpha/utils/stop_finalize_worker.py",
+      "regression_eleven_issue_closure_852533.py"
+    ],
+    "alpha/utils/component_stall_classifier.py": [
+      "alpha/ui/main_window.py",
+      "alpha/utils/canonical_finalize.py",
+      "alpha/utils/session_progress.py",
+      "alpha/utils/session_watchdog.py",
+      "alpha/utils/stop_finalize_worker.py",
+      "regression_eleven_issue_closure_852533.py"
+    ],
+    "package_latest_troubleshooting_run.py": [
+      "regression_eleven_issue_closure_852533.py",
+      "runtime_smoke_eleven_issue_closure_852533.py",
+      "tests/test_package_glossary_flags_85253.py",
+      "validate_package_glossary_flags_85253.py"
+    ],
+    "alpha/utils/__init__.py": [
+      "regression_final_cleanup_package_85253324.py",
+      "regression_final_writer_stop_tail_8525331.py",
+      "regression_run_resolution_reference_trust_8525321.py",
+      "regression_single_authority_packaging_85253323.py"
+    ],
+    "alpha/utils/cleanup_build_identity.py": [
+      "alpha/utils/cleanup_protection_policy.py",
+      "alpha/utils/final_cleanup_engine.py",
+      "alpha/utils/final_cleanup_packaging.py",
+      "regression_final_cleanup_package_85253324.py",
+      "run_final_cleanup_and_package_closure_85253324.py"
+    ],
+    "alpha/utils/cleanup_protection_policy.py": [
+      "alpha/utils/final_cleanup_engine.py",
+      "regression_final_cleanup_package_85253324.py",
+      "run_final_cleanup_and_package_closure_85253324.py"
+    ],
+    "alpha/utils/final_cleanup_engine.py": [
+      "regression_final_cleanup_package_85253324.py",
+      "run_final_cleanup_and_package_closure_85253324.py"
+    ],
+    "alpha/utils/final_cleanup_packaging.py": [
+      "regression_final_cleanup_package_85253324.py",
+      "run_final_cleanup_and_package_closure_85253324.py"
+    ],
+    "alpha/utils/final_artifact_authority.py": [
+      "alpha/utils/accuracy_evidence_export.py",
+      "alpha/utils/accuracy_stage_capture.py",
+      "alpha/utils/alpha_output_protection.py",
+      "alpha/utils/canonical_export_writer.py",
+      "alpha/utils/run_artifacts.py",
+      "alpha/utils/stop_finalize_worker.py",
+      "regression_final_writer_stop_tail_8525331.py",
+      "run_post_live_closure_8525331.py",
+      "validate_final_writer_stop_tail_closure_8525331.py"
+    ],
+    "audit_final_alpha_writers_8525331.py": [
+      "regression_final_writer_stop_tail_8525331.py"
+    ],
+    "alpha/utils/canonical_export_writer.py": [
+      "alpha/transcription/transcript_lineage.py",
+      "alpha/utils/accuracy_evidence_export.py",
+      "alpha/utils/canonical_finalize.py",
+      "alpha/utils/run_artifacts.py",
+      "regression_final_writer_stop_tail_8525331.py",
+      "validate_output_artifact_consistency_852521.py"
+    ],
+    "alpha/utils/immutable_evidence_contract.py": [
+      "alpha/utils/canonical_acceptance_state.py",
+      "alpha/utils/package_canonical_acceptance_staging.py",
+      "alpha/utils/package_zero_issue_staging.py",
+      "regression_persisted_evidence_package_closure_8525332.py",
+      "regression_zero_issue_validation_85253322.py",
+      "run_final_validation_bundle_85253321.py",
+      "run_zero_issue_closure_85253322.py",
+      "validate_canonical_acceptance_85253321.py"
+    ],
+    "alpha/utils/prepared_reference_trust.py": [
+      "regression_run_resolution_reference_trust_8525321.py",
+      "repair_existing_run_8525321.py",
+      "score_three_stage_accuracy.py",
+      "validate_canonical_pipeline_852532.py"
+    ],
+    "alpha/utils/repair_helpers.py": [
+      "regression_run_resolution_reference_trust_8525321.py",
+      "repair_audio_delivery_summary_8525321.py",
+      "repair_existing_run_8525321.py",
+      "repair_run_metadata_8525321.py"
+    ],
+    "alpha/utils/package_build_identity.py": [
+      "alpha/utils/single_authority_packaging.py",
+      "regression_single_authority_packaging_85253323.py",
+      "run_single_authority_package_closure_85253323.py"
+    ],
+    "alpha/utils/final_status_reconciliation.py": [
+      "alpha/utils/strict_stop_evidence.py",
+      "regression_zero_issue_validation_85253322.py",
+      "run_zero_issue_closure_85253322.py"
+    ],
+    "alpha/utils/finalizer_event_reconciliation.py": [
+      "regression_zero_issue_validation_85253322.py",
+      "run_zero_issue_closure_85253322.py"
+    ],
+    "alpha/utils/required_regression_matrix.py": [
+      "regression_zero_issue_validation_85253322.py",
+      "run_zero_issue_closure_85253322.py"
+    ],
+    "alpha/utils/stable_commit_lineage_reconciliation.py": [
+      "regression_zero_issue_validation_85253322.py",
+      "run_zero_issue_closure_85253322.py"
+    ],
+    "alpha/utils/stop_timeline_reconciliation.py": [
+      "regression_zero_issue_validation_85253322.py",
+      "run_zero_issue_closure_85253322.py"
+    ],
+    "alpha/utils/strict_evidence_values.py": [
+      "alpha/utils/canonical_acceptance_state.py",
+      "alpha/utils/final_status_reconciliation.py",
+      "alpha/utils/strict_stop_evidence.py",
+      "regression_zero_issue_validation_85253322.py"
+    ],
+    "alpha/utils/strict_package_identity.py": [
+      "regression_zero_issue_validation_85253322.py",
+      "run_zero_issue_closure_85253322.py"
+    ],
+    "alpha/utils/zero_issue_acceptance.py": [
+      "regression_zero_issue_validation_85253322.py",
+      "run_zero_issue_closure_85253322.py"
+    ],
+    "alpha/utils/zero_issue_gate.py": [
+      "regression_zero_issue_validation_85253322.py",
+      "run_zero_issue_closure_85253322.py"
+    ],
+    "alpha/transcription/stable_line_revision.py": [
+      "alpha/transcription/final_output_cleanup.py",
+      "alpha/transcription/japanese_boundary_stabilizer.py",
+      "alpha/transcription/japanese_sentence_assembler.py",
+      "alpha/transcription/transcript_lineage.py",
+      "alpha/utils/accuracy_evidence_export.py",
+      "alpha/utils/boundary_evidence_finalize.py",
+      "alpha/utils/clean_export_coverage.py",
+      "repair_clean_alpha_export.py",
+      "validate_accuracy_85241.py"
+    ],
+    "alpha/transcription/corporate_ir_stable_corrector.py": [
+      "alpha/utils/boundary_evidence_finalize.py",
+      "repair_clean_alpha_export.py",
+      "runtime_smoke_start_stop_8525.py",
+      "validate_accuracy_8525.py"
+    ],
+    "alpha/transcription/transcript_lineage.py": [
+      "alpha/utils/boundary_evidence_finalize.py",
+      "repair_clean_alpha_export.py",
+      "runtime_smoke_start_stop_85252.py",
+      "validate_accuracy_85252.py",
+      "validate_lineage_regression_852521.py"
+    ],
+    "alpha/utils/clean_export_coverage.py": [
+      "alpha/utils/boundary_evidence_finalize.py",
+      "repair_clean_alpha_export.py",
+      "runtime_smoke_start_stop_85251.py",
+      "validate_accuracy_85251.py"
+    ],
+    "repair_run_metadata_8525321.py": [
+      "repair_existing_run_8525321.py"
+    ],
+    "repair_audio_delivery_summary_8525321.py": [
+      "repair_existing_run_8525321.py"
+    ],
+    "alpha/transcription/deepgram_client.py": [
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8511.py",
+      "alpha/ui/main_window.py",
+      "runtime_smoke_accuracy_stage_isolation_85253.py",
+      "tests/test_build_deepgram_url_startup_85253.py",
+      "tests/test_final_transcript_commit_v3_2_5.py",
+      "tests/test_graceful_stop_v3_2_2.py",
+      "tests/test_stop_finalize_v3_2_3.py",
+      "tests/test_stop_queue_flush_v3_2_4.py",
+      "validate_accuracy_stage_isolation_85253.py"
+    ],
+    "alpha/utils/alpha_output_protection.py": [
+      "alpha/utils/accuracy_evidence_export.py",
+      "alpha/utils/final_artifact_authority.py",
+      "runtime_smoke_accuracy_stage_isolation_85253.py",
+      "runtime_smoke_start_stop_85232.py",
+      "runtime_smoke_start_stop_85233.py",
+      "runtime_smoke_start_stop_85234.py",
+      "runtime_smoke_start_stop_852341.py",
+      "runtime_smoke_start_stop_8524.py",
+      "runtime_smoke_start_stop_85241.py",
+      "runtime_smoke_start_stop_85242.py",
+      "runtime_smoke_start_stop_8525.py",
+      "runtime_smoke_start_stop_85251.py",
+      "runtime_smoke_start_stop_85252.py"
+    ],
+    "alpha/utils/stop_finalize_worker.py": [
+      "_cleanup_archive/root_cleanup_20260708_155406/old_runtime_smoke_scripts/runtime_smoke_start_stop_8520_5.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_runtime_smoke_scripts/runtime_smoke_start_stop_8521.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_runtime_smoke_scripts/runtime_smoke_start_stop_8522.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_runtime_smoke_scripts/runtime_smoke_start_stop_85221.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_runtime_smoke_scripts/runtime_smoke_start_stop_85222.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_runtime_smoke_scripts/runtime_smoke_start_stop_85223.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_runtime_smoke_scripts/runtime_smoke_start_stop_85231.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8511_1.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8512.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8519.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8520.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8520_1.py",
+      "alpha/ui/main_window.py",
+      "alpha/utils/evidence_pointer_finalize.py",
+      "runtime_smoke_eleven_issue_closure_852533.py",
+      "runtime_smoke_start_stop_85232.py",
+      "runtime_smoke_start_stop_85233.py",
+      "runtime_smoke_start_stop_85234.py",
+      "runtime_smoke_start_stop_852341.py",
+      "runtime_smoke_start_stop_8524.py",
+      "runtime_smoke_start_stop_85241.py",
+      "runtime_smoke_start_stop_85242.py",
+      "runtime_smoke_start_stop_8525.py",
+      "runtime_smoke_start_stop_85251.py",
+      "runtime_smoke_start_stop_85252.py"
+    ],
+    "alpha/utils/freeze_guard_log.py": [
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8511_1.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8512.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8513.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8514.py",
+      "alpha/transcription/deepgram_client.py",
+      "alpha/ui/main_window.py",
+      "alpha/utils/async_debug_log.py",
+      "alpha/utils/crash_guard_log.py",
+      "alpha/utils/process_health_telemetry.py",
+      "alpha/utils/run_artifacts.py",
+      "alpha/utils/run_consistency.py",
+      "alpha/utils/run_identity.py",
+      "alpha/utils/runtime_evidence.py",
+      "alpha/utils/session_progress.py",
+      "alpha/utils/session_watchdog.py",
+      "alpha/utils/stop_finalize_worker.py",
+      "alpha/utils/thread_dump.py",
+      "runtime_smoke_eleven_issue_closure_852533.py"
+    ],
+    "alpha/utils/project_dependency_analyzer.py": [
+      "run_final_cleanup_and_package_closure_85253324.py"
+    ],
+    "alpha/utils/package_persisted_staging.py": [
+      "run_persisted_closure_8525332.py"
+    ],
+    "build_persisted_stage_manifest_8525332.py": [
+      "run_persisted_closure_8525332.py"
+    ],
+    "alpha/utils/single_authority_packaging.py": [
+      "run_single_authority_package_closure_85253323.py"
+    ],
+    "alpha/utils/package_zero_issue_staging.py": [
+      "run_zero_issue_closure_85253322.py"
+    ],
+    "alpha/utils/strict_stop_evidence.py": [
+      "run_zero_issue_closure_85253322.py"
+    ],
+    "alpha/transcription/japanese_visible_error_audit.py": [
+      "_cleanup_archive/root_cleanup_20260708_155406/old_runtime_smoke_scripts/runtime_smoke_start_stop_85231.py",
+      "alpha/utils/accuracy_evidence_export.py",
+      "score_latest_accuracy.py"
+    ],
+    "alpha/transcription/japanese_boundary_stabilizer.py": [
+      "alpha/transcription/japanese_final_chunk_stabilizer.py",
+      "alpha/transcription/japanese_sentence_assembler.py",
+      "alpha/utils/boundary_evidence_finalize.py",
+      "simulate_boundary_stabilizer.py",
+      "validate_accuracy_8524.py",
+      "validate_accuracy_85241.py"
+    ],
+    "analyze_alpha_vs_reference.py": [
+      "validate_accuracy_85233.py"
+    ],
+    "alpha/transcription/corporate_ir_glossary.py": [
+      "alpha/transcription/corporate_ir_stable_corrector.py",
+      "alpha/transcription/deepgram_client.py",
+      "alpha/utils/glossary_evidence_sync.py",
+      "validate_accuracy_8525.py"
+    ],
+    "alpha/config.py": [
+      "alpha/audio/microphone.py",
+      "alpha/audio/processing.py",
+      "alpha/audio/timeline_mixer.py",
+      "alpha/audio/wasapi.py",
+      "alpha/transcription/deepgram_client.py",
+      "alpha/ui/main_window.py",
+      "alpha/utils/diagnostic_test_log.py",
+      "tests/test_build_deepgram_url_startup_85253.py",
+      "validate_accuracy_stage_isolation_85253.py"
+    ],
+    "alpha/utils/atomic_evidence_finalize.py": [
+      "alpha/utils/accuracy_evidence_export.py",
+      "validate_atomic_evidence_sync_852521.py"
+    ],
+    "alpha/transcription/financial_number_safety.py": [
+      "alpha/transcription/corporate_ir_stable_corrector.py",
+      "alpha/transcription/transcript_lineage.py",
+      "validate_financial_number_safety_852521.py"
+    ],
+    "alpha/summary/transcript_store.py": [
+      "alpha/summary/__init__.py",
+      "alpha/summary/summary_service.py",
+      "alpha/ui/main_window.py",
+      "tests/test_transcript_hotfix_v3_2.py"
+    ],
+    "alpha/transcription/duplicate_protection.py": [
+      "alpha/transcription/deepgram_client.py",
+      "alpha/ui/main_window.py",
+      "tests/test_transcript_hotfix_v3_2.py",
+      "tests/test_transcript_stability_v3_2.py"
+    ],
+    "alpha/utils/runtime_evidence.py": [
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8511.py",
+      "alpha/transcription/deepgram_client.py",
+      "alpha/transcription/japanese_final_chunk_stabilizer.py",
+      "alpha/transcription/japanese_sentence_assembler.py",
+      "alpha/ui/main_window.py",
+      "alpha/utils/diagnostic_test_log.py",
+      "alpha/utils/stop_finalize_worker.py"
+    ],
+    "alpha/utils/run_consistency.py": [
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8512.py",
+      "alpha/utils/stop_finalize_worker.py"
+    ],
+    "alpha/utils/run_identity.py": [
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8512.py",
+      "alpha/transcription/corporate_ir_stable_corrector.py",
+      "alpha/transcription/deepgram_client.py",
+      "alpha/transcription/japanese_boundary_stabilizer.py",
+      "alpha/transcription/japanese_final_chunk_stabilizer.py",
+      "alpha/transcription/japanese_sentence_assembler.py",
+      "alpha/transcription/pipeline_commit_transaction.py",
+      "alpha/ui/main_window.py",
+      "alpha/utils/accuracy_evidence_export.py",
+      "alpha/utils/accuracy_stage_capture.py",
+      "alpha/utils/audio_temp_capture.py",
+      "alpha/utils/boundary_evidence_finalize.py",
+      "alpha/utils/canonical_finalize.py",
+      "alpha/utils/diagnostic_test_log.py",
+      "alpha/utils/evidence_pointer_finalize.py",
+      "alpha/utils/flight_recorder.py",
+      "alpha/utils/freeze_guard_log.py",
+      "alpha/utils/japanese_accuracy_log.py",
+      "alpha/utils/run_artifacts.py",
+      "alpha/utils/run_consistency.py",
+      "alpha/utils/runtime_evidence.py",
+      "alpha/utils/segment_count_reconciliation.py",
+      "alpha/utils/session_watchdog.py",
+      "alpha/utils/stop_finalize_worker.py",
+      "alpha/utils/transcript_evidence.py"
+    ],
+    "alpha/transcription/japanese_sentence_assembler.py": [
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8513.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8514.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8518.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8519.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8520.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8520_1.py",
+      "alpha/transcription/japanese_final_chunk_stabilizer.py",
+      "alpha/ui/main_window.py",
+      "alpha/utils/crash_guard_log.py",
+      "alpha/utils/runtime_evidence.py",
+      "alpha/utils/session_progress.py",
+      "alpha/utils/stop_finalize_worker.py"
+    ],
+    "alpha/utils/ui_thread_guard.py": [
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8518.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8519.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8520.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8520_1.py",
+      "alpha/ui/main_window.py",
+      "alpha/utils/run_artifacts.py",
+      "alpha/utils/session_progress.py",
+      "alpha/utils/thread_safety.py",
+      "alpha/utils/tk_thread_guard.py",
+      "alpha/utils/troubleshooting_paths.py"
+    ],
+    "alpha/utils/process_health_telemetry.py": [
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8519.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8520.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8520_1.py",
+      "alpha/utils/flight_recorder.py",
+      "alpha/utils/session_progress.py",
+      "alpha/utils/stop_finalize_worker.py",
+      "alpha/utils/troubleshooting_paths.py"
+    ],
+    "alpha/transcription/japanese_stable_accuracy.py": [
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_8521.py",
+      "alpha/transcription/final_output_cleanup.py",
+      "alpha/transcription/japanese_boundary_stabilizer.py",
+      "alpha/transcription/japanese_sentence_assembler.py",
+      "alpha/utils/clean_export_coverage.py"
+    ],
+    "alpha/utils/queues.py": [
+      "alpha/audio/microphone.py",
+      "alpha/audio/wasapi.py",
+      "alpha/ui/main_window.py"
+    ],
+    "alpha/audio/processing.py": [
+      "alpha/audio/timeline_mixer.py",
+      "alpha/transcription/deepgram_client.py"
+    ],
+    "alpha/audio/source_gate.py": [
+      "alpha/audio/timeline_mixer.py"
+    ],
+    "alpha/core/event_bus.py": [
+      "alpha/core/__init__.py",
+      "alpha/ui/main_window.py"
+    ],
+    "alpha/core/events.py": [
+      "alpha/core/__init__.py",
+      "alpha/ui/main_window.py"
+    ],
+    "alpha/core/models.py": [
+      "alpha/core/__init__.py",
+      "alpha/ui/main_window.py"
+    ],
+    "alpha/summary/summary_service.py": [
+      "alpha/summary/__init__.py",
+      "alpha/ui/main_window.py"
+    ],
+    "alpha/utils/session_progress.py": [
+      "alpha/transcription/deepgram_client.py",
+      "alpha/transcription/japanese_sentence_assembler.py",
+      "alpha/ui/main_window.py",
+      "alpha/utils/accuracy_stage_capture.py",
+      "alpha/utils/async_debug_log.py",
+      "alpha/utils/crash_guard_log.py",
+      "alpha/utils/flight_recorder.py",
+      "alpha/utils/run_artifacts.py",
+      "alpha/utils/session_watchdog.py"
+    ],
+    "alpha/utils/cjk_text.py": [
+      "alpha/transcription/final_output_cleanup.py",
+      "alpha/transcription/japanese_boundary_stabilizer.py",
+      "alpha/transcription/japanese_business_accuracy.py",
+      "alpha/transcription/japanese_final_chunk_stabilizer.py",
+      "alpha/transcription/japanese_sentence_assembler.py",
+      "alpha/transcription/japanese_stable_accuracy.py",
+      "alpha/transcription/stable_line_revision.py",
+      "alpha/transcription/transcript_lineage.py",
+      "alpha/ui/main_window.py",
+      "alpha/utils/clean_export_coverage.py",
+      "alpha/utils/diagnostic_test_log.py"
+    ],
+    "alpha/utils/accuracy_decision_log.py": [
+      "alpha/transcription/japanese_business_accuracy.py",
+      "alpha/transcription/japanese_sentence_assembler.py",
+      "alpha/utils/japanese_accuracy_log.py"
+    ],
+    "alpha/utils/transcript_evidence.py": [
+      "alpha/transcription/japanese_final_chunk_stabilizer.py",
+      "alpha/transcription/japanese_sentence_assembler.py",
+      "alpha/ui/main_window.py",
+      "alpha/utils/japanese_accuracy_log.py"
+    ],
+    "alpha/utils/live_runtime_metrics.py": [
+      "alpha/transcription/japanese_final_chunk_stabilizer.py",
+      "alpha/transcription/pipeline_commit_transaction.py",
+      "alpha/ui/main_window.py",
+      "alpha/utils/accuracy_stage_capture.py",
+      "alpha/utils/canonical_finalize.py",
+      "alpha/utils/run_identity.py",
+      "alpha/utils/runtime_audio_counters.py",
+      "alpha/utils/stop_finalize_worker.py"
+    ],
+    "alpha/transcription/language_pipeline_base.py": [
+      "alpha/transcription/japanese_sentence_assembler.py"
+    ],
+    "alpha/utils/lock_monitor.py": [
+      "alpha/transcription/japanese_sentence_assembler.py",
+      "alpha/utils/session_progress.py"
+    ],
+    "alpha/transcription/japanese_translation_unit_builder.py": [
+      "alpha/transcription/japanese_sentence_assembler.py"
+    ],
+    "alpha/utils/partial_autosave_worker.py": [
+      "alpha/transcription/japanese_sentence_assembler.py",
+      "alpha/ui/main_window.py",
+      "alpha/utils/flight_recorder.py",
+      "alpha/utils/session_progress.py",
+      "alpha/utils/session_watchdog.py"
+    ],
+    "alpha/utils/transcript_snapshot_store.py": [
+      "alpha/transcription/japanese_sentence_assembler.py",
+      "alpha/ui/main_window.py",
+      "alpha/utils/accuracy_evidence_export.py",
+      "alpha/utils/boundary_evidence_finalize.py",
+      "alpha/utils/partial_autosave_worker.py",
+      "alpha/utils/run_artifacts.py",
+      "alpha/utils/segment_count_reconciliation.py"
+    ],
+    "alpha/utils/accuracy_evidence_export.py": [
+      "alpha/transcription/japanese_sentence_assembler.py",
+      "alpha/utils/atomic_evidence_finalize.py",
+      "alpha/utils/stop_finalize_worker.py"
+    ],
+    "alpha/translation/deepl_client.py": [
+      "alpha/translation/__init__.py",
+      "alpha/translation/translation_worker.py"
+    ],
+    "alpha/translation/language_map.py": [
+      "alpha/translation/__init__.py",
+      "alpha/translation/translation_worker.py"
+    ],
+    "alpha/translation/translation_worker.py": [
+      "alpha/translation/__init__.py"
+    ],
+    "alpha/audio/microphone.py": [
+      "alpha/ui/main_window.py",
+      "alpha/utils/diagnostic_test_log.py"
+    ],
+    "alpha/audio/timeline_mixer.py": [
+      "alpha/ui/main_window.py"
+    ],
+    "alpha/audio/wasapi.py": [
+      "alpha/ui/main_window.py"
+    ],
+    "alpha/transcription/speaker_detection.py": [
+      "alpha/ui/main_window.py"
+    ],
+    "alpha/ui/theme.py": [
+      "alpha/ui/main_window.py"
+    ],
+    "alpha/utils/thread_dump.py": [
+      "alpha/ui/main_window.py",
+      "alpha/utils/run_artifacts.py",
+      "alpha/utils/session_progress.py",
+      "alpha/utils/session_watchdog.py"
+    ],
+    "alpha/utils/evidence_jsonl.py": [
+      "alpha/utils/accuracy_decision_log.py",
+      "alpha/utils/accuracy_evidence_export.py",
+      "alpha/utils/transcript_evidence.py",
+      "alpha/utils/troubleshooting_paths.py",
+      "alpha/utils/ui_event_bus.py"
+    ],
+    "alpha/utils/boundary_evidence_finalize.py": [
+      "alpha/utils/accuracy_evidence_export.py"
+    ],
+    "alpha/utils/glossary_evidence_sync.py": [
+      "alpha/utils/boundary_evidence_finalize.py"
+    ],
+    "alpha/utils/artifact_role_classifier.py": [
+      "alpha/utils/final_cleanup_engine.py",
+      "alpha/utils/final_cleanup_packaging.py"
+    ],
+    "alpha/utils/session_forensics.py": [
+      "alpha/utils/run_artifacts.py"
+    ],
+    "alpha/utils/ui_callback_tracer.py": [
+      "alpha/utils/session_progress.py",
+      "alpha/utils/session_watchdog.py"
+    ],
+    "alpha/utils/segment_count_reconciliation.py": [
+      "alpha/utils/stop_finalize_worker.py"
+    ],
+    "alpha/utils/evidence_pointer_finalize.py": [
+      "alpha/utils/stop_finalize_worker.py"
+    ],
+    "alpha/utils/lock_instrumentation.py": [
+      "alpha/utils/transcript_snapshot_store.py"
+    ]
+  },
+  "path_references": {
+    "troubleshooting/latest/export_coverage_report.json": [
+      "alpha/utils/atomic_evidence_finalize.py",
+      "alpha/utils/clean_export_coverage.py",
+      "analyze_alpha_vs_reference.py",
+      "score_latest_accuracy.py"
+    ],
+    "troubleshooting/latest/pre_correction_reentry_report.json": [
+      "alpha/transcription/transcript_lineage.py",
+      "analyze_alpha_vs_reference.py",
+      "score_latest_accuracy.py"
+    ],
+    "troubleshooting/latest/glossary_correction_summary.json": [
+      "alpha/utils/glossary_evidence_sync.py",
+      "analyze_alpha_vs_reference.py",
+      "score_latest_accuracy.py"
+    ],
+    "Use troubleshooting/latest/latest_live_alpha_output.txt": [
+      "analyze_alpha_vs_reference.py"
+    ],
+    "troubleshooting/latest/latest_live_alpha_output.txt": [
+      "alpha/utils/accuracy_report_sync.py",
+      "alpha/utils/atomic_evidence_finalize.py",
+      "alpha/utils/clean_export_coverage.py",
+      "analyze_alpha_vs_reference.py",
+      "repair_clean_alpha_export.py",
+      "runtime_smoke_start_stop_85232.py",
+      "runtime_smoke_start_stop_85233.py",
+      "runtime_smoke_start_stop_85234.py",
+      "runtime_smoke_start_stop_852341.py",
+      "runtime_smoke_start_stop_8524.py",
+      "runtime_smoke_start_stop_85241.py",
+      "runtime_smoke_start_stop_85242.py",
+      "runtime_smoke_start_stop_8525.py",
+      "runtime_smoke_start_stop_85251.py",
+      "runtime_smoke_start_stop_85252.py",
+      "score_latest_accuracy.py",
+      "simulate_boundary_stabilizer.py",
+      "validate_accuracy_85232.py",
+      "validate_accuracy_85233.py",
+      "validate_accuracy_85234.py",
+      "validate_accuracy_852341.py",
+      "validate_accuracy_8524.py",
+      "validate_accuracy_85241.py",
+      "validate_accuracy_85242.py"
+    ],
+    "analyze_alpha_vs_reference.py": [
+      "validate_accuracy_85233.py"
+    ],
+    "run_artifacts.py": [
+      "audit_final_alpha_writers_8525331.py"
+    ],
+    "audit_final_alpha_writers_8525331.py": [],
+    "troubleshooting/accuracy_benchmark/reference_transcripts/test01.txt": [
+      "collect_preflight_85234.py",
+      "collect_preflight_852341.py",
+      "collect_preflight_8524.py",
+      "simulate_boundary_stabilizer.py"
+    ],
+    "collect_preflight_85234.py": [],
+    "collect_preflight_852341.py": [],
+    "collect_preflight_8524.py": [],
+    "score_latest_accuracy.py": [
+      "_cleanup_archive/root_cleanup_20260708_155406/old_runtime_smoke_scripts/runtime_smoke_start_stop_85231.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_85231.py",
+      "main.py",
+      "validate_accuracy_85232.py",
+      "validate_accuracy_85233.py"
+    ],
+    "reference_transcript_quality_check.py": [
+      "main.py",
+      "validate_accuracy_85232.py",
+      "validate_accuracy_85233.py"
+    ],
+    "main.py": [],
+    "a.txt": [
+      "regression_canonical_acceptance_bundle_85253321.py"
+    ],
+    "regression_canonical_acceptance_bundle_85253321.py": [
+      "alpha/utils/required_regression_matrix.py",
+      "run_final_validation_bundle_85253321.py"
+    ],
+    "troubleshooting/validation/v3.3.5.5.8.5.25.3.2/regression_canonical_pipeline_852532.txt": [
+      "regression_canonical_pipeline_852532.py"
+    ],
+    "regression_canonical_pipeline_852532.py": [],
+    "troubleshooting/validation/v3.3.5.5.8.5.25.3.2/regression_cer_852532.txt": [
+      "regression_cer_852532.py"
+    ],
+    "troubleshooting/accuracy_benchmark/prepared/v3.3.5.5.8.5.25.3.2/reference_snapshot.json": [
+      "regression_cer_852532.py",
+      "validate_canonical_pipeline_852532.py"
+    ],
+    "regression_cer_852532.py": [],
+    "run_final_cleanup_and_package_closure_85253324.py": [
+      "alpha/utils/final_cleanup_packaging.py",
+      "regression_final_cleanup_package_85253324.py",
+      "run_final_cleanup_and_package_closure_85253324.py"
+    ],
+    "alpha/utils/final_cleanup_engine.py": [
+      "regression_final_cleanup_package_85253324.py"
+    ],
+    "regression_final_cleanup_package_85253324.py": [
+      "alpha/utils/final_cleanup_packaging.py",
+      "run_final_cleanup_and_package_closure_85253324.py"
+    ],
+    "alpha/utils/accuracy_evidence_export.py": [
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_8522.py",
+      "regression_final_writer_stop_tail_8525331.py"
+    ],
+    "alpha/utils/accuracy_stage_capture.py": [
+      "regression_final_writer_stop_tail_8525331.py",
+      "validate_accuracy_stage_isolation_85253.py"
+    ],
+    "alpha/utils/stop_finalize_worker.py": [
+      "regression_final_writer_stop_tail_8525331.py",
+      "validate_accuracy_stage_isolation_85253.py"
+    ],
+    "alpha/constants.py": [
+      "regression_final_writer_stop_tail_8525331.py"
+    ],
+    "alpha/utils/final_artifact_authority.py": [
+      "regression_final_writer_stop_tail_8525331.py"
+    ],
+    "regression_final_writer_stop_tail_8525331.py": [
+      "alpha/utils/required_regression_matrix.py",
+      "run_pre_live_gate_8525331.py"
+    ],
+    "alpha/utils/persisted_run_evidence.py": [
+      "regression_persisted_evidence_package_closure_8525332.py"
+    ],
+    "alpha/utils/package_persisted_staging.py": [
+      "regression_persisted_evidence_package_closure_8525332.py"
+    ],
+    "regression_persisted_evidence_package_closure_8525332.py": [
+      "alpha/utils/required_regression_matrix.py",
+      "run_persisted_closure_8525332.py",
+      "run_zero_issue_closure_85253322.py"
+    ],
+    "troubleshooting/validation/v3.3.5.5.8.5.25.3.2.1/regression_run_resolution_reference_trust_8525321.txt": [
+      "regression_run_resolution_reference_trust_8525321.py"
+    ],
+    "regression_run_resolution_reference_trust_8525321.py": [],
+    "run_single_authority_package_closure_85253323.py": [
+      "regression_single_authority_packaging_85253323.py",
+      "run_single_authority_package_closure_85253323.py"
+    ],
+    "regression_single_authority_packaging_85253323.py": [
+      "run_single_authority_package_closure_85253323.py"
+    ],
+    "run_zero_issue_closure_85253322.py": [
+      "regression_zero_issue_validation_85253322.py",
+      "run_zero_issue_closure_85253322.py"
+    ],
+    "regression_does_not_exist_85253322.py": [
+      "regression_zero_issue_validation_85253322.py"
+    ],
+    "validate_canonical_acceptance_85253321.py": [
+      "regression_zero_issue_validation_85253322.py",
+      "run_final_validation_bundle_85253321.py"
+    ],
+    "run_final_validation_bundle_85253321.py": [
+      "regression_zero_issue_validation_85253322.py",
+      "run_final_validation_bundle_85253321.py"
+    ],
+    "prepare_accuracy_benchmark_852532.py": [
+      "regression_zero_issue_validation_85253322.py",
+      "run_zero_issue_closure_85253322.py"
+    ],
+    "regression_zero_issue_validation_85253322.py": [
+      "alpha/utils/required_regression_matrix.py",
+      "regression_zero_issue_validation_85253322.py",
+      "run_zero_issue_closure_85253322.py"
+    ],
+    "repair_accuracy_stage_artifacts_report.txt": [
+      "repair_accuracy_stage_artifacts_85253.py"
+    ],
+    "repair_accuracy_stage_artifacts_85253.py": [
+      "validate_accuracy_stage_isolation_85253.py"
+    ],
+    "troubleshooting/latest/LATEST_LIVE_RUN_POINTER.json": [
+      "repair_clean_alpha_export.py",
+      "runtime_smoke_start_stop_85241.py",
+      "runtime_smoke_start_stop_85242.py",
+      "runtime_smoke_start_stop_8525.py"
+    ],
+    "repair_clean_alpha_export.py": [
+      "validate_accuracy_85241.py",
+      "validate_accuracy_85242.py",
+      "validate_accuracy_85251.py",
+      "validate_accuracy_85252.py"
+    ],
+    "validate_canonical_pipeline_852532.py": [
+      "repair_existing_run_8525321.py"
+    ],
+    "repair_existing_run_8525321.py": [],
+    "troubleshooting/latest/latest_alpha_output.txt": [
+      "runtime_smoke_start_stop_85232.py",
+      "runtime_smoke_start_stop_85233.py",
+      "runtime_smoke_start_stop_85234.py",
+      "runtime_smoke_start_stop_852341.py",
+      "runtime_smoke_start_stop_8524.py",
+      "runtime_smoke_start_stop_85241.py",
+      "runtime_smoke_start_stop_85242.py",
+      "runtime_smoke_start_stop_8525.py",
+      "runtime_smoke_start_stop_85251.py",
+      "runtime_smoke_start_stop_85252.py"
+    ],
+    "troubleshooting/latest_alpha_output.txt": [
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_85222.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_85223.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_85231.py",
+      "runtime_smoke_start_stop_85232.py",
+      "runtime_smoke_start_stop_85233.py",
+      "runtime_smoke_start_stop_85234.py",
+      "runtime_smoke_start_stop_852341.py",
+      "runtime_smoke_start_stop_8524.py",
+      "runtime_smoke_start_stop_85241.py",
+      "runtime_smoke_start_stop_85242.py",
+      "runtime_smoke_start_stop_8525.py",
+      "runtime_smoke_start_stop_85251.py",
+      "runtime_smoke_start_stop_85252.py",
+      "score_latest_accuracy.py"
+    ],
+    "troubleshooting/Alpha.txt": [
+      "_cleanup_archive/root_cleanup_20260708_155406/old_runtime_smoke_scripts/runtime_smoke_start_stop_8522.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_runtime_smoke_scripts/runtime_smoke_start_stop_85221.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_runtime_smoke_scripts/runtime_smoke_start_stop_85222.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_runtime_smoke_scripts/runtime_smoke_start_stop_85223.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_runtime_smoke_scripts/runtime_smoke_start_stop_85231.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_8522.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_85221.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_85222.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_85223.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_85231.py",
+      "runtime_smoke_start_stop_85232.py",
+      "runtime_smoke_start_stop_85233.py",
+      "runtime_smoke_start_stop_85234.py",
+      "runtime_smoke_start_stop_852341.py",
+      "runtime_smoke_start_stop_8524.py",
+      "runtime_smoke_start_stop_85241.py",
+      "runtime_smoke_start_stop_85242.py",
+      "runtime_smoke_start_stop_8525.py",
+      "runtime_smoke_start_stop_85251.py",
+      "runtime_smoke_start_stop_85252.py",
+      "score_latest_accuracy.py"
+    ],
+    "runtime_smoke_start_stop_85232.py": [],
+    "runtime_smoke_start_stop_85233.py": [],
+    "runtime_smoke_start_stop_85234.py": [],
+    "runtime_smoke_start_stop_852341.py": [],
+    "runtime_smoke_start_stop_8524.py": [],
+    "troubleshooting/latest/LATEST_SMOKE_RUN_POINTER.json": [
+      "runtime_smoke_start_stop_85241.py",
+      "runtime_smoke_start_stop_85242.py",
+      "runtime_smoke_start_stop_8525.py",
+      "runtime_smoke_start_stop_85251.py",
+      "runtime_smoke_start_stop_85252.py"
+    ],
+    "runtime_smoke_start_stop_85241.py": [],
+    "runtime_smoke_start_stop_85242.py": [
+      "validate_accuracy_85242.py"
+    ],
+    "runtime_smoke_start_stop_8525.py": [
+      "validate_accuracy_8525.py"
+    ],
+    "runtime_smoke_start_stop_85251.py": [
+      "validate_accuracy_85251.py"
+    ],
+    "runtime_smoke_start_stop_85252.py": [
+      "validate_accuracy_85252.py"
+    ],
+    "validate_final_writer_stop_tail_closure_8525331.py": [
+      "run_persisted_closure_8525332.py",
+      "run_post_live_closure_8525331.py",
+      "run_pre_live_gate_8525331.py"
+    ],
+    "validate_eleven_issue_closure_852533.py": [
+      "run_persisted_closure_8525332.py",
+      "run_post_live_closure_8525331.py",
+      "validate_eleven_issue_closure_852533.py",
+      "validate_final_writer_stop_tail_closure_8525331.py"
+    ],
+    "run_persisted_closure_8525332.py": [
+      "run_persisted_closure_8525332.py"
+    ],
+    "run_post_live_closure_8525331.py": [
+      "run_pre_live_gate_8525331.py"
+    ],
+    "run_pre_live_gate_8525331.py": [
+      "run_pre_live_gate_8525331.py"
+    ],
+    "runtime_smoke_eleven_issue_closure_852533.py": [
+      "alpha/utils/required_regression_matrix.py",
+      "run_pre_live_gate_8525331.py",
+      "validate_eleven_issue_closure_852533.py"
+    ],
+    "regression_eleven_issue_closure_852533.py": [
+      "alpha/utils/required_regression_matrix.py",
+      "run_pre_live_gate_8525331.py",
+      "run_zero_issue_closure_85253322.py",
+      "validate_eleven_issue_closure_852533.py"
+    ],
+    "troubleshooting/latest/latest_accuracy_evidence_index.json": [
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_85231.py",
+      "alpha/utils/accuracy_report_sync.py",
+      "alpha/utils/atomic_evidence_finalize.py",
+      "alpha/utils/reference_alpha_hash.py",
+      "score_latest_accuracy.py",
+      "validate_accuracy_85232.py",
+      "validate_accuracy_85233.py",
+      "validate_accuracy_85234.py",
+      "validate_accuracy_852341.py",
+      "validate_accuracy_8524.py",
+      "validate_accuracy_85241.py",
+      "validate_accuracy_85242.py",
+      "validate_accuracy_85252.py"
+    ],
+    "simulate_boundary_stabilizer.py": [
+      "validate_accuracy_8524.py"
+    ],
+    "troubleshooting/latest_accuracy_evidence_index.json": [
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_85231.py",
+      "alpha/utils/accuracy_report_sync.py",
+      "alpha/utils/atomic_evidence_finalize.py",
+      "validate_accuracy_85232.py"
+    ],
+    "alpha/transcription/japanese_visible_error_audit.py": [
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_85231.py",
+      "validate_accuracy_85232.py"
+    ],
+    "troubleshooting/latest/LATEST_LIVE_RUN_ARTIFACTS_INDEX.txt": [
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_85222.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_85223.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_85231.py",
+      "validate_accuracy_85232.py"
+    ],
+    "alpha/utils/alpha_output_protection.py": [
+      "validate_accuracy_85232.py"
+    ],
+    "troubleshooting/latest/LATEST_RUN_POINTER.json": [
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_85222.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_85223.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_85231.py",
+      "alpha/utils/accuracy_report_sync.py",
+      "alpha/utils/reference_alpha_hash.py",
+      "validate_accuracy_85232.py"
+    ],
+    "troubleshooting/validation/validate_accuracy_85232_output.txt": [
+      "validate_accuracy_85232.py"
+    ],
+    "validate_accuracy_85232.py": [],
+    "troubleshooting/validation/validate_accuracy_85233_output.txt": [
+      "validate_accuracy_85233.py"
+    ],
+    "validate_accuracy_85233.py": [],
+    "troubleshooting/accuracy_benchmark/reference_transcripts/business_18min_test01.txt": [
+      "validate_accuracy_85234.py",
+      "validate_accuracy_852341.py"
+    ],
+    "troubleshooting/validation/validate_accuracy_85234_output.txt": [
+      "validate_accuracy_85234.py"
+    ],
+    "alpha/utils/reference_alpha_hash.py": [
+      "validate_accuracy_85234.py"
+    ],
+    "create_benchmark_manifest.py": [
+      "validate_accuracy_85234.py"
+    ],
+    "alpha/utils/accuracy_report_sync.py": [
+      "validate_accuracy_85234.py",
+      "validate_accuracy_8524.py",
+      "validate_accuracy_85241.py",
+      "validate_accuracy_85242.py"
+    ],
+    "validate_accuracy_85234.py": [],
+    "troubleshooting/accuracy_benchmark/latest_reports/LATEST_REPORT_SET_INDEX.json": [
+      "validate_accuracy_852341.py"
+    ],
+    "alpha/utils/alignment_v2.py": [
+      "validate_accuracy_852341.py"
+    ],
+    "troubleshooting/accuracy_benchmark/latest_reports/latest_alignment_report.json": [
+      "validate_accuracy_852341.py"
+    ],
+    "troubleshooting/validation/validate_accuracy_852341_output.txt": [
+      "validate_accuracy_852341.py"
+    ],
+    "validate_accuracy_852341.py": [],
+    "alpha/transcription/japanese_boundary_stabilizer.py": [
+      "validate_accuracy_8524.py",
+      "validate_accuracy_85241.py",
+      "validate_accuracy_85242.py"
+    ],
+    "troubleshooting/validation/validate_accuracy_8524_output.txt": [
+      "validate_accuracy_8524.py"
+    ],
+    "validate_accuracy_8524.py": [],
+    "troubleshooting/validation/validate_accuracy_85241_output.txt": [
+      "validate_accuracy_85241.py"
+    ],
+    "alpha/transcription/stable_line_revision.py": [
+      "validate_accuracy_85241.py",
+      "validate_accuracy_85242.py"
+    ],
+    "validate_accuracy_85241.py": [],
+    "alpha/utils/boundary_evidence_finalize.py": [
+      "validate_accuracy_85242.py"
+    ],
+    "validate_accuracy_85242.py": [
+      "validate_accuracy_85242.py"
+    ],
+    "alpha/transcription/final_output_cleanup.py": [
+      "validate_accuracy_85242.py"
+    ],
+    "troubleshooting/validation/validate_accuracy_85242_output.txt": [
+      "validate_accuracy_85242.py"
+    ],
+    "validate_accuracy_8525.py": [
+      "validate_accuracy_8525.py"
+    ],
+    "alpha/transcription/corporate_ir_stable_corrector.py": [
+      "validate_accuracy_8525.py"
+    ],
+    "troubleshooting/validation/validate_accuracy_8525_output.txt": [
+      "validate_accuracy_8525.py"
+    ],
+    "alpha/transcription/corporate_ir_glossary.py": [
+      "validate_accuracy_8525.py"
+    ],
+    "alpha/utils/clean_export_coverage.py": [
+      "validate_accuracy_85251.py",
+      "validate_accuracy_85252.py"
+    ],
+    "alpha/utils/glossary_evidence_sync.py": [
+      "validate_accuracy_85251.py"
+    ],
+    "validate_accuracy_85251.py": [
+      "validate_accuracy_85251.py"
+    ],
+    "troubleshooting/validation/validate_accuracy_85251_output.txt": [
+      "validate_accuracy_85251.py"
+    ],
+    "validate_accuracy_85252.py": [
+      "validate_accuracy_85252.py"
+    ],
+    "troubleshooting/validation/validate_accuracy_85252_output.txt": [
+      "validate_accuracy_85252.py"
+    ],
+    "alpha/transcription/transcript_lineage.py": [
+      "validate_accuracy_85252.py"
+    ],
+    "validate_lineage_regression_852521.py": [
+      "validate_accuracy_852521.py"
+    ],
+    "alpha/transcription/financial_number_safety.py": [
+      "validate_accuracy_852521.py"
+    ],
+    "alpha/utils/canonical_export_writer.py": [
+      "validate_accuracy_852521.py"
+    ],
+    "validate_output_artifact_consistency_852521.py": [
+      "validate_accuracy_852521.py"
+    ],
+    "troubleshooting/validation/validate_accuracy_852521_output.txt": [
+      "validate_accuracy_852521.py"
+    ],
+    "validate_accuracy_852521.py": [
+      "validate_accuracy_852521.py"
+    ],
+    "validate_financial_number_safety_852521.py": [
+      "validate_accuracy_852521.py"
+    ],
+    "validate_atomic_evidence_sync_852521.py": [
+      "validate_accuracy_852521.py"
+    ],
+    "alpha/utils/atomic_evidence_finalize.py": [
+      "validate_accuracy_852521.py"
+    ],
+    "runtime_smoke_accuracy_stage_isolation_85253.py": [
+      "validate_accuracy_stage_isolation_85253.py"
+    ],
+    "alpha/transcription/deepgram_client.py": [
+      "validate_accuracy_stage_isolation_85253.py"
+    ],
+    "validate_accuracy_stage_isolation_85253.py": [
+      "validate_accuracy_stage_isolation_85253.py"
+    ],
+    "score_three_stage_accuracy.py": [
+      "validate_accuracy_stage_isolation_85253.py"
+    ],
+    "troubleshooting/validation/validate_atomic_evidence_sync_852521_output.txt": [
+      "validate_atomic_evidence_sync_852521.py"
+    ],
+    "alpha/utils/prepared_reference_trust.py": [
+      "validate_canonical_pipeline_852532.py"
+    ],
+    "alpha/utils/latest_completed_live_run.py": [
+      "validate_canonical_pipeline_852532.py"
+    ],
+    "troubleshooting/validation/v3.3.5.5.8.5.25.3.2.1/validate_canonical_pipeline_852532.txt": [
+      "validate_canonical_pipeline_852532.py"
+    ],
+    "troubleshooting/validation/validate_financial_number_safety_852521_output.txt": [
+      "validate_financial_number_safety_852521.py"
+    ],
+    "troubleshooting/validation/validate_lineage_regression_852521_output.txt": [
+      "validate_lineage_regression_852521.py"
+    ],
+    "troubleshooting/validation/validate_output_artifact_consistency_852521_output.txt": [
+      "validate_output_artifact_consistency_852521.py"
+    ],
+    "package_latest_troubleshooting_run.py": [
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_8521.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_8522.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_runtime_8520_5.py",
+      "validate_package_glossary_flags_85253.py"
+    ],
+    "validate_package_glossary_flags_85253.py": [],
+    "runtime_audio_counters.py": [
+      "validate_revision_safety_852531.py"
+    ],
+    "validate_revision_safety_852531.py": [],
+    "troubleshooting/accuracy_benchmark/glossaries/test01_corporate_ir_glossary.json": [
+      "alpha/constants.py"
+    ],
+    "g.json": [
+      "tests/test_package_glossary_flags_85253.py"
+    ],
+    "x.txt": [
+      "tests/test_package_glossary_flags_85253.py"
+    ],
+    "tests/test_package_glossary_flags_85253.py": [],
+    "_cleanup_archive/root_cleanup_20260708_155406/old_runtime_smoke_scripts/runtime_smoke_start_stop_8522.py": [],
+    "_cleanup_archive/root_cleanup_20260708_155406/old_runtime_smoke_scripts/runtime_smoke_start_stop_85221.py": [],
+    "alpha/utils/evidence_pointer_finalize.py": [
+      "_cleanup_archive/root_cleanup_20260708_155406/old_runtime_smoke_scripts/runtime_smoke_start_stop_85222.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_runtime_smoke_scripts/runtime_smoke_start_stop_85223.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_runtime_smoke_scripts/runtime_smoke_start_stop_85231.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_85222.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_85223.py",
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_85231.py"
+    ],
+    "_cleanup_archive/root_cleanup_20260708_155406/old_runtime_smoke_scripts/runtime_smoke_start_stop_85222.py": [],
+    "_cleanup_archive/root_cleanup_20260708_155406/old_runtime_smoke_scripts/runtime_smoke_start_stop_85223.py": [],
+    "_cleanup_archive/root_cleanup_20260708_155406/old_runtime_smoke_scripts/runtime_smoke_start_stop_85231.py": [],
+    "troubleshooting/validation/validate_8520_4_output.txt": [
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8520_4.py"
+    ],
+    "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_8520_4.py": [],
+    "alpha/utils/accuracy_decision_log.py": [
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_8521.py"
+    ],
+    "troubleshooting/validation/validate_accuracy_8521_output.txt": [
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_8521.py"
+    ],
+    "alpha/transcription/japanese_stable_accuracy.py": [
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_8521.py"
+    ],
+    "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_8521.py": [],
+    "troubleshooting/validation/validate_accuracy_8522_output.txt": [
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_8522.py"
+    ],
+    "alpha/transcription/japanese_business_accuracy.py": [
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_8522.py"
+    ],
+    "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_8522.py": [],
+    "troubleshooting/validation/validate_accuracy_85221_output.txt": [
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_85221.py"
+    ],
+    "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_85221.py": [],
+    "troubleshooting/validation/validate_accuracy_85222_output.txt": [
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_85222.py"
+    ],
+    "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_85222.py": [],
+    "troubleshooting/validation/validate_accuracy_85223_output.txt": [
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_85223.py"
+    ],
+    "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_85223.py": [],
+    "troubleshooting/validation/validate_accuracy_85231_output.txt": [
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_85231.py"
+    ],
+    "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_accuracy_85231.py": [],
+    "troubleshooting/validation/validate_runtime_8520_5_output.txt": [
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_runtime_8520_5.py"
+    ],
+    "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_runtime_8520_5.py": [],
+    "troubleshooting/validation/validate_startup_8520_3_output.txt": [
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_startup_8520_3.py"
+    ],
+    "alpha/ui/main_window.py": [
+      "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_startup_8520_3.py"
+    ],
+    "_cleanup_archive/root_cleanup_20260708_155406/old_validation_scripts/validate_startup_8520_3.py": [],
+    "troubleshooting/latest/corporate_term_accuracy_report.json": [
+      "alpha/transcription/corporate_ir_stable_corrector.py"
+    ],
+    "troubleshooting/runs/_pending/accuracy/boundary_stabilizer_summary.json": [
+      "alpha/transcription/japanese_boundary_stabilizer.py"
+    ],
+    "troubleshooting/latest/boundary_stabilizer_summary.json": [
+      "alpha/transcription/japanese_boundary_stabilizer.py"
+    ],
+    "latest_accuracy_evidence_index.json": [
+      "alpha/utils/accuracy_evidence_export.py"
+    ],
+    "latest_alpha_output.txt": [
+      "alpha/utils/accuracy_evidence_export.py"
+    ],
+    "Alpha output.txt": [
+      "alpha/utils/final_artifact_authority.py"
+    ],
+    "FINAL_EXPORT_SEAL.json": [
+      "alpha/utils/final_artifact_authority.py"
+    ],
+    "Alpha_output_FINAL.txt": [
+      "alpha/utils/final_artifact_authority.py"
+    ],
+    "alpha/utils/final_cleanup_packaging.py": [],
+    "IMMUTABLE_RUNTIME_ARTIFACT_HASHES_BEFORE.json": [
+      "alpha/utils/immutable_evidence_contract.py"
+    ],
+    "IMMUTABLE_HASHES_BEFORE.json": [
+      "alpha/utils/immutable_evidence_contract.py"
+    ],
+    "IMMUTABLE_HASHES_AFTER.json": [
+      "alpha/utils/immutable_evidence_contract.py"
+    ],
+    "IMMUTABLE_RUNTIME_ARTIFACT_HASHES_AFTER.json": [
+      "alpha/utils/immutable_evidence_contract.py"
+    ],
+    "alpha/utils/immutable_evidence_contract.py": [],
+    "alpha/utils/required_regression_matrix.py": [],
+    "THREAD_DUMP_LAST.txt": [
+      "alpha/utils/run_artifacts.py",
+      "alpha/utils/troubleshooting_paths.py"
+    ],
+    "UPLOAD_PACKAGE_INDEX.txt": [
+      "alpha/utils/run_artifacts.py"
+    ],
+    "THREAD_DUMP_SELFTEST.txt": [
+      "alpha/utils/run_artifacts.py",
+      "alpha/utils/troubleshooting_paths.py"
+    ],
+    "alpha/utils/run_artifacts.py": [],
+    "alpha/utils/troubleshooting_paths.py": []
+  },
+  "entrypoints": [
+    "collect_preflight_85234.py",
+    "collect_preflight_852341.py",
+    "collect_preflight_8524.py",
+    "collect_preflight_85241.py",
+    "collect_preflight_85242.py",
+    "collect_preflight_8525.py",
+    "collect_preflight_85251.py",
+    "collect_preflight_85252.py",
+    "main.py",
+    "prepare_accuracy_benchmark_852532.py",
+    "regression_canonical_acceptance_bundle_85253321.py",
+    "regression_canonical_pipeline_852532.py",
+    "regression_cer_852532.py",
+    "regression_eleven_issue_closure_852533.py",
+    "regression_final_cleanup_package_85253324.py",
+    "regression_final_writer_stop_tail_8525331.py",
+    "regression_persisted_evidence_package_closure_8525332.py",
+    "regression_run_resolution_reference_trust_8525321.py",
+    "regression_single_authority_packaging_85253323.py",
+    "regression_three_stage_cer_852531.py",
+    "regression_zero_issue_validation_85253322.py",
+    "repair_accuracy_stage_artifacts_85253.py",
+    "repair_audio_delivery_summary_8525321.py",
+    "repair_clean_alpha_export.py",
+    "repair_existing_run_8525321.py",
+    "repair_run_metadata_8525321.py",
+    "run_final_cleanup_and_package_closure_85253324.py",
+    "run_final_validation_bundle_85253321.py",
+    "run_persisted_closure_8525332.py",
+    "run_post_live_closure_8525331.py",
+    "run_pre_live_gate_8525331.py",
+    "run_single_authority_package_closure_85253323.py",
+    "run_zero_issue_closure_85253322.py",
+    "runtime_smoke_accuracy_stage_isolation_85253.py",
+    "runtime_smoke_eleven_issue_closure_852533.py",
+    "runtime_smoke_start_stop_85232.py",
+    "runtime_smoke_start_stop_85233.py",
+    "runtime_smoke_start_stop_85234.py",
+    "runtime_smoke_start_stop_852341.py",
+    "runtime_smoke_start_stop_8524.py",
+    "runtime_smoke_start_stop_85241.py",
+    "runtime_smoke_start_stop_85242.py",
+    "runtime_smoke_start_stop_8525.py",
+    "runtime_smoke_start_stop_85251.py",
+    "runtime_smoke_start_stop_85252.py",
+    "validate_accuracy_85232.py",
+    "validate_accuracy_85233.py",
+    "validate_accuracy_85234.py",
+    "validate_accuracy_852341.py",
+    "validate_accuracy_8524.py",
+    "validate_accuracy_85241.py",
+    "validate_accuracy_85242.py",
+    "validate_accuracy_8525.py",
+    "validate_accuracy_85251.py",
+    "validate_accuracy_85252.py",
+    "validate_accuracy_852521.py",
+    "validate_accuracy_stage_isolation_85253.py",
+    "validate_atomic_evidence_sync_852521.py",
+    "validate_canonical_acceptance_85253321.py",
+    "validate_canonical_pipeline_852532.py",
+    "validate_eleven_issue_closure_852533.py",
+    "validate_final_writer_stop_tail_closure_8525331.py",
+    "validate_financial_number_safety_852521.py",
+    "validate_lineage_regression_852521.py",
+    "validate_output_artifact_consistency_852521.py",
+    "validate_package_glossary_flags_85253.py",
+    "validate_revision_safety_852531.py"
+  ],
+  "referenced_scripts": [
+    "Alpha output.txt",
+    "Alpha.txt",
+    "Alpha_output_FINAL.txt",
+    "FINAL_EXPORT_SEAL.json",
+    "IMMUTABLE_HASHES_AFTER.json",
+    "IMMUTABLE_HASHES_BEFORE.json",
+    "IMMUTABLE_RUNTIME_ARTIFACT_HASHES_AFTER.json",
+    "IMMUTABLE_RUNTIME_ARTIFACT_HASHES_BEFORE.json",
+    "LATEST_LIVE_RUN_ARTIFACTS_INDEX.txt",
+    "LATEST_LIVE_RUN_POINTER.json",
+    "LATEST_REPORT_SET_INDEX.json",
+    "LATEST_RUN_POINTER.json",
+    "LATEST_SMOKE_RUN_POINTER.json",
+    "THREAD_DUMP_LAST.txt",
+    "THREAD_DUMP_SELFTEST.txt",
+    "UPLOAD_PACKAGE_INDEX.txt",
+    "a.txt",
+    "accuracy_decision_log.py",
+    "accuracy_evidence_export.py",
+    "accuracy_report_sync.py",
+    "accuracy_stage_capture.py",
+    "alignment_v2.py",
+    "alpha_output_protection.py",
+    "analyze_alpha_vs_reference.py",
+    "atomic_evidence_finalize.py",
+    "boundary_evidence_finalize.py",
+    "boundary_stabilizer_summary.json",
+    "business_18min_test01.txt",
+    "canonical_export_writer.py",
+    "clean_export_coverage.py",
+    "constants.py",
+    "corporate_ir_glossary.py",
+    "corporate_ir_stable_corrector.py",
+    "corporate_term_accuracy_report.json",
+    "create_benchmark_manifest.py",
+    "deepgram_client.py",
+    "evidence_pointer_finalize.py",
+    "export_coverage_report.json",
+    "final_artifact_authority.py",
+    "final_cleanup_engine.py",
+    "final_output_cleanup.py",
+    "financial_number_safety.py",
+    "g.json",
+    "glossary_correction_summary.json",
+    "glossary_evidence_sync.py",
+    "japanese_boundary_stabilizer.py",
+    "japanese_business_accuracy.py",
+    "japanese_stable_accuracy.py",
+    "japanese_visible_error_audit.py",
+    "latest_accuracy_evidence_index.json",
+    "latest_alignment_report.json",
+    "latest_alpha_output.txt",
+    "latest_completed_live_run.py",
+    "latest_live_alpha_output.txt",
+    "main_window.py",
+    "package_latest_troubleshooting_run.py",
+    "package_persisted_staging.py",
+    "persisted_run_evidence.py",
+    "pre_correction_reentry_report.json",
+    "prepare_accuracy_benchmark_852532.py",
+    "prepared_reference_trust.py",
+    "reference_alpha_hash.py",
+    "reference_snapshot.json",
+    "reference_transcript_quality_check.py",
+    "regression_canonical_acceptance_bundle_85253321.py",
+    "regression_canonical_pipeline_852532.txt",
+    "regression_cer_852532.txt",
+    "regression_does_not_exist_85253322.py",
+    "regression_eleven_issue_closure_852533.py",
+    "regression_final_cleanup_package_85253324.py",
+    "regression_final_writer_stop_tail_8525331.py",
+    "regression_persisted_evidence_package_closure_8525332.py",
+    "regression_run_resolution_reference_trust_8525321.txt",
+    "regression_single_authority_packaging_85253323.py",
+    "regression_zero_issue_validation_85253322.py",
+    "repair_accuracy_stage_artifacts_85253.py",
+    "repair_accuracy_stage_artifacts_report.txt",
+    "repair_clean_alpha_export.py",
+    "run_artifacts.py",
+    "run_final_cleanup_and_package_closure_85253324.py",
+    "run_final_validation_bundle_85253321.py",
+    "run_persisted_closure_8525332.py",
+    "run_post_live_closure_8525331.py",
+    "run_pre_live_gate_8525331.py",
+    "run_single_authority_package_closure_85253323.py",
+    "run_zero_issue_closure_85253322.py",
+    "runtime_audio_counters.py",
+    "runtime_smoke_accuracy_stage_isolation_85253.py",
+    "runtime_smoke_eleven_issue_closure_852533.py",
+    "runtime_smoke_start_stop_85242.py",
+    "runtime_smoke_start_stop_8525.py",
+    "runtime_smoke_start_stop_85251.py",
+    "runtime_smoke_start_stop_85252.py",
+    "score_latest_accuracy.py",
+    "score_three_stage_accuracy.py",
+    "simulate_boundary_stabilizer.py",
+    "stable_line_revision.py",
+    "stop_finalize_worker.py",
+    "test01.txt",
+    "test01_corporate_ir_glossary.json",
+    "transcript_lineage.py",
+    "validate_8520_4_output.txt",
+    "validate_accuracy_8521_output.txt",
+    "validate_accuracy_85221_output.txt",
+    "validate_accuracy_85222_output.txt",
+    "validate_accuracy_85223_output.txt",
+    "validate_accuracy_8522_output.txt",
+    "validate_accuracy_85231_output.txt",
+    "validate_accuracy_85232_output.txt",
+    "validate_accuracy_85233_output.txt",
+    "validate_accuracy_852341_output.txt",
+    "validate_accuracy_85234_output.txt",
+    "validate_accuracy_85241_output.txt",
+    "validate_accuracy_85242.py",
+    "validate_accuracy_85242_output.txt",
+    "validate_accuracy_8524_output.txt",
+    "validate_accuracy_8525.py",
+    "validate_accuracy_85251.py",
+    "validate_accuracy_85251_output.txt",
+    "validate_accuracy_85252.py",
+    "validate_accuracy_852521.py",
+    "validate_accuracy_852521_output.txt",
+    "validate_accuracy_85252_output.txt",
+    "validate_accuracy_8525_output.txt",
+    "validate_accuracy_stage_isolation_85253.py",
+    "validate_atomic_evidence_sync_852521.py",
+    "validate_atomic_evidence_sync_852521_output.txt",
+    "validate_canonical_acceptance_85253321.py",
+    "validate_canonical_pipeline_852532.py",
+    "validate_canonical_pipeline_852532.txt",
+    "validate_eleven_issue_closure_852533.py",
+    "validate_final_writer_stop_tail_closure_8525331.py",
+    "validate_financial_number_safety_852521.py",
+    "validate_financial_number_safety_852521_output.txt",
+    "validate_lineage_regression_852521.py",
+    "validate_lineage_regression_852521_output.txt",
+    "validate_output_artifact_consistency_852521.py",
+    "validate_output_artifact_consistency_852521_output.txt",
+    "validate_runtime_8520_5_output.txt",
+    "validate_startup_8520_3_output.txt",
+    "x.txt"
+  ],
+  "build_id": "be77c0ec-1972-4aaa-b166-8323475d1f30",
+  "patch_version": "3.3.5.5.8.5.25.3.3.2.4",
+  "generated_at": "2026-07-14T07:23:20Z"
+}

@@ -1,0 +1,155 @@
+{
+  "app_version": "3.3.5.5.8.5.23.4",
+  "reference_alignment_diagnosis_enabled": true,
+  "alpha_path": "troubleshooting\\latest\\latest_live_alpha_output.txt",
+  "reference_path": "troubleshooting\\accuracy_benchmark\\reference_transcripts\\test01.txt",
+  "reference_quality_verdict": "valid_for_cer",
+  "trusted_cer_allowed": true,
+  "qualitative_alignment_allowed": true,
+  "warning": "Reference appears aligned enough for trusted CER scoring.",
+  "alignment_mode": "verbatim",
+  "sections": [
+    {
+      "section_id": "section_1",
+      "reference_heading_or_hint": "",
+      "alpha_line_start": 2,
+      "alpha_line_end": 2,
+      "reference_excerpt": "[音楽] みなさんこんにちは第4回のビジネス会話クラス おつかれさまでした 今回のビデオから新しいトピックに挨拶をする に入りますそれでは始めましょう それでは表現から確認していきましょう まずこちらの2つの表現を確認します 一つ目 早退遅",
+      "alpha_excerpt": "第四回のビジネス会話クラスお疲れ様でした。今回のビデから新しいトピック2挨拶をするに入ります。",
+      "shared_terms": [],
+      "overlap_score": 0.2982,
+      "confidence": "low",
+      "notes": "Monotonic sequential alignment"
+    },
+    {
+      "section_id": "section_2",
+      "reference_heading_or_hint": "",
+      "alpha_line_start": 24,
+      "alpha_line_end": 24,
+      "reference_excerpt": "発音たくさんこれからも出てきますのでいつも注意してください それでは2つ目久しぶりに会うときの表現です 3つありましたけど皆さん覚えていますか ご無沙汰しておりますお久しぶりでございます お変わりございませんか まあこのような表現がありまし",
+      "alpha_excerpt": "直接会った時メールを送る時このご無沙汰しておりますを使ってください。お久しぶりでございます。",
+      "shared_terms": [
+        "ございます"
+      ],
+      "overlap_score": 0.4704,
+      "confidence": "low",
+      "notes": "Monotonic sequential alignment"
+    },
+    {
+      "section_id": "section_3",
+      "reference_heading_or_hint": "",
+      "alpha_line_start": 37,
+      "alpha_line_end": 37,
+      "reference_excerpt": "仕事のポジション c が上がることさらに勤務地が変わることを言います 似たような言葉で昇進という言葉もあります 昇進は 地位が合わるだけですキムチは変わりません ですから勤務地が変わる場合は護衛てねおめでとうございます キムチ変わらないでー",
+      "alpha_excerpt": "ただし実際には特に地位が上がらない転勤であってもご永天おめでとうございますを使う習慣があります",
+      "shared_terms": [
+        "ございます"
+      ],
+      "overlap_score": 0.4192,
+      "confidence": "low",
+      "notes": "Monotonic sequential alignment"
+    },
+    {
+      "section_id": "section_4",
+      "reference_heading_or_hint": "",
+      "alpha_line_start": 48,
+      "alpha_line_end": 48,
+      "reference_excerpt": "リピートしてくださいこの度はご愁傷様でございました はいこれは決まり文句ですね お葬式に出席したり 同僚が 休んでいて仕事に復帰した時に直接この度はご愁傷様でございました というふうに言います ただし直接青機会がなかったり離れている場合はメ",
+      "alpha_excerpt": "お葬式に出席したり同僚が休んでいて仕事に復帰した時に直接この度はご就職といううにただし直接会う機会がなかったり離れている場合はメールやメッセージ手紙などで伝えることもあります",
+      "shared_terms": [],
+      "overlap_score": 0.464,
+      "confidence": "low",
+      "notes": "Monotonic sequential alignment"
+    },
+    {
+      "section_id": "section_5",
+      "reference_heading_or_hint": "",
+      "alpha_line_start": 71,
+      "alpha_line_end": 71,
+      "reference_excerpt": "この前まあいろいろ招待してくれてありがとうねーという風に使う ですが仕事の場合はその節はありがとうございました その説はご丁寧にありがとうございました という表現を使います 次年末の表現 これは どうぞ良いお年をお迎えください リピートして",
+      "alpha_excerpt": "明けましておめでとうございます。今年もよろしくお願い致します二つが新年の挨拶です。",
+      "shared_terms": [
+        "ございます"
+      ],
+      "overlap_score": 0.3828,
+      "confidence": "low",
+      "notes": "Monotonic sequential alignment"
+    },
+    {
+      "section_id": "section_6",
+      "reference_heading_or_hint": "",
+      "alpha_line_start": 87,
+      "alpha_line_end": 87,
+      "reference_excerpt": "必ずお辞儀と一緒にこの表現を使ってください でまぁ団はです1休んだり早退した時の段まです 主任忙しい時に3日も休んでしまって申し訳ありませんでした ああらーさんゆっくりできましたか えおかげさまですっかり良くなりました それではリピートして",
+      "alpha_excerpt": "お陰様でというのは、周りの人のサポートのおかげで仕事を休ませてもらったおかげでという感謝の気持ちを表しています。",
+      "shared_terms": [],
+      "overlap_score": 0.3214,
+      "confidence": "low",
+      "notes": "Monotonic sequential alignment"
+    },
+    {
+      "section_id": "section_7",
+      "reference_heading_or_hint": "",
+      "alpha_line_start": 96,
+      "alpha_line_end": 96,
+      "reference_excerpt": "というように表現することが多いです その方がやはり素直な印象またはそういう気持ちを持つことも大切ですね ですからこのおかげさまでよくなりました おかげさまでという表現ぜひ積極的に使ってみてください 談話にです 久しぶりに会った時の表現です ",
+      "alpha_excerpt": "さらにしばらくでございますという表現もありますより仕事ビジネスの場面ではこぶさたしております",
+      "shared_terms": [
+        "ございます"
+      ],
+      "overlap_score": 0.4741,
+      "confidence": "low",
+      "notes": "Monotonic sequential alignment"
+    },
+    {
+      "section_id": "section_8",
+      "reference_heading_or_hint": "",
+      "alpha_line_start": 115,
+      "alpha_line_end": 115,
+      "reference_excerpt": "そうですねえなんとかというのは まあよくないけど悪くない まあまあまあです と言う場合に使います 大変だけど頑張っています 大変だけどなんとか 今まで頑張っています 大丈夫ですという時に えー何とかまあなんとかという表現を使います ではとて",
+      "alpha_excerpt": "お辞儀には三つの種類があってそれぞれ場面によってお辞儀の角度が変わります。例えば一番左の絵を見てください。",
+      "shared_terms": [],
+      "overlap_score": 0.2833,
+      "confidence": "low",
+      "notes": "Monotonic sequential alignment"
+    },
+    {
+      "section_id": "section_9",
+      "reference_heading_or_hint": "",
+      "alpha_line_start": 120,
+      "alpha_line_end": 120,
+      "reference_excerpt": "例えば一番左の絵を見てください 15度これは会釈とも言いますが15度 この場合は出社や退社する場合挨拶をする場合 軽い挨拶ですねをする場合はは15度の お辞儀をします そして次30度 これは お客様のところを訪問する時 お客さんが来たり帰る",
+      "alpha_excerpt": "てさらに45度これはお礼または謝罪本当にありがとうございました。誠に申し訳ございませんでした。",
+      "shared_terms": [
+        "申し訳ございません"
+      ],
+      "overlap_score": 0.398,
+      "confidence": "low",
+      "notes": "Monotonic sequential alignment"
+    }
+  ],
+  "missing_sections_count": 0,
+  "extra_alpha_sections_count": 117,
+  "reference_formatting_flags_seen_in_alignment": [],
+  "generated_at": "2026-07-09T11:52:46",
+  "report_type": "alignment_report",
+  "alignment_order_violations": 0,
+  "alignment_integrity_verdict": "invalid",
+  "alignment_coverage_verdict": "weak",
+  "unaligned_alpha_ratio": 0.9286,
+  "aligned_alpha_line_count": 9,
+  "unaligned_alpha_line_count": 117,
+  "total_alpha_line_count": 126,
+  "average_section_overlap_score": 0.3902,
+  "min_section_overlap_score": 0.2833,
+  "alignment_confidence_distribution": {
+    "low": 9
+  },
+  "coverage_warning": "Alpha contains substantial content outside reference sections.",
+  "decision_recommendation": "Do not use CER for product decisions.",
+  "alpha_sha256": "26aa2edab22d3db1bbd625cbe2592ab5db185bc8f1515a44deb90369a3639467",
+  "alpha_size_bytes": 13586,
+  "reference_sha256": "2bf8a6f08975334d14f5b6d29f8f2270fb46856949c7246564f95081ef0d88bf",
+  "reference_size_bytes": 12768,
+  "latest_live_run_id": "live-v3.3.5.5.8.5.23.4-20260709-112449-8f93fbc5"
+}

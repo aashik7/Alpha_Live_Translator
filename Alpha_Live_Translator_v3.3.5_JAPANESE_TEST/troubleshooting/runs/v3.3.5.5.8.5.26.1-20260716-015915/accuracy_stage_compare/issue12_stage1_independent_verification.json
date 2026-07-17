@@ -1,0 +1,24 @@
+{
+  "reference_hash_verified": true,
+  "stage_hashes_verified": true,
+  "actual_request_verified": true,
+  "system_audio_only_verified": true,
+  "raw_cer_recalculated": 18.725324309080655,
+  "stable_cer_recalculated": 18.83812746756909,
+  "final_cer_recalculated": 18.83812746756909,
+  "raw_accuracy_recalculated": 81.27467569091934,
+  "stable_accuracy_recalculated": 81.1618725324309,
+  "final_accuracy_recalculated": 81.1618725324309,
+  "critical_term_accuracy_recalculated": 87.5,
+  "stable_to_final_loss_recalculated": 0.0,
+  "runtime_regressions": [
+    "stop_freeze",
+    "audio_queue_overflow_after_stop",
+    "translation_api_active",
+    "raw_mutation_count_nonzero"
+  ],
+  "mismatches": [],
+  "verification_passed": false,
+  "raw_mutation_count": 1,
+  "frozen_infrastructure_baseline": "3.3.5.5.8.5.25.3.3.2.8"
+}

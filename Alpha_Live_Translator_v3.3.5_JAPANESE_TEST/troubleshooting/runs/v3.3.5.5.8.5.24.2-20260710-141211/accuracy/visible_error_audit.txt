@@ -1,0 +1,8 @@
+# Visible Error Audit (audit-only — no auto-correction)
+# app_version: 3.3.5.5.8.5.24.2
+# run_id: live-v3.3.5.5.8.5.24.2-20260710-141211-28394ffa
+# visible_error_count: 2
+# high: 0 medium: 0 low: 2
+
+line=1 severity=low pattern=company_number_risk category=meaning_risk snippet=皆さんこにちは株式会社さくら作プラス代表の中山。本日は2026年7月期第3四半期決算についてご案内申し上げます。は二千二十六年七月期第三四半期決算概要についてお知らせいたします。
+line=19 severity=low pattern=company_number_risk category=meaning_risk snippet=不動産企画開発ではマンション開発事業と買取再販事業ホテル再生事業も計画通り進捗しており。以上2026年7月期第3四半期決算当期予想に対し順調に進捗しておりますので引き続き教えの程お願いいたし。どうもありがとう。

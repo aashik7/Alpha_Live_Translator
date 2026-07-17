@@ -1,0 +1,110 @@
+STOP-TAIL SUPPRESSION AUDIT — V25.3.3
+Project version: 3.3.5.5.8.5.25.3.3
+Generated: 2026-07-13T18:17:35Z UTC
+Scope: Code inspection only; no live test; no fix claims.
+
+================================================================================
+1. SUPPRESSION TARGET SELECTION
+================================================================================
+File: alpha/transcription/japanese_sentence_assembler.py
+Function: _publish_sentence (approx. lines 3361–3778)
+
+Early suppress gate (suppress_early):
+  Conditions (all required):
+    - is_stop_incomplete == True  (stop_incomplete or reason == "stop_flush_incomplete_tail")
+    - STOP_TAIL_CLEANUP_ENABLED == True  (alpha/constants.py)
+    - SUPPRESS_INCOMPLETE_STOP_TAIL_FROM_ALPHA == True  (alpha/constants.py)
+    - NOT has_strong_sentence_end(text)
+
+When suppress_early is True:
+  - asm_action / ledger_applied forced to "suppress"
+  - revision_target_id = str(revision_decision.get("target_line_id") or self._last_stable_line_id or "")
+  - suppression_reason = incomplete_reason
+  - Passed to execute_pipeline_commit(... applied_action="suppress", ...)
+
+revision_decision.target_line_id origin:
+  File: alpha/transcription/stable_revision_decision.py
+  Function: decide_stable_revision (approx. line 137)
+  - target_line_id = str(previous_record.get("line_id") or "")
+  - previous_record is the last stable/active assembler record before candidate
+
+Fallback when target_line_id empty:
+  - self._last_stable_line_id (last committed canonical record id from prior pipeline_txn)
+
+================================================================================
+2. revision_target_id USAGE
+================================================================================
+Assembler → pipeline:
+  japanese_sentence_assembler._publish_sentence
+    → pipeline_commit_transaction.execute_pipeline_commit(revision_target_id=...)
+
+Transaction → ledger:
+  pipeline_commit_transaction.execute_pipeline_commit
+    → canonical_transcript_ledger.apply_decision(revision_target_id=..., applied_action=...)
+
+Ledger suppress branch:
+  canonical_transcript_ledger.apply_decision (applied == "suppress")
+    → _suppress_record_unlocked(record_id=revision_target_id, ...)
+
+Direct API (also gated by freeze):
+  canonical_transcript_ledger.suppress_record(record_id=...)
+
+================================================================================
+3. LEDGER SUPPRESSION CALL
+================================================================================
+File: alpha/transcription/canonical_transcript_ledger.py
+Function: _suppress_record_unlocked (approx. lines 448–486)
+
+Behavior:
+  - Requires non-empty suppression_reason; else returns ok=False reason=suppression_reason_required
+  - If record_id provided: _find_record_unlocked(record_id)
+  - Else: targets active[-1] (last active record)
+  - Sets target["suppressed"]=True, target["active"]=False, applied_action="suppress"
+  - Appends history event action="suppress"
+  - Blocked when ledger frozen (_assert_not_frozen_unlocked)
+
+================================================================================
+4. INCOMPLETE STOP TAIL HANDLING
+================================================================================
+Stop flush entry:
+  japanese_final_chunk_stabilizer.flush_japanese_assembler_on_stop
+    → assembler flush with stop_incomplete / stop_flush_incomplete_tail reason
+
+Incomplete classification:
+  is_stop_incomplete = stop_incomplete or reason == "stop_flush_incomplete_tail"
+
+Paths when incomplete:
+  A) suppress_early True  → ledger suppress (no new append of tail text)
+  B) suppress_early False → append/revise via normal revision decision
+  C) UI/snapshot layer: suppress_stop_tail_early skips append_transcript_snapshot notify (lines ~4047+)
+
+Strong sentence end on incomplete tail:
+  - suppress_early forced False (has_strong_sentence_end guard)
+  - Tail may append/revise instead of suppress
+
+================================================================================
+5. PROTECTION OF EXISTING VALID ACTIVE RECORDS
+================================================================================
+Guards present:
+  - Ledger mutations blocked after freeze_snapshot()
+  - suppress requires suppression_reason
+  - completed_previous_sentence_protected can block unsafe revise (separate path)
+  - NO explicit guard in suppress path that target must equal the incomplete tail candidate
+  - NO check that target record is itself incomplete or stop_flush before suppress
+
+When suppress_early fires:
+  - revision_target_id typically points at previous_record.line_id / _last_stable_line_id
+  - That is an EXISTING active ledger record (often the last committed stable line)
+  - _suppress_record_unlocked deactivates that record without verifying it is the tail fragment
+
+================================================================================
+6. CONCLUSION — CAN INCOMPLETE STOP TAIL SUPPRESS AN EXISTING ACTIVE RECORD?
+================================================================================
+YES (under current code, when flags enabled and suppress_early conditions met).
+
+An incomplete Stop tail with no strong sentence end can invoke ledger suppress against
+revision_target_id derived from the previous stable line (existing active record). The
+ledger will mark that record suppressed/active=False even if it was a prior valid commit,
+not merely a discardable partial tail record.
+
+This audit does not assert the behavior is correct or incorrect — only documents current code.

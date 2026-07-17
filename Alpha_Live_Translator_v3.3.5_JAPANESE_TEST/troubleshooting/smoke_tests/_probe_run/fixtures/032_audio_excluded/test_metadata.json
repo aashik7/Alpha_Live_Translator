@@ -1,0 +1,147 @@
+{
+  "test_number": 32,
+  "test_name": "audio_files_excluded_from_package",
+  "fixture_directory": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\smoke_tests\\_probe_run\\fixtures\\032_audio_excluded",
+  "deterministic_name": "032_audio_excluded",
+  "expected_pass_or_fail": "pass",
+  "expected_failure_reason": "",
+  "actual_pass_or_fail": "pass",
+  "actual_failure_reason": "",
+  "command_or_function_invoked": "__main__.test_32_package_excludes_audio",
+  "started_at_utc": "2026-07-16T07:50:04Z",
+  "completed_at_utc": "2026-07-16T07:50:05Z",
+  "file_index": [
+    {
+      "relative_path": "accuracy_stage_compare/audio_delivery_events.jsonl",
+      "exists": true,
+      "byte_size": 1960,
+      "sha256": "f798ebaff2c63a5aa83627fa94fc202f969e59a0d9b53e3e5ad23d69b074e5aa"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/audio_delivery_summary.json",
+      "exists": true,
+      "byte_size": 1056,
+      "sha256": "81d430bd79bebac4ff84cff462ca8a2d83a68bcfbbbef98882a8bb67f7234346"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/Cursor final report.txt",
+      "exists": true,
+      "byte_size": 16,
+      "sha256": "e25d9e87a10d0c32265dc21eedccd081076a638fb70023cf7ec4a74a55f7f2e9"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/deepgram_request_actual.json",
+      "exists": true,
+      "byte_size": 926,
+      "sha256": "9b2088f521230dcf25dbf623c01f6e5953652aa7592bd7ea0304d60e9fac782f"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/domain_category_score.json",
+      "exists": true,
+      "byte_size": 27287,
+      "sha256": "85c49bc6e10528c4cf35fb086b3b48ed61dcd6409ac8164a4c3516f1bcde92ee"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/final_alpha_output.txt",
+      "exists": true,
+      "byte_size": 782,
+      "sha256": "fb175084f302f53fa00c7dc05f4373d10e20845244efd6f09598dacaecd4815b"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/independent_verification.json",
+      "exists": true,
+      "byte_size": 2457,
+      "sha256": "5395162f63b0dd95e24afdfc3742695ca6c4395d02a068b53814dbe5e8916fbd"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/meaning_equivalent_score.json",
+      "exists": true,
+      "byte_size": 3222,
+      "sha256": "4ab7273a0310e41889ea887baadd00b91653d49fe526972915fcd23a1f7805b2"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/multidomain_gate_acceptance.json",
+      "exists": true,
+      "byte_size": 1550,
+      "sha256": "4ea279f101f17c07db8b890f6b57fd7dbab88627d28441ba617ee5cb84b2da0e"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/noise.wav",
+      "exists": true,
+      "byte_size": 4,
+      "sha256": "a40ff3d5900fb7698b8c865041347cb49eccedc8f93945f89629ad104aaecce4"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/raw_deepgram.txt",
+      "exists": true,
+      "byte_size": 782,
+      "sha256": "fb175084f302f53fa00c7dc05f4373d10e20845244efd6f09598dacaecd4815b"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/reference_isolation_actual.json",
+      "exists": true,
+      "byte_size": 781,
+      "sha256": "a490ac7d7683244125a55f31a0459a5ec0ea73057a1d2053eb38077e2494baa4"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/runtime_regression_report.json",
+      "exists": true,
+      "byte_size": 156,
+      "sha256": "42e8a3380243101dbe0511f33d1a51704171586771f3e96cb1179f2ef2ec71c3"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/stable_transcript.txt",
+      "exists": true,
+      "byte_size": 782,
+      "sha256": "fb175084f302f53fa00c7dc05f4373d10e20845244efd6f09598dacaecd4815b"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/strict_score.json",
+      "exists": true,
+      "byte_size": 1700,
+      "sha256": "a940684a2b6be0d87424d9bb6caf1e289a040cdbe01315d4868027a5ddcb8d29"
+    },
+    {
+      "relative_path": "actual_result.json",
+      "exists": true,
+      "byte_size": 182,
+      "sha256": "ff76e32ee77b23c08a7b7053c9a952dabdc7e47acdfa867ba3307e75d1816f0c"
+    },
+    {
+      "relative_path": "expected_result.json",
+      "exists": true,
+      "byte_size": 150,
+      "sha256": "740e81f1a93921034410e16b74bf3ed0cd6a974db3dbc5ab8e6d0d2667361bb3"
+    },
+    {
+      "relative_path": "MULTIDOMAIN_GATE_ANALYSIS_PACKAGE_032_audio_excluded.sha256",
+      "exists": true,
+      "byte_size": 66,
+      "sha256": "d98f21f573df97b4e377b11b5ca1c752fde1693d93aa3bc56fcfa5baf1235613"
+    },
+    {
+      "relative_path": "MULTIDOMAIN_GATE_ANALYSIS_PACKAGE_032_audio_excluded.size.txt",
+      "exists": true,
+      "byte_size": 7,
+      "sha256": "43d97161f40e62633a9e085bfb5a2a576b705ff3a83cc3d00a52f6b0d11e8df5"
+    },
+    {
+      "relative_path": "MULTIDOMAIN_GATE_ANALYSIS_PACKAGE_032_audio_excluded.zip",
+      "exists": true,
+      "byte_size": 12934,
+      "sha256": "f634940842e1d4eb64471a09a7fa8ced9298ab425bab713492eb6f33723b91c4"
+    },
+    {
+      "relative_path": "reference_copy/multidomain_meeting_v1.txt",
+      "exists": true,
+      "byte_size": 782,
+      "sha256": "fb175084f302f53fa00c7dc05f4373d10e20845244efd6f09598dacaecd4815b"
+    },
+    {
+      "relative_path": "reference_copy/multidomain_meeting_v1_truth.json",
+      "exists": true,
+      "byte_size": 2000,
+      "sha256": "ecfbe03916714bd6978dcf926b66def33fb881b394a6ea9594df538f608b2112"
+    }
+  ]
+}

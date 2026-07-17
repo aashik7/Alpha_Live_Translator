@@ -1,0 +1,123 @@
+{
+  "test_number": 9,
+  "test_name": "unexpected_sent_chunk_fails",
+  "kind": "negative",
+  "single_mutation_description": "one sent chunk event added for an id that was never queued",
+  "files": [
+    {
+      "relative_path": "accuracy_stage_compare/audio_delivery_events.jsonl",
+      "byte_size": 2170,
+      "sha256": "7edd26b39fe1476f871ce2ffc40c9694bfcbf4a0c679bb4e51155bd43cea91ac"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/audio_delivery_summary.json",
+      "byte_size": 1122,
+      "sha256": "ecd7c43f86afb46275827c40476be7e28f0057a7b6ab80269be83f5299103c08"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/Cursor final report.txt",
+      "byte_size": 16,
+      "sha256": "e25d9e87a10d0c32265dc21eedccd081076a638fb70023cf7ec4a74a55f7f2e9"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/deepgram_request_actual.json",
+      "byte_size": 926,
+      "sha256": "71764bb979cb16c2a6c69ff274daa6c00954bf35065f33d3ca11669ed2116966"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/domain_category_score.json",
+      "byte_size": 4823,
+      "sha256": "47f54057a4ad9bd3131464adb3f9cd5a7d862bf242fc12d7d21ff712d2fb63f0"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/final_alpha_output.txt",
+      "byte_size": 1450,
+      "sha256": "f5f7ba4480ee10dc408e2f24d3e2865520a1d666a57bbbdaeea50c4dc6c0a5b7"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/independent_verification.json",
+      "byte_size": 2404,
+      "sha256": "d8eacec4875c8985d4d2e8969f64bfadf70b202ba5b09f5ae94788c4cd3fc3aa"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/meaning_equivalent_score.json",
+      "byte_size": 3838,
+      "sha256": "e55d9c8b372b733c9c43d89f9700c4c0d6248ec50c9fc8e5244aa7e26f452fbb"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/multidomain_gate_acceptance.json",
+      "byte_size": 1203,
+      "sha256": "23ce7cafc639c5f0d76015c60b132bca2a5287d1f400f77bd249e4e7b195cf2d"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/noise.wav",
+      "byte_size": 4,
+      "sha256": "a40ff3d5900fb7698b8c865041347cb49eccedc8f93945f89629ad104aaecce4"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/raw_deepgram.txt",
+      "byte_size": 1450,
+      "sha256": "f5f7ba4480ee10dc408e2f24d3e2865520a1d666a57bbbdaeea50c4dc6c0a5b7"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/reference_isolation_actual.json",
+      "byte_size": 781,
+      "sha256": "a490ac7d7683244125a55f31a0459a5ec0ea73057a1d2053eb38077e2494baa4"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/runtime_regression_report.json",
+      "byte_size": 156,
+      "sha256": "42e8a3380243101dbe0511f33d1a51704171586771f3e96cb1179f2ef2ec71c3"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/stable_transcript.txt",
+      "byte_size": 1450,
+      "sha256": "f5f7ba4480ee10dc408e2f24d3e2865520a1d666a57bbbdaeea50c4dc6c0a5b7"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/strict_score.json",
+      "byte_size": 1806,
+      "sha256": "bfe0b8e69d01e3be0c1a6f255d4ef63de8ac95a22a302201d41b5a467d99bc66"
+    },
+    {
+      "relative_path": "actual_gate_result.json",
+      "byte_size": 936,
+      "sha256": "eed2e1a3190fd44a63faa992067803de126c7dff24a62edd257ed55ca859e42b"
+    },
+    {
+      "relative_path": "expected_gate_result.json",
+      "byte_size": 306,
+      "sha256": "abca155e0f4245b5241e0b9461e2287d8461ae4959032d5d5b239371e0ae7266"
+    },
+    {
+      "relative_path": "MULTIDOMAIN_GATE_ANALYSIS_PACKAGE_009_unexpected_sent_chunk.sha256",
+      "byte_size": 66,
+      "sha256": "fee95803ca18d29ac5e8a2658333e25eb305c8d5385919ead8a5c5028ab49ac4"
+    },
+    {
+      "relative_path": "MULTIDOMAIN_GATE_ANALYSIS_PACKAGE_009_unexpected_sent_chunk.size.txt",
+      "byte_size": 7,
+      "sha256": "4bae5430a5002a3859fc64b36b1bf7fb16ca40f9c861e2b72ce00190a75608e6"
+    },
+    {
+      "relative_path": "MULTIDOMAIN_GATE_ANALYSIS_PACKAGE_009_unexpected_sent_chunk.zip",
+      "byte_size": 12132,
+      "sha256": "ed390de78fe2327f7fc03d89d452a47a8fce231706bbc3e5a2645f87eae35c32"
+    },
+    {
+      "relative_path": "reference_copy/multidomain_meeting_v1.txt",
+      "byte_size": 1450,
+      "sha256": "f5f7ba4480ee10dc408e2f24d3e2865520a1d666a57bbbdaeea50c4dc6c0a5b7"
+    },
+    {
+      "relative_path": "reference_copy/multidomain_meeting_v1_truth.json",
+      "byte_size": 2000,
+      "sha256": "ecfbe03916714bd6978dcf926b66def33fb881b394a6ea9594df538f608b2112"
+    },
+    {
+      "relative_path": "regression_assertion.json",
+      "byte_size": 662,
+      "sha256": "fdbe355ab1977624c7ffc11b6e6ee60e928b23395ab2985ffdfaac00727765ed"
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "VERSION": "NOT_ACCEPTED",
+  "STATUS": "TARGET_NOT_REACHED",
+  "issue12_stage": 1,
+  "profile_status": "experimental_only",
+  "ready_for_step2": false,
+  "raw_accuracy_percent": 81.27467569091934,
+  "stable_accuracy_percent": 81.1618725324309,
+  "final_accuracy_percent": 81.1618725324309,
+  "trusted_stable_cer_percent": 18.83812746756909,
+  "combined_critical_term_accuracy_percent": 87.5,
+  "stable_to_final_loss_percent": 0.0,
+  "runtime_regressions": 4,
+  "runtime_regression_list": [
+    "stop_freeze",
+    "audio_queue_overflow_after_stop",
+    "translation_api_active",
+    "raw_mutation_count_nonzero"
+  ],
+  "gap_to_85_percent": 3.8381274675690946,
+  "highest_impact_edit_categories": [
+    {
+      "category": "financial_term",
+      "missing_term_count": 5
+    },
+    {
+      "category": "raw_substitutions",
+      "missing_term_count": 76
+    },
+    {
+      "category": "raw_deletions",
+      "missing_term_count": 242
+    }
+  ],
+  "failures": [
+    "stable_accuracy_below_85",
+    "stable_cer_above_15",
+    "combined_critical_term_below_90",
+    "runtime_regressions_present",
+    "independent_verification_failed"
+  ],
+  "profile_name": "target_85_meeting_context",
+  "production_profile_unchanged": true,
+  "app_version": "3.3.5.5.8.5.26.1",
+  "frozen_infrastructure_baseline": "3.3.5.5.8.5.25.3.3.2.8",
+  "created_at": "2026-07-15T17:06:45Z"
+}

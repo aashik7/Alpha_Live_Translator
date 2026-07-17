@@ -1,0 +1,23 @@
+{
+  "test_number": 5,
+  "test_name": "altered_transcript_hash_fails",
+  "kind": "negative",
+  "single_mutation_description": "stage_manifest.json raw_sha256 set to a wrong value",
+  "files": [
+    {
+      "relative_path": "actual_gate_result.json",
+      "byte_size": 939,
+      "sha256": "071795100f58a0e735ba598fc13a0f16900f71dfe60dfc5dc470d3c2e6d7247f"
+    },
+    {
+      "relative_path": "expected_gate_result.json",
+      "byte_size": 303,
+      "sha256": "ddd7c618f54fe0b875636947f729b8093e39202a0feb5ae513ab4bb2d67f372f"
+    },
+    {
+      "relative_path": "regression_assertion.json",
+      "byte_size": 672,
+      "sha256": "639c3cc0d86e8411951993d3463daabd67dbf5bbdf4448650beff4c157e28fc8"
+    }
+  ]
+}

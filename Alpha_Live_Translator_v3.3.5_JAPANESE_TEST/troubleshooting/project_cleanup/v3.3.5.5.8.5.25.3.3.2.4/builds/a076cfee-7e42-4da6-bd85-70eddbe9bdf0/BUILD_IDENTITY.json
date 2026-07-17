@@ -1,0 +1,18 @@
+{
+  "build_id": "a076cfee-7e42-4da6-bd85-70eddbe9bdf0",
+  "build_timestamp": "2026-07-14T07:09:52Z",
+  "patch_version": "3.3.5.5.8.5.25.3.3.2.4",
+  "patch_codename": "Final Package Closure, Safe Project Cleanup & Zero-Regret Retention",
+  "project_root": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST",
+  "cleanup_root": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\project_cleanup\\v3.3.5.5.8.5.25.3.3.2.4",
+  "build_dir": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\project_cleanup\\v3.3.5.5.8.5.25.3.3.2.4\\builds\\a076cfee-7e42-4da6-bd85-70eddbe9bdf0",
+  "inventory_dir": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\project_cleanup\\v3.3.5.5.8.5.25.3.3.2.4\\builds\\a076cfee-7e42-4da6-bd85-70eddbe9bdf0\\inventory",
+  "analysis_dir": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\project_cleanup\\v3.3.5.5.8.5.25.3.3.2.4\\builds\\a076cfee-7e42-4da6-bd85-70eddbe9bdf0\\analysis",
+  "quarantine_dir": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\project_cleanup\\v3.3.5.5.8.5.25.3.3.2.4\\builds\\a076cfee-7e42-4da6-bd85-70eddbe9bdf0\\quarantine",
+  "reports_dir": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\project_cleanup\\v3.3.5.5.8.5.25.3.3.2.4\\builds\\a076cfee-7e42-4da6-bd85-70eddbe9bdf0\\reports",
+  "regression_dir": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\project_cleanup\\v3.3.5.5.8.5.25.3.3.2.4\\builds\\a076cfee-7e42-4da6-bd85-70eddbe9bdf0\\regression",
+  "package_dir": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\project_cleanup\\v3.3.5.5.8.5.25.3.3.2.4\\builds\\a076cfee-7e42-4da6-bd85-70eddbe9bdf0\\package",
+  "restore_dir": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\project_cleanup\\v3.3.5.5.8.5.25.3.3.2.4\\builds\\a076cfee-7e42-4da6-bd85-70eddbe9bdf0\\restore",
+  "created_unix": 1784012992.964842,
+  "generated_at": "2026-07-14T07:09:52Z"
+}

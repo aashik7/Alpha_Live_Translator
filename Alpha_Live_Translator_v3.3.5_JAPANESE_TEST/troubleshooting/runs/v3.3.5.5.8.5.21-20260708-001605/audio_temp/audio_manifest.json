@@ -1,0 +1,103 @@
+{
+  "capture_enabled": true,
+  "retention_hours": 3,
+  "max_total_gb": 3,
+  "chunk_seconds": 60,
+  "sample_rate": 16000,
+  "channels": 1,
+  "format": "wav_pcm16",
+  "streams_available": [
+    "mixed"
+  ],
+  "chunks": [
+    {
+      "filename": "mixed_20260708-001706_0000.wav",
+      "stream_type": "mixed",
+      "path": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\runs\\v3.3.5.5.8.5.21-20260708-001605\\audio_temp\\mixed_audio\\mixed_20260708-001706_0000.wav",
+      "start_timestamp": 1783437366.1044862,
+      "end_timestamp": 1783437426.1044924,
+      "duration_seconds": 60,
+      "size_bytes": 1920044,
+      "deleted": true,
+      "delete_reason": "after_stop"
+    },
+    {
+      "filename": "mixed_20260708-001806_0001.wav",
+      "stream_type": "mixed",
+      "path": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\runs\\v3.3.5.5.8.5.21-20260708-001605\\audio_temp\\mixed_audio\\mixed_20260708-001806_0001.wav",
+      "start_timestamp": 1783437426.1387827,
+      "end_timestamp": 1783437486.138788,
+      "duration_seconds": 60,
+      "size_bytes": 1920044,
+      "deleted": true,
+      "delete_reason": "after_stop"
+    },
+    {
+      "filename": "mixed_20260708-001906_0002.wav",
+      "stream_type": "mixed",
+      "path": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\runs\\v3.3.5.5.8.5.21-20260708-001605\\audio_temp\\mixed_audio\\mixed_20260708-001906_0002.wav",
+      "start_timestamp": 1783437486.118562,
+      "end_timestamp": 1783437546.1185665,
+      "duration_seconds": 60,
+      "size_bytes": 1920044,
+      "deleted": true,
+      "delete_reason": "after_stop"
+    },
+    {
+      "filename": "mixed_20260708-002006_0003.wav",
+      "stream_type": "mixed",
+      "path": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\runs\\v3.3.5.5.8.5.21-20260708-001605\\audio_temp\\mixed_audio\\mixed_20260708-002006_0003.wav",
+      "start_timestamp": 1783437546.117584,
+      "end_timestamp": 1783437606.1175861,
+      "duration_seconds": 60,
+      "size_bytes": 1920044,
+      "deleted": true,
+      "delete_reason": "after_stop"
+    },
+    {
+      "filename": "mixed_20260708-002106_0004.wav",
+      "stream_type": "mixed",
+      "path": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\runs\\v3.3.5.5.8.5.21-20260708-001605\\audio_temp\\mixed_audio\\mixed_20260708-002106_0004.wav",
+      "start_timestamp": 1783437606.1204195,
+      "end_timestamp": 1783437666.1204224,
+      "duration_seconds": 60,
+      "size_bytes": 1920044,
+      "deleted": true,
+      "delete_reason": "after_stop"
+    },
+    {
+      "filename": "mixed_20260708-002206_0005.wav",
+      "stream_type": "mixed",
+      "path": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\runs\\v3.3.5.5.8.5.21-20260708-001605\\audio_temp\\mixed_audio\\mixed_20260708-002206_0005.wav",
+      "start_timestamp": 1783437666.130854,
+      "end_timestamp": 1783437726.1308575,
+      "duration_seconds": 60,
+      "size_bytes": 1920044,
+      "deleted": true,
+      "delete_reason": "after_stop"
+    },
+    {
+      "filename": "mixed_20260708-002306_0006.wav",
+      "stream_type": "mixed",
+      "path": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\runs\\v3.3.5.5.8.5.21-20260708-001605\\audio_temp\\mixed_audio\\mixed_20260708-002306_0006.wav",
+      "start_timestamp": 1783437726.128708,
+      "end_timestamp": 1783437786.1287122,
+      "duration_seconds": 60,
+      "size_bytes": 1920044,
+      "deleted": true,
+      "delete_reason": "after_stop"
+    },
+    {
+      "filename": "mixed_20260708-002406_0007.wav",
+      "stream_type": "mixed",
+      "path": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\runs\\v3.3.5.5.8.5.21-20260708-001605\\audio_temp\\mixed_audio\\mixed_20260708-002406_0007.wav",
+      "start_timestamp": 1783437786.1216252,
+      "end_timestamp": 1783437846.1216278,
+      "duration_seconds": 60,
+      "size_bytes": 1920044,
+      "deleted": true,
+      "delete_reason": "after_stop"
+    }
+  ],
+  "created_at": 1783437366.0905201
+}

@@ -1,0 +1,21 @@
+{
+  "test_number": 16,
+  "test_name": "scoring_module_imported_during_runtime_fails",
+  "regression_test_status": "PASSED",
+  "expected_gate_status": "FAILED",
+  "actual_gate_status": "FAILED",
+  "expected_failure_codes": [
+    "SCORING_MODULE_IMPORTED_DURING_RUNTIME"
+  ],
+  "actual_failure_codes": [
+    "SCORING_MODULE_IMPORTED_DURING_RUNTIME"
+  ],
+  "exact_failure_code_match": true,
+  "unexpected_failure_codes": [],
+  "missing_failure_codes": [],
+  "unrelated_exception_detected": false,
+  "assertion_messages": [
+    "expected_gate_status=FAILED actual_gate_status=FAILED",
+    "expected_failure_codes=['SCORING_MODULE_IMPORTED_DURING_RUNTIME'] actual_failure_codes=['SCORING_MODULE_IMPORTED_DURING_RUNTIME']"
+  ]
+}

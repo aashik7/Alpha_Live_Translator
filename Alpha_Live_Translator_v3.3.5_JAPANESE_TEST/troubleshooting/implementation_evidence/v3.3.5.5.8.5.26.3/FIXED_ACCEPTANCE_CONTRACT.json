@@ -1,0 +1,16 @@
+{
+  "contract_version": "1.0",
+  "implementation_version": "3.3.5.5.8.5.26.3",
+  "required_code_fixes": [
+    "benchmark_truth_removed_from_alpha_tree",
+    "truth_template_moved_to_offline_preparation_tool",
+    "zero_safe_numeric_acceptance_logic",
+    "actual_gate_positive_fixture_passes_without_ignored_failures"
+  ],
+  "existing_regression_suite_required": true,
+  "targeted_regression_suite_required": true,
+  "live_test_allowed": false,
+  "translation_beta_allowed": false,
+  "accepted_with_warnings_allowed": false,
+  "additional_acceptance_requirements_allowed": false
+}

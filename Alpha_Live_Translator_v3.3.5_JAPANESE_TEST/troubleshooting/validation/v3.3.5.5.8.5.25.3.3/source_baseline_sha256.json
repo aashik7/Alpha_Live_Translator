@@ -1,0 +1,28 @@
+{
+  "app_version_before": "3.3.5.5.8.5.25.3.2.1",
+  "created_at": "2026-07-13T17:33:00+09:00",
+  "algorithm": "sha256",
+  "files": {
+    "alpha/constants.py": "f90101bfc0fd2a0f3992516a4f639812f7ff933d6718bf170e85537543d62016",
+    "alpha/utils/accuracy_stage_capture.py": "0940934c4e5679f75fa7d5d67cb16f2c2519baaeedc053e86bd6c4dedbf6e194",
+    "alpha/utils/canonical_finalize.py": "4ade06c283e470eaf14dc88882f19344cf8a392b4d0ef73183476599ca3b9f0f",
+    "alpha/utils/latest_completed_live_run.py": "e122322101075c2f1e436d663807f0b4672ed24b84aa6bf2af068d85cd935e03",
+    "alpha/utils/run_artifacts.py": "a21cbfbf322604cacffb2b8e87d529283828946215fefad97b9a562358ebecfa",
+    "alpha/utils/stop_finalize_worker.py": "db694131f297093cbcc267e3f22bcba385c0e7e952c9483b9cacb963cda39e2f",
+    "alpha/utils/language_pipeline_worker.py": "5d60929cd1809341f6b4e9a36f72752e12ac9094935cfba46cdfdf554aa8d3d1",
+    "alpha/utils/canonical_export_writer.py": "e82cc969107d2a66208a08d0f96261557196896610b6b2654769247c18f8dcdb",
+    "alpha/utils/runtime_audio_counters.py": "9008685ae8298169bbb6beae77948cc5d38ebeebcb3eb21566c0bfe1be608812",
+    "alpha/utils/component_stall_classifier.py": "504a2ff648e6a7856fa9acfab88b6d997294827f834e59ec777e606eafd879e9",
+    "alpha/utils/live_runtime_metrics.py": "01550b34f4e7696c5c8aac64cf6200b779bb241b23fc20379d2494a74c4b05f0",
+    "alpha/utils/ui_event_bus.py": "bb430fe6aaf0689a2ef4b8a2415f970ca952d7c121db6a12aa9f7012a53b72de",
+    "alpha/transcription/japanese_final_chunk_stabilizer.py": "da1fc7d0869841f3b5cbbd388f54c88f8f000069dca08c786db2f32c8f898006",
+    "alpha/transcription/japanese_sentence_assembler.py": "dfbedc070b5444831412f92fc3f889bb6b713d400b52ba130f7403d7fc05e3c3",
+    "alpha/transcription/canonical_transcript_ledger.py": "4ab8c98f4c2ac906809e52025186f19f75ae46fad99094898b9f6df322bf55b0",
+    "alpha/transcription/deepgram_client.py": "4fa500ae037bcf1264d8285ffdd5ae643a63a157d94f336d8b7f78e2015be84d",
+    "alpha/ui/main_window.py": "8c42ad7127857325cb5cd781a2bc1e53d4bbbeb10fb796d553a0fffb1f74e9a5",
+    "alpha/audio/timeline_mixer.py": "f03191d079362c8dc0d66f8fb12be3eaca3a29a4debae24bca719045805c1218",
+    "alpha/audio/wasapi.py": "873491164224973ffdc4e87ca7d4b6a5a93be6f49b7a761a790576fa2b70d3e6",
+    "alpha/audio/microphone.py": "9f944d0f5420b848878eb55b2a10423e10615e30ac99824b6b548f717772c7b4",
+    "package_latest_troubleshooting_run.py": "30ca6f62dc7e2ec71044971da1526bdad4d38724b4020a1dda480940b1fbcff4"
+  }
+}

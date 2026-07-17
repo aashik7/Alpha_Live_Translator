@@ -1,0 +1,17 @@
+{
+  "collected_at": "2026-07-09T16:44:57",
+  "app_version_before_change": "3.3.5.5.8.5.23.4.1",
+  "latest_run_id": "live-v3.3.5.5.8.5.23.4.1-20260709-141218-34805ce2",
+  "latest_alpha_path": "troubleshooting\\latest\\latest_live_alpha_output.txt",
+  "latest_alpha_size_bytes": 13797,
+  "latest_alpha_sha256": "984bf56399ae9dbe3cfe78c3407be317f117dc41f04074ab7799b1470b26291f",
+  "latest_reference_path": "troubleshooting\\accuracy_benchmark\\reference_transcripts\\test01.txt",
+  "latest_reference_sha256": "2bf8a6f08975334d14f5b6d29f8f2270fb46856949c7246564f95081ef0d88bf",
+  "latest_score_report_path": "",
+  "latest_alignment_report_path": "",
+  "latest_boundary_report_path": "",
+  "latest_upload_package_path_if_known": "troubleshooting\\runs\\v3.3.5.5.8.5.23.4.1-20260709-141218\\upload_package\\UPLOAD_PACKAGE_v3.3.5.5.8.5.23.4.1_20260709-143806.zip",
+  "warnings": [
+    "critical_missing:latest_accuracy_score_report.json"
+  ]
+}

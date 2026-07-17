@@ -1,0 +1,11 @@
+{
+  "abandoned_staging_after": 0,
+  "all_aliases_match": true,
+  "build_id": "d2e6983d-366d-4289-8524-c775c40b6b96",
+  "files_archived": 0,
+  "files_deleted": 8,
+  "final_sha256": "6e70dd171862527da2f2de0305ab82154cf9c1591b73860e4fd75e06f570c178",
+  "generated_at": "2026-07-14T15:43:00Z",
+  "legacy_tools_evaluated": 48,
+  "patch_version": "3.3.5.5.8.5.25.3.3.2.6"
+}

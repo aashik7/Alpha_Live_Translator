@@ -1,0 +1,17 @@
+{
+  "test_number": 32,
+  "test_name": "audio_files_excluded_from_package",
+  "actual_gate_status": "PASSED",
+  "actual_failure_codes": [],
+  "actual_failure_messages": [],
+  "actual_gate_exit_code": 0,
+  "actual_acceptance_version": "NOT_ACCEPTED",
+  "actual_acceptance_status": "FIXTURE_ONLY",
+  "source_result_file": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\smoke_tests\\multidomain_gate_852622_20260716-084206-3efeb298\\fixtures\\032_audio_files_excluded_from_package\\accuracy_stage_compare\\multidomain_gate_acceptance.json",
+  "source_result_file_sha256": "a7f031e3a438de74a1b71979fe83186aacaade8d88a5a7ceb6fb756f0241180c",
+  "unhandled_exception": false,
+  "exception_class": "",
+  "exception_message": "",
+  "policy_result": "AUDIO_FILES_EXCLUDED",
+  "package_entry_count": 18
+}

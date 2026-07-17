@@ -1,0 +1,95 @@
+{
+  "app_version": "3.3.5.5.8.5.25.2",
+  "pre_correction_candidates_count": 14,
+  "pre_correction_blocked_count": 8,
+  "pre_correction_allowed_count": 6,
+  "blocked_items": [
+    {
+      "text_preview": "皆さんこんにちは株式会社さくら+代表の中山です。本日は2026年7月期第3四半期決算についてご案内申し上げます。",
+      "source_commit_id": "stable-1",
+      "source": "ui_exported_segments",
+      "reason": "source_represented_by_corrected_line"
+    },
+    {
+      "text_preview": "これは既存園の在籍率向上や工程価格の上昇による",
+      "source_commit_id": "stable-2",
+      "source": "ui_exported_segments",
+      "reason": "source_represented_by_corrected_line"
+    },
+    {
+      "text_preview": "経常利益は十一億二千八百万円と、前年同期9。5の増益となりました。",
+      "source_commit_id": "stable-5",
+      "source": "ui_exported_segments",
+      "reason": "source_represented_by_corrected_line"
+    },
+    {
+      "text_preview": "皆さんこんにちは株式会社さくら+代表の中山です。本日は2026年7月期第3四半期決算についてご案内申し上げます。",
+      "source_commit_id": "stable-1",
+      "source": "stable_commits",
+      "reason": "source_represented_by_corrected_line"
+    },
+    {
+      "text_preview": "これは既存園の在籍率向上や工程価格の上昇による",
+      "source_commit_id": "stable-3",
+      "source": "stable_commits",
+      "reason": "source_represented_by_corrected_line"
+    },
+    {
+      "text_preview": "これは既存園の在籍率向上や工程価格の上昇による補助金増額、保育所の新規開設や増床が寄与し主力の保育サービスにおいて増収となりました",
+      "source_commit_id": "stable-4",
+      "source": "stable_commits",
+      "reason": "source_represented_by_corrected_line"
+    },
+    {
+      "text_preview": "これは既存園の在籍率向上や工程価格の上昇による補助金増額、保育所の新規開設や増床が寄与し主力の保育サービスにおいて増収となりました一方不動産事業は前期に計上した大型不動産売却案件の反動により当期も不動産売却は実施したものの全体としては減少と",
+      "source_commit_id": "stable-5",
+      "source": "stable_commits",
+      "reason": "source_represented_by_corrected_line"
+    },
+    {
+      "text_preview": "経常利益は十一億二千八百万円と、前年同期9。5の増益となりました。",
+      "source_commit_id": "stable-8",
+      "source": "stable_commits",
+      "reason": "source_represented_by_corrected_line"
+    }
+  ],
+  "allowed_items": [
+    {
+      "text_preview": "なおその他サービスは概ね計画どおり進捗しております営業利益は十億六千百万円となり、前年同期比一点五パーセントの原因となりました。",
+      "source_commit_id": "stable-3",
+      "source": "ui_exported_segments",
+      "reason": "already_in_canonical_export"
+    },
+    {
+      "text_preview": "しかし不採算事業の絶対や中核事業の合理化業務効率化により営業利益率は五パーセントから七点八パーセントに向上しました。",
+      "source_commit_id": "stable-4",
+      "source": "ui_exported_segments",
+      "reason": "already_in_canonical_export"
+    },
+    {
+      "text_preview": "皆さんこんにちは株式会社さくら+代表の中山です。本日は2026年7月期第3四半期決算についてご案内申し上げます。は二千二十六年七月期、第三四半期決算概要についてお知らせいたします。売上高については百三十六億七千九百万となり前年同期比五点四パ",
+      "source_commit_id": "stable-2",
+      "source": "stable_commits",
+      "reason": "already_in_canonical_export"
+    },
+    {
+      "text_preview": "なおその他サービスは概ね計画どおり進捗しております営業利益は十億六千百万円となり、前年同期比一点五パーセントの原因となりました。",
+      "source_commit_id": "stable-6",
+      "source": "stable_commits",
+      "reason": "already_in_canonical_export"
+    },
+    {
+      "text_preview": "しかし不採算事業の絶対や中核事業の合理化業務効率化により営業利益率は五パーセントから七点八パーセントに向上しました。",
+      "source_commit_id": "stable-7",
+      "source": "stable_commits",
+      "reason": "already_in_canonical_export"
+    },
+    {
+      "text_preview": "保育所の新規改正",
+      "source_commit_id": "stable-9",
+      "source": "stable_commits",
+      "reason": "unique_lineage_not_represented"
+    }
+  ],
+  "warnings": []
+}

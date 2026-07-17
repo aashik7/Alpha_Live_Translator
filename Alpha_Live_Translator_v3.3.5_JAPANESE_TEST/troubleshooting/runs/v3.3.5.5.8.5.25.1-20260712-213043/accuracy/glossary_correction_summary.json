@@ -1,0 +1,77 @@
+{
+  "app_version": "3.3.5.5.8.5.25.1",
+  "run_id": "live-v3.3.5.5.8.5.25.1-20260712-213043-0cd8fe2f",
+  "glossary_enabled": true,
+  "glossary_path": "troubleshooting/accuracy_benchmark/glossaries/test01_corporate_ir_glossary.json",
+  "glossary_keyterm_count": 136,
+  "glossary_correction_count": 9,
+  "glossary_corrections_applied": [
+    {
+      "before": "さくら作プラス",
+      "after": "さくらさくプラス",
+      "correction_type": "glossary_term",
+      "glossary_category": "company_names"
+    },
+    {
+      "before": "既存円",
+      "after": "既存園",
+      "correction_type": "glossary_term",
+      "glossary_category": "business_terms"
+    },
+    {
+      "before": "工程価格",
+      "after": "公定価格",
+      "correction_type": "glossary_term",
+      "glossary_category": "business_terms"
+    },
+    {
+      "before": "蔵書",
+      "after": "増床",
+      "correction_type": "glossary_term",
+      "glossary_category": "business_terms"
+    },
+    {
+      "before": "大阪市中国",
+      "after": "大阪市中央区",
+      "correction_type": "glossary_term",
+      "glossary_category": "locations"
+    },
+    {
+      "before": "解説",
+      "after": "開設",
+      "correction_type": "glossary_term",
+      "glossary_category": "business_terms"
+    },
+    {
+      "before": "量産サプリメント",
+      "after": "葉酸サプリメント",
+      "correction_type": "glossary_term",
+      "glossary_category": "business_terms"
+    },
+    {
+      "before": "覚悟会社",
+      "after": "各社",
+      "correction_type": "glossary_term",
+      "glossary_category": "business_terms"
+    },
+    {
+      "before": "教えの程",
+      "after": "ご支援のほど",
+      "correction_type": "glossary_term",
+      "glossary_category": "formal_phrases"
+    }
+  ],
+  "company_name_correction_count": 1,
+  "financial_term_correction_count": 0,
+  "business_term_correction_count": 6,
+  "person_name_correction_count": 0,
+  "location_correction_count": 1,
+  "formal_phrase_correction_count": 1,
+  "financial_number_correction_count": 0,
+  "raw_mutation_count": 0,
+  "dangerous_correction_count": 0,
+  "decisions_path": "C:/Users/islamm/Documents/Tariqul/Alpha_Translator V 1.0/Alpha_Live_Translator_v3.3.5_JAPANESE_TEST/troubleshooting/runs/v3.3.5.5.8.5.25.1-20260712-213043/accuracy/glossary_correction_decisions.jsonl",
+  "corporate_term_accuracy_report_path": "C:/Users/islamm/Documents/Tariqul/Alpha_Translator V 1.0/Alpha_Live_Translator_v3.3.5_JAPANESE_TEST/troubleshooting/runs/v3.3.5.5.8.5.25.1-20260712-213043/accuracy/corporate_term_accuracy_report.json",
+  "financial_number_accuracy_report_path": "C:/Users/islamm/Documents/Tariqul/Alpha_Translator V 1.0/Alpha_Live_Translator_v3.3.5_JAPANESE_TEST/troubleshooting/runs/v3.3.5.5.8.5.25.1-20260712-213043/accuracy/financial_number_accuracy_report.json",
+  "written_at": "2026-07-12T21:36:33"
+}

@@ -1,0 +1,9 @@
+{
+  "post_run_exit_detected": true,
+  "exit_type": "POST_RUN_NORMAL_APP_EXIT",
+  "exception_type": "",
+  "exception_message": "",
+  "stop_finalize_completed": true,
+  "final_status_preserved": true,
+  "status_overwrite_prevented": true
+}

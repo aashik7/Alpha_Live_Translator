@@ -1,0 +1,113 @@
+{
+  "app_version": "3.3.5.5.8.5.24.1",
+  "japanese_boundary_diagnosis_enabled": true,
+  "alpha_path": "troubleshooting\\latest\\latest_live_alpha_output.txt",
+  "reference_path": "troubleshooting\\accuracy_benchmark\\reference_transcripts\\test01.txt",
+  "findings": [
+    {
+      "line_number": 8,
+      "previous_line": "うっかり動詞のて形使っていただきたいんですがだと依頼になってしまいますので、必ず許可を求めるときは使役形を使うことをいつも忘れないでください会話に社用車を借りる課長、今日会社の車を使わせていただきたいんですがどうしてNT産業へ行くものであそこは地下鉄だとかなり遠回りになってしまうのよね。そうなんですよ何時から三時です。三時ね。",
+      "current_line": "うっかり動詞のて形使っていただきたいんですがだと依頼になってしまいますので、必ず許可を求めるときは使役形を使うことをいつも忘れないでください会話に社用車を借りる課長、今日会社の車を使わせていただきたいんですがどうしてNT産業へ行くものであそこは地下鉄だとかなり遠回りになってしまうのよね。そうなんですよ何時から三時です。三時ね。、二時半から部長がお使いになることになっているわね。",
+      "next_line": "無理ですね。そうね。ではリピートしてください。",
+      "pattern_id": "midline_punctuation_artifact",
+      "severity": "medium",
+      "likely_cause": "punctuation_merge",
+      "recommendation": "audit_only"
+    },
+    {
+      "line_number": 8,
+      "previous_line": "うっかり動詞のて形使っていただきたいんですがだと依頼になってしまいますので、必ず許可を求めるときは使役形を使うことをいつも忘れないでください会話に社用車を借りる課長、今日会社の車を使わせていただきたいんですがどうしてNT産業へ行くものであそこは地下鉄だとかなり遠回りになってしまうのよね。そうなんですよ何時から三時です。三時ね。",
+      "current_line": "うっかり動詞のて形使っていただきたいんですがだと依頼になってしまいますので、必ず許可を求めるときは使役形を使うことをいつも忘れないでください会話に社用車を借りる課長、今日会社の車を使わせていただきたいんですがどうしてNT産業へ行くものであそこは地下鉄だとかなり遠回りになってしまうのよね。そうなんですよ何時から三時です。三時ね。、二時半から部長がお使いになることになっているわね。",
+      "next_line": "無理ですね。そうね。ではリピートしてください。",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 12,
+      "previous_line": "なんですよ何時から三時です。三時ね。",
+      "current_line": "なんですよ何時から三時です。三時ね。、二時半から部長がお使いになることになっているわね。",
+      "next_line": "じゃ、無理ですね。では内容を確認していきましょう。社用者を借りる会話です。",
+      "pattern_id": "midline_punctuation_artifact",
+      "severity": "medium",
+      "likely_cause": "punctuation_merge",
+      "recommendation": "audit_only"
+    },
+    {
+      "line_number": 12,
+      "previous_line": "なんですよ何時から三時です。三時ね。",
+      "current_line": "なんですよ何時から三時です。三時ね。、二時半から部長がお使いになることになっているわね。",
+      "next_line": "じゃ、無理ですね。では内容を確認していきましょう。社用者を借りる会話です。",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 15,
+      "previous_line": "いただきたいんですが、よろしいでしょうかと言っても、もちろんいいですし、少し言いにくいときはたいんですが。で終わることもあります。",
+      "current_line": "してエムティー産業へ行くもので理由ですね。",
+      "next_line": "あそこは地下鉄だとかなり遠回りになってしまうのよね遠回りというのは、実際に車で行けば道路、直線の道路で速いけど、地下鉄だとそこに行くまでに時間がかかってしまう少し遠い道を使わないといけないこれを遠回りになると言います。",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 17,
+      "previous_line": "あそこは地下鉄だとかなり遠回りになってしまうのよね遠回りというのは、実際に車で行けば道路、直線の道路で速いけど、地下鉄だとそこに行くまでに時間がかかってしまう少し遠い道を使わないといけないこれを遠回りになると言います。",
+      "current_line": "なんですよ。",
+      "next_line": "なんですよ。、そうですよではなくてそうなんですよ共感する気持ちをそうなんですよと言います、言っていますね。",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 18,
+      "previous_line": "なんですよ。",
+      "current_line": "なんですよ。、そうですよではなくてそうなんですよ共感する気持ちをそうなんですよと言います、言っていますね。",
+      "next_line": "何時から三時です。",
+      "pattern_id": "midline_punctuation_artifact",
+      "severity": "medium",
+      "likely_cause": "punctuation_merge",
+      "recommendation": "audit_only"
+    },
+    {
+      "line_number": 18,
+      "previous_line": "なんですよ。",
+      "current_line": "なんですよ。、そうですよではなくてそうなんですよ共感する気持ちをそうなんですよと言います、言っていますね。",
+      "next_line": "何時から三時です。",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 24,
+      "previous_line": "無理ですね、そうね。",
+      "current_line": "そしてこの課長の話し方ですが遠回りになってしまうのよねとかことになっているわねのやは、これは女性が使う表現、女性言葉になります。",
+      "next_line": "男性の場合はどうですかね。なってしまうよねなっているね。",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    }
+  ],
+  "total_boundary_risks": 9,
+  "leading_fragment_count": 2,
+  "glue_risk_count": 0,
+  "punctuation_artifact_count": 3,
+  "duplicate_continuation_count": 3,
+  "assembler_candidate_count": 5,
+  "raw_stt_likely_count": 1,
+  "needs_reference_count": 1,
+  "generated_at": "2026-07-09T23:13:53",
+  "report_type": "boundary_error_report",
+  "alpha_sha256": "3d5ea0bf66d313ebf7d82a6f3b0e5a125525ad6b14b30cc2ef09f1656b59a46a",
+  "alpha_size_bytes": 6579,
+  "reference_sha256": "522a271dd7b4cfc477a4e334f6cc30482681913414ef1c368444e256aa6e98cc",
+  "reference_size_bytes": 6467,
+  "latest_live_run_id": "live-v3.3.5.5.8.5.24.1-20260709-225534-b0d036d7"
+}

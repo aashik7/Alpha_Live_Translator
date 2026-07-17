@@ -1,0 +1,101 @@
+[
+  {
+    "original_path": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\post_acceptance_audit\\v3.3.5.5.8.5.25.3.3.2.2\\_staging_3.3.5.5.8.5.25.3.3.2.2_20260714-145844",
+    "relative_path": "troubleshooting/post_acceptance_audit/v3.3.5.5.8.5.25.3.3.2.2/_staging_3.3.5.5.8.5.25.3.3.2.2_20260714-145844",
+    "quarantine_path": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\project_cleanup\\v3.3.5.5.8.5.25.3.3.2.4\\builds\\a076cfee-7e42-4da6-bd85-70eddbe9bdf0\\quarantine\\troubleshooting\\post_acceptance_audit\\v3.3.5.5.8.5.25.3.3.2.2\\_staging_3.3.5.5.8.5.25.3.3.2.2_20260714-145844",
+    "sha256_before": "bbe5f535e481d9480e29c7e52087eb66032b8d2e62e7197a11a1da2d5b398409",
+    "size_bytes": 6004413,
+    "classification": "class_c_abandoned_staging",
+    "reason": "abandoned_staging_folder",
+    "confidence": "high",
+    "restore_required_on_failure": true
+  },
+  {
+    "original_path": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\post_acceptance_audit\\v3.3.5.5.8.5.25.3.3.2.2\\_staging_3.3.5.5.8.5.25.3.3.2.2_20260714-151047",
+    "relative_path": "troubleshooting/post_acceptance_audit/v3.3.5.5.8.5.25.3.3.2.2/_staging_3.3.5.5.8.5.25.3.3.2.2_20260714-151047",
+    "quarantine_path": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\project_cleanup\\v3.3.5.5.8.5.25.3.3.2.4\\builds\\a076cfee-7e42-4da6-bd85-70eddbe9bdf0\\quarantine\\troubleshooting\\post_acceptance_audit\\v3.3.5.5.8.5.25.3.3.2.2\\_staging_3.3.5.5.8.5.25.3.3.2.2_20260714-151047",
+    "sha256_before": "aeee8cca43f794c30347104a363e2d86d0f475ff41f822518a9f49c11f636f47",
+    "size_bytes": 6016434,
+    "classification": "class_c_abandoned_staging",
+    "reason": "abandoned_staging_folder",
+    "confidence": "high",
+    "restore_required_on_failure": true
+  },
+  {
+    "original_path": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\post_acceptance_audit\\v3.3.5.5.8.5.25.3.3.2.2\\FAILED_ZERO_ISSUE_AUDIT_3.3.5.5.8.5.25.3.3.2.2_20260714-145719.json",
+    "relative_path": "troubleshooting/post_acceptance_audit/v3.3.5.5.8.5.25.3.3.2.2/FAILED_ZERO_ISSUE_AUDIT_3.3.5.5.8.5.25.3.3.2.2_20260714-145719.json",
+    "quarantine_path": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\project_cleanup\\v3.3.5.5.8.5.25.3.3.2.4\\builds\\a076cfee-7e42-4da6-bd85-70eddbe9bdf0\\quarantine\\troubleshooting\\post_acceptance_audit\\v3.3.5.5.8.5.25.3.3.2.2\\FAILED_ZERO_ISSUE_AUDIT_3.3.5.5.8.5.25.3.3.2.2_20260714-145719.json",
+    "sha256_before": "704e12b8c28ea273b5252ab9833d94b4f6d7f586045a8cf6e2329122faebf814",
+    "size_bytes": 4922,
+    "classification": "class_c_failed_incomplete",
+    "reason": "failed_or_incomplete_package_remnant",
+    "confidence": "high",
+    "restore_required_on_failure": true
+  },
+  {
+    "original_path": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\post_acceptance_audit\\v3.3.5.5.8.5.25.3.3.2.2\\FAILED_ZERO_ISSUE_AUDIT_3.3.5.5.8.5.25.3.3.2.2_20260714-145754.json",
+    "relative_path": "troubleshooting/post_acceptance_audit/v3.3.5.5.8.5.25.3.3.2.2/FAILED_ZERO_ISSUE_AUDIT_3.3.5.5.8.5.25.3.3.2.2_20260714-145754.json",
+    "quarantine_path": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\project_cleanup\\v3.3.5.5.8.5.25.3.3.2.4\\builds\\a076cfee-7e42-4da6-bd85-70eddbe9bdf0\\quarantine\\troubleshooting\\post_acceptance_audit\\v3.3.5.5.8.5.25.3.3.2.2\\FAILED_ZERO_ISSUE_AUDIT_3.3.5.5.8.5.25.3.3.2.2_20260714-145754.json",
+    "sha256_before": "d9a79d003fabc89e9e8a64ff81e7ff45563ec736ebe89fb9c8f0890181f566a7",
+    "size_bytes": 4802,
+    "classification": "class_c_failed_incomplete",
+    "reason": "failed_or_incomplete_package_remnant",
+    "confidence": "high",
+    "restore_required_on_failure": true
+  },
+  {
+    "original_path": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\runs\\v3.3.5.5.8.5.25.3.3-20260714-022524\\transcripts\\incomplete_stop_tail.txt",
+    "relative_path": "troubleshooting/runs/v3.3.5.5.8.5.25.3.3-20260714-022524/transcripts/incomplete_stop_tail.txt",
+    "quarantine_path": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\project_cleanup\\v3.3.5.5.8.5.25.3.3.2.4\\builds\\a076cfee-7e42-4da6-bd85-70eddbe9bdf0\\quarantine\\troubleshooting\\runs\\v3.3.5.5.8.5.25.3.3-20260714-022524\\transcripts\\incomplete_stop_tail.txt",
+    "sha256_before": "d2dcf54271810d27755862d560c9cb011103154219384cd2bac519e1e23129fa",
+    "size_bytes": 131,
+    "classification": "class_c_failed_incomplete",
+    "reason": "failed_or_incomplete_package_remnant",
+    "confidence": "high",
+    "restore_required_on_failure": true
+  },
+  {
+    "original_path": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\runs\\v3.3.5.5.8.5.25.3.2-20260713-160202\\transcripts\\incomplete_stop_tail.txt",
+    "relative_path": "troubleshooting/runs/v3.3.5.5.8.5.25.3.2-20260713-160202/transcripts/incomplete_stop_tail.txt",
+    "quarantine_path": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\project_cleanup\\v3.3.5.5.8.5.25.3.3.2.4\\builds\\a076cfee-7e42-4da6-bd85-70eddbe9bdf0\\quarantine\\troubleshooting\\runs\\v3.3.5.5.8.5.25.3.2-20260713-160202\\transcripts\\incomplete_stop_tail.txt",
+    "sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "size_bytes": 0,
+    "classification": "class_c_failed_incomplete",
+    "reason": "failed_or_incomplete_package_remnant",
+    "confidence": "high",
+    "restore_required_on_failure": true
+  },
+  {
+    "original_path": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\runs\\v3.3.5.5.8.5.25.3.1-20260713-142044\\transcripts\\incomplete_stop_tail.txt",
+    "relative_path": "troubleshooting/runs/v3.3.5.5.8.5.25.3.1-20260713-142044/transcripts/incomplete_stop_tail.txt",
+    "quarantine_path": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\project_cleanup\\v3.3.5.5.8.5.25.3.3.2.4\\builds\\a076cfee-7e42-4da6-bd85-70eddbe9bdf0\\quarantine\\troubleshooting\\runs\\v3.3.5.5.8.5.25.3.1-20260713-142044\\transcripts\\incomplete_stop_tail.txt",
+    "sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "size_bytes": 0,
+    "classification": "class_c_failed_incomplete",
+    "reason": "failed_or_incomplete_package_remnant",
+    "confidence": "high",
+    "restore_required_on_failure": true
+  },
+  {
+    "original_path": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\runs\\v3.3.5.5.8.5.25.3-20260713-123233\\transcripts\\incomplete_stop_tail.txt",
+    "relative_path": "troubleshooting/runs/v3.3.5.5.8.5.25.3-20260713-123233/transcripts/incomplete_stop_tail.txt",
+    "quarantine_path": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\project_cleanup\\v3.3.5.5.8.5.25.3.3.2.4\\builds\\a076cfee-7e42-4da6-bd85-70eddbe9bdf0\\quarantine\\troubleshooting\\runs\\v3.3.5.5.8.5.25.3-20260713-123233\\transcripts\\incomplete_stop_tail.txt",
+    "sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "size_bytes": 0,
+    "classification": "class_c_failed_incomplete",
+    "reason": "failed_or_incomplete_package_remnant",
+    "confidence": "high",
+    "restore_required_on_failure": true
+  },
+  {
+    "original_path": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\runs\\v3.3.5.5.8.5.25.3-20260713-122601\\transcripts\\incomplete_stop_tail.txt",
+    "relative_path": "troubleshooting/runs/v3.3.5.5.8.5.25.3-20260713-122601/transcripts/incomplete_stop_tail.txt",
+    "quarantine_path": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\project_cleanup\\v3.3.5.5.8.5.25.3.3.2.4\\builds\\a076cfee-7e42-4da6-bd85-70eddbe9bdf0\\quarantine\\troubleshooting\\runs\\v3.3.5.5.8.5.25.3-20260713-122601\\transcripts\\incomplete_stop_tail.txt",
+    "sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "size_bytes": 0,
+    "classification": "class_c_failed_incomplete",
+    "reason": "failed_or_incomplete_package_remnant",
+    "confidence": "high",
+    "restore_required_on_failure": true
+  }
+]

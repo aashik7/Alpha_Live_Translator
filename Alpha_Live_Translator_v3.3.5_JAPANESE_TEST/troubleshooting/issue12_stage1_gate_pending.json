@@ -1,0 +1,8 @@
+{
+  "gate_token": "59b5512f-44b9-45a5-ae82-72d245c53132",
+  "profile": "target_85_meeting_context",
+  "benchmark_audio_source": "system_audio_only",
+  "started_at": "2026-07-15T16:58:05Z",
+  "video_label": "test01",
+  "expected_duration_seconds": 682.0
+}

@@ -1,0 +1,8 @@
+{
+  "test_number": 7,
+  "invocation_mode": "direct_callable",
+  "callable_module": "regression_multidomain_gate_85262",
+  "callable_name": "_run_fixture_pipeline",
+  "python_invocation": "regression_multidomain_gate_evidence_852622.b_007_missing_sent_chunk('007_missing_sent_chunk')",
+  "invoked_at_utc": "2026-07-16T08:42:18Z"
+}

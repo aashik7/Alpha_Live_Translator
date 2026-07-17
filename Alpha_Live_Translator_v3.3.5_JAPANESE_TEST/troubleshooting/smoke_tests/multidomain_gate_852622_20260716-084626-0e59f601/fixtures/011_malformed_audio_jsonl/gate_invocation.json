@@ -1,0 +1,8 @@
+{
+  "test_number": 11,
+  "invocation_mode": "direct_callable",
+  "callable_module": "regression_multidomain_gate_85262",
+  "callable_name": "_run_fixture_pipeline",
+  "python_invocation": "regression_multidomain_gate_evidence_852622.b_011_malformed_audio_jsonl('011_malformed_audio_jsonl')",
+  "invoked_at_utc": "2026-07-16T08:46:40Z"
+}

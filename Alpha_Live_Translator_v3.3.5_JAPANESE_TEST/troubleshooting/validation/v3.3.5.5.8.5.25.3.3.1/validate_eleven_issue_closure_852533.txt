@@ -1,0 +1,23 @@
+validate_eleven_issue_closure_852533 — 3.3.5.5.8.5.25.3.3.1
+Mode: post-live
+POST_LIVE_STATUS: FAILED
+issues_closed: 8
+issues_total: 11
+closure_ratio: 0.7273
+resolved_run_folder: C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\runs\v3.3.5.5.8.5.25.3.3.1-20260714-111519
+resolved_run_id: live-v3.3.5.5.8.5.25.3.3.1-20260714-111519-14b93a8a
+Failures: ['export_coverage_failed', 'stable_final_content_mismatch', 'action_counters_not_reconciled', 'stage_capture_incomplete']
+Warnings: none
+
+Issue closure:
+  final_content_loss_closed: False
+  raw_lineage_closed: True
+  action_counter_mismatch_closed: False
+  finalizer_crash_closed: True
+  runtime_audio_counters_closed: True
+  stop_drain_closed: True
+  false_coverage_closed: True
+  stage_completion_truthful: False
+  package_isolation_closed: True
+  current_validation_packaged: True
+  stall_classification_closed: True

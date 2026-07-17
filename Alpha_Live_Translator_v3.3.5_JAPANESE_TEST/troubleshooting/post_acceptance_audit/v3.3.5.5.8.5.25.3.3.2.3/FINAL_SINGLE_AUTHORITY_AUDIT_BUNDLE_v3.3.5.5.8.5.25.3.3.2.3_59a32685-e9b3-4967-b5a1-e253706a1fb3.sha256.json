@@ -1,0 +1,20 @@
+{
+  "build_id": "59a32685-e9b3-4967-b5a1-e253706a1fb3",
+  "packaging_version": "3.3.5.5.8.5.25.3.3.2.3",
+  "outer_bundle_filename": "FINAL_SINGLE_AUTHORITY_AUDIT_BUNDLE_v3.3.5.5.8.5.25.3.3.2.3_59a32685-e9b3-4967-b5a1-e253706a1fb3.zip",
+  "outer_bundle_sha256": "422ccb4ddd325fec7f0554af20463de16de9f382bdcaebdde9ee05abbb05f761",
+  "outer_bundle_size": 66457,
+  "outer_bundle_file_count": 10,
+  "zip_open_success": true,
+  "manifest_verification_passed": true,
+  "internal_verification_passed": true,
+  "evidence_zip_reverified": true,
+  "acceptance_authority_count": 1,
+  "cursor_report_count": 1,
+  "duplicate_paths": [],
+  "missing_paths": [],
+  "unexpected_paths": [],
+  "hash_mismatches": [],
+  "content_audit_passed": true,
+  "post_build_verification_passed": true
+}

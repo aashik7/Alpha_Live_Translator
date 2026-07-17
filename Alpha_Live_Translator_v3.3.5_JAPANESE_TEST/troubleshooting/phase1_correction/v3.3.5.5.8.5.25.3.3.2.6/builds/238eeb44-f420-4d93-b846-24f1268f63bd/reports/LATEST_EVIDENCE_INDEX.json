@@ -1,0 +1,30 @@
+{
+  "generated_at": "2026-07-14T09:14:38Z",
+  "build_id": "b874a0fd-66dc-4e71-a85c-0b612b0f9ffd",
+  "patch_version": "3.3.5.5.8.5.25.3.3.2.5",
+  "authoritative_run_id": "v3.3.5.5.8.5.25.3.3.1-20260714-111519",
+  "project_state_sha256": "d4a3785caaffbdb5d002a934aa8612b707d6450054e2536371f274bfcbf0948f",
+  "raw_transcript": "troubleshooting/runs/v3.3.5.5.8.5.25.3.3.1-20260714-111519/accuracy_stage_compare/raw_deepgram.txt",
+  "stable_transcript": "troubleshooting/runs/v3.3.5.5.8.5.25.3.3.1-20260714-111519/accuracy_stage_compare/stable_assembler_only.txt",
+  "final_transcript": "troubleshooting/runs/v3.3.5.5.8.5.25.3.3.1-20260714-111519/transcripts/Alpha_output_FINAL.txt",
+  "accuracy_report": "troubleshooting/runs/v3.3.5.5.8.5.25.3.3.1-20260714-111519/accuracy_stage_compare/three_stage_accuracy_report.json",
+  "trusted_cer_available": true,
+  "score_usable_for_decision": true,
+  "latest_accepted_package": "troubleshooting/project_cleanup/v3.3.5.5.8.5.25.3.3.2.4/FINAL_PROJECT_CLEANUP_AUDIT_BUNDLE_v3.3.5.5.8.5.25.3.3.2.4_be77c0ec-1972-4aaa-b166-8323475d1f30.zip",
+  "package_verified": true,
+  "missing_required_evidence": [],
+  "contradictions": [],
+  "status": "PASSED",
+  "authoritative_run": "troubleshooting/runs/v3.3.5.5.8.5.25.3.3.1-20260714-111519",
+  "authoritative_final": "troubleshooting/runs/v3.3.5.5.8.5.25.3.3.1-20260714-111519/transcripts/Alpha_output_FINAL.txt",
+  "authoritative_final_sha256": "6e70dd171862527da2f2de0305ab82154cf9c1591b73860e4fd75e06f570c178",
+  "authoritative_reference": "troubleshooting/accuracy_benchmark/reference_transcripts/test01.txt",
+  "aliases": [
+    "troubleshooting/Alpha.txt",
+    "troubleshooting/latest_alpha_output.txt",
+    "troubleshooting/latest/latest_alpha_output.txt",
+    "troubleshooting/latest/latest_live_alpha_output.txt"
+  ],
+  "note": "latest_* files are aliases of authoritative Final; scorers must use explicit paths",
+  "truthful": true
+}

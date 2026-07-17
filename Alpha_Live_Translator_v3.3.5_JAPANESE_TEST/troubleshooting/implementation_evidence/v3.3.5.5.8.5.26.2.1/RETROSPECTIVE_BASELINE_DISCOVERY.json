@@ -1,0 +1,63 @@
+{
+  "search_roots": [
+    "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST",
+    "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting"
+  ],
+  "candidate_artifacts": [
+    {
+      "path": "troubleshooting/implementation_evidence/v3.3.5.5.8.5.26.2/source_change_manifest.json",
+      "type": "source_change_manifest",
+      "rejected": true,
+      "reason": "placeholder before_sha256"
+    },
+    {
+      "path": "troubleshooting/issue12_readiness/v3.3.5.5.8.5.25.3.3.2.8/ISSUE12_READINESS_OUTER_BUNDLE_1a496da1-bdf4-4049-a9f2-5d2c55f056be.sha256.json",
+      "type": "issue12_outer_sha256_json",
+      "rejected": true,
+      "reason": "non-adjacent sha256 sidecar format"
+    },
+    {
+      "path": "troubleshooting/issue12_readiness/v3.3.5.5.8.5.25.3.3.2.8/ISSUE12_READINESS_OUTER_BUNDLE_1a496da1-bdf4-4049-a9f2-5d2c55f056be.zip",
+      "type": "issue12_outer_zip",
+      "rejected": true,
+      "reason": "missing adjacent .sha256 sidecar"
+    },
+    {
+      "path": "troubleshooting/issue12_readiness/v3.3.5.5.8.5.25.3.3.2.8/ISSUE12_READINESS_OUTER_BUNDLE_d10ffca1-778e-4524-9e51-b4acb6d2500c.sha256.json",
+      "type": "issue12_outer_sha256_json",
+      "rejected": true,
+      "reason": "non-adjacent sha256 sidecar format"
+    },
+    {
+      "path": "troubleshooting/issue12_readiness/v3.3.5.5.8.5.25.3.3.2.8/ISSUE12_READINESS_OUTER_BUNDLE_d10ffca1-778e-4524-9e51-b4acb6d2500c.zip",
+      "type": "issue12_outer_zip",
+      "rejected": true,
+      "reason": "missing adjacent .sha256 sidecar"
+    },
+    {
+      "path": "troubleshooting/validation/v3.3.5.5.8.5.25.3.3/source_baseline_sha256.json",
+      "type": "source_hash_manifest",
+      "rejected": true,
+      "reason": "predates v26.2 and lacks multidomain implementation files"
+    }
+  ],
+  "accepted_candidate": null,
+  "accepted_candidate_type": null,
+  "accepted_candidate_path": null,
+  "accepted_candidate_sha256": null,
+  "accepted_candidate_acceptance_path": null,
+  "accepted_candidate_acceptance_sha256": null,
+  "baseline_version": null,
+  "required_files_available": false,
+  "retrospective_baseline_available": false,
+  "retrospective_diff_status": "unavailable_no_trusted_baseline",
+  "rejection_reasons": [
+    "ISSUE12 outer bundle uses .sha256.json not adjacent .sha256: troubleshooting/issue12_readiness/v3.3.5.5.8.5.25.3.3.2.8/ISSUE12_READINESS_OUTER_BUNDLE_1a496da1-bdf4-4049-a9f2-5d2c55f056be.sha256.json",
+    "ISSUE12 outer bundle uses .sha256.json not adjacent .sha256: troubleshooting/issue12_readiness/v3.3.5.5.8.5.25.3.3.2.8/ISSUE12_READINESS_OUTER_BUNDLE_d10ffca1-778e-4524-9e51-b4acb6d2500c.sha256.json",
+    "ISSUE12 outer zip lacks adjacent .sha256 sidecar: troubleshooting/issue12_readiness/v3.3.5.5.8.5.25.3.3.2.8/ISSUE12_READINESS_OUTER_BUNDLE_1a496da1-bdf4-4049-a9f2-5d2c55f056be.zip",
+    "ISSUE12 outer zip lacks adjacent .sha256 sidecar: troubleshooting/issue12_readiness/v3.3.5.5.8.5.25.3.3.2.8/ISSUE12_READINESS_OUTER_BUNDLE_d10ffca1-778e-4524-9e51-b4acb6d2500c.zip",
+    "old source_change_manifest uses placeholder before_sha256=captured_at_implementation",
+    "source hash manifest predates v26.2: troubleshooting/validation/v3.3.5.5.8.5.25.3.3/source_baseline_sha256.json"
+  ],
+  "discovered_at_utc": "2026-07-16T05:51:39Z"
+}

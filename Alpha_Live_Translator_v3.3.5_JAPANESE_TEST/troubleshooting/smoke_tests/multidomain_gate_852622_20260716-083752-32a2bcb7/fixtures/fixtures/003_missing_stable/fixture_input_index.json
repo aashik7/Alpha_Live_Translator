@@ -1,0 +1,23 @@
+{
+  "test_number": 3,
+  "test_name": "missing_stable_file_fails",
+  "kind": "negative",
+  "single_mutation_description": "stable_transcript.txt omitted",
+  "files": [
+    {
+      "relative_path": "actual_gate_result.json",
+      "byte_size": 1686,
+      "sha256": "89ebe3243a517019e7fcfd984fbc6f398f72af5ca9c5fc2b3a0921f723c34396"
+    },
+    {
+      "relative_path": "expected_gate_result.json",
+      "byte_size": 278,
+      "sha256": "b54cdd4bcecc948697861bd2c95c99af3bd5f91b0ba070ad8204ca595bc27479"
+    },
+    {
+      "relative_path": "regression_assertion.json",
+      "byte_size": 672,
+      "sha256": "60f506d9a2888260c5f83026f2420cd80382deb1f39760db26de2b8e1578556c"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "checks": {
+    "raw_mutation_count": 0
+  },
+  "runtime_regressions": [
+    "ui_main_loop_stall"
+  ],
+  "warnings": [],
+  "evidence_paths": [],
+  "runtime_passed": false
+}

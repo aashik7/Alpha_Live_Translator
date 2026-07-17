@@ -1,0 +1,308 @@
+{
+  "total": 60,
+  "expected_total": 60,
+  "passed": 60,
+  "failed": 0,
+  "results": [
+    {
+      "name": "t01_patch_version",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t02_authoritative_run_exists",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t03_reference_exists",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t04_final_exists",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t05_final_sha",
+      "ok": true,
+      "detail": "6e70dd171862527da2f2de0305ab82154cf9c1591b73860e4fd75e06f570c178"
+    },
+    {
+      "name": "t06_project_state_exists",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t07_project_state_sole",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t08_project_state_final_sha",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t09_project_state_cer",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t10_project_state_paths",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t11_alias_Alpha.txt",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t12_alias_latest_alpha_output.txt",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t13_alias_latest_alpha_output.txt",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t14_alias_latest_live_alpha_output.txt",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t15_latest_state_json",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t16_score_latest_exit2",
+      "ok": true,
+      "detail": "rc=2"
+    },
+    {
+      "name": "t17_analyze_exit2",
+      "ok": true,
+      "detail": "rc=2"
+    },
+    {
+      "name": "t18_three_stage_exit2",
+      "ok": true,
+      "detail": "rc=2"
+    },
+    {
+      "name": "t19_three_stage_explicit_ok",
+      "ok": true,
+      "detail": "rc=0"
+    },
+    {
+      "name": "t20_no_silent_latest_in_score_latest",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t21_stt_settings_exists",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t22_ja_endpointing_500",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t23_ja_utterance_1500",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t24_config_reexport",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t25_constants_diag_ja",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t26_deepgram_behavior_unchanged",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t27_default_keyterms_json",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t28_test01_keyterms_json",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t29_no_benchmark_in_defaults",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t30_source_langs_en_ja",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t31_target_langs_en_ja",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t32_inactive_future_langs",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t33_tools_current",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t34_run_all_checks",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t35_readme_mentions_phase1",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t36_docs_archive",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t37_python_version_file",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t38_runtime_contract",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t39_requirements_lock",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t40_validate_runtime_env",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t41_retention_policy",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t42_apply_retention",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t43_gitignore_phase1",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t44_gitignore_keeps_env_example",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t45_latest_evidence_index",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t46_build_subdirs",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t47_baseline_hashes",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t48_acceptance",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t49_rollback_manifest",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t50_keyterm_audit",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t51_acceptance_version",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t52_phase1_closed_13",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t53_phase2_pending_2",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t54_deferred_structural_2",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t55_ready_for_phase2",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t56_glossary_failsafe",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t57_phase1_runner_exists",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t58_phase1_identity_module",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t59_atomic_latest_module",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t60_archive_root_exists",
+      "ok": true,
+      "detail": ""
+    }
+  ]
+}

@@ -1,0 +1,265 @@
+================================================================================
+ALPHA LIVE TRANSLATOR — CURSOR FINAL REPORT
+V3.3.5.5.8.5.23.4 — Business CER Benchmark Integrity & Report Synchronization
+Generated: 2026-07-09 (post-manual-test + CER score final analysis)
+================================================================================
+
+OVERALL VERDICT:
+  8.5.23.4 manual live test RUNTIME ACCEPTED.
+  CER scoring completed on current Alpha hash — integrity layer working correctly.
+  Diagnostic CER = 0.189 (~81% rough if trusted) but trusted_score = FALSE.
+  score_should_be_used_for_decision = FALSE — do NOT use for product decisions.
+  23.4 correctly downgraded trust: reference quality passed, alignment coverage failed.
+
+================================================================================
+SECTION A — LATEST MANUAL RUN STATUS (USER-COMPLETED)
+================================================================================
+
+Latest run ID:
+  live-v3.3.5.5.8.5.23.4-20260709-112449-8f93fbc5
+
+Run folder:
+  troubleshooting/runs/v3.3.5.5.8.5.23.4-20260709-112449
+
+Run status:
+  status=completed
+  stop_finalize_completed=true
+  app_close_status=normal
+  started_at=2026-07-09T11:24:49
+  completed_at=2026-07-09T11:44:09
+  duration=~19 minutes
+
+Content:
+  Japanese business conversation class (Lesson 4 — greetings/expressions)
+  Reference: troubleshooting/accuracy_benchmark/reference_transcripts/test01.txt
+
+================================================================================
+SECTION B — RUNTIME HEALTH (PASS)
+================================================================================
+
+  [PASS] raw_mutation_count = 0
+  [PASS] business_correction_count = 0
+  [PASS] dangerous_correction_count = 0
+  [PASS] auto_correction_applied = false
+  [PASS] live Alpha protected (~13,896 bytes)
+  [PASS] alpha_output_line_count = 129
+  [PASS] translation_ready_ratio = 48.8%
+  [PASS] stop_tail_suppressed_count = 1
+
+Deepgram unchanged: nova-3 / ja / endpointing 500 / utterance_end 1500 / no_diarize
+
+================================================================================
+SECTION C — CER SCORE RESULT (20260709_115354) — USER-RUN COMPLETE
+================================================================================
+
+Score report:
+  troubleshooting/accuracy_benchmark/results/20260709_115354_accuracy_score_report.json
+
+Alpha hash:
+  26aa2edab22d3db1bbd625cbe2592ab5db185bc8f1515a44deb90369a3639467
+
+Reference hash (test01.txt):
+  2bf8a6f08975334d14f5b6d29f8f2270fb46856949c7246564f95081ef0d88bf
+
+CER metrics:
+  cer_score = 0.189454
+  trusted_cer_score = null
+  rough_accuracy_percent = null (not published — untrusted)
+  line_count_alpha = 126
+  line_count_reference = 9
+  alpha_char_count = 3948
+  reference_char_count = 4191
+  insertion_count = 376
+  deletion_count = 133
+  substitution_count = 1539
+  business_term_hits = 1
+  business_term_misses = 2
+  visible_error_count = 18
+  scored_at = 2026-07-09T11:53:54
+
+Trust gating (23.4 alignment coverage):
+  reference_quality_verdict = valid_for_cer
+  trusted_score_before_alignment = true
+  trusted_score_after_alignment = false
+  trusted_score = false
+  score_should_be_used_for_decision = false
+  alignment_coverage_verdict = failed
+  alignment_integrity_verdict = invalid
+
+Score blockers:
+  - unaligned_alpha_ratio_too_high (0.9286)
+  - extra_alpha_sections_too_high (117)
+  - average_section_overlap_too_low (0.3902)
+  - alignment_integrity_weak_or_invalid
+
+score_warning:
+  Reference appears aligned enough for trusted CER scoring.
+  CER trust downgraded due to alignment coverage.
+
+INTERPRETATION:
+  The ~19% CER / ~81% rough accuracy is DIAGNOSTIC ONLY.
+  Without alignment coverage pass, this number must not drive product decisions.
+  23.4 integrity layer prevented a false "trusted CER" outcome.
+
+================================================================================
+SECTION D — REFERENCE QUALITY (20260709_115350)
+================================================================================
+
+  verdict = valid_for_cer
+  char_count_ratio = 1.0616
+  shared_char_overlap_ratio = 0.7786
+  business_term_overlap_ratio = 1.0
+  formatting_risk_flags = none
+  should_run_cer = true
+
+Alpha and reference cover substantially the same spoken content at character level.
+
+================================================================================
+SECTION E — ALIGNMENT COVERAGE (20260709_115246)
+================================================================================
+
+  alignment_mode = verbatim
+  alignment_integrity_verdict = invalid
+  alignment_coverage_verdict = weak / failed (in score report)
+  unaligned_alpha_ratio = 0.9286
+  aligned_alpha_line_count = 9
+  unaligned_alpha_line_count = 117
+  total_alpha_line_count = 126
+  extra_alpha_sections_count = 117
+  average_section_overlap_score = 0.3902
+  min_section_overlap_score = 0.2833
+  alignment_order_violations = 0
+  all 9 sections = low confidence
+  decision_recommendation = Do not use CER for product decisions.
+
+================================================================================
+SECTION F — BOUNDARY & VISIBLE ERRORS
+================================================================================
+
+Boundary (20260709_115246):
+  total_boundary_risks = 66
+  assembler_candidate_count = 43
+
+Visible error audit (live run):
+  visible_error_count = 19 (medium=18, low=1)
+  sentence_boundary_risk_count = 17
+  business_term_risk_count = 0 active (report scan)
+
+Business term risk: no homophone confusion (他社/他者) in this lesson.
+Glossary candidates: 0
+
+================================================================================
+SECTION G — REPORT SET SYNCHRONIZATION (23.4)
+================================================================================
+
+LATEST_REPORT_SET_INDEX.json:
+  report_set_timestamp = 20260709_115354
+  report_set_consistent = true
+  warnings = [] (clean set after CER run)
+  latest_report_sync_completed_at = 2026-07-09T11:56:01
+
+Synced report paths (all matching alpha_sha256):
+  latest_accuracy_score_report.json      (20260709_115354)
+  latest_reference_quality_report.json   (20260709_115350)
+  latest_alignment_report.json           (20260709_115246)
+  latest_boundary_error_report.json      (20260709_115246)
+  latest_business_term_risk_report.json  (20260709_115246)
+  latest_glossary_candidates.json        (20260709_115246)
+  latest_reference_cleanup_suggestions.txt
+
+Index pointers updated:
+  latest_score_report_path = .../20260709_115354_accuracy_score_report.json
+  latest_reference_quality_report_path = .../20260709_115350_reference_quality_report.json
+  latest_alignment_report_json_path = .../20260709_115246_alignment_report.json
+
+================================================================================
+SECTION H — ROOT-CAUSE SUMMARY
+================================================================================
+
+1) Runtime: STABLE — no pipeline regression in 23.4.
+
+2) Content alignment (character level): GOOD — 77.9% shared overlap, valid reference.
+
+3) Section alignment (line level): POOR — 92.9% Alpha lines unaligned to reference
+   sections. Assembler produces many short lines vs reference paragraph chunks.
+
+4) CER 0.189 is plausible diagnostic signal but BLOCKED from trusted use because
+   alignment coverage fails 23.4 gates (even though reference quality passed).
+
+5) Primary quality driver remains Japanese sentence-boundary / assembler splitting,
+   not raw Deepgram mutation or business homophone confusion.
+
+================================================================================
+SECTION I — COMPARISON: BEFORE vs AFTER CER RUN
+================================================================================
+
+                        Before score    After score (now)
+  CER computed          No              Yes (0.189454)
+  trusted_score         N/A             false
+  trusted_before_align  N/A             true
+  trusted_after_align   N/A             false
+  Report set complete   Partial         Full + consistent
+  Stale demo score      Yes (43-line)   Replaced with 129-line Alpha
+
+================================================================================
+SECTION J — RECOMMENDED NEXT STEPS
+================================================================================
+
+1) Do NOT use CER 0.189 for product decisions (score_should_be_used_for_decision=false).
+
+2) For a valid trusted business benchmark:
+   - Create verbatim reference for exact captured section:
+     business_18min_test01.txt per protocol
+   - Improve line-level alignment OR use reference segmented to match Alpha line breaks
+   - Re-run until alignment_integrity_verdict = strong/acceptable
+
+3) Generate upload package:
+   python package_latest_troubleshooting_run.py
+
+4) Future version focus (when approved): assembler boundary stabilization
+   (NOT in 23.4 scope — audit-only findings remain)
+
+================================================================================
+SECTION K — EVIDENCE PATHS
+================================================================================
+
+Run folder:
+  troubleshooting/runs/v3.3.5.5.8.5.23.4-20260709-112449/
+
+CER + quality:
+  troubleshooting/accuracy_benchmark/results/20260709_115354_accuracy_score_report.json
+  troubleshooting/accuracy_benchmark/results/20260709_115354_accuracy_score_report.txt
+  troubleshooting/accuracy_benchmark/results/20260709_115350_reference_quality_report.json
+
+Alignment + boundary:
+  troubleshooting/accuracy_benchmark/results/20260709_115246_alignment_report.json
+  troubleshooting/accuracy_benchmark/results/20260709_115246_boundary_error_report.json
+
+Latest synced copies:
+  troubleshooting/accuracy_benchmark/latest_reports/
+
+Index:
+  troubleshooting/latest/latest_accuracy_evidence_index.json
+  troubleshooting/accuracy_benchmark/latest_reports/LATEST_REPORT_SET_INDEX.json
+
+Upload package: NOT YET GENERATED
+
+================================================================================
+SECTION L — FILES TO UPLOAD
+================================================================================
+
+1) troubleshooting/Cursor final report.txt
+2) troubleshooting/latest/latest_accuracy_evidence_index.json
+3) troubleshooting/accuracy_benchmark/latest_reports/LATEST_REPORT_SET_INDEX.json
+4) troubleshooting/accuracy_benchmark/latest_reports/latest_accuracy_score_report.json
+5) troubleshooting/accuracy_benchmark/latest_reports/latest_reference_quality_report.json
+6) troubleshooting/accuracy_benchmark/latest_reports/latest_alignment_report.json
+7) troubleshooting/accuracy_benchmark/latest_reports/latest_boundary_error_report.json
+8) troubleshooting/accuracy_benchmark/results/20260709_115354_accuracy_score_report.json
+9) Generated upload package zip (after package_latest_troubleshooting_run.py)
+
+Do NOT upload WAV unless requested.
+
+================================================================================
+END OF REPORT — 23.4 MANUAL TEST + CER 20260709-115354 ANALYZED
+================================================================================

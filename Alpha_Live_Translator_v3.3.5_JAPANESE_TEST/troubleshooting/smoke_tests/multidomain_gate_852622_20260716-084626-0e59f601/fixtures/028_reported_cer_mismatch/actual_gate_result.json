@@ -1,0 +1,19 @@
+{
+  "test_number": 28,
+  "test_name": "reported_cer_mismatch_fails",
+  "actual_gate_status": "FAILED",
+  "actual_failure_codes": [
+    "REPORTED_CER_MISMATCH"
+  ],
+  "actual_failure_messages": [
+    "verification.reported_value_mismatches=reported_stable_cer_mismatch -> REPORTED_CER_MISMATCH"
+  ],
+  "actual_gate_exit_code": 0,
+  "actual_acceptance_version": "NOT_ACCEPTED",
+  "actual_acceptance_status": "FIXTURE_ONLY",
+  "source_result_file": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\smoke_tests\\multidomain_gate_852622_20260716-084626-0e59f601\\fixtures\\028_reported_cer_mismatch\\accuracy_stage_compare\\independent_verification.json",
+  "source_result_file_sha256": "b138e06984cd363c405e7db100c2b0389053229244c5f6ad191d6ce10dba04c4",
+  "unhandled_exception": false,
+  "exception_class": "",
+  "exception_message": ""
+}

@@ -1,0 +1,24 @@
+{
+  "executable": "C:\\Users\\islamm\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+  "command_arguments": [
+    "regression_multidomain_gate_evidence_852622.py",
+    "--project-root",
+    "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST",
+    "--fixture-root",
+    "troubleshooting/smoke_tests/multidomain_gate_852622_20260716-084626-0e59f601/fixtures",
+    "--results-json",
+    "troubleshooting/implementation_evidence/v3.3.5.5.8.5.26.2.2/regression_results.json"
+  ],
+  "command_text": "C:\\Users\\islamm\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe regression_multidomain_gate_evidence_852622.py --project-root \"C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\" --fixture-root troubleshooting/smoke_tests/multidomain_gate_852622_20260716-084626-0e59f601/fixtures --results-json troubleshooting/implementation_evidence/v3.3.5.5.8.5.26.2.2/regression_results.json",
+  "working_directory": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST",
+  "started_at_utc": "2026-07-16T08:46:26Z",
+  "completed_at_utc": "2026-07-16T08:47:13Z",
+  "duration_ms": 47552,
+  "exit_code": 0,
+  "stdout_sha256": "7741910617cc6eb1a5738b0a8e1e88aa2ea24bf898d4f4408ccb6fa4dbb2fcb3",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "results_json_sha256": "73943479a00758c6f99f34b8331fc0826024b335e585b9519d0a3828ae6ac974",
+  "fixture_root": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\smoke_tests\\multidomain_gate_852622_20260716-084626-0e59f601\\fixtures",
+  "invoked_as_subprocess": true,
+  "imported_directly_by_orchestrator": false
+}

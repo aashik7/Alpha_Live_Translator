@@ -1,0 +1,15 @@
+{
+  "build_id": "d2e6983d-366d-4289-8524-c775c40b6b96",
+  "corporate_ir_glossary_enabled": false,
+  "deepgram_runtime_timing_changed": false,
+  "generated_at": "2026-07-14T15:42:48Z",
+  "glossary_file_exists": false,
+  "japanese_assembler_changed": false,
+  "patch_version": "3.3.5.5.8.5.25.3.3.2.6",
+  "stop_tail_changed": false,
+  "target_languages": [
+    "English",
+    "Japanese"
+  ],
+  "ui_layout_changed": false
+}

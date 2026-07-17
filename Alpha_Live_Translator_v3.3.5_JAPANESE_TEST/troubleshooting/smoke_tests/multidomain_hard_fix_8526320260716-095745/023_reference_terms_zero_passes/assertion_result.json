@@ -1,0 +1,20 @@
+{
+  "test_number": 23,
+  "test_name": "reference_terms_zero_passes",
+  "passed": true,
+  "expected": {
+    "failures": []
+  },
+  "actual": {
+    "passed": true,
+    "failures": [],
+    "acceptance_slice": {
+      "stable_to_final_loss_percent": 0.0,
+      "keyterm_count": 0,
+      "keyword_count": 0,
+      "reference_terms_loaded": 0,
+      "audio_delivery_missing_chunks": 0,
+      "stable_accuracy_percent": 100.0
+    }
+  }
+}

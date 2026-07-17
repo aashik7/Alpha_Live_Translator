@@ -1,0 +1,10 @@
+{
+  "test_number": 6,
+  "test_name": "altered_audio_delivery_hash_fails",
+  "expected_gate_status": "FAILED",
+  "expected_failure_codes": [
+    "AUDIO_DELIVERY_HASH_MISMATCH"
+  ],
+  "expected_policy_result": "",
+  "single_mutation_description": "audio_delivery_summary.json delivery_ratio altered post-generation"
+}

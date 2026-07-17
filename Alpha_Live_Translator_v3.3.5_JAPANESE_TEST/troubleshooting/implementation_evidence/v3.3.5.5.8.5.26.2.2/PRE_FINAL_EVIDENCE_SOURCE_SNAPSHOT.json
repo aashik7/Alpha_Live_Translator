@@ -1,0 +1,1234 @@
+{
+  "snapshot_version": "1.0",
+  "evidence_version": "3.3.5.5.8.5.26.2.2",
+  "generated_at_utc": "2026-07-16T07:56:46Z",
+  "project_root": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST",
+  "file_count": 175,
+  "entries": [
+    {
+      "relative_path": "alpha/__init__.py",
+      "exists": true,
+      "byte_size": 52,
+      "sha256": "fa83f376a1ceafd290eab2da2a988428f1c37de6701b46226a26ed09daaf0f8e",
+      "modified_time_utc": "2026-06-26T16:19:25Z"
+    },
+    {
+      "relative_path": "alpha/audio/__init__.py",
+      "exists": true,
+      "byte_size": 2,
+      "sha256": "7eb70257593da06f682a3ddda54a9d260d4fc514f645237f5ca74b08f8da61a6",
+      "modified_time_utc": "2026-06-26T16:19:25Z"
+    },
+    {
+      "relative_path": "alpha/audio/microphone.py",
+      "exists": true,
+      "byte_size": 2739,
+      "sha256": "c1f42c0ab6147fb85a590d41131751471721c2e5ac94bdc4fe06dc42113514f8",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/audio/processing.py",
+      "exists": true,
+      "byte_size": 3393,
+      "sha256": "48e4fb1c0b11a34dd8eaded33f1f10b723b8e592962b9c72a3effe224aea3296",
+      "modified_time_utc": "2026-06-30T05:34:00Z"
+    },
+    {
+      "relative_path": "alpha/audio/source_gate.py",
+      "exists": true,
+      "byte_size": 7767,
+      "sha256": "e873fe98e15f31f4356aa70a6715809629dafe642f07dbe6f864c923c6dd1aa8",
+      "modified_time_utc": "2026-07-01T15:05:33Z"
+    },
+    {
+      "relative_path": "alpha/audio/timeline_mixer.py",
+      "exists": true,
+      "byte_size": 6824,
+      "sha256": "f03191d079362c8dc0d66f8fb12be3eaca3a29a4debae24bca719045805c1218",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/audio/wasapi.py",
+      "exists": true,
+      "byte_size": 5956,
+      "sha256": "dce933ee293277e7d3813cd13a4a858f32e6bfa52c4da44184115925ac6864d2",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/config.py",
+      "exists": true,
+      "byte_size": 4565,
+      "sha256": "3e29ae2ab54da83a97ed7c6e4f2bd51fac9def6fb2f7513470b0221287887432",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/constants.py",
+      "exists": true,
+      "byte_size": 23476,
+      "sha256": "20bf7ee4ce1bb5ba8a3b8ca80f4fa3db8374756d773888f829f37cc326978654",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/core/__init__.py",
+      "exists": true,
+      "byte_size": 372,
+      "sha256": "cd45e9e63dd416baadb5bd205ceb71e235c9ab12d54e47e87449569b59bbb0d3",
+      "modified_time_utc": "2026-06-26T17:02:07Z"
+    },
+    {
+      "relative_path": "alpha/core/event_bus.py",
+      "exists": true,
+      "byte_size": 1845,
+      "sha256": "2a157e2891e944c23e375cf51afdcfc3ae0b7817c55836e75921d41292b675a1",
+      "modified_time_utc": "2026-06-26T17:02:40Z"
+    },
+    {
+      "relative_path": "alpha/core/events.py",
+      "exists": true,
+      "byte_size": 646,
+      "sha256": "bca8760fbbaa5aceeed2bca74f940a5ada7494c9e2cfa34c6f235f08ac5d0d88",
+      "modified_time_utc": "2026-06-26T18:28:03Z"
+    },
+    {
+      "relative_path": "alpha/core/models.py",
+      "exists": true,
+      "byte_size": 993,
+      "sha256": "d6ada746a42ee6cbdf4586b0ead65ecbe8c4ca7c0b8784a96625504184ad88c4",
+      "modified_time_utc": "2026-06-26T18:28:05Z"
+    },
+    {
+      "relative_path": "alpha/stt_settings.py",
+      "exists": true,
+      "byte_size": 2418,
+      "sha256": "821de7390dfa6001595d89355ff23074653ba765a9eed03df7b4144c0500e033",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/summary/__init__.py",
+      "exists": true,
+      "byte_size": 295,
+      "sha256": "928a47a587ec2e4915c562bbb67b60b85891db332a14ef13038316abff7ec3eb",
+      "modified_time_utc": "2026-06-26T18:50:02Z"
+    },
+    {
+      "relative_path": "alpha/summary/summary_service.py",
+      "exists": true,
+      "byte_size": 4868,
+      "sha256": "a58b156d2922c9b3ea79f66093e01d2246ab4f5ab0d814618391ec28f0c5c994",
+      "modified_time_utc": "2026-06-26T18:50:13Z"
+    },
+    {
+      "relative_path": "alpha/summary/transcript_store.py",
+      "exists": true,
+      "byte_size": 5673,
+      "sha256": "53f7b63cfcd2c029edb76446335294cf382accc32360cb519ea41f442e10b426",
+      "modified_time_utc": "2026-06-30T00:37:08Z"
+    },
+    {
+      "relative_path": "alpha/transcription/__init__.py",
+      "exists": true,
+      "byte_size": 2,
+      "sha256": "7eb70257593da06f682a3ddda54a9d260d4fc514f645237f5ca74b08f8da61a6",
+      "modified_time_utc": "2026-06-26T16:19:25Z"
+    },
+    {
+      "relative_path": "alpha/transcription/canonical_transcript_ledger.py",
+      "exists": true,
+      "byte_size": 26295,
+      "sha256": "679d817ba4539a266d8a4523cffeefa5096dd84a53fa77cdf8791a32e5974adb",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/transcription/corporate_ir_glossary.py",
+      "exists": true,
+      "byte_size": 9723,
+      "sha256": "c13bc2596e83838e94e02e88768f39025741b4d0c54c240a8e6204d746b98ad7",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/transcription/corporate_ir_stable_corrector.py",
+      "exists": true,
+      "byte_size": 18683,
+      "sha256": "5b70ae27480d27d19753200b44e812bb36f5a823718c6510d597d121a5f07244",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/transcription/deepgram_client.py",
+      "exists": true,
+      "byte_size": 133618,
+      "sha256": "5c4c7d5e5ac515f7cd8199931561b6a100402f971250f81cda1490a6509cda3f",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/transcription/duplicate_protection.py",
+      "exists": true,
+      "byte_size": 10418,
+      "sha256": "2d2f74763a1bb870c09c7ed60e177e4db24993d9a22ea2ec33a8dcfc2b0f1be6",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/transcription/final_output_cleanup.py",
+      "exists": true,
+      "byte_size": 7788,
+      "sha256": "12e444f3a701121663e69a5ab6b7edc073600a9a9b188100c1a63bb54f9a14ea",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/transcription/financial_number_safety.py",
+      "exists": true,
+      "byte_size": 8800,
+      "sha256": "c7506d075262442ee7383fd6458613006e02eb49508a973271aae6885ae9996a",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/transcription/japanese_accuracy_cleaner.py",
+      "exists": true,
+      "byte_size": 40478,
+      "sha256": "3e74873c64192f3244ef631942796071f8b4d971dd43d54abb59c2fb066793b1",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/transcription/japanese_boundary_stabilizer.py",
+      "exists": true,
+      "byte_size": 36307,
+      "sha256": "c0ef5e46fceeeeeb6f2e671dffd965093aa2fdac488889ab2774e82c834d2cb0",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/transcription/japanese_business_accuracy.py",
+      "exists": true,
+      "byte_size": 55039,
+      "sha256": "002eaba5f533b135b6713d9bcd669dd006121eb5ab8b6daaf6462c35f8221d62",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/transcription/japanese_final_chunk_stabilizer.py",
+      "exists": true,
+      "byte_size": 17070,
+      "sha256": "2a8a29233b9fc940acb1b72050358163d8dec686c8f0bd662cddcc4afc5e2b96",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/transcription/japanese_sentence_assembler.py",
+      "exists": true,
+      "byte_size": 182308,
+      "sha256": "c15738945e03131234c7c15b2d4b633ea46a5bb7c66e2fd72a5e3b2252dd2d66",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/transcription/japanese_stable_accuracy.py",
+      "exists": true,
+      "byte_size": 9888,
+      "sha256": "4d67bc0c4dc2d59f071387b5fe0f31ec22d375e7916c4ca145bbcc81a45bb4c5",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/transcription/japanese_translation_unit_builder.py",
+      "exists": true,
+      "byte_size": 8254,
+      "sha256": "2c41296fbac51cac9cda287def0285c6cc4f474c4ef00916d04e80783b75d705",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/transcription/japanese_visible_error_audit.py",
+      "exists": true,
+      "byte_size": 17412,
+      "sha256": "23d8c6f9a2f09f7cbc1b961c67c18d4bd8dcc030fbe2b752252fc3d6dae30194",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/transcription/language_pipeline_base.py",
+      "exists": true,
+      "byte_size": 1096,
+      "sha256": "7b1247d4b8c68c1efa6c4cc5982be7ecc637e5859b14bb2782d0a1a6a47baeca",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/transcription/pipeline_commit_transaction.py",
+      "exists": true,
+      "byte_size": 17651,
+      "sha256": "037cee5a6fc5b6babf1c8abaed2094a30d6bf2585f30896378265f6a0088796f",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/transcription/revision_metadata.py",
+      "exists": true,
+      "byte_size": 4636,
+      "sha256": "20619504fcebdfcd134e77f027afa050f4b707ca1c007748ac81012bd3761009",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/transcription/speaker_detection.py",
+      "exists": true,
+      "byte_size": 3902,
+      "sha256": "e6af6a8d6da82b4ada4c094e4d6d77ac94afe431b3a69734f5cb8e3f8d0515e5",
+      "modified_time_utc": "2026-06-26T16:19:26Z"
+    },
+    {
+      "relative_path": "alpha/transcription/stable_line_revision.py",
+      "exists": true,
+      "byte_size": 24242,
+      "sha256": "7cdd3e10d83a70d82f18c7972c2e2ffb392441e25f9ccedb5534d9e1bd60683b",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/transcription/stable_revision_decision.py",
+      "exists": true,
+      "byte_size": 8258,
+      "sha256": "671e054f7b303264500ffe76eb6f487f921f4bc2e116e876ac055bcf7bc969ec",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/transcription/transcript_lineage.py",
+      "exists": true,
+      "byte_size": 40174,
+      "sha256": "8fcceb53b9278ecd25fe1fae287d133792c2d8a9450d0fe3b0a71d7c18204bb8",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/translation/__init__.py",
+      "exists": true,
+      "byte_size": 543,
+      "sha256": "bba7869460d62ce039f1de5535580c15bdffe3aa89472be57851177aae0a9bab",
+      "modified_time_utc": "2026-06-26T18:27:41Z"
+    },
+    {
+      "relative_path": "alpha/translation/deepl_client.py",
+      "exists": true,
+      "byte_size": 3655,
+      "sha256": "1935a3195bf64dd50cf1617dd33db1947a2ff14563eade0b3468b6d230f97b85",
+      "modified_time_utc": "2026-06-26T18:27:49Z"
+    },
+    {
+      "relative_path": "alpha/translation/language_map.py",
+      "exists": true,
+      "byte_size": 1128,
+      "sha256": "88d1c18f9deda84096fc56e074b5abf378316824f904a4ab85fef8d739ed86bb",
+      "modified_time_utc": "2026-06-26T18:27:43Z"
+    },
+    {
+      "relative_path": "alpha/translation/translation_worker.py",
+      "exists": true,
+      "byte_size": 7337,
+      "sha256": "c5145554bdb541ba3820af79ca6b86ab11e377e39bdf5dfb45215f7ca12eb465",
+      "modified_time_utc": "2026-06-26T18:29:05Z"
+    },
+    {
+      "relative_path": "alpha/ui/__init__.py",
+      "exists": true,
+      "byte_size": 19,
+      "sha256": "0ed1245963f5efa3595929a840d61038a7dfd8a1572033bfdf2da1be3dd58fcd",
+      "modified_time_utc": "2026-06-26T16:19:25Z"
+    },
+    {
+      "relative_path": "alpha/ui/main_window.py",
+      "exists": true,
+      "byte_size": 308179,
+      "sha256": "040afcdaacb4f206b2fb7316be0b2fc449286e8cd7647f67b1d3cfeebccf66f5",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/ui/theme.py",
+      "exists": true,
+      "byte_size": 8125,
+      "sha256": "35e22c64b57bafa187076d2fd2f38a856818b8e5f40313cfc88923aab1c1754d",
+      "modified_time_utc": "2026-06-29T05:23:21Z"
+    },
+    {
+      "relative_path": "alpha/utils/__init__.py",
+      "exists": true,
+      "byte_size": 2,
+      "sha256": "7eb70257593da06f682a3ddda54a9d260d4fc514f645237f5ca74b08f8da61a6",
+      "modified_time_utc": "2026-06-26T16:19:25Z"
+    },
+    {
+      "relative_path": "alpha/utils/accuracy_decision_log.py",
+      "exists": true,
+      "byte_size": 5838,
+      "sha256": "87c536819299dc0efc31412c8008fafea0ab77ac05a93fb68f1761562d307e82",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/accuracy_evidence_export.py",
+      "exists": true,
+      "byte_size": 32960,
+      "sha256": "38334de4fcce936e5c15bb49ca6abe1f0353fef153266c6d0d743b7443d62014",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/accuracy_report_sync.py",
+      "exists": true,
+      "byte_size": 17327,
+      "sha256": "69300fc368fd0ced0b158095efae3ca52427c07c320a6c657f076204ffdb3805",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/accuracy_stage_capture.py",
+      "exists": true,
+      "byte_size": 90543,
+      "sha256": "05a5cc22442262153a2533a2ca2e61b8bcf54e7dae9ea16f0a95e2af2c6ffdee",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/alignment_v2.py",
+      "exists": true,
+      "byte_size": 11725,
+      "sha256": "7ba7e7d0f2fb7b656b8e31913496fc65cdfcbbf164c03fba6e4b6033479a967d",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/alpha_output_protection.py",
+      "exists": true,
+      "byte_size": 10861,
+      "sha256": "8ff131cc9cc4f50208e95e19ad3afab3d41bfde16ac82a4a0688e0abc095c31e",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/artifact_role_classifier.py",
+      "exists": true,
+      "byte_size": 7559,
+      "sha256": "da78e51e6f12e81970e64240f6eeca5e6d2d0122615b19964755cf8e8ec9f1b6",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/async_debug_log.py",
+      "exists": true,
+      "byte_size": 17336,
+      "sha256": "a7e403badbb559be9d604aaac4de8b585f1d4d34b4d051941abe90d482c59109",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/atomic_evidence_finalize.py",
+      "exists": true,
+      "byte_size": 6351,
+      "sha256": "1f7724d9c00e987f705ef676522c871dbe88470789b982c1765d49168139615e",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/atomic_latest_state.py",
+      "exists": true,
+      "byte_size": 11416,
+      "sha256": "3695d700b7001079c4d48670df9c53bcdec8892e21c863973c07249dae29786c",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/audio_temp_capture.py",
+      "exists": true,
+      "byte_size": 14915,
+      "sha256": "85b17f2eba718627932c8308bcf31d4846d0c1b0e801791297441e2b78096c76",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/boundary_evidence_finalize.py",
+      "exists": true,
+      "byte_size": 22353,
+      "sha256": "4900d8b972f3d9ca24bae4af564c82b5cbf8c6b6d2a1c940b9332584866fc4e9",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/canonical_acceptance_state.py",
+      "exists": true,
+      "byte_size": 31751,
+      "sha256": "c7347dcf73a177bdce4380ab774c73ffb56ac713855b7afc1cfdfd26807fd5d0",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/canonical_content_hash.py",
+      "exists": true,
+      "byte_size": 6191,
+      "sha256": "88493c0fee6e27676f7a83199ac95a655712086d44cd2b3bdeb31bac059f715e",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/canonical_export_writer.py",
+      "exists": true,
+      "byte_size": 8584,
+      "sha256": "e723eec1a82284bce905bb33e0784ce434eb2263117577e81ad723259d05be35",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/canonical_finalize.py",
+      "exists": true,
+      "byte_size": 8152,
+      "sha256": "8984a7250e1f9f92c6e9166178d4824a450794bbe0ccebf44dee3a9be9c74960",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/cer_backtracking.py",
+      "exists": true,
+      "byte_size": 4281,
+      "sha256": "43be533b4f2f7a4e789005a46e74b33dbae7390f9e3abb9870efbf1e1ce77867",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/cjk_text.py",
+      "exists": true,
+      "byte_size": 27601,
+      "sha256": "af5fa50f48ed975ad823692c6377e02877c197a62ad1138794807c1bc0609fd4",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/clean_export_coverage.py",
+      "exists": true,
+      "byte_size": 26340,
+      "sha256": "fdaabff18f1c18ceb3dc139e74adf33d8ef853c1efa15e6b3cc7ab9d097f9e28",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/cleanup_build_identity.py",
+      "exists": true,
+      "byte_size": 3316,
+      "sha256": "d81a3ea9adeee191807d62b1e6ecfd8c7b6e70d07f03ea9af7e4f54de367b299",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/cleanup_protection_policy.py",
+      "exists": true,
+      "byte_size": 8681,
+      "sha256": "1d5f27304f082a8f7466c01e5c30772a80f442b6d7f1909a9b52e9f00fff92be",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/component_stall_classifier.py",
+      "exists": true,
+      "byte_size": 15097,
+      "sha256": "bb1a237669a10fdba5364a55ed978cd873ba638c6c990c433253e2f6256f28b6",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/crash_guard_log.py",
+      "exists": true,
+      "byte_size": 14561,
+      "sha256": "659f97566e139da09015dc5b05116f3f361d23d2fa049a812990a67b86b03b37",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/diagnostic_test_log.py",
+      "exists": true,
+      "byte_size": 36145,
+      "sha256": "837976bf1bb1878fef50abd01d7b05f3ee9f99b2d16319415aa750adf6d285d7",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/evidence_jsonl.py",
+      "exists": true,
+      "byte_size": 3834,
+      "sha256": "d5a40fd3bc160e2206a29ed931d3a8b891c00cd3377a93fc53f37416581c1967",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/evidence_pointer_finalize.py",
+      "exists": true,
+      "byte_size": 7348,
+      "sha256": "086fa785b4c19394959456f5d7e6af4fb093efcd2b894f1cbddc2b60a3d50c18",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/final_artifact_authority.py",
+      "exists": true,
+      "byte_size": 18363,
+      "sha256": "e322f1fe7a40caa3a2bfa2a0422138f8830e484e84cf17efe7538c413bc61207",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/final_cleanup_engine.py",
+      "exists": true,
+      "byte_size": 25200,
+      "sha256": "3343ccab873f42d383fdd77bc133572493c2cd30b79070c5c0671b6c6e4e7413",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/final_cleanup_packaging.py",
+      "exists": true,
+      "byte_size": 31913,
+      "sha256": "d88a422f10449141daaacc4eb2f6f42ce7521f7ae11b026e43628c7010f8f628",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/final_status_reconciliation.py",
+      "exists": true,
+      "byte_size": 15895,
+      "sha256": "c9e153f94408e64956b49895a13fdaa81d6274bb107d0d6b1733bf8e1f7205ce",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/finalizer_event_reconciliation.py",
+      "exists": true,
+      "byte_size": 4602,
+      "sha256": "bc9922d4d8fc79d7ba11fa710e9383712a16f01168970dee24c4e28af5ff4dfa",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/flight_recorder.py",
+      "exists": true,
+      "byte_size": 8399,
+      "sha256": "60967399b0b15808f32c02f24afa40106cc6acd79507949dc8fbff7fcb26e22f",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/freeze_guard_log.py",
+      "exists": true,
+      "byte_size": 2188,
+      "sha256": "8000510c5d7806043f7cf826f8741826da3a9e1395a65dbe2b3ef86cad03820e",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/frozen_cleanup_executor_85253327.py",
+      "exists": true,
+      "byte_size": 35461,
+      "sha256": "bf8a8f6026645f2e4ce6dbcf97b1df7ab521d1a45d503d7a77ae33c4e2676074",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/glossary_evidence_sync.py",
+      "exists": true,
+      "byte_size": 8481,
+      "sha256": "e57e6982f6f54db6ad19391ec040c5b1e7637803d75c17fde36c9dfcc0efd5ca",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/immutable_evidence_contract.py",
+      "exists": true,
+      "byte_size": 3678,
+      "sha256": "25160c6ef798c6d7be835450ed3396e8ce2816bdd96466215fcb2776d5c2321c",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/issue12_stage1_runtime.py",
+      "exists": true,
+      "byte_size": 13947,
+      "sha256": "8ad3ad90e640698e94c2e456538b144d630817d68c435e397c42d4ac9ad785a6",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/japanese_accuracy_log.py",
+      "exists": true,
+      "byte_size": 13665,
+      "sha256": "dbb9017c3ac8fe59e89739b1c959877082af25b98e7537decb6561822c72d4b8",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/language_pipeline_worker.py",
+      "exists": true,
+      "byte_size": 9822,
+      "sha256": "154fc8be6025d36d984182ec6b952fd4dd4c3623134b9a46c35deff8854bdd29",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/latest_completed_live_run.py",
+      "exists": true,
+      "byte_size": 10564,
+      "sha256": "3a8fc6bda2371d2aff2b246f0454c050024296982e78638e3fb5dcf44c9b8a0b",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/live_runtime_metrics.py",
+      "exists": true,
+      "byte_size": 7589,
+      "sha256": "33389fac49829eab38206320fbce0b635e2d5d5b3a3e4519060d8ca266f10495",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/lock_instrumentation.py",
+      "exists": true,
+      "byte_size": 2036,
+      "sha256": "92dc23dfe4cb4e238b77a5140a32cd435bbc2e38bab91e83504e6e4519dc0eca",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/lock_monitor.py",
+      "exists": true,
+      "byte_size": 3153,
+      "sha256": "1b44beabae57cf722b454bd8d774531e15e21809f51904849b6841a04e81c5bb",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/logging_utils.py",
+      "exists": true,
+      "byte_size": 4866,
+      "sha256": "c33e56920d70f40a04270084a4a33d960556e1291d5e4d7fce42525381a1c69f",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/multidomain_gate_evidence.py",
+      "exists": true,
+      "byte_size": 24144,
+      "sha256": "43997b7a47c2f9bcf30247de35d2b48651307875afe3c83ed28a76ddf387b6b0",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/package_build_identity.py",
+      "exists": true,
+      "byte_size": 3357,
+      "sha256": "2340eb8b953f78e4ef7a61e889cfae728b6a74d700096312485b8c4cb4fa9d67",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/package_canonical_acceptance_staging.py",
+      "exists": true,
+      "byte_size": 18806,
+      "sha256": "9aa711735eaa3bd0985867ebdd1c346818a0017bff26d3cc94b13d20a25dd9ef",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/package_persisted_staging.py",
+      "exists": true,
+      "byte_size": 9816,
+      "sha256": "630673c0810b4a7263f6c0034a4167d3eba13a9c33ba94bc37121d6d5c9f1254",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/package_zero_issue_staging.py",
+      "exists": true,
+      "byte_size": 6682,
+      "sha256": "8dbb03f00a88aca068e77f8f1d32513921cf000238e47df1c61c74dc4b7aa24d",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/partial_autosave_worker.py",
+      "exists": true,
+      "byte_size": 6109,
+      "sha256": "bec019682214b48017b1714fc3d90ad96709aa349418d3d9618a44be747a6deb",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/path_types.py",
+      "exists": true,
+      "byte_size": 367,
+      "sha256": "bc97a86e956af119e9e3f4ec7a36403dd7a59ca517ec579abf6d2d48630deab4",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/persisted_run_evidence.py",
+      "exists": true,
+      "byte_size": 23794,
+      "sha256": "6933e97adf224cc4217f3d4cc43a9d1d0b6780bcbcf04f32f5d832ece5e6919b",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/phase1_build_identity.py",
+      "exists": true,
+      "byte_size": 4011,
+      "sha256": "df574b54ff35d5bf20041744e2d4a575d946fbbf4047f99da718bcacf1faf1fe",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/phase1_correction_engine.py",
+      "exists": true,
+      "byte_size": 63241,
+      "sha256": "37ce2a2fa8f2c4df30b138780c9fc06f863457455e9f0136e19e1727d6b95616",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/phase1_correction_identity.py",
+      "exists": true,
+      "byte_size": 2367,
+      "sha256": "2cd441c6e0f7be9c8ed575cb8131912de4c6c671ddac65f5ddef377dd23c325f",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/phase1_normalization_engine.py",
+      "exists": true,
+      "byte_size": 55722,
+      "sha256": "d8c6ac60110fc4f70dc458ff1fe8a44bf3ec2be913c7edc6fcfb9bd089eae22d",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/pipeline_integrity.py",
+      "exists": true,
+      "byte_size": 259,
+      "sha256": "00ec45e2069a73b7b31f3011189a8ffca915b8a3f964d4eb5f00cace57f93e9b",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/prepared_reference_trust.py",
+      "exists": true,
+      "byte_size": 4173,
+      "sha256": "04893cd6394f50d4a4213df25e498e0bafc0ebab5b739931bd789e4dd6d9644f",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/process_health_telemetry.py",
+      "exists": true,
+      "byte_size": 10165,
+      "sha256": "b92432086a6bf202fd19d4e26400c14bdcb623ced31898f57b749866c0124e52",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/project_dependency_analyzer.py",
+      "exists": true,
+      "byte_size": 6472,
+      "sha256": "3fc702e98f0c0b551dd99d2374e439cddf2a8ab8ee3eeb56e03317ea92a601f9",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/queues.py",
+      "exists": true,
+      "byte_size": 550,
+      "sha256": "f317353b4efe3478fb3a075c1cf1a678594b49130e993ec55281e0b93dc14c00",
+      "modified_time_utc": "2026-06-26T16:19:25Z"
+    },
+    {
+      "relative_path": "alpha/utils/reference_alpha_hash.py",
+      "exists": true,
+      "byte_size": 3064,
+      "sha256": "a9bc68ac865ca25c1e8a5d2c7755e8528b780dac44c28ae7bbc4253d9fd73501",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/repair_helpers.py",
+      "exists": true,
+      "byte_size": 1375,
+      "sha256": "0544796268adee6db655c16e46a8c09e7d0d962e4552860f8b86b55da28ad0b0",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/required_regression_matrix.py",
+      "exists": true,
+      "byte_size": 7317,
+      "sha256": "313d821b32d69bb1d7ed315d811f81951316d0cddc268e6f400416ffe1d1013c",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/restore_phase1_changes_85253325.py",
+      "exists": true,
+      "byte_size": 1623,
+      "sha256": "9cd5174536d89660e9b1df130e89cffe778caf807d3b900c17f17dc9aff7f44d",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/restore_phase1_correction_85253326.py",
+      "exists": true,
+      "byte_size": 2821,
+      "sha256": "e76a83c2e11fc1ba6837896c5a22c57bf792d4f9988c14a274f084c6c8e4571c",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/run_artifacts.py",
+      "exists": true,
+      "byte_size": 57614,
+      "sha256": "45fffbb6102d99605922bbfcfb7193837b13310fab3cdc32bb2c3e82d209e984",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/run_consistency.py",
+      "exists": true,
+      "byte_size": 7805,
+      "sha256": "4b24b0a7d8421fe33834110018275b91390f09e0bd7104d5acb1a7645d2031f9",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/run_identity.py",
+      "exists": true,
+      "byte_size": 10196,
+      "sha256": "4100cc523a87b448e70909884ea41cb9efd14cfeabab786ef5d325375839607a",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/runtime_audio_counters.py",
+      "exists": true,
+      "byte_size": 10344,
+      "sha256": "844e217e67a0650ee46588acc7748148749eff5b60f885b3a98e0cadc35f4fa5",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/runtime_evidence.py",
+      "exists": true,
+      "byte_size": 23967,
+      "sha256": "6081e9e438aecaad8e7a3cc0fdfd96db3e309c2e9aa64c8c06192095531d8ff6",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/segment_count_reconciliation.py",
+      "exists": true,
+      "byte_size": 4520,
+      "sha256": "3215069a4e34dd8f9980f841584e27b43897b06085edff688e2cec2c9127e09a",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/session_forensics.py",
+      "exists": true,
+      "byte_size": 6367,
+      "sha256": "88d2450361a97490e1f4462b366904e3d35c145f7d95b9cb50f9e87c7dab276c",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/session_progress.py",
+      "exists": true,
+      "byte_size": 17336,
+      "sha256": "f7d5f9875c6c6634566058bcaad3337d29873dc951291115abc94a7b3b5c885e",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/session_watchdog.py",
+      "exists": true,
+      "byte_size": 15742,
+      "sha256": "411fd7c83f11aa089d3e1b34f70c8d09de57346e1b994120e1433d7f47f1150b",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/single_authority_packaging.py",
+      "exists": true,
+      "byte_size": 37772,
+      "sha256": "02ce0f8f78fb43c168d60a89d99f6429d374d1e47f5d05dcfb18c4920799dbde",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/stable_commit_lineage_reconciliation.py",
+      "exists": true,
+      "byte_size": 3609,
+      "sha256": "960b075cae6e282947da05a842e0adc3fab7a9fdc41222c3ae77c32028178cb3",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/stop_finalize_worker.py",
+      "exists": true,
+      "byte_size": 62070,
+      "sha256": "1cf1d62d564111799f438bc460da56e658e837e099ce41c945d9e43a19aa0bec",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/stop_timeline_reconciliation.py",
+      "exists": true,
+      "byte_size": 15441,
+      "sha256": "da204f71d578c8a3c6cfc33275efa53203b571aaea6f03570849a0c919fea1e3",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/strict_evidence_values.py",
+      "exists": true,
+      "byte_size": 2560,
+      "sha256": "532a7c49a440af1ab36721df19997cee17dbe1a2248b2a0f56b953713202d77c",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/strict_package_identity.py",
+      "exists": true,
+      "byte_size": 10080,
+      "sha256": "8571f9f0f30ecfa243e5819260e6a3683dc595ae1e30cdfdd8150426843a94e9",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/strict_stop_evidence.py",
+      "exists": true,
+      "byte_size": 2960,
+      "sha256": "2e2de1b80868a7eeef1f3be3f6ecaee508bbe620e81a4b8a27cd6f19b1df63df",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/thread_dump.py",
+      "exists": true,
+      "byte_size": 7900,
+      "sha256": "66ff846b81acefe1963fa1fa28f462070314a6e26d165837429547274bb79fe3",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/thread_safety.py",
+      "exists": true,
+      "byte_size": 1863,
+      "sha256": "2583b5dc0d091ca8c449d4c1d44dbbd5fe90bf864401cbe1e0c3d1120a035c1c",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/tk_thread_guard.py",
+      "exists": true,
+      "byte_size": 8239,
+      "sha256": "8b5291bb5d9a65eb860d10b40f92d9ffdfbf3e2cc6ba0ccf6526123e37fcf1ff",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/transcript_evidence.py",
+      "exists": true,
+      "byte_size": 5870,
+      "sha256": "e81cf23018810a3e751f5ec4ebc0be97ff7fa6a9458b40c79d101523e70ff9df",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/transcript_snapshot_store.py",
+      "exists": true,
+      "byte_size": 5297,
+      "sha256": "dede0806d530478001fd559cb275d900141287f9496246090844d7b3e1179416",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/troubleshooting_paths.py",
+      "exists": true,
+      "byte_size": 46597,
+      "sha256": "43ddafd09946ef01e05ca29c945303e9ba78e9cfbb7712efe30e17100dfc3b0f",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/ui_callback_tracer.py",
+      "exists": true,
+      "byte_size": 4274,
+      "sha256": "72e4e5023a9e97191ee6b4f7d2608c9d1811d9ee0d74e142684577f96c294e69",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/ui_event_bus.py",
+      "exists": true,
+      "byte_size": 11144,
+      "sha256": "7968826ff33223eafe8c3a4c90fbea5f1236b003cdba989978c26f4177478257",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/ui_stop_drain_barrier.py",
+      "exists": true,
+      "byte_size": 5685,
+      "sha256": "33c2c62d7a2360888ba0af82b83765e64db53d0b6504d849f8696f30fc6fec76",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/ui_thread_guard.py",
+      "exists": true,
+      "byte_size": 2603,
+      "sha256": "05bd438cd80bf7bb5933f1374e3385f3f4e2c8f538b5bb894b8e99b728670f55",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/validation_version.py",
+      "exists": true,
+      "byte_size": 247,
+      "sha256": "1ea97ca8d57406f2893a9d63ee5dca0b06dfa192da0d301a8ad16cb71d3811a7",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/zero_issue_acceptance.py",
+      "exists": true,
+      "byte_size": 9023,
+      "sha256": "b4005da19ec7b45bc09dee6a0ed9f711e8a80854857ef630c7682711d1ba22aa",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "alpha/utils/zero_issue_gate.py",
+      "exists": true,
+      "byte_size": 1348,
+      "sha256": "47e396698aa733c4ac99b7314b9b93586a33b53c1979301a6fda4c67c9bbbf6f",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "main.py",
+      "exists": true,
+      "byte_size": 18018,
+      "sha256": "b733e4465a24497627d000675367ba3c097eb3948b0d0de86fe5b2e903786c36",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "prepare_multidomain_gate_85262.py",
+      "exists": true,
+      "byte_size": 9059,
+      "sha256": "53a791bb66c4c5ef4b55121c3bb65f857758bc597f9d3d09083baa97777e0dfd",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "regression_multidomain_gate_85262.py",
+      "exists": true,
+      "byte_size": 42953,
+      "sha256": "aa4855ef890739bb6055c0048f4190b10ce99ddf5588c362308fb5ba4f9465ce",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "run_multidomain_gate_85262.py",
+      "exists": true,
+      "byte_size": 32185,
+      "sha256": "7a00199f40325cc2ba3407645daead9090064497754bbfe4b55cf9ab5e0abab3",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "score_multidomain_gate_85262.py",
+      "exists": true,
+      "byte_size": 13855,
+      "sha256": "f7e9988c2093c19e1cc126e8ca391e5f4c31324c28478334c9515577efead78c",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    },
+    {
+      "relative_path": "troubleshooting/implementation_evidence/v3.3.5.5.8.5.26.2.1/Cursor final report.txt",
+      "exists": true,
+      "byte_size": 3812,
+      "sha256": "c004fdb271881eb2e223017dc4ad6ca7efe344af3decd930854add9444b90e3f",
+      "modified_time_utc": "2026-07-16T05:52:00Z"
+    },
+    {
+      "relative_path": "troubleshooting/implementation_evidence/v3.3.5.5.8.5.26.2.1/EVIDENCE_ACCEPTANCE.json",
+      "exists": true,
+      "byte_size": 1040,
+      "sha256": "3339ec1a1c47c6401674574cd6d4b92de17de3d49fd36e19bb199e16800e8a0c",
+      "modified_time_utc": "2026-07-16T05:52:00Z"
+    },
+    {
+      "relative_path": "troubleshooting/implementation_evidence/v3.3.5.5.8.5.26.2.1/FUTURE_LIVE_TEST_COMMAND_TEMPLATE.txt",
+      "exists": true,
+      "byte_size": 790,
+      "sha256": "b1b2a06d8166f35717692b3786f84f6ec592a6b13d9f7b43031b94046a6d410d",
+      "modified_time_utc": "2026-07-16T05:51:58Z"
+    },
+    {
+      "relative_path": "troubleshooting/implementation_evidence/v3.3.5.5.8.5.26.2.1/MULTIDOMAIN_EVIDENCE_CLOSURE_v3.3.5.5.8.5.26.2.1.zip",
+      "exists": true,
+      "byte_size": 120207,
+      "sha256": "2fc61dbee23a1faae12faf67fcd28f0f028656b99ee753449879654d926a627e",
+      "modified_time_utc": "2026-07-16T05:52:00Z"
+    },
+    {
+      "relative_path": "troubleshooting/implementation_evidence/v3.3.5.5.8.5.26.2.1/MULTIDOMAIN_EVIDENCE_CLOSURE_v3.3.5.5.8.5.26.2.1.zip.entries.json",
+      "exists": true,
+      "byte_size": 7272,
+      "sha256": "43eddcf5f823c255dedbbe6b20472aab4c6debe3f0daca3d9b9829a03a0acad1",
+      "modified_time_utc": "2026-07-16T05:52:00Z"
+    },
+    {
+      "relative_path": "troubleshooting/implementation_evidence/v3.3.5.5.8.5.26.2.1/MULTIDOMAIN_EVIDENCE_CLOSURE_v3.3.5.5.8.5.26.2.1.zip.sha256",
+      "exists": true,
+      "byte_size": 66,
+      "sha256": "e254a22ae49bd4b206d5a3e475e37fdf6867083bcca60d7fd48f337d11fabbf1",
+      "modified_time_utc": "2026-07-16T05:52:00Z"
+    },
+    {
+      "relative_path": "troubleshooting/implementation_evidence/v3.3.5.5.8.5.26.2.1/MULTIDOMAIN_EVIDENCE_CLOSURE_v3.3.5.5.8.5.26.2.1.zip.size.txt",
+      "exists": true,
+      "byte_size": 8,
+      "sha256": "4277c9dd4b483c7c368817fddc98b1067d8fb58b9e1363dc760fcc3b77ab8e45",
+      "modified_time_utc": "2026-07-16T05:52:00Z"
+    },
+    {
+      "relative_path": "troubleshooting/implementation_evidence/v3.3.5.5.8.5.26.2.1/PRE_EVIDENCE_PATCH_SOURCE_SNAPSHOT.json",
+      "exists": true,
+      "byte_size": 4884,
+      "sha256": "8d740c4c5b520025df6ab4211fa7506cf5ca349630c14c09bcd277f4ce61d442",
+      "modified_time_utc": "2026-07-16T04:45:21Z"
+    },
+    {
+      "relative_path": "troubleshooting/implementation_evidence/v3.3.5.5.8.5.26.2.1/PRE_EVIDENCE_PATCH_SOURCE_SNAPSHOT.sha256",
+      "exists": true,
+      "byte_size": 65,
+      "sha256": "d064c31e26c2f0d25900222fac5f6f7c87751227ad26a5a6beedb55bd74d857b",
+      "modified_time_utc": "2026-07-16T04:45:21Z"
+    },
+    {
+      "relative_path": "troubleshooting/implementation_evidence/v3.3.5.5.8.5.26.2.1/PRODUCTION_SOURCE_IMMUTABILITY.json",
+      "exists": true,
+      "byte_size": 1601,
+      "sha256": "2a100141703784baee8c1cd2f947547d3bed4d0ff59cb5a66adcfa119471a664",
+      "modified_time_utc": "2026-07-16T05:51:58Z"
+    },
+    {
+      "relative_path": "troubleshooting/implementation_evidence/v3.3.5.5.8.5.26.2.1/RETROSPECTIVE_BASELINE_DISCOVERY.json",
+      "exists": true,
+      "byte_size": 3427,
+      "sha256": "de392601241c33f85df92c8db894f55efaa9b517de6df085d299928bb4fb6228",
+      "modified_time_utc": "2026-07-16T05:51:39Z"
+    },
+    {
+      "relative_path": "troubleshooting/implementation_evidence/v3.3.5.5.8.5.26.2.1/fixture_index.json",
+      "exists": true,
+      "byte_size": 204051,
+      "sha256": "ee791bb81b642972516bca5177af794cb7169b14d69cbf3b20f92dae48c2e23f",
+      "modified_time_utc": "2026-07-16T05:51:56Z"
+    },
+    {
+      "relative_path": "troubleshooting/implementation_evidence/v3.3.5.5.8.5.26.2.1/independent_evidence_verification.json",
+      "exists": true,
+      "byte_size": 1637,
+      "sha256": "8cc5c40a3b3910aa4dadd59791fde246d80da644397179b508785508b5d603c3",
+      "modified_time_utc": "2026-07-16T05:52:02Z"
+    },
+    {
+      "relative_path": "troubleshooting/implementation_evidence/v3.3.5.5.8.5.26.2.1/original_26_2_Cursor_final_report.txt",
+      "exists": true,
+      "byte_size": 4072,
+      "sha256": "5fa21d90177d9489d043e92a699d7365e267d9ab8ff8bca8f9c399d94cf370dd",
+      "modified_time_utc": "2026-07-16T03:08:43Z"
+    },
+    {
+      "relative_path": "troubleshooting/implementation_evidence/v3.3.5.5.8.5.26.2.1/original_26_2_evidence_hashes.json",
+      "exists": true,
+      "byte_size": 893,
+      "sha256": "f40bbefdecf3f7613233f5e8173e8d0fd140cbe78d9cdc545d174cb9a56258d2",
+      "modified_time_utc": "2026-07-16T05:51:27Z"
+    },
+    {
+      "relative_path": "troubleshooting/implementation_evidence/v3.3.5.5.8.5.26.2.1/original_26_2_source_change_manifest.json",
+      "exists": true,
+      "byte_size": 1555,
+      "sha256": "074d78c41ae68c788e65bfa3231a1494dd75f833332659ed4a8d86bf20dafb3b",
+      "modified_time_utc": "2026-07-16T03:08:08Z"
+    },
+    {
+      "relative_path": "troubleshooting/implementation_evidence/v3.3.5.5.8.5.26.2.1/reference_leak_scan.json",
+      "exists": true,
+      "byte_size": 48915,
+      "sha256": "273523ff99e8463afbc539e2092f81a78666f485bad3d9e2eb8be6235f0b9d97",
+      "modified_time_utc": "2026-07-16T05:51:58Z"
+    },
+    {
+      "relative_path": "troubleshooting/implementation_evidence/v3.3.5.5.8.5.26.2.1/regression_command.txt",
+      "exists": true,
+      "byte_size": 313,
+      "sha256": "952b058f98ab3ea3dd40aff80411d119f1309160c7dca1ca82ef202cd10887c3",
+      "modified_time_utc": "2026-07-16T05:51:39Z"
+    },
+    {
+      "relative_path": "troubleshooting/implementation_evidence/v3.3.5.5.8.5.26.2.1/regression_exit_code.txt",
+      "exists": true,
+      "byte_size": 3,
+      "sha256": "13bf7b3039c63bf5a50491fa3cfd8eb4e699d1ba1436315aef9cbe5711530354",
+      "modified_time_utc": "2026-07-16T05:51:56Z"
+    },
+    {
+      "relative_path": "troubleshooting/implementation_evidence/v3.3.5.5.8.5.26.2.1/regression_process_metadata.json",
+      "exists": true,
+      "byte_size": 1727,
+      "sha256": "27432487b0b154e8123d7a45e0355fa968ab8047785b0b5e4834b6245eeea15b",
+      "modified_time_utc": "2026-07-16T05:51:56Z"
+    },
+    {
+      "relative_path": "troubleshooting/implementation_evidence/v3.3.5.5.8.5.26.2.1/regression_results.json",
+      "exists": true,
+      "byte_size": 11248,
+      "sha256": "e739e901d30bb3562093cf8ee8b5cefab977c4624df16f46c51989094cc51095",
+      "modified_time_utc": "2026-07-16T05:51:55Z"
+    },
+    {
+      "relative_path": "troubleshooting/implementation_evidence/v3.3.5.5.8.5.26.2.1/regression_stderr.txt",
+      "exists": true,
+      "byte_size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "modified_time_utc": "2026-07-16T05:51:56Z"
+    },
+    {
+      "relative_path": "troubleshooting/implementation_evidence/v3.3.5.5.8.5.26.2.1/regression_stdout.txt",
+      "exists": true,
+      "byte_size": 1562,
+      "sha256": "808080c5af1bcaec44658c729a2e374d3d3af55161037da9904726b58c24be03",
+      "modified_time_utc": "2026-07-16T05:51:56Z"
+    },
+    {
+      "relative_path": "troubleshooting/implementation_evidence/v3.3.5.5.8.5.26.2.1/source_change_manifest_corrected.json",
+      "exists": true,
+      "byte_size": 8256,
+      "sha256": "581fe13efd95a31721fd7c85a1530d2427d5bcef19a20c1442001b641703c27e",
+      "modified_time_utc": "2026-07-16T05:51:58Z"
+    },
+    {
+      "relative_path": "troubleshooting/implementation_evidence/v3.3.5.5.8.5.26.2/Cursor final report.txt",
+      "exists": true,
+      "byte_size": 4072,
+      "sha256": "5fa21d90177d9489d043e92a699d7365e267d9ab8ff8bca8f9c399d94cf370dd",
+      "modified_time_utc": "2026-07-16T03:08:43Z"
+    },
+    {
+      "relative_path": "troubleshooting/implementation_evidence/v3.3.5.5.8.5.26.2/source_change_manifest.json",
+      "exists": true,
+      "byte_size": 1555,
+      "sha256": "074d78c41ae68c788e65bfa3231a1494dd75f833332659ed4a8d86bf20dafb3b",
+      "modified_time_utc": "2026-07-16T03:08:08Z"
+    },
+    {
+      "relative_path": "verify_multidomain_gate_85262.py",
+      "exists": true,
+      "byte_size": 23065,
+      "sha256": "ea21597a59e19b810e3a0de8ed831598b4c19483773839a6edfe6db37dc5f430",
+      "modified_time_utc": "2026-07-16T07:31:16Z"
+    }
+  ]
+}

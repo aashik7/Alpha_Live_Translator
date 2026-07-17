@@ -1,0 +1,10 @@
+{
+  "test_number": 28,
+  "test_name": "reported_cer_mismatch_fails",
+  "expected_gate_status": "FAILED",
+  "expected_failure_codes": [
+    "REPORTED_CER_MISMATCH"
+  ],
+  "expected_policy_result": "",
+  "single_mutation_description": "strict_score.json stable.cer_percent altered post-generation"
+}

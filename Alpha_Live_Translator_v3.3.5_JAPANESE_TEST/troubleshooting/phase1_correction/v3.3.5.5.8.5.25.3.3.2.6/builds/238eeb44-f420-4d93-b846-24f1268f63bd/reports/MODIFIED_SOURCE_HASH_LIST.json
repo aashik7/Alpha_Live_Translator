@@ -1,0 +1,13 @@
+{
+  "build_id": "238eeb44-f420-4d93-b846-24f1268f63bd",
+  "generated_at": "2026-07-15T06:49:35Z",
+  "patch_version": "3.3.5.5.8.5.25.3.3.2.6",
+  "paths": [
+    "alpha/constants.py",
+    "alpha/utils/atomic_latest_state.py",
+    "alpha/utils/phase1_correction_engine.py",
+    "alpha/utils/phase1_correction_identity.py",
+    "run_phase1_cleanup_correction_85253326.py",
+    "regression_phase1_cleanup_truth_85253326.py"
+  ]
+}

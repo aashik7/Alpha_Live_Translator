@@ -1,0 +1,8 @@
+{
+  "test_number": 30,
+  "test_name": "fixture_run_cannot_create_version_accepted",
+  "expected_gate_status": "PASSED",
+  "expected_failure_codes": [],
+  "expected_policy_result": "FIXTURE_ACCEPTANCE_BLOCKED",
+  "single_mutation_description": "no mutation; verifies fixture_mode structurally blocks VERSION=ACCEPTED"
+}

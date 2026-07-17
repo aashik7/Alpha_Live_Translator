@@ -1,0 +1,396 @@
+{
+  "evidence_version": "3.3.5.5.8.5.26.2.2",
+  "generated_at_utc": "2026-07-16T09:58:48Z",
+  "tests": 32,
+  "passed": 32,
+  "failed": 0,
+  "negative_fixtures": 28,
+  "negative_gate_failures_observed": 28,
+  "negative_failure_code_exact_matches": 28,
+  "negative_unhandled_exceptions": 0,
+  "policy_fixtures": 3,
+  "policy_fixtures_passed": 3,
+  "fixture_root": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\smoke_tests\\multidomain_gate_evidence_852622_hardfix_20260716-095745\\fixtures",
+  "results": [
+    {
+      "test_number": 1,
+      "directory": "001_valid_fixture",
+      "test_name": "valid_fixture_produces_implementation_ready_verification",
+      "kind": "positive",
+      "passed": true,
+      "regression_test_status": "PASSED",
+      "actual_gate_status": "PASSED",
+      "actual_failure_codes": []
+    },
+    {
+      "test_number": 2,
+      "directory": "002_missing_raw",
+      "test_name": "missing_raw_file_fails",
+      "kind": "negative",
+      "passed": true,
+      "regression_test_status": "PASSED",
+      "actual_gate_status": "FAILED",
+      "actual_failure_codes": [
+        "MISSING_RAW_TRANSCRIPT"
+      ]
+    },
+    {
+      "test_number": 3,
+      "directory": "003_missing_stable",
+      "test_name": "missing_stable_file_fails",
+      "kind": "negative",
+      "passed": true,
+      "regression_test_status": "PASSED",
+      "actual_gate_status": "FAILED",
+      "actual_failure_codes": [
+        "MISSING_STABLE_TRANSCRIPT"
+      ]
+    },
+    {
+      "test_number": 4,
+      "directory": "004_missing_final",
+      "test_name": "missing_final_file_fails",
+      "kind": "negative",
+      "passed": true,
+      "regression_test_status": "PASSED",
+      "actual_gate_status": "FAILED",
+      "actual_failure_codes": [
+        "MISSING_FINAL_TRANSCRIPT"
+      ]
+    },
+    {
+      "test_number": 5,
+      "directory": "005_altered_transcript_hash",
+      "test_name": "altered_transcript_hash_fails",
+      "kind": "negative",
+      "passed": true,
+      "regression_test_status": "PASSED",
+      "actual_gate_status": "FAILED",
+      "actual_failure_codes": [
+        "TRANSCRIPT_HASH_MISMATCH"
+      ]
+    },
+    {
+      "test_number": 6,
+      "directory": "006_altered_audio_delivery_hash",
+      "test_name": "altered_audio_delivery_hash_fails",
+      "kind": "negative",
+      "passed": true,
+      "regression_test_status": "PASSED",
+      "actual_gate_status": "FAILED",
+      "actual_failure_codes": [
+        "AUDIO_DELIVERY_HASH_MISMATCH"
+      ]
+    },
+    {
+      "test_number": 7,
+      "directory": "007_missing_sent_chunk",
+      "test_name": "missing_sent_chunk_fails",
+      "kind": "negative",
+      "passed": true,
+      "regression_test_status": "PASSED",
+      "actual_gate_status": "FAILED",
+      "actual_failure_codes": [
+        "AUDIO_CHUNK_MISSING"
+      ]
+    },
+    {
+      "test_number": 8,
+      "directory": "008_duplicate_sent_chunk",
+      "test_name": "duplicate_sent_chunk_fails",
+      "kind": "negative",
+      "passed": true,
+      "regression_test_status": "PASSED",
+      "actual_gate_status": "FAILED",
+      "actual_failure_codes": [
+        "AUDIO_CHUNK_DUPLICATED"
+      ]
+    },
+    {
+      "test_number": 9,
+      "directory": "009_unexpected_sent_chunk",
+      "test_name": "unexpected_sent_chunk_fails",
+      "kind": "negative",
+      "passed": true,
+      "regression_test_status": "PASSED",
+      "actual_gate_status": "FAILED",
+      "actual_failure_codes": [
+        "AUDIO_CHUNK_UNEXPECTED"
+      ]
+    },
+    {
+      "test_number": 10,
+      "directory": "010_delivery_ratio_below_threshold",
+      "test_name": "delivery_ratio_below_0_999_fails",
+      "kind": "negative",
+      "passed": true,
+      "regression_test_status": "PASSED",
+      "actual_gate_status": "FAILED",
+      "actual_failure_codes": [
+        "AUDIO_DELIVERY_RATIO_BELOW_0_999"
+      ]
+    },
+    {
+      "test_number": 11,
+      "directory": "011_malformed_audio_jsonl",
+      "test_name": "malformed_jsonl_fails",
+      "kind": "negative",
+      "passed": true,
+      "regression_test_status": "PASSED",
+      "actual_gate_status": "FAILED",
+      "actual_failure_codes": [
+        "AUDIO_DELIVERY_JSONL_PARSE_ERROR"
+      ]
+    },
+    {
+      "test_number": 12,
+      "directory": "012_api_key_exposed",
+      "test_name": "api_key_in_request_evidence_fails",
+      "kind": "negative",
+      "passed": true,
+      "regression_test_status": "PASSED",
+      "actual_gate_status": "FAILED",
+      "actual_failure_codes": [
+        "SECRET_PRESENT_IN_REQUEST_EVIDENCE"
+      ]
+    },
+    {
+      "test_number": 13,
+      "directory": "013_reference_path_in_child_command",
+      "test_name": "reference_path_in_runtime_child_command_line_fails",
+      "kind": "negative",
+      "passed": true,
+      "regression_test_status": "PASSED",
+      "actual_gate_status": "FAILED",
+      "actual_failure_codes": [
+        "REFERENCE_PATH_PRESENT_IN_CHILD_COMMAND"
+      ]
+    },
+    {
+      "test_number": 14,
+      "directory": "014_reference_path_in_child_environment",
+      "test_name": "reference_path_in_runtime_child_environment_fails",
+      "kind": "negative",
+      "passed": true,
+      "regression_test_status": "PASSED",
+      "actual_gate_status": "FAILED",
+      "actual_failure_codes": [
+        "REFERENCE_PATH_PRESENT_IN_CHILD_ENVIRONMENT"
+      ]
+    },
+    {
+      "test_number": 15,
+      "directory": "015_reference_opened_before_runtime_exit",
+      "test_name": "reference_opened_before_runtime_exit_fails",
+      "kind": "negative",
+      "passed": true,
+      "regression_test_status": "PASSED",
+      "actual_gate_status": "FAILED",
+      "actual_failure_codes": [
+        "REFERENCE_OPENED_BEFORE_RUNTIME_EXIT"
+      ]
+    },
+    {
+      "test_number": 16,
+      "directory": "016_scoring_module_imported_during_runtime",
+      "test_name": "scoring_module_imported_during_runtime_fails",
+      "kind": "negative",
+      "passed": true,
+      "regression_test_status": "PASSED",
+      "actual_gate_status": "FAILED",
+      "actual_failure_codes": [
+        "SCORING_MODULE_IMPORTED_DURING_RUNTIME"
+      ]
+    },
+    {
+      "test_number": 17,
+      "directory": "017_keyterm_count_above_zero",
+      "test_name": "keyterm_count_above_zero_fails",
+      "kind": "negative",
+      "passed": true,
+      "regression_test_status": "PASSED",
+      "actual_gate_status": "FAILED",
+      "actual_failure_codes": [
+        "KEYTERM_COUNT_NOT_ZERO"
+      ]
+    },
+    {
+      "test_number": 18,
+      "directory": "018_keyword_count_above_zero",
+      "test_name": "keyword_count_above_zero_fails",
+      "kind": "negative",
+      "passed": true,
+      "regression_test_status": "PASSED",
+      "actual_gate_status": "FAILED",
+      "actual_failure_codes": [
+        "KEYWORD_COUNT_NOT_ZERO"
+      ]
+    },
+    {
+      "test_number": 19,
+      "directory": "019_test01_profile_active",
+      "test_name": "test01_profile_active_fails",
+      "kind": "negative",
+      "passed": true,
+      "regression_test_status": "PASSED",
+      "actual_gate_status": "FAILED",
+      "actual_failure_codes": [
+        "TEST01_PROFILE_ACTIVE"
+      ]
+    },
+    {
+      "test_number": 20,
+      "directory": "020_business_japanese_profile_active",
+      "test_name": "business_japanese_profile_active_fails",
+      "kind": "negative",
+      "passed": true,
+      "regression_test_status": "PASSED",
+      "actual_gate_status": "FAILED",
+      "actual_failure_codes": [
+        "BUSINESS_JAPANESE_PROFILE_ACTIVE"
+      ]
+    },
+    {
+      "test_number": 21,
+      "directory": "021_raw_mutation_count_above_zero",
+      "test_name": "raw_mutation_count_above_zero_fails",
+      "kind": "negative",
+      "passed": true,
+      "regression_test_status": "PASSED",
+      "actual_gate_status": "FAILED",
+      "actual_failure_codes": [
+        "RAW_MUTATION_COUNT_NOT_ZERO"
+      ]
+    },
+    {
+      "test_number": 22,
+      "directory": "022_translation_provider_active",
+      "test_name": "translation_provider_active_fails",
+      "kind": "negative",
+      "passed": true,
+      "regression_test_status": "PASSED",
+      "actual_gate_status": "FAILED",
+      "actual_failure_codes": [
+        "TRANSLATION_PROVIDER_ACTIVE"
+      ]
+    },
+    {
+      "test_number": 23,
+      "directory": "023_stable_accuracy_below_80",
+      "test_name": "stable_accuracy_below_80_fails",
+      "kind": "negative",
+      "passed": true,
+      "regression_test_status": "PASSED",
+      "actual_gate_status": "FAILED",
+      "actual_failure_codes": [
+        "STABLE_ACCURACY_BELOW_80"
+      ]
+    },
+    {
+      "test_number": 24,
+      "directory": "024_name_accuracy_below_85",
+      "test_name": "name_accuracy_below_85_fails",
+      "kind": "negative",
+      "passed": true,
+      "regression_test_status": "PASSED",
+      "actual_gate_status": "FAILED",
+      "actual_failure_codes": [
+        "NAME_ACCURACY_BELOW_85"
+      ]
+    },
+    {
+      "test_number": 25,
+      "directory": "025_number_accuracy_below_85",
+      "test_name": "number_accuracy_below_85_fails",
+      "kind": "negative",
+      "passed": true,
+      "regression_test_status": "PASSED",
+      "actual_gate_status": "FAILED",
+      "actual_failure_codes": [
+        "NUMBER_ACCURACY_BELOW_85"
+      ]
+    },
+    {
+      "test_number": 26,
+      "directory": "026_stable_to_final_loss_above_zero",
+      "test_name": "stable_to_final_loss_above_zero_fails",
+      "kind": "negative",
+      "passed": true,
+      "regression_test_status": "PASSED",
+      "actual_gate_status": "FAILED",
+      "actual_failure_codes": [
+        "STABLE_TO_FINAL_LOSS_NOT_ZERO"
+      ]
+    },
+    {
+      "test_number": 27,
+      "directory": "027_runtime_regression_present",
+      "test_name": "runtime_regression_present_fails",
+      "kind": "negative",
+      "passed": true,
+      "regression_test_status": "PASSED",
+      "actual_gate_status": "FAILED",
+      "actual_failure_codes": [
+        "RUNTIME_REGRESSION_PRESENT"
+      ]
+    },
+    {
+      "test_number": 28,
+      "directory": "028_reported_cer_mismatch",
+      "test_name": "reported_cer_mismatch_fails",
+      "kind": "negative",
+      "passed": true,
+      "regression_test_status": "PASSED",
+      "actual_gate_status": "FAILED",
+      "actual_failure_codes": [
+        "REPORTED_CER_MISMATCH"
+      ]
+    },
+    {
+      "test_number": 29,
+      "directory": "029_reported_category_score_mismatch",
+      "test_name": "reported_category_score_mismatch_fails",
+      "kind": "negative",
+      "passed": true,
+      "regression_test_status": "PASSED",
+      "actual_gate_status": "FAILED",
+      "actual_failure_codes": [
+        "REPORTED_CATEGORY_SCORE_MISMATCH"
+      ]
+    },
+    {
+      "test_number": 30,
+      "directory": "030_fixture_cannot_create_accepted_result",
+      "test_name": "fixture_run_cannot_create_version_accepted",
+      "kind": "policy",
+      "passed": true,
+      "regression_test_status": "PASSED",
+      "actual_gate_status": "PASSED",
+      "actual_failure_codes": []
+    },
+    {
+      "test_number": 31,
+      "directory": "031_fixture_cannot_overwrite_latest_live_artifacts",
+      "test_name": "fixture_outputs_cannot_overwrite_latest_live_run_artifacts",
+      "kind": "policy",
+      "passed": true,
+      "regression_test_status": "PASSED",
+      "actual_gate_status": "PASSED",
+      "actual_failure_codes": []
+    },
+    {
+      "test_number": 32,
+      "directory": "032_audio_files_excluded_from_package",
+      "test_name": "audio_files_excluded_from_package",
+      "kind": "policy",
+      "passed": true,
+      "regression_test_status": "PASSED",
+      "actual_gate_status": "PASSED",
+      "actual_failure_codes": []
+    }
+  ],
+  "returncode": 0,
+  "stdout_tail": "tests=32\npassed=32\nfailed=0\n  [PASS] valid_fixture_produces_implementation_ready_verification (test_001)\n  [PASS] missing_raw_file_fails (test_002)\n  [PASS] missing_stable_file_fails (test_003)\n  [PASS] missing_final_file_fails (test_004)\n  [PASS] altered_transcript_hash_fails (test_005)\n  [PASS] altered_audio_delivery_hash_fails (test_006)\n  [PASS] missing_sent_chunk_fails (test_007)\n  [PASS] duplicate_sent_chunk_fails (test_008)\n  [PASS] unexpected_sent_chunk_fails (test_009)\n  [PASS] delivery_ratio_below_0_999_fails (test_010)\n  [PASS] malformed_jsonl_fails (test_011)\n  [PASS] api_key_in_request_evidence_fails (test_012)\n  [PASS] reference_path_in_runtime_child_command_line_fails (test_013)\n  [PASS] reference_path_in_runtime_child_environment_fails (test_014)\n  [PASS] reference_opened_before_runtime_exit_fails (test_015)\n  [PASS] scoring_module_imported_during_runtime_fails (test_016)\n  [PASS] keyterm_count_above_zero_fails (test_017)\n  [PASS] keyword_count_above_zero_fails (test_018)\n  [PASS] test01_profile_active_fails (test_019)\n  [PASS] business_japanese_profile_active_fails (test_020)\n  [PASS] raw_mutation_count_above_zero_fails (test_021)\n  [PASS] translation_provider_active_fails (test_022)\n  [PASS] stable_accuracy_below_80_fails (test_023)\n  [PASS] name_accuracy_below_85_fails (test_024)\n  [PASS] number_accuracy_below_85_fails (test_025)\n  [PASS] stable_to_final_loss_above_zero_fails (test_026)\n  [PASS] runtime_regression_present_fails (test_027)\n  [PASS] reported_cer_mismatch_fails (test_028)\n  [PASS] reported_category_score_mismatch_fails (test_029)\n  [PASS] fixture_run_cannot_create_version_accepted (test_030)\n  [PASS] fixture_outputs_cannot_overwrite_latest_live_run_artifacts (test_031)\n  [PASS] audio_files_excluded_from_package (test_032)\nnegative_fixtures=28\nnegative_gate_failures_observed=28\nnegative_failure_code_exact_matches=28\nnegative_unhandled_exceptions=0\npolicy_fixtures=3\npolicy_fixtures_passed=3\nIMPLEMENTATION_STATUS=READY\nREAL_BENCHMARK_COMPLETED=false\nREADY_FOR_TRANSLATION_BETA=false\n",
+  "positive_fixture_has_stable_cer_above_20": false,
+  "positive_fixture_ignored_cer_failure": false
+}

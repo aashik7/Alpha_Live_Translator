@@ -1,0 +1,53 @@
+{
+  "run_id": "live-v3.3.5.5.8.5.25.3.2-20260713-160202-82039569",
+  "run_folder": "troubleshooting\\runs\\v3.3.5.5.8.5.25.3.2-20260713-160202",
+  "expected_version": "3.3.5.5.8.5.25.3.2",
+  "version_values_before": {
+    "RUN_MANIFEST.json": "3.3.5.5.8.5.25.3.2",
+    "LIVE_RUN_STATUS.json": "3.3.5.5.8.5.25.3.2",
+    "stage_manifest.json": "3.3.5.5.8.5.25.3.2.1",
+    "RUN_ARTIFACTS_INDEX.txt": "3.3.5.5.8.5.25.3.2",
+    "run_folder_name": "3.3.5.5.8.5.25.3.2"
+  },
+  "version_values_after": {
+    "RUN_MANIFEST.json": "3.3.5.5.8.5.25.3.2",
+    "LIVE_RUN_STATUS.json": "3.3.5.5.8.5.25.3.2",
+    "stage_manifest.json": "3.3.5.5.8.5.25.3.2.1",
+    "RUN_ARTIFACTS_INDEX.txt": "3.3.5.5.8.5.25.3.2",
+    "run_folder_name": "3.3.5.5.8.5.25.3.2"
+  },
+  "status_values_before": {
+    "RUN_MANIFEST.final_status": "completed",
+    "LIVE_RUN_STATUS.status": "completed",
+    "LIVE_RUN_STATUS.is_stopping": false,
+    "LIVE_RUN_STATUS.is_finalizing": false,
+    "LIVE_RUN_STATUS.language_pipeline_worker_alive": false,
+    "RUN_ARTIFACTS_INDEX.status": "completed"
+  },
+  "status_values_after": {
+    "RUN_MANIFEST.final_status": "completed",
+    "LIVE_RUN_STATUS.status": "completed",
+    "LIVE_RUN_STATUS.is_stopping": false,
+    "LIVE_RUN_STATUS.is_finalizing": false,
+    "LIVE_RUN_STATUS.language_pipeline_worker_alive": false,
+    "RUN_ARTIFACTS_INDEX.status": "completed"
+  },
+  "mismatch_field_repaired": "",
+  "files_changed": [],
+  "repair_status": "REPAIRED",
+  "stale_stop_flags_repaired": false,
+  "repair_reason": "",
+  "safe_to_repair": true,
+  "transcript_files_unchanged": true,
+  "transcript_hashes_before": {
+    "transcripts_Alpha_output_FINAL.txt": "66f7b1cbb5d31bb7dbc8be1c49b027bf4d515b45b368439630ed06a369822995",
+    "transcripts_Alpha output.txt": "66f7b1cbb5d31bb7dbc8be1c49b027bf4d515b45b368439630ed06a369822995",
+    "accuracy_Alpha_for_accuracy_check.txt": "1930c90c3d0ebffa3154fa753f8e58e0f7eec4b8bc08fa3bd3c7a00d13a6c93a"
+  },
+  "transcript_hashes_after": {
+    "transcripts_Alpha_output_FINAL.txt": "66f7b1cbb5d31bb7dbc8be1c49b027bf4d515b45b368439630ed06a369822995",
+    "transcripts_Alpha output.txt": "66f7b1cbb5d31bb7dbc8be1c49b027bf4d515b45b368439630ed06a369822995",
+    "accuracy_Alpha_for_accuracy_check.txt": "1930c90c3d0ebffa3154fa753f8e58e0f7eec4b8bc08fa3bd3c7a00d13a6c93a"
+  },
+  "repaired_at": "2026-07-13T16:26:57"
+}

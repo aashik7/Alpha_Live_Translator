@@ -1,0 +1,12 @@
+{
+  "protected_file_loss_count": 0,
+  "checked": [
+    "troubleshooting\\accuracy_benchmark\\reference_transcripts\\test01.txt",
+    "troubleshooting\\runs\\v3.3.5.5.8.5.25.3.3.1-20260714-111519",
+    "main.py",
+    "alpha/"
+  ],
+  "build_id": "eabcac88-e1ec-4f96-9f14-76d91189e967",
+  "patch_version": "3.3.5.5.8.5.25.3.3.2.4",
+  "generated_at": "2026-07-14T07:21:20Z"
+}

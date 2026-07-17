@@ -1,0 +1,12 @@
+{
+  "test_number": 6,
+  "test_name": "no_benchmark_collection_literal",
+  "passed": true,
+  "expected": {
+    "hits": []
+  },
+  "actual": {
+    "passed": true,
+    "hits": []
+  }
+}

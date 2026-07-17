@@ -1,0 +1,21 @@
+{
+  "build_id": "b874a0fd-66dc-4e71-a85c-0b612b0f9ffd",
+  "build_timestamp": "2026-07-14T09:14:37Z",
+  "patch_version": "3.3.5.5.8.5.25.3.3.2.5",
+  "patch_codename": "Phase 1 Project Normalization & Offline Hardening",
+  "project_root": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST",
+  "phase1_root": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\phase1_normalization\\v3.3.5.5.8.5.25.3.3.2.5",
+  "build_dir": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\phase1_normalization\\v3.3.5.5.8.5.25.3.3.2.5\\builds\\b874a0fd-66dc-4e71-a85c-0b612b0f9ffd",
+  "baseline_dir": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\phase1_normalization\\v3.3.5.5.8.5.25.3.3.2.5\\builds\\b874a0fd-66dc-4e71-a85c-0b612b0f9ffd\\baseline",
+  "inventory_dir": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\phase1_normalization\\v3.3.5.5.8.5.25.3.3.2.5\\builds\\b874a0fd-66dc-4e71-a85c-0b612b0f9ffd\\inventory",
+  "analysis_dir": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\phase1_normalization\\v3.3.5.5.8.5.25.3.3.2.5\\builds\\b874a0fd-66dc-4e71-a85c-0b612b0f9ffd\\analysis",
+  "archive_dir": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\phase1_normalization\\v3.3.5.5.8.5.25.3.3.2.5\\builds\\b874a0fd-66dc-4e71-a85c-0b612b0f9ffd\\archive",
+  "quarantine_dir": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\phase1_normalization\\v3.3.5.5.8.5.25.3.3.2.5\\builds\\b874a0fd-66dc-4e71-a85c-0b612b0f9ffd\\quarantine",
+  "reports_dir": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\phase1_normalization\\v3.3.5.5.8.5.25.3.3.2.5\\builds\\b874a0fd-66dc-4e71-a85c-0b612b0f9ffd\\reports",
+  "regression_dir": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\phase1_normalization\\v3.3.5.5.8.5.25.3.3.2.5\\builds\\b874a0fd-66dc-4e71-a85c-0b612b0f9ffd\\regression",
+  "package_dir": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\phase1_normalization\\v3.3.5.5.8.5.25.3.3.2.5\\builds\\b874a0fd-66dc-4e71-a85c-0b612b0f9ffd\\package",
+  "restore_dir": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\phase1_normalization\\v3.3.5.5.8.5.25.3.3.2.5\\builds\\b874a0fd-66dc-4e71-a85c-0b612b0f9ffd\\restore",
+  "created_unix": 1784020477.068607,
+  "expected_final_sha256": "6e70dd171862527da2f2de0305ab82154cf9c1591b73860e4fd75e06f570c178",
+  "generated_at": "2026-07-14T09:14:37Z"
+}

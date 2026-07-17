@@ -1,0 +1,19 @@
+{
+  "build_id": "1a496da1-bdf4-4049-a9f2-5d2c55f056be",
+  "content_hash_mismatches": [],
+  "duplicate_paths": [],
+  "embedded_source_bundle_verified": true,
+  "generated_at": "2026-07-15T08:01:01Z",
+  "metadata_hash_verified": true,
+  "missing_paths": [],
+  "outer_bundle_file_count": 8,
+  "outer_bundle_filename": "ISSUE12_READINESS_OUTER_BUNDLE_1a496da1-bdf4-4049-a9f2-5d2c55f056be.zip",
+  "outer_bundle_path": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\issue12_readiness\\v3.3.5.5.8.5.25.3.3.2.8\\ISSUE12_READINESS_OUTER_BUNDLE_1a496da1-bdf4-4049-a9f2-5d2c55f056be.zip",
+  "outer_bundle_sha256": "63fff5f64e7e91270baa63924eba2065c4c3312768d1abbd51c5a1c25f4f79c4",
+  "outer_bundle_size": 272174,
+  "unexpected_paths": [],
+  "verification_passed": true,
+  "verified_after_write": true,
+  "version": "3.3.5.5.8.5.25.3.3.2.8",
+  "zip_integrity_passed": true
+}

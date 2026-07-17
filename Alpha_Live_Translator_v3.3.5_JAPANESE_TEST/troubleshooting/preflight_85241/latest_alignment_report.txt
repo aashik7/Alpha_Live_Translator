@@ -1,0 +1,18 @@
+Alpha/Reference Alignment Summary
+reference_quality_verdict: valid_for_cer
+alignment_mode: verbatim
+missing_sections: 2
+extra_alpha_sections: 127
+
+Sections:
+- section_1: alpha_lines=6..6 confidence=medium overlap=0.5111 hint= note=Monotonic sequential alignment
+- section_2: alpha_lines=17..17 confidence=low overlap=0.4647 hint= note=Monotonic sequential alignment
+- section_3: alpha_lines=32..32 confidence=low overlap=0.4818 hint= note=Monotonic sequential alignment
+- section_4: alpha_lines=48..48 confidence=low overlap=0.363 hint= note=Monotonic sequential alignment
+- section_5: alpha_lines=63..63 confidence=low overlap=0.5221 hint= note=Monotonic sequential alignment
+- section_6: alpha_lines=89..89 confidence=low overlap=0.5227 hint= note=Monotonic sequential alignment
+- section_7: alpha_lines=102..102 confidence=low overlap=0.4144 hint= note=Monotonic sequential alignment
+- section_8: alpha_lines=110..110 confidence=low overlap=0.3942 hint= note=Monotonic sequential alignment
+- section_9: alpha_lines=136..136 confidence=low overlap=0.4946 hint= note=Monotonic sequential alignment
+- section_10: alpha_lines=None..None confidence=low overlap=0.0 hint= note=No reliable alpha alignment found
+- section_11: alpha_lines=None..None confidence=low overlap=0.0 hint= note=No reliable alpha alignment found

@@ -1,0 +1,4 @@
+V3.3.5.5.8.5.23.2 EVIDENCE PROTECTION VALIDATION
+Result: PASSED
+APP_VERSION: 3.3.5.5.8.5.23.2
+Warnings: cer_not_calculated_yet, no_valid_reference_transcript_provided

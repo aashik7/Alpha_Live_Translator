@@ -1,0 +1,79 @@
+total=75
+passed=75
+failed=0
+expected_total=75
+PASS:t01_filesystem_before_nonzero:1867
+PASS:t02_filesystem_after_nonzero:1845
+PASS:t03_cleanup_actions_nonzero:a=48,d=4
+PASS:t04_archived_exists_in_archive:
+PASS:t05_archived_hash_matches:
+PASS:t06_archived_original_absent:
+PASS:t07_deleted_path_absent:fixture=C:\Users\islamm\AppData\Local\Temp\phase1_t07_del_1wtikud9\removable_62f6cd8762f6428387da2605bd454739.tmp;resolved=C:\Users\islamm\AppData\Local\Temp\phase1_t07_del_1wtikud9\removable_62f6cd8762f6428387da2605bd454739.tmp;path_type=file;exists_before=True;deletion_attempted=True;deletion_succeeded=True;exists_after=False;error=None;protected=False;disk_exists_after=False;parent_exists=True
+PASS:t08_retained_exists:
+PASS:t09_every_legacy_accounted:
+PASS:t10_tool_registry_matches:
+PASS:t11_archived_not_at_root:
+PASS:t12_active_not_archived:
+PASS:t13_unknown_retained_main:
+PASS:t14_abandoned_staging_zero:
+PASS:t15_cache_cleanup_allowed:
+PASS:t16_unique_pending_disposition:
+PASS:t17_duplicate_disposition:
+PASS:t18_retention_all_categories:
+PASS:t19_retention_validation_complete:
+PASS:t20_transcript_logs_sensitive:
+PASS:t21_alias_rollback_tests:
+PASS:t22_partial_generation_impossible:
+PASS:t23_transaction_passed:
+PASS:t24_inject_fail_raises:
+PASS:t25_aliases_match_final:
+PASS:t26_evidence_verified_before_acceptance:
+PASS:t27_acceptance_requires_evidence:
+PASS:t28_acceptance_has_full_fields:
+PASS:t29_report_Cursor final report.txt:
+PASS:t30_report_FILESYSTEM_BEFORE.json:
+PASS:t31_report_ARCHIVE_MANIFEST.json:
+PASS:t32_report_DELETION_MANIFEST.json:
+PASS:t33_report_RETAINED_FILES_REPORT.json:
+PASS:t34_report_PACKAGE_CONTENT_AUDIT.json:
+PASS:t35_protected_unexpected_empty:
+PASS:t36_auth_run_unchanged:
+PASS:t37_reference_unchanged:
+PASS:t38_raw_unchanged:
+PASS:t39_stable_unchanged:
+PASS:t40_final_unchanged:
+PASS:t41_glossary_consistent:
+PASS:t42_language_order:
+PASS:t43_version_meanings:
+PASS:t44_old_packages_not_current:
+PASS:t45_prev_regression_markers:
+PASS:t46_engine_compiles:
+PASS:t47_imports_resolve:
+PASS:t48_entrypoints_exist:
+PASS:t49_no_live_command:
+PASS:t50_acceptance_from_manifests:
+PASS:t51_legacy_cleanup_completed:
+PASS:t52_files_scanned_nonzero:
+PASS:t53_archive_count_matches:
+PASS:t54_deletion_count_matches:
+PASS:t55_retained_count_positive:
+PASS:t56_remaining_issues_zero:
+PASS:t57_bundle_required_entries:['acceptance/Cursor final report.txt', 'acceptance/PHASE1_CORRECTION_FINAL_ACCEPTANCE.json', 'delivery/BUILD_IDENTITY.json', 'delivery/OUTER_BUNDLE_AUDIT.json', 'delivery/PACKAGE_CONTENT_AUDIT.json', 'delivery/PACKAGE_MANIFEST.json', 'evidence/PHASE1_CORRECTION_EVIDENCE_fc32560b-df54-4f77-89da-39106c9d4d5a.zip']
+PASS:t58_bundle_reopenable:
+PASS:t59_legacy_absent_root:
+PASS:t60_no_current_tool_archived:
+PASS:t61_protected_final_intact:
+PASS:t62_restore_script_exists:
+PASS:t63_restore_mentions_hash:
+PASS:t64_final_bundle_verified:
+PASS:t65_phase1_remaining_zero:
+PASS:t66_temp_file_deleted:{'path': 'C:/Users/islamm/AppData/Local/Temp/phase1_delcov_v6_2s7oz/file_ec527c24f0114a5ab83da5fd167490e6.tmp', 'resolved_path': 'C:/Users/islamm/AppData/Local/Temp/phase1_delcov_v6_2s7oz/file_ec527c24f0114a5ab83da5fd167490e6.tmp', 'path_type': 'missing', 'sha256_before': '2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881', 'size_bytes': 1, 'classification': 'TEMPORARY', 'reason': 'approved_cleanup_deletion', 'protected': False, 'deletion_attempted': True, 'deletion_succeeded': True, 'exists_after': False, 'attempts': 1, 'error': None}
+PASS:t67_empty_dir_deleted:{'path': 'C:/Users/islamm/AppData/Local/Temp/phase1_delcov_v6_2s7oz/dir_9097460fade14ee38e617f2165905e27', 'resolved_path': 'C:/Users/islamm/AppData/Local/Temp/phase1_delcov_v6_2s7oz/dir_9097460fade14ee38e617f2165905e27', 'path_type': 'missing', 'sha256_before': None, 'size_bytes': None, 'classification': 'TEMPORARY', 'reason': 'approved_cleanup_deletion', 'protected': False, 'deletion_attempted': True, 'deletion_succeeded': True, 'exists_after': False, 'attempts': 1, 'error': None}
+PASS:t68_readonly_file_deleted:{'path': 'C:/Users/islamm/AppData/Local/Temp/phase1_delcov_v6_2s7oz/ro_972739aad6ea4d62a153066a61570c80.tmp', 'resolved_path': 'C:/Users/islamm/AppData/Local/Temp/phase1_delcov_v6_2s7oz/ro_972739aad6ea4d62a153066a61570c80.tmp', 'path_type': 'missing', 'sha256_before': '7ef9ec0cf2c4facafddd03ab96eca0939d6749b49952bd816f1e0cc6901941d5', 'size_bytes': 2, 'classification': 'TEMPORARY', 'reason': 'approved_cleanup_deletion', 'protected': False, 'deletion_attempted': True, 'deletion_succeeded': True, 'exists_after': False, 'attempts': 1, 'error': None}
+PASS:t69_symlink_removed_not_target:symlink_unsupported:[WinError 1314] A required privilege is not held by the client: 'C:\\Users\\islamm\\AppData\\Local\\Temp\\phase1_delcov_v6_2s7oz\\target_faa7ce4f1ebd4868a63e2c8610019549.txt' -> 'C:\\Users\\islamm\\AppData\\Local\\Temp\\phase1_delcov_v6_2s7oz\\link_6e667741f0ce43edb434a199ceddab9f'
+PASS:t70_protected_refused:{'path': 'C:/Users/islamm/AppData/Local/Temp/phase1_delcov_v6_2s7oz/prot_04736cd76d214e32b49a47c79a2ecdee.tmp', 'resolved_path': 'C:/Users/islamm/AppData/Local/Temp/phase1_delcov_v6_2s7oz/prot_04736cd76d214e32b49a47c79a2ecdee.tmp', 'path_type': 'file', 'sha256_before': None, 'size_bytes': None, 'classification': 'PROTECTED_PATH', 'reason': 'approved_cleanup_deletion', 'protected': True, 'deletion_attempted': False, 'deletion_succeeded': False, 'exists_after': True, 'attempts': 0, 'error': 'protected_path_refused'}
+PASS:t71_missing_not_success:{'path': 'C:/Users/islamm/AppData/Local/Temp/phase1_delcov_v6_2s7oz/missing_e65baca544264422ab60816e988b5f07.tmp', 'resolved_path': 'C:/Users/islamm/AppData/Local/Temp/phase1_delcov_v6_2s7oz/missing_e65baca544264422ab60816e988b5f07.tmp', 'path_type': 'missing', 'sha256_before': None, 'size_bytes': None, 'classification': 'TEMPORARY', 'reason': 'approved_cleanup_deletion', 'protected': False, 'deletion_attempted': False, 'deletion_succeeded': False, 'exists_after': False, 'attempts': 0, 'error': 'path_already_absent'}
+PASS:t72_simulated_failure:{'path': 'C:/Users/islamm/AppData/Local/Temp/phase1_delcov_v6_2s7oz/fail_2dfa62794c384c298221c8149ec0f46e.tmp', 'resolved_path': 'C:/Users/islamm/AppData/Local/Temp/phase1_delcov_v6_2s7oz/fail_2dfa62794c384c298221c8149ec0f46e.tmp', 'path_type': 'file', 'sha256_before': None, 'size_bytes': None, 'classification': 'PROTECTED_FIXTURE', 'reason': 'approved_cleanup_deletion', 'protected': True, 'deletion_attempted': False, 'deletion_succeeded': False, 'exists_after': True, 'attempts': 0, 'error': 'protected_path_refused'}
+PASS:t73_manifest_exists_after_contradiction_detectable:path=C:\Users\islamm\AppData\Local\Temp\phase1_delcov_v6_2s7oz\claim_aa7cd7cb03df4ee598c09ba474bcf247.tmp
+PASS:t74_open_handle_not_false_success:{'path': 'C:/Users/islamm/AppData/Local/Temp/phase1_delcov_v6_2s7oz/open_811e80b6e9e84d278841b6a38e3f79b4.tmp', 'resolved_path': 'C:/Users/islamm/AppData/Local/Temp/phase1_delcov_v6_2s7oz/open_811e80b6e9e84d278841b6a38e3f79b4.tmp', 'path_type': 'file', 'sha256_before': '4a75c3036206455d4553c4013b39fefb8ff4bc9518b9db23ebb1cb4965258002', 'size_bytes': 5, 'classification': 'TEMPORARY', 'reason': 'approved_cleanup_deletion', 'protected': False, 'deletion_attempted': True, 'deletion_succeeded': False, 'exists_after': True, 'attempts': 2, 'error': "PermissionError:[WinError 32] The process cannot access the file because it is being used by another process: 'C:\\\\Users\\\\islamm\\\\AppData\\\\Local\\\\Temp\\\\phase1_delcov_v6_2s7oz\\\\open_811e80b6e9e84d278841b6a38e3f79b4.tmp'"}
+PASS:t75_fixtures_outside_project:td=C:\Users\islamm\AppData\Local\Temp\phase1_delcov_v6_2s7oz;t07=C:/Users/islamm/AppData/Local/Temp/phase1_t07_del_1wtikud9/removable_62f6cd8762f6428387da2605bd454739.tmp

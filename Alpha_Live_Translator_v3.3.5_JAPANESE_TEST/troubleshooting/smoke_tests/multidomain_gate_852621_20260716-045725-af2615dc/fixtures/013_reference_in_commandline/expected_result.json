@@ -1,0 +1,6 @@
+{
+  "test_number": 13,
+  "test_name": "reference_path_in_runtime_child_command_line_fails",
+  "expected_pass_or_fail": "fail",
+  "expected_failure_reason": "ref_cmdline"
+}

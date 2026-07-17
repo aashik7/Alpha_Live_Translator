@@ -1,0 +1,23 @@
+{
+  "entries": [
+    {
+      "failing_suite": "regression_eleven_issue_closure_852533.py",
+      "failing_test": "prepared_reference_trust_v2533",
+      "root_cause": "Prepared reference looked under prepared/v{APP_VERSION} (2.1) while prepare_accuracy_benchmark hardcoded v25.3.2 folder / speaker-stripped snapshot.",
+      "source_fix": "prepare_accuracy_benchmark_852532.py now uses --output-version defaulting to VALIDATION_PATCH_VERSION and writes a faithful copy; test uses VALIDATION_PATCH_VERSION.",
+      "test_fix": "regression_eleven_issue_closure_852533.py::t_prepared_reference_trust_v2533",
+      "meaningful_assertion_preserved": true,
+      "result_after_fix": "PASSED"
+    },
+    {
+      "failing_suite": "regression_persisted_evidence_package_closure_8525332.py",
+      "failing_test": "30_immutable_hashes_api / 32_final_alpha_unchanged_guard",
+      "root_cause": "Tests required IMMUTABLE_RUNTIME_ARTIFACT_HASHES_BEFORE.json under v{APP_VERSION}, but writers used short IMMUTABLE_HASHES_BEFORE.json names.",
+      "source_fix": "alpha/utils/immutable_evidence_contract.py canonical filenames; all writers updated; resolve_before_path for reads.",
+      "test_fix": "regression_persisted_evidence_package_closure_8525332.py tests 30/32 use resolve_before_path/load_hashes_json",
+      "meaningful_assertion_preserved": true,
+      "result_after_fix": "PASSED"
+    }
+  ],
+  "validation_patch_version": "3.3.5.5.8.5.25.3.3.2.2"
+}

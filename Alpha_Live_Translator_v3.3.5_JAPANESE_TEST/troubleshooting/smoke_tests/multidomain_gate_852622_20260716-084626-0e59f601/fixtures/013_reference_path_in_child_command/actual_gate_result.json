@@ -1,0 +1,19 @@
+{
+  "test_number": 13,
+  "test_name": "reference_path_in_runtime_child_command_line_fails",
+  "actual_gate_status": "FAILED",
+  "actual_failure_codes": [
+    "REFERENCE_PATH_PRESENT_IN_CHILD_COMMAND"
+  ],
+  "actual_failure_messages": [
+    "verification.reported_value_mismatches=reference_in_child_commandline -> REFERENCE_PATH_PRESENT_IN_CHILD_COMMAND"
+  ],
+  "actual_gate_exit_code": 0,
+  "actual_acceptance_version": "NOT_ACCEPTED",
+  "actual_acceptance_status": "FIXTURE_ONLY",
+  "source_result_file": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\smoke_tests\\multidomain_gate_852622_20260716-084626-0e59f601\\fixtures\\013_reference_path_in_child_command\\accuracy_stage_compare\\independent_verification.json",
+  "source_result_file_sha256": "b44da600cd28540122c2df2cbb4258519bb02f3e00549b812b9942747c0e8b9b",
+  "unhandled_exception": false,
+  "exception_class": "",
+  "exception_message": ""
+}

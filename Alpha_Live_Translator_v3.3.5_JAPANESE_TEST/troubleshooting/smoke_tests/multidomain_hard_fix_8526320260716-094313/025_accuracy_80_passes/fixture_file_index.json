@@ -1,0 +1,34 @@
+{
+  "files": [
+    {
+      "relative_path": "actual_result.json",
+      "byte_size": 278,
+      "sha256": "a8d8fd8d81a7c58419365c396f8da9381de1046e63ee050d43681d4c1ede3800"
+    },
+    {
+      "relative_path": "assertion_result.json",
+      "byte_size": 440,
+      "sha256": "5a6e5ffdf6236637399fde7fb6f71ed1a9623c32ac328129a654820aae9ae6e2"
+    },
+    {
+      "relative_path": "exit_code.txt",
+      "byte_size": 3,
+      "sha256": "13bf7b3039c63bf5a50491fa3cfd8eb4e699d1ba1436315aef9cbe5711530354"
+    },
+    {
+      "relative_path": "expected_result.json",
+      "byte_size": 24,
+      "sha256": "80d0a416e0bcd0887ae19659632bb0b67d5d42357842fb9cc61cf862c61bbed8"
+    },
+    {
+      "relative_path": "stderr.txt",
+      "byte_size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "relative_path": "stdout.txt",
+      "byte_size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}

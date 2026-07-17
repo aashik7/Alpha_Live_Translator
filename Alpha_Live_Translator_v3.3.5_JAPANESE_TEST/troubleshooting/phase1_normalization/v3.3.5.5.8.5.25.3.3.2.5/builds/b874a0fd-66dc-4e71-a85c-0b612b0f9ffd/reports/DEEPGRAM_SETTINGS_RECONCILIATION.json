@@ -1,0 +1,51 @@
+{
+  "canonical_module": "alpha/stt_settings.py",
+  "old_definitions": {
+    "alpha.config": {
+      "DEEPGRAM_ENDPOINTING_MS": "reexport from stt_settings",
+      "DEEPGRAM_UTTERANCE_END_MS": "reexport from stt_settings",
+      "DEEPGRAM_JA_ENDPOINTING_MS": "reexport from stt_settings",
+      "DEEPGRAM_JA_UTTERANCE_END_MS": "reexport from stt_settings"
+    },
+    "alpha.constants": {
+      "DEEPGRAM_ENDPOINTING_MS": 500,
+      "DEEPGRAM_UTTERANCE_END_MS": 1500,
+      "note": "diagnostic JA aliases kept for validators"
+    }
+  },
+  "active_readers": [
+    "alpha.transcription.deepgram_client -> alpha.config",
+    "alpha.stt_settings.effective_stream_timing",
+    "diagnostics/constants consumers"
+  ],
+  "effective_values_before": {
+    "ja_endpointing_ms": 500,
+    "ja_utterance_end_ms": 1500
+  },
+  "canonical_values_after": {
+    "ja_endpointing_ms": 500,
+    "ja_utterance_end_ms": 1500,
+    "non_ja_endpointing_ms": 1200,
+    "non_ja_utterance_end_ms": 1500
+  },
+  "behavior_changed": false,
+  "conflicts_remaining": [],
+  "effective_japanese": {
+    "endpointing_ms": 500,
+    "utterance_end_ms": 1500
+  },
+  "effective_non_japanese": {
+    "endpointing_ms": 1200,
+    "utterance_end_ms": 1500,
+    "utterance_end_ms_raw": 5000,
+    "clamped": true
+  },
+  "config_reexports_match_stt_settings": true,
+  "constants_diagnostics_are_ja_effective": true,
+  "runtime_importer": "alpha.transcription.deepgram_client -> alpha.config",
+  "preserved_effective_ja_timing": true,
+  "conflict_resolution": "stt_settings is sole canonical source; config re-exports runtime values; constants retains JA diagnostic aliases 500/1500 for validators",
+  "build_id": "b874a0fd-66dc-4e71-a85c-0b612b0f9ffd",
+  "patch_version": "3.3.5.5.8.5.25.3.3.2.5",
+  "generated_at": "2026-07-14T09:14:37Z"
+}

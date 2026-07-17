@@ -1,0 +1,8 @@
+tests=26
+passed=26
+failed=0
+actual_gate_tests=18
+actual_gate_tests_passed=18
+ignored_failure_codes=[]
+normalized_away_failure_codes=[]
+unhandled_exceptions=0

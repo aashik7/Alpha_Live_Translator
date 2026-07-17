@@ -1,0 +1,3 @@
+{"event": "LOG_INITIALIZED", "reason": "no_events_yet", "timestamp": 1783660331.4331608, "app_version": "3.3.5.5.8.5.24.2"}
+{"raw_text": "けん引し、当四半期累計期間において", "compact_length": 16, "time_since_last_good_commit_ms": 0.0, "source_activity": "unknown", "quarantine_decision": "quarantined", "reason": "noise_fragment", "later_committed_to_stable": false, "raw_mutated": false, "timestamp": 1783660486.0277417}
+{"raw_text": "続いて覚悟会社の取締役の就任についてお知らせいたします", "compact_length": 27, "time_since_last_good_commit_ms": 0.0, "source_activity": "unknown", "quarantine_decision": "quarantined", "reason": "noise_fragment", "later_committed_to_stable": false, "raw_mutated": false, "timestamp": 1783660589.7163527}

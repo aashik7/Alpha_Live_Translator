@@ -1,0 +1,1 @@
+C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\python.exe regression_multidomain_gate_85262.py --evidence-root troubleshooting/smoke_tests/multidomain_gate_852621_20260716-055139-939e9996 --keep-fixtures --results-json troubleshooting/implementation_evidence/v3.3.5.5.8.5.26.2.1/regression_results.json

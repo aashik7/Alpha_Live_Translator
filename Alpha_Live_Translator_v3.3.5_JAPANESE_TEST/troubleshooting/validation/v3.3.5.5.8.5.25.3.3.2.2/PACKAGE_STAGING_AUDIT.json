@@ -1,0 +1,12 @@
+{
+  "staging_complete": true,
+  "missing_required": [],
+  "duplicate_paths": [],
+  "unexpected_paths": [],
+  "foreign_run_paths": [],
+  "entry_count": 48,
+  "staging_path": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\post_acceptance_audit\\v3.3.5.5.8.5.25.3.3.2.2\\_staging_3.3.5.5.8.5.25.3.3.2.2_20260714-151047",
+  "validation_patch_version": "3.3.5.5.8.5.25.3.3.2.2",
+  "immutable_before_present": true,
+  "immutable_after_present": true
+}

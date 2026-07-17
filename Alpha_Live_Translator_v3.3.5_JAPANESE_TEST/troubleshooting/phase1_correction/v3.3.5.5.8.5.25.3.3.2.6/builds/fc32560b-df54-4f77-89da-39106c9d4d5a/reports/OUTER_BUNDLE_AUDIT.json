@@ -1,0 +1,16 @@
+{
+  "build_id": "fc32560b-df54-4f77-89da-39106c9d4d5a",
+  "entries": [
+    "evidence/PHASE1_CORRECTION_EVIDENCE_fc32560b-df54-4f77-89da-39106c9d4d5a.zip",
+    "acceptance/PHASE1_CORRECTION_FINAL_ACCEPTANCE.json",
+    "acceptance/Cursor final report.txt",
+    "delivery/PACKAGE_MANIFEST.json",
+    "delivery/PACKAGE_CONTENT_AUDIT.json",
+    "delivery/OUTER_BUNDLE_AUDIT.json",
+    "delivery/BUILD_IDENTITY.json"
+  ],
+  "entry_count": 7,
+  "generated_at": "2026-07-14T16:09:26Z",
+  "patch_version": "3.3.5.5.8.5.25.3.3.2.6",
+  "verified": true
+}

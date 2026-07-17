@@ -1,0 +1,6 @@
+{
+  "test_number": 2,
+  "test_name": "missing_raw_file_fails",
+  "expected_pass_or_fail": "fail",
+  "expected_failure_reason": "missing_raw"
+}

@@ -1,0 +1,10 @@
+{
+  "test_number": 27,
+  "test_name": "runtime_regression_present_fails",
+  "expected_gate_status": "FAILED",
+  "expected_failure_codes": [
+    "RUNTIME_REGRESSION_PRESENT"
+  ],
+  "expected_policy_result": "",
+  "single_mutation_description": "runtime_regression_report.json runtime_regressions set to ['ui_main_loop_stall']"
+}

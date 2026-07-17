@@ -1,0 +1,6 @@
+VALIDATE_PACKAGE_GLOSSARY_FLAGS_85253
+Result: PASSED
+scenario_a_zip=C:\Users\islamm\AppData\Local\Temp\pkg-glossary-85253-dqfsgmb2\troubleshooting\runs\pkg-regression-85253\upload_package\UPLOAD_PACKAGE_v3.3.5.5.8.5.25.3_20260713-125046.zip
+scenario_b_zip=C:\Users\islamm\AppData\Local\Temp\pkg-glossary-85253-w1goj265\troubleshooting\runs\pkg-regression-85253\upload_package\UPLOAD_PACKAGE_v3.3.5.5.8.5.25.3_20260713-125047.zip
+scenario_a_stage_files=10
+scenario_b_stage_files=10

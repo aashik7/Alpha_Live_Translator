@@ -1,0 +1,120 @@
+{
+  "app_version": "3.3.5.5.8.5.25.3.3.2",
+  "run_folder": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\runs\\v3.3.5.5.8.5.25.3.3.1-20260714-111519",
+  "checks": [
+    {
+      "name": "one_authoritative_writer",
+      "ok": false,
+      "detail": "None"
+    },
+    {
+      "name": "final_write_count_one",
+      "ok": true,
+      "detail": "{'run_folder': 'C:\\\\Users\\\\islamm\\\\Documents\\\\Tariqul\\\\Alpha_Translator V 1.0\\\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\\\troubleshooting\\\\runs\\\\v3.3.5.5.8.5.25.3.3.1-20260714-111519', 'run_id': '', 'snapshot_id': '', 'expected_record_count': 0, 'write_count': 1, 'sealed': True, 'seal_verified': True, 'text_sha256': '6e70dd171862527da2f2de0305ab82154cf9c1591b73860e4fd75e06f570c178', 'sidecar_sha256': '', 'record_count': 0, 'file_size': 0, 'written_at': '', 'sealed_at': '', 'post_seal_write_attempt_count': 0, 'post_seal_write_attempts': [], 'alias_hashes': {}, 'begun': False, 'authoritative_path': 'C:\\\\Users\\\\islamm\\\\Documents\\\\Tariqul\\\\Alpha_Translator V 1.0\\\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\\\troubleshooting\\\\runs\\\\v3.3.5.5.8.5.25.3.3.1-20260714-111519\\\\transcripts\\\\Alpha_output_FINAL.txt', 'sidecar_path': 'C:\\\\Users\\\\islamm\\\\Documents\\\\Tariqul\\\\Alpha_Translator V 1.0\\\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\\\troubleshooting\\\\runs\\\\v3.3.5.5.8.5.25.3.3.1-20260714-111519\\\\transcripts\\\\final_export_records.jsonl', 'seal_path': 'C:\\\\Users\\\\islamm\\\\Documents\\\\Tariqul\\\\Alpha_Translator V 1.0\\\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\\\troubleshooting\\\\runs\\\\v3.3.5.5.8.5.25.3.3.1-20260714-111519\\\\transcripts\\\\FINAL_EXPORT_SEAL.json', 'writer_function': 'alpha.utils.final_artifact_authority.write_final_once'}"
+    },
+    {
+      "name": "no_post_seal_write",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "no_late_overwrite",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "no_existing_record_suppressed_by_stop_tail",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "previous_active_preserved",
+      "ok": true,
+      "detail": "suppress_candidate history-only"
+    },
+    {
+      "name": "stable_final_exact_match",
+      "ok": true,
+      "detail": "{'stable_active_record_count': 22, 'final_export_record_count': 22, 'final_text_line_count': 22, 'stable_final_record_id_match': True, 'stable_final_text_hash_match': True, 'stable_final_text_exact_match': True, 'missing_final_record_ids': [], 'extra_final_record_ids': [], 'duplicate_final_record_ids': [], 'duplicate_stable_record_ids': [], 'stable_record_ids': ['canon-000001', 'canon-000002', 'canon-000003', 'canon-000004', 'canon-000005', 'canon-000006', 'canon-000007', 'canon-000008', 'canon-000009', 'canon-000010', 'canon-000011', 'canon-000012', 'canon-000013', 'canon-000014', 'canon-000015', 'canon-000016', 'canon-000017', 'canon-000018', 'canon-000019', 'canon-000020', 'canon-000021', 'canon-000022'], 'final_record_ids': ['canon-000001', 'canon-000002', 'canon-000003', 'canon-000004', 'canon-000005', 'canon-000006', 'canon-000007', 'canon-000008', 'canon-000009', 'canon-000010', 'canon-000011', 'canon-000012', 'canon-000013', 'canon-000014', 'canon-000015', 'canon-000016', 'canon-000017', 'canon-000018', 'canon-000019', 'canon-000020', 'canon-000021', 'canon-000022']}"
+    },
+    {
+      "name": "stage_final_hash_match",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "ui_drain_no_later_event",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "manifest_truthful",
+      "ok": true,
+      "detail": "{'final_export_write_count': 1, 'final_seal_verified': True, 'coverage_passed': True, 'stage_capture_complete': True}"
+    }
+  ],
+  "issues_closed": 11,
+  "issues_total": 11,
+  "closure_ratio": 1.0,
+  "single_final_writer_passed": false,
+  "safe_stop_tail_passed": true,
+  "sealed_export_passed": true,
+  "POST_LIVE_STATUS": "FAILED",
+  "eleven_issue": {
+    "returncode": 0,
+    "status": "PASSED",
+    "output_tail": "validate_eleven_issue_closure_852533 — 3.3.5.5.8.5.25.3.3.2\nMode: post-live\nPOST_LIVE_STATUS: PASSED\nissues_closed: 11\nissues_total: 11\nclosure_ratio: 1.0\nresolved_run_folder: C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\runs\\v3.3.5.5.8.5.25.3.3.1-20260714-111519\nresolved_run_id: live-v3.3.5.5.8.5.25.3.3.1-20260714-111519-14b93a8a\nFailures: none\nWarnings: ['run_version_offline_ok:3.3.5.5.8.5.25.3.3.1->patch:3.3.5.5.8.5.25.3.3.2']\n\nIssue closure:\n  final_content_loss_closed: True\n  raw_lineage_closed: True\n  action_counter_mismatch_closed: True\n  finalizer_crash_closed: True\n  runtime_audio_counters_closed: True\n  stop_drain_closed: True\n  false_coverage_closed: True\n  stage_completion_truthful: True\n  package_isolation_closed: True\n  current_validation_packaged: True\n  stall_classification_closed: True\n"
+  },
+  "coverage": {
+    "comparison_version": "v25.3.3.2_canonical_normalized",
+    "canonical_active_record_count": 22,
+    "stable_active_record_count": 22,
+    "final_record_count": 22,
+    "matched_record_count": 22,
+    "missing_final_record_ids": [],
+    "extra_final_record_ids": [],
+    "record_id_order_match": true,
+    "speaker_match": true,
+    "normalized_text_match": true,
+    "lineage_match": true,
+    "canonical_record_hash_match": true,
+    "authoritative_stage_byte_hash_match": true,
+    "authoritative_stage_normalized_hash_match": true,
+    "authoritative_final_byte_sha256": "6e70dd171862527da2f2de0305ab82154cf9c1591b73860e4fd75e06f570c178",
+    "stage_final_byte_sha256": "6e70dd171862527da2f2de0305ab82154cf9c1591b73860e4fd75e06f570c178",
+    "authoritative_final_normalized_sha256": "2f5f61f5868f9bf131141a9d2783a2542861533301f2852e34eadaf6c699b235",
+    "stage_final_normalized_sha256": "2f5f61f5868f9bf131141a9d2783a2542861533301f2852e34eadaf6c699b235",
+    "stable_transcript_normalized_sha256": "d8e94986be1452a0038c13e03e0ce52f1a1a1b36b4ba11b6a809f2bb9096402d",
+    "final_transcript_normalized_sha256": "d8e94986be1452a0038c13e03e0ce52f1a1a1b36b4ba11b6a809f2bb9096402d",
+    "coverage_ratio": 1.0,
+    "coverage_passed": true,
+    "final_text_record_count": 22,
+    "final_sidecar_record_count": 22,
+    "stable_final_text_exact_match": true,
+    "stable_final_record_id_match": true,
+    "sealed_final_hash_match": true,
+    "stage_final_hash_match": true,
+    "post_evidence_seal_verified": true,
+    "late_final_overwrite_detected": false,
+    "recomputed_from_artifacts": true
+  },
+  "seal": {
+    "run_id": "live-v3.3.5.5.8.5.25.3.3.1-20260714-111519-14b93a8a",
+    "snapshot_id": "snap-038068e65833",
+    "authoritative_path": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\runs\\v3.3.5.5.8.5.25.3.3.1-20260714-111519\\transcripts\\Alpha_output_FINAL.txt",
+    "sidecar_path": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\runs\\v3.3.5.5.8.5.25.3.3.1-20260714-111519\\transcripts\\final_export_records.jsonl",
+    "writer_function": "alpha.utils.final_artifact_authority.write_final_once",
+    "write_count": 1,
+    "text_sha256": "6e70dd171862527da2f2de0305ab82154cf9c1591b73860e4fd75e06f570c178",
+    "sidecar_sha256": "403796cf411e32f79a88a87bf22ce20a241cc2d8a3e8838c7370674815ead982",
+    "record_count": 22,
+    "file_size": 4511,
+    "written_at": "2026-07-14T11:21:21",
+    "sealed_at": "2026-07-14T11:21:21",
+    "sealed": true,
+    "post_seal_write_attempt_count": 0,
+    "post_seal_write_attempts": [],
+    "seal_verified": true
+  },
+  "package_complete": true
+}

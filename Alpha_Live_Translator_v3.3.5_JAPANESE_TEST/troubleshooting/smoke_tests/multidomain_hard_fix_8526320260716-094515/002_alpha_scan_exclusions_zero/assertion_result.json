@@ -1,0 +1,12 @@
+{
+  "test_number": 2,
+  "test_name": "alpha_scan_exclusions_zero",
+  "passed": true,
+  "expected": {
+    "excluded": []
+  },
+  "actual": {
+    "passed": true,
+    "excluded_files": []
+  }
+}

@@ -1,0 +1,89 @@
+Cursor final report — Multidomain Gate Final Evidence Seal 3.3.5.5.8.5.26.2.2
+generated_at=2026-07-16T08:47:15Z
+
+1. Files modified (existing source): none. This is an evidence-only change.
+
+2. New scripts created (only these 3, verified against the allowed list):
+   ['regression_multidomain_gate_evidence_852622.py', 'run_multidomain_final_evidence_seal_852622.py', 'verify_multidomain_final_evidence_seal_852622.py']
+
+3. Source immutability result:
+   source_immutable=True
+   changed_files=[]
+   missing_files=[]
+   snapshot_file_count=175
+
+4. Actual gate binding:
+   invocation_mode=direct_callable
+   callable_module=regression_multidomain_gate_85262
+   callable_name=_run_fixture_pipeline
+   duplicated_gate_logic_detected=False
+   binding_verified=True
+
+5. Alpha file discovery / scan counts:
+   alpha_root=C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\alpha
+   discovered_python_file_count=143
+   scanned_python_file_count=143
+
+6. Exclusions (must all be empty):
+   excluded_python_files=[]
+   skipped_python_files=[]
+   unreadable_python_files=[]
+
+7. Leak scan hits:
+   prohibited_hits_count=0
+   informational_hits_count=991
+   Note on alpha/utils/multidomain_gate_evidence.py: this file IS scanned (zero exclusions).
+   It contains the multidomain benchmark truth-metadata template
+   (build_truth_metadata_template()) with literal schema keys
+   (participant_and_person_names, company_names, it_terms, sales_terms,
+   marketing_terms, general_business_terms) and the reference/truth relative
+   path constants. All matches inside that function are classified
+   informational: the function only builds a template dict returned to
+   benchmark-preparation tooling; it never opens the reference/truth files
+   itself (no open()/.open()/read_text() call targets those paths anywhere
+   in this file) and never constructs a Deepgram keyterm/keyword array from
+   those term values. The one coincidental non-target-file hit (the Japanese
+   term "進捗率" also appearing in alpha/utils/issue12_stage1_runtime.py's
+   unrelated financial-terminology correction table) is likewise
+   informational: it is not adjacent to any keyterm/keyword construct.
+
+8. Fixture counts:
+   physical_fixture_count=32
+   negative_fixture_count=28
+   positive_fixture_count=1
+   policy_fixture_count=3
+
+9. Regression exit code:
+   0
+
+10. Regression stdout summary counts (parsed from actual subprocess output):
+    {'tests': 32, 'passed': 32, 'failed': 0, 'negative_fixtures': 28, 'negative_gate_failures_observed': 28, 'negative_failure_code_exact_matches': 28, 'negative_unhandled_exceptions': 0, 'policy_fixtures': 3, 'policy_fixtures_passed': 3}
+
+11. Sealed inner zip:
+    path=C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\implementation_evidence\v3.3.5.5.8.5.26.2.2\sealed\MULTIDOMAIN_EVIDENCE_INNER_v3.3.5.5.8.5.26.2.2.zip
+    sha256=eef315452ff2b73c6fce316354da0d93a02c461eb2114b3ee5428ecfd0450797
+    byte_size=240489
+    entry_count=271
+    sealed=True
+    modified_after_seal=False
+
+12. Independent verification result:
+    verification_passed=True
+
+13. Final acceptance result:
+    FINAL_EVIDENCE_STATUS=ACCEPTED
+    IMPLEMENTATION_STATUS=READY
+
+14. Confirmations:
+    Alpha was not launched during evidence closure.
+    main.py was not imported.
+    run_multidomain_gate_85262.py was not run as a live orchestrator.
+    No Deepgram connection was made; no microphone/WASAPI was opened.
+    No live benchmark was run.
+    Translation beta remains disabled.
+
+15-23. See ACTUAL_GATE_BINDING.json, ALL_ALPHA_REFERENCE_LEAK_SCAN.json,
+       FIXTURE_INDEX.json, SOURCE_IMMUTABILITY_VERIFICATION.json,
+       regression_results.json, and INDEPENDENT_FINAL_EVIDENCE_VERIFICATION.json
+       (all stored outside this report, per the acceptance contract) for full
+       machine-readable detail on every point above.

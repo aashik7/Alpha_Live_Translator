@@ -1,0 +1,9 @@
+# Visible Error Audit (audit-only — no auto-correction)
+# app_version: 3.3.5.5.8.5.23.3
+# run_id: live-v3.3.5.5.8.5.23.3-20260709-094815-61e27463
+# visible_error_count: 3
+# high: 0 medium: 3 low: 0
+
+line=5 severity=medium pattern=leading_fragment_particle category=sentence_boundary snippet=は一緒に肉感のお菓子を食べるもっぱんをしていきたいと思います。
+line=12 severity=medium pattern=duplicate_line_continuation category=sentence_boundary snippet=よ実はってばらしてなんかびっくりさせる動画が多いんですよね。良かったなか受けてる。。取が。。級なんだ。。ただきます。
+line=20 severity=medium pattern=leading_fragment_particle category=sentence_boundary snippet=てあげたりですよ。

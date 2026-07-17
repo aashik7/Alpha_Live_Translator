@@ -1,0 +1,23 @@
+{
+  "test_number": 20,
+  "test_name": "business_japanese_profile_active_fails",
+  "kind": "negative",
+  "single_mutation_description": "deepgram_request_actual.json business_japanese_profile_active set True",
+  "files": [
+    {
+      "relative_path": "actual_gate_result.json",
+      "byte_size": 978,
+      "sha256": "d25744ab328e283d51fbe6e4cff0847056ff07081fef66a1faa63e8498787ec2"
+    },
+    {
+      "relative_path": "expected_gate_result.json",
+      "byte_size": 340,
+      "sha256": "91a8c491d2f4c939a32f42d5c7d0ae5e3216bfc32b48055deaea53fdcd5bfa52"
+    },
+    {
+      "relative_path": "regression_assertion.json",
+      "byte_size": 714,
+      "sha256": "4dc5464fb15969a1d5a8a09adc2091f4437854675748a72d2b257ef45a3574c6"
+    }
+  ]
+}

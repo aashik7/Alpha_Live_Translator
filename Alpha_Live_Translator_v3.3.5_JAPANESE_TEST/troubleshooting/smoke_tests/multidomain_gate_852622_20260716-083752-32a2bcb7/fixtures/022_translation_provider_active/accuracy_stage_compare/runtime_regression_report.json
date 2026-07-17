@@ -1,0 +1,11 @@
+{
+  "checks": {
+    "raw_mutation_count": 0
+  },
+  "runtime_regressions": [
+    "translation_provider_active"
+  ],
+  "warnings": [],
+  "evidence_paths": [],
+  "runtime_passed": false
+}

@@ -1,0 +1,118 @@
+{
+  "test_number": 4,
+  "test_name": "missing_final_file_fails",
+  "kind": "negative",
+  "single_mutation_description": "final_alpha_output.txt omitted",
+  "files": [
+    {
+      "relative_path": "accuracy_stage_compare/audio_delivery_events.jsonl",
+      "byte_size": 1960,
+      "sha256": "f798ebaff2c63a5aa83627fa94fc202f969e59a0d9b53e3e5ad23d69b074e5aa"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/audio_delivery_summary.json",
+      "byte_size": 1093,
+      "sha256": "e01b164f021944e4fbca628fa19e923845060ad6f9f4bdcecfeef6c815a59a02"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/Cursor final report.txt",
+      "byte_size": 16,
+      "sha256": "e25d9e87a10d0c32265dc21eedccd081076a638fb70023cf7ec4a74a55f7f2e9"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/deepgram_request_actual.json",
+      "byte_size": 926,
+      "sha256": "9b2088f521230dcf25dbf623c01f6e5953652aa7592bd7ea0304d60e9fac782f"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/domain_category_score.json",
+      "byte_size": 4823,
+      "sha256": "47f54057a4ad9bd3131464adb3f9cd5a7d862bf242fc12d7d21ff712d2fb63f0"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/independent_verification.json",
+      "byte_size": 2409,
+      "sha256": "3f59f57807305a553ad6b2030cdd2f69bf1af6a107d92002c675d8e6ffc036e3"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/meaning_equivalent_score.json",
+      "byte_size": 3840,
+      "sha256": "8c68947cced95a7d7c772bdb35e589212ed9ee29ea8f4ef0ef2787ec6d4a57a4"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/multidomain_gate_acceptance.json",
+      "byte_size": 1416,
+      "sha256": "b1049a91b3b9c4d9c43438a8d5fc3e3def5de685edbc26788e96c98ea0ebecb8"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/noise.wav",
+      "byte_size": 4,
+      "sha256": "a40ff3d5900fb7698b8c865041347cb49eccedc8f93945f89629ad104aaecce4"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/raw_deepgram.txt",
+      "byte_size": 1450,
+      "sha256": "f5f7ba4480ee10dc408e2f24d3e2865520a1d666a57bbbdaeea50c4dc6c0a5b7"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/reference_isolation_actual.json",
+      "byte_size": 781,
+      "sha256": "a490ac7d7683244125a55f31a0459a5ec0ea73057a1d2053eb38077e2494baa4"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/runtime_regression_report.json",
+      "byte_size": 156,
+      "sha256": "42e8a3380243101dbe0511f33d1a51704171586771f3e96cb1179f2ef2ec71c3"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/stable_transcript.txt",
+      "byte_size": 1450,
+      "sha256": "f5f7ba4480ee10dc408e2f24d3e2865520a1d666a57bbbdaeea50c4dc6c0a5b7"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/strict_score.json",
+      "byte_size": 1778,
+      "sha256": "6384600f4bfe74f684314fc3a427c3f0d854c5f9e68dbefa51369acea8d034e6"
+    },
+    {
+      "relative_path": "actual_gate_result.json",
+      "byte_size": 996,
+      "sha256": "0fb620e060b0e8ea7998a4ac85b99bec9c2c9e7063687c5438e0388860cf6295"
+    },
+    {
+      "relative_path": "expected_gate_result.json",
+      "byte_size": 277,
+      "sha256": "92ba49e2d6b16e3d3eee6f7bc935476c431fd80bc0ac1f91a1a15d86ce6c9491"
+    },
+    {
+      "relative_path": "MULTIDOMAIN_GATE_ANALYSIS_PACKAGE_004_missing_final.sha256",
+      "byte_size": 66,
+      "sha256": "18cd1161bcbaf6df255eb040b795c722a8500922f2b03a046da80f94c38b6040"
+    },
+    {
+      "relative_path": "MULTIDOMAIN_GATE_ANALYSIS_PACKAGE_004_missing_final.size.txt",
+      "byte_size": 7,
+      "sha256": "12a793207861a1a401d96dba17d435e4d65064fbce0e5e80d2a00eb5b25a372c"
+    },
+    {
+      "relative_path": "MULTIDOMAIN_GATE_ANALYSIS_PACKAGE_004_missing_final.zip",
+      "byte_size": 12411,
+      "sha256": "8f2f639f7e95b476ee98fe826c5375c41ef09fe5c3bf380e19ff15a164b2328d"
+    },
+    {
+      "relative_path": "reference_copy/multidomain_meeting_v1.txt",
+      "byte_size": 1450,
+      "sha256": "f5f7ba4480ee10dc408e2f24d3e2865520a1d666a57bbbdaeea50c4dc6c0a5b7"
+    },
+    {
+      "relative_path": "reference_copy/multidomain_meeting_v1_truth.json",
+      "byte_size": 2000,
+      "sha256": "ecfbe03916714bd6978dcf926b66def33fb881b394a6ea9594df538f608b2112"
+    },
+    {
+      "relative_path": "regression_assertion.json",
+      "byte_size": 667,
+      "sha256": "94889788abe5d45c41d0c3718837a4a0d34f2a8b1f77048fc11d5282c9b95fe0"
+    }
+  ]
+}

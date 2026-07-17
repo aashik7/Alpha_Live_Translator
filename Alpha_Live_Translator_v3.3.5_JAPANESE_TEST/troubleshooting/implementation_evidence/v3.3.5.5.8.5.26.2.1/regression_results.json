@@ -1,0 +1,395 @@
+{
+  "tests": 32,
+  "passed": 32,
+  "failed": 0,
+  "keep_fixtures": true,
+  "fixture_root": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\smoke_tests\\multidomain_gate_852621_20260716-055139-939e9996\\fixtures",
+  "results": [
+    {
+      "name": "valid_fixture_produces_implementation_ready_verification",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "missing_raw_file_fails",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "missing_stable_file_fails",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "missing_final_file_fails",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "altered_transcript_hash_fails",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "altered_audio_delivery_jsonl_hash_fails",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "missing_sent_chunk_fails",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "duplicate_sent_chunk_fails",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "unexpected_sent_chunk_fails",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "delivery_ratio_below_0_999_fails",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "malformed_jsonl_fails",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "api_key_in_request_evidence_fails",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "reference_path_in_runtime_child_command_line_fails",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "reference_path_in_runtime_child_environment_fails",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "reference_opened_before_runtime_exit_fails",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "scoring_module_imported_during_runtime_fails",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "keyterm_count_above_zero_fails",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "keyword_count_above_zero_fails",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "test01_profile_active_fails",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "business_japanese_profile_active_fails",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "raw_mutation_count_above_zero_fails",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "translation_provider_active_fails",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "stable_accuracy_below_80_fails",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "names_accuracy_below_85_fails",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "number_accuracy_below_85_fails",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "stable_to_final_loss_above_zero_fails",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "runtime_regression_fails",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "reported_cer_mismatch_fails",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "reported_category_score_mismatch_fails",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "fixture_run_cannot_create_version_accepted",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "fixture_outputs_cannot_overwrite_latest_live_run_artifacts",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "audio_files_excluded_from_package",
+      "passed": true,
+      "detail": ""
+    }
+  ],
+  "deterministic_fixtures": [
+    {
+      "test_number": 1,
+      "directory": "001_valid_fixture",
+      "expected_name": "valid_fixture_produces_implementation_ready_verification",
+      "expected_pass": true,
+      "expected_failure_reason": ""
+    },
+    {
+      "test_number": 2,
+      "directory": "002_missing_raw",
+      "expected_name": "missing_raw_file_fails",
+      "expected_pass": false,
+      "expected_failure_reason": "missing_raw"
+    },
+    {
+      "test_number": 3,
+      "directory": "003_missing_stable",
+      "expected_name": "missing_stable_file_fails",
+      "expected_pass": false,
+      "expected_failure_reason": "missing_stable"
+    },
+    {
+      "test_number": 4,
+      "directory": "004_missing_final",
+      "expected_name": "missing_final_file_fails",
+      "expected_pass": false,
+      "expected_failure_reason": "missing_final"
+    },
+    {
+      "test_number": 5,
+      "directory": "005_altered_transcript_hash",
+      "expected_name": "altered_transcript_hash_fails",
+      "expected_pass": false,
+      "expected_failure_reason": "hash_mismatch"
+    },
+    {
+      "test_number": 6,
+      "directory": "006_altered_audio_delivery_jsonl",
+      "expected_name": "altered_audio_delivery_jsonl_hash_fails",
+      "expected_pass": false,
+      "expected_failure_reason": "audio_hash"
+    },
+    {
+      "test_number": 7,
+      "directory": "007_missing_sent_chunk",
+      "expected_name": "missing_sent_chunk_fails",
+      "expected_pass": false,
+      "expected_failure_reason": "missing_sent"
+    },
+    {
+      "test_number": 8,
+      "directory": "008_duplicate_sent_chunk",
+      "expected_name": "duplicate_sent_chunk_fails",
+      "expected_pass": false,
+      "expected_failure_reason": "duplicate_sent"
+    },
+    {
+      "test_number": 9,
+      "directory": "009_unexpected_sent_chunk",
+      "expected_name": "unexpected_sent_chunk_fails",
+      "expected_pass": false,
+      "expected_failure_reason": "unexpected_sent"
+    },
+    {
+      "test_number": 10,
+      "directory": "010_delivery_ratio_below_0_999",
+      "expected_name": "delivery_ratio_below_0_999_fails",
+      "expected_pass": false,
+      "expected_failure_reason": "low_ratio"
+    },
+    {
+      "test_number": 11,
+      "directory": "011_malformed_jsonl",
+      "expected_name": "malformed_jsonl_fails",
+      "expected_pass": false,
+      "expected_failure_reason": "malformed_jsonl"
+    },
+    {
+      "test_number": 12,
+      "directory": "012_api_key_in_request",
+      "expected_name": "api_key_in_request_evidence_fails",
+      "expected_pass": false,
+      "expected_failure_reason": "api_key"
+    },
+    {
+      "test_number": 13,
+      "directory": "013_reference_in_commandline",
+      "expected_name": "reference_path_in_runtime_child_command_line_fails",
+      "expected_pass": false,
+      "expected_failure_reason": "ref_cmdline"
+    },
+    {
+      "test_number": 14,
+      "directory": "014_reference_in_environment",
+      "expected_name": "reference_path_in_runtime_child_environment_fails",
+      "expected_pass": false,
+      "expected_failure_reason": "ref_env"
+    },
+    {
+      "test_number": 15,
+      "directory": "015_reference_opened_before_exit",
+      "expected_name": "reference_opened_before_runtime_exit_fails",
+      "expected_pass": false,
+      "expected_failure_reason": "ref_early"
+    },
+    {
+      "test_number": 16,
+      "directory": "016_scoring_module_imported",
+      "expected_name": "scoring_module_imported_during_runtime_fails",
+      "expected_pass": false,
+      "expected_failure_reason": "scoring_import"
+    },
+    {
+      "test_number": 17,
+      "directory": "017_keyterm_count_above_zero",
+      "expected_name": "keyterm_count_above_zero_fails",
+      "expected_pass": false,
+      "expected_failure_reason": "keyterm"
+    },
+    {
+      "test_number": 18,
+      "directory": "018_keyword_count_above_zero",
+      "expected_name": "keyword_count_above_zero_fails",
+      "expected_pass": false,
+      "expected_failure_reason": "keyword"
+    },
+    {
+      "test_number": 19,
+      "directory": "019_test01_profile_active",
+      "expected_name": "test01_profile_active_fails",
+      "expected_pass": false,
+      "expected_failure_reason": "test01_profile"
+    },
+    {
+      "test_number": 20,
+      "directory": "020_business_japanese_active",
+      "expected_name": "business_japanese_profile_active_fails",
+      "expected_pass": false,
+      "expected_failure_reason": "business_profile"
+    },
+    {
+      "test_number": 21,
+      "directory": "021_raw_mutation_count",
+      "expected_name": "raw_mutation_count_above_zero_fails",
+      "expected_pass": false,
+      "expected_failure_reason": "raw_mutation"
+    },
+    {
+      "test_number": 22,
+      "directory": "022_translation_provider_active",
+      "expected_name": "translation_provider_active_fails",
+      "expected_pass": false,
+      "expected_failure_reason": "translation"
+    },
+    {
+      "test_number": 23,
+      "directory": "023_stable_accuracy_below_80",
+      "expected_name": "stable_accuracy_below_80_fails",
+      "expected_pass": false,
+      "expected_failure_reason": "stable_accuracy"
+    },
+    {
+      "test_number": 24,
+      "directory": "024_names_accuracy_below_85",
+      "expected_name": "names_accuracy_below_85_fails",
+      "expected_pass": false,
+      "expected_failure_reason": "names"
+    },
+    {
+      "test_number": 25,
+      "directory": "025_number_accuracy_below_85",
+      "expected_name": "number_accuracy_below_85_fails",
+      "expected_pass": false,
+      "expected_failure_reason": "numbers"
+    },
+    {
+      "test_number": 26,
+      "directory": "026_stable_to_final_loss",
+      "expected_name": "stable_to_final_loss_above_zero_fails",
+      "expected_pass": false,
+      "expected_failure_reason": "stf_loss"
+    },
+    {
+      "test_number": 27,
+      "directory": "027_runtime_regression",
+      "expected_name": "runtime_regression_fails",
+      "expected_pass": false,
+      "expected_failure_reason": "runtime_regression"
+    },
+    {
+      "test_number": 28,
+      "directory": "028_reported_cer_mismatch",
+      "expected_name": "reported_cer_mismatch_fails",
+      "expected_pass": false,
+      "expected_failure_reason": "cer_mismatch"
+    },
+    {
+      "test_number": 29,
+      "directory": "029_reported_category_mismatch",
+      "expected_name": "reported_category_score_mismatch_fails",
+      "expected_pass": false,
+      "expected_failure_reason": "category_mismatch"
+    },
+    {
+      "test_number": 30,
+      "directory": "030_fixture_not_accepted",
+      "expected_name": "fixture_run_cannot_create_version_accepted",
+      "expected_pass": true,
+      "expected_failure_reason": ""
+    },
+    {
+      "test_number": 31,
+      "directory": "031_fixture_outputs_isolated",
+      "expected_name": "fixture_outputs_cannot_overwrite_latest_live_run_artifacts",
+      "expected_pass": true,
+      "expected_failure_reason": ""
+    },
+    {
+      "test_number": 32,
+      "directory": "032_audio_excluded",
+      "expected_name": "audio_files_excluded_from_package",
+      "expected_pass": true,
+      "expected_failure_reason": ""
+    }
+  ]
+}

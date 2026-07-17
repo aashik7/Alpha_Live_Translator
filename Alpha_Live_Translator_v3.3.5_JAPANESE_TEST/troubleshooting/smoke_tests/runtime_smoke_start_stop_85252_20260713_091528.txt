@@ -1,0 +1,7 @@
+{
+  "result": "PASSED",
+  "elapsed_seconds": 0.4,
+  "live_alpha_protected": true,
+  "canonical_export_lock_ok": true,
+  "glossary_summary_not_blocking_stop": true
+}

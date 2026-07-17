@@ -1,0 +1,10 @@
+{
+  "run_id": "",
+  "run_timestamp": "",
+  "app_version": "",
+  "final_status": "completed_with_warnings",
+  "stop_core_completed": true,
+  "stop_finalize_completed": true,
+  "evidence_package_status": "disabled_during_runtime",
+  "deepgram_close_status": ""
+}

@@ -1,0 +1,137 @@
+{
+  "reference_path": "troubleshooting/accuracy_benchmark/reference_transcripts/test01.txt",
+  "reference_sha256": "09634a0da9ff86ce4825fb8326c3bca99e64be955c971d7e2db7f7b7823e5b8b",
+  "terms": [
+    "株式会社さくらさくプラス",
+    "さくらさくプラス",
+    "中山",
+    "石川祐介",
+    "矢藤誠慈郎",
+    "さくらさくみらい",
+    "さくらさくみらい東平",
+    "さくらさくみらい晴海",
+    "保育のデザイン研究所",
+    "YELL",
+    "経営管理本部長",
+    "第3四半期",
+    "2026年7月期",
+    "2027年7月期",
+    "売上高",
+    "営業利益",
+    "経常利益",
+    "当期純利益",
+    "営業利益率",
+    "進捗率",
+    "貸借対照表",
+    "自己資本比率",
+    "未収入金",
+    "有形固定資産",
+    "短期借入金",
+    "長期借入金",
+    "公定価格",
+    "補助金",
+    "保育サービス",
+    "不動産事業",
+    "マンション開発事業",
+    "買取再販事業",
+    "ホテル再生事業",
+    "フェムケア",
+    "フェムテック",
+    "葉酸サプリメント",
+    "送迎バス",
+    "児童定員数",
+    "在籍率",
+    "大阪市中央区"
+  ],
+  "term_count": 40,
+  "categories": {
+    "company_name": [
+      "株式会社さくらさくプラス",
+      "さくらさくプラス",
+      "さくらさくみらい",
+      "保育のデザイン研究所",
+      "YELL"
+    ],
+    "participant_name": [
+      "中山",
+      "石川祐介",
+      "矢藤誠慈郎"
+    ],
+    "product_name": [
+      "さくらさくみらい東平",
+      "さくらさくみらい晴海",
+      "フェムケア",
+      "フェムテック",
+      "葉酸サプリメント",
+      "送迎バス"
+    ],
+    "job_title": [
+      "経営管理本部長"
+    ],
+    "date": [
+      "第3四半期",
+      "2026年7月期",
+      "2027年7月期"
+    ],
+    "financial_term": [
+      "売上高",
+      "営業利益",
+      "経常利益",
+      "当期純利益",
+      "営業利益率",
+      "進捗率",
+      "貸借対照表",
+      "自己資本比率",
+      "未収入金",
+      "有形固定資産",
+      "短期借入金",
+      "長期借入金",
+      "公定価格",
+      "補助金"
+    ],
+    "business_term": [
+      "保育サービス",
+      "不動産事業",
+      "マンション開発事業",
+      "買取再販事業",
+      "ホテル再生事業",
+      "児童定員数",
+      "在籍率"
+    ],
+    "department_name": [
+      "大阪市中央区"
+    ]
+  },
+  "rejected_candidates": [
+    {
+      "term": "皆さん、こんにちは。株式会社さくらさくプラス代表の中山です。",
+      "reason": "complete_sentence"
+    },
+    {
+      "term": "は",
+      "reason": "ordinary_grammar_particle"
+    },
+    {
+      "term": "を",
+      "reason": "ordinary_grammar_particle"
+    },
+    {
+      "term": "に",
+      "reason": "ordinary_grammar_particle"
+    },
+    {
+      "term": "さくらさく・プラス",
+      "reason": "alternative_spelling_not_in_reference"
+    },
+    {
+      "term": "サクラサクプラス",
+      "reason": "guessed_katakana_variant"
+    },
+    {
+      "term": "お願いいたします",
+      "reason": "ordinary_politeness_phrase"
+    }
+  ],
+  "maximum_term_count": 40,
+  "profile_name": "target_85_meeting_context"
+}

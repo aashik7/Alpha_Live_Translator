@@ -1,0 +1,17 @@
+{
+  "collected_at": "2026-07-13T01:53:41",
+  "app_version_before_change": "3.3.5.5.8.5.25.1",
+  "latest_run_id": "",
+  "latest_alpha_path": "troubleshooting\\latest\\latest_live_alpha_output.txt",
+  "latest_alpha_size_bytes": 5955,
+  "latest_alpha_sha256": "61ac726256412fe39183aa5367afdabbfb8c08030b6fd9bd06c169af761836cd",
+  "latest_alpha_line_count": 27,
+  "pre_correction_lines_in_alpha": true,
+  "corrected_and_uncorrected_coexist": true,
+  "valid_segment_loss_count_if_available": -1,
+  "glossary_correction_count_if_available": 0,
+  "glossary_count_synced": true,
+  "warnings": [
+    "critical_missing:latest_accuracy_evidence_index.json"
+  ]
+}

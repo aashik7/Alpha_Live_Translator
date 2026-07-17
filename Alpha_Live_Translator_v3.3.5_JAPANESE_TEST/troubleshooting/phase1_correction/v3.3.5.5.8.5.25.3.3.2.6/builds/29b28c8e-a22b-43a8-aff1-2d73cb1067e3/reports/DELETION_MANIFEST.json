@@ -1,0 +1,54 @@
+{
+  "build_id": "29b28c8e-a22b-43a8-aff1-2d73cb1067e3",
+  "count": 9,
+  "entries": [
+    {
+      "action": "cache_deleted",
+      "path": "__pycache__/regression_phase1_cleanup_truth_85253326.cpython-314.pyc",
+      "size_bytes": 25758
+    },
+    {
+      "action": "cache_deleted",
+      "path": "__pycache__/run_phase1_cleanup_correction_85253326.cpython-314.pyc",
+      "size_bytes": 13945
+    },
+    {
+      "action": "cache_deleted",
+      "path": "alpha/__pycache__/__init__.cpython-314.pyc",
+      "size_bytes": 275
+    },
+    {
+      "action": "cache_deleted",
+      "path": "alpha/utils/__pycache__/atomic_latest_state.cpython-314.pyc",
+      "size_bytes": 14828
+    },
+    {
+      "action": "cache_deleted",
+      "path": "alpha/utils/__pycache__/phase1_build_identity.cpython-314.pyc",
+      "size_bytes": 7486
+    },
+    {
+      "action": "cache_deleted",
+      "path": "alpha/utils/__pycache__/phase1_correction_engine.cpython-314.pyc",
+      "size_bytes": 61871
+    },
+    {
+      "action": "cache_deleted",
+      "path": "alpha/utils/__pycache__/phase1_correction_identity.cpython-314.pyc",
+      "size_bytes": 4873
+    },
+    {
+      "action": "cache_deleted",
+      "path": "alpha/utils/__pycache__/phase1_normalization_engine.cpython-314.pyc",
+      "size_bytes": 59854
+    },
+    {
+      "action": "cache_deleted",
+      "path": "alpha/utils/__pycache__/__init__.cpython-314.pyc",
+      "size_bytes": 222
+    }
+  ],
+  "files_deleted": 9,
+  "generated_at": "2026-07-14T15:52:20Z",
+  "patch_version": "3.3.5.5.8.5.25.3.3.2.6"
+}

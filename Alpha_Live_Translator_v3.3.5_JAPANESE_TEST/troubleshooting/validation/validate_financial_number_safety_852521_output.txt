@@ -1,0 +1,4 @@
+VALIDATE_FINANCIAL_NUMBER_SAFETY_852521
+Result: PASSED
+fixture_c_output_preview=経常利益は11億2800万円と、前年同期比で増益となりました。
+fixture_d_malformed_count=1

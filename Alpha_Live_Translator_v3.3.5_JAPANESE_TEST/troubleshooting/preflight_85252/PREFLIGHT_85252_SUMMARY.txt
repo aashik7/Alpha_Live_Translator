@@ -1,0 +1,9 @@
+PREFLIGHT 85252 SUMMARY
+collected_at=2026-07-13T01:53:41
+app_version_before_change=3.3.5.5.8.5.25.1
+pre_correction_lines_in_alpha=True
+corrected_and_uncorrected_coexist=True
+valid_segment_loss_count=n/a
+glossary_corrections=0
+glossary_count_synced=True
+warnings=['critical_missing:latest_accuracy_evidence_index.json']

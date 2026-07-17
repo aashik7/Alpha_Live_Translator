@@ -1,0 +1,19 @@
+{
+  "test_number": 5,
+  "test_name": "altered_transcript_hash_fails",
+  "actual_gate_status": "FAILED",
+  "actual_failure_codes": [
+    "TRANSCRIPT_HASH_MISMATCH"
+  ],
+  "actual_failure_messages": [
+    "verification.reported_value_mismatches=manifest_raw_sha256_mismatch -> TRANSCRIPT_HASH_MISMATCH"
+  ],
+  "actual_gate_exit_code": 0,
+  "actual_acceptance_version": "NOT_ACCEPTED",
+  "actual_acceptance_status": "FIXTURE_ONLY",
+  "source_result_file": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\smoke_tests\\multidomain_gate_852622_20260716-083752-32a2bcb7\\fixtures\\005_altered_transcript_hash\\accuracy_stage_compare\\independent_verification.json",
+  "source_result_file_sha256": "0b21a66ffed7cfb2508369911c250548547043d9e66cd92d33ac85159924b8d5",
+  "unhandled_exception": false,
+  "exception_class": "",
+  "exception_message": ""
+}

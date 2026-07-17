@@ -1,0 +1,14 @@
+{
+  "capture_enabled": true,
+  "retention_hours": 3,
+  "max_total_gb": 3,
+  "chunk_seconds": 60,
+  "sample_rate": 16000,
+  "channels": 1,
+  "format": "wav_pcm16",
+  "streams_available": [
+    "mixed"
+  ],
+  "chunks": [],
+  "created_at": 1783437314.3568301
+}

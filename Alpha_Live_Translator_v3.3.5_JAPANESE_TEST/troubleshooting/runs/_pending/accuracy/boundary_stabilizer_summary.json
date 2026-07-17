@@ -1,0 +1,963 @@
+{
+  "app_version": "3.3.5.5.8.5.26.1",
+  "run_id": "live-v3.3.5.5.8.5.26.1-20260716-015915-cad94efc",
+  "boundary_stabilizer_enabled": true,
+  "boundary_stabilizer_mode": "safe_active",
+  "input_stable_candidate_count": 0,
+  "output_stable_commit_count": 0,
+  "held_fragment_count": 0,
+  "merge_previous_count": 0,
+  "merge_pending_count": 0,
+  "duplicate_suppressed_count": 0,
+  "punctuation_cleanup_count": 0,
+  "timeout_emit_count": 0,
+  "stop_flush_emit_count": 0,
+  "stop_flush_drop_count": 0,
+  "raw_mutation_count": 0,
+  "dangerous_correction_count": 0,
+  "leading_fragment_before_count": 0,
+  "leading_fragment_after_count": 0,
+  "punctuation_artifact_before_count": 0,
+  "punctuation_artifact_after_count": 0,
+  "duplicate_continuation_before_count": 0,
+  "duplicate_continuation_after_count": 0,
+  "translation_ready_before_ratio": 0.0,
+  "translation_ready_after_ratio": 0.0,
+  "boundary_risk_estimate_before": 0,
+  "boundary_risk_estimate_after": 0,
+  "append_new_line_count": 22,
+  "revise_previous_line_count": 0,
+  "hold_pending_count": 0,
+  "suppress_current_count": 0,
+  "revised_line_count": 0,
+  "suppressed_line_count": 0,
+  "cumulative_duplicate_detected_count": 0,
+  "cumulative_duplicate_converted_to_revision_count": 0,
+  "duplicate_after_merge_suppressed_count": 0,
+  "active_line_count": 22,
+  "output_clean_line_count": 22,
+  "clean_active_line_count": 22,
+  "output_stable_commit_history_count": 22,
+  "stable_commit_history_count": 22,
+  "revision_history_event_count": 22,
+  "written_at": "2026-07-16T02:05:19",
+  "residual_duplicate_before_count": 0,
+  "residual_duplicate_after_count": 0,
+  "residual_duplicate_suppressed_count": 0,
+  "residual_duplicate_revised_count": 0,
+  "punctuation_artifact_cleaned_count": 0,
+  "conservative_suppression_retained_count": 23,
+  "glossary_enabled": false,
+  "glossary_corrections_count": 0,
+  "financial_number_corrections_count": 0,
+  "corporate_term_audit_flags_count": 0,
+  "company_name_correction_count": 0,
+  "financial_term_correction_count": 0,
+  "business_term_correction_count": 0,
+  "person_name_correction_count": 0,
+  "location_correction_count": 0,
+  "formal_phrase_correction_count": 0,
+  "financial_number_correction_attempt_count": 0,
+  "financial_number_correction_applied_count": 0,
+  "financial_number_correction_blocked_count": 0,
+  "malformed_numeric_output_count": 0,
+  "dangerous_correction_blocked_count": 0,
+  "coverage_algorithm_version": "lineage_v2_suppression_aware",
+  "source_commit_observed_count": 33,
+  "source_commit_intentionally_suppressed_count": 0,
+  "source_commit_required_count": 33,
+  "source_commit_represented_required_count": 33,
+  "source_commit_missing_required_count": 0,
+  "source_commit_total_count": 33,
+  "source_commit_represented_count": 33,
+  "source_commit_missing_count": 0,
+  "source_commit_coverage_ratio": 1.0,
+  "lineage_coverage_ratio": 1.0,
+  "text_coverage_ratio": 1.0,
+  "intentional_suppression_items": [],
+  "represented_by_corrected_line_count": 17,
+  "pre_correction_reentry_blocked_count": 17,
+  "valid_segment_loss_count": 0,
+  "valid_segment_loss_items": [],
+  "export_lossless": false,
+  "export_coverage_ratio": 1.0,
+  "clean_export_ready_for_scoring": false,
+  "final_export_contains_pre_correction_lines": false,
+  "canonical_export_line_count": 22,
+  "blockers": [
+    "malformed_numeric_output_detected",
+    "dangerous_correction_detected"
+  ],
+  "cumulative_duplicate_count": 0,
+  "punctuation_artifact_count": 0,
+  "pre_correction_candidates_count": 57,
+  "pre_correction_blocked_count": 17,
+  "pre_correction_allowed_count": 40,
+  "blocked_items": [
+    {
+      "text_preview": "これは既存円の在籍率向上や工程価格の上昇による補助金増額、保育所の新規開設や増床が寄与し",
+      "source_commit_id": "stable-6",
+      "source": "ui_exported_segments",
+      "reason": "source_represented_by_corrected_line"
+    },
+    {
+      "text_preview": "不採算事業の撤退や中核事業の合理化、業務効率化により営業利益率は七点五パーセントから七に向上",
+      "source_commit_id": "stable-9",
+      "source": "ui_exported_segments",
+      "reason": "source_represented_by_corrected_line"
+    },
+    {
+      "text_preview": "親会社株主に属する当期純利益率",
+      "source_commit_id": "stable-11",
+      "source": "ui_exported_segments",
+      "reason": "source_represented_by_corrected_line"
+    },
+    {
+      "text_preview": "売上高は通期予算各サービス等も堅調に成長しており当四半期累計期間において順調に推移しております営業利益は通期予算に対し対応のない成果や",
+      "source_commit_id": "stable-12",
+      "source": "ui_exported_segments",
+      "reason": "source_represented_by_corrected_line"
+    },
+    {
+      "text_preview": "資産の後は販売に伴う販売用不動産の減少があった一方で補助金収入による未収入金の増加、不動産取得、保育施設の新設、増証による",
+      "source_commit_id": "stable-14",
+      "source": "ui_exported_segments",
+      "reason": "source_represented_by_corrected_line"
+    },
+    {
+      "text_preview": "続いて2026年7月期、軽トピックスをお知らせいたし保育サービスにおいては大阪市中央区でさくらさくみらい東平を予定通り解説しており",
+      "source_commit_id": "stable-17",
+      "source": "ui_exported_segments",
+      "reason": "source_represented_by_corrected_line"
+    },
+    {
+      "text_preview": "藤氏の取締役就任により専門的な学術的知見を経営と保育研修へ直接反映させてまります。",
+      "source_commit_id": "stable-23",
+      "source": "ui_exported_segments",
+      "reason": "source_represented_by_corrected_line"
+    },
+    {
+      "text_preview": "不動産企画開発ではマンション開発事業と買取再販事業ホテル再生事業も計画通り進捗しております2026年7月期第3四半期決算投機予想に対し順調に進捗しております",
+      "source_commit_id": "stable-24",
+      "source": "ui_exported_segments",
+      "reason": "source_represented_by_corrected_line"
+    },
+    {
+      "text_preview": "これは既存円の在籍率向上や工程価格の上昇による補助金増額、保育所の新規開設や増床が寄与し",
+      "source_commit_id": "stable-6",
+      "source": "stable_commits",
+      "reason": "source_represented_by_corrected_line"
+    },
+    {
+      "text_preview": "不採算事業の撤退や中核事業の合理化、業務効率化により営業利益率は七点五パーセントから七に向上",
+      "source_commit_id": "stable-10",
+      "source": "stable_commits",
+      "reason": "source_represented_by_corrected_line"
+    },
+    {
+      "text_preview": "親会社株主に属する当期純利益率",
+      "source_commit_id": "stable-13",
+      "source": "stable_commits",
+      "reason": "source_represented_by_corrected_line"
+    },
+    {
+      "text_preview": "売上高は通期予算各サービス等も堅調に成長しており当四半期累計期間において順調に推移しております営業利益は通期予算に対し対応のない成果や",
+      "source_commit_id": "stable-15",
+      "source": "stable_commits",
+      "reason": "source_represented_by_corrected_line"
+    },
+    {
+      "text_preview": "資産の後は販売に伴う販売用不動産の減少があった一方で補助金収入による未収入金の増加、不動産取得、保育施設の新設、増証による",
+      "source_commit_id": "stable-18",
+      "source": "stable_commits",
+      "reason": "source_represented_by_corrected_line"
+    },
+    {
+      "text_preview": "続いて2026年7月期、軽トピックスをお知らせいたし保育サービスにおいては大阪市中央区でさくらさくみらい東平を予定通り解説しており",
+      "source_commit_id": "stable-22",
+      "source": "stable_commits",
+      "reason": "source_represented_by_corrected_line"
+    },
+    {
+      "text_preview": "続いて2026年7月期、軽トピックスをお知らせいたし保育サービスにおいては大阪市中央区でさくらさくみらい東平を予定通り解説しておりさくらさくみらい晴海におても予定通り増床を行い児童定員数が増加しました",
+      "source_commit_id": "stable-23",
+      "source": "stable_commits",
+      "reason": "source_represented_by_corrected_line"
+    },
+    {
+      "text_preview": "藤氏の取締役就任により専門的な学術的知見を経営と保育研修へ直接反映させてまります。",
+      "source_commit_id": "stable-30",
+      "source": "stable_commits",
+      "reason": "source_represented_by_corrected_line"
+    },
+    {
+      "text_preview": "不動産企画開発ではマンション開発事業と買取再販事業ホテル再生事業も計画通り進捗しております2026年7月期第3四半期決算投機予想に対し順調に進捗しております",
+      "source_commit_id": "stable-32",
+      "source": "stable_commits",
+      "reason": "source_represented_by_corrected_line"
+    }
+  ],
+  "allowed_items": [
+    {
+      "text_preview": "皆さん、こんにちは。",
+      "source_commit_id": "stable-1",
+      "source": "ui_exported_segments",
+      "reason": "already_in_canonical_export"
+    },
+    {
+      "text_preview": "株式会社さくらさくプラス代表の中山です。",
+      "source_commit_id": "stable-2",
+      "source": "ui_exported_segments",
+      "reason": "already_in_canonical_export"
+    },
+    {
+      "text_preview": "本日は2026年7月期、第3四半期決算についてご案内申し上げます。",
+      "source_commit_id": "stable-3",
+      "source": "ui_exported_segments",
+      "reason": "already_in_canonical_export"
+    },
+    {
+      "text_preview": "まずは2026年7月期、第3四半期決算概要についてお知らせいたします。",
+      "source_commit_id": "stable-4",
+      "source": "ui_exported_segments",
+      "reason": "already_in_canonical_export"
+    },
+    {
+      "text_preview": "売上高については百三十六億七千九百万となり、旧前年同期比五点四パーセントの減収となりました。",
+      "source_commit_id": "stable-5",
+      "source": "ui_exported_segments",
+      "reason": "already_in_canonical_export"
+    },
+    {
+      "text_preview": "なお、その他サービスは概ね計画どおり進捗しております。",
+      "source_commit_id": "stable-7",
+      "source": "ui_exported_segments",
+      "reason": "already_in_canonical_export"
+    },
+    {
+      "text_preview": "営業利益は10億6千百万円となり、前年同期比1。5の減益となりました。",
+      "source_commit_id": "stable-8",
+      "source": "ui_exported_segments",
+      "reason": "already_in_canonical_export"
+    },
+    {
+      "text_preview": "保育所の新規開設や蔵書の実施によりこれらに伴う開園前の補助金収入が加算されたことにより増益となります。",
+      "source_commit_id": "stable-10",
+      "source": "ui_exported_segments",
+      "reason": "already_in_canonical_export"
+    },
+    {
+      "text_preview": "当四半期累計期間において通期予算を前倒して達成しました続いて貸借対照表です。",
+      "source_commit_id": "stable-13",
+      "source": "ui_exported_segments",
+      "reason": "already_in_canonical_export"
+    },
+    {
+      "text_preview": "房野部は主に増床に禁忌不動産負債合計は21億3300万円増加しました。これらの結果、自己資本比率は。9から40。",
+      "source_commit_id": "stable-15",
+      "source": "ui_exported_segments",
+      "reason": "already_in_canonical_export"
+    },
+    {
+      "text_preview": "7に低下いたしました。",
+      "source_commit_id": "stable-16",
+      "source": "ui_exported_segments",
+      "reason": "already_in_canonical_export"
+    },
+    {
+      "text_preview": "2027年7月期では、東京都中央区にて1施設の新居保育所の開設を予定しておます。",
+      "source_commit_id": "stable-18",
+      "source": "ui_exported_segments",
+      "reason": "already_in_canonical_export"
+    },
+    {
+      "text_preview": "フェムケア、フェムテックサービスにおいては連結子会社のYELLにて2026年夏頃に新製品の発売を予定しておます。",
+      "source_commit_id": "stable-19",
+      "source": "ui_exported_segments",
+      "reason": "already_in_canonical_export"
+    },
+    {
+      "text_preview": "新製品の発売により葉酸サプリメント市場でさらなるケアの拡大を見込ん続いて覚悟会社の取締役の就任についてお知らせいたします。",
+      "source_commit_id": "stable-20",
+      "source": "ui_exported_segments",
+      "reason": "already_in_canonical_export"
+    },
+    {
+      "text_preview": "連結子会社のさくらさくみらいで石川祐介氏が取締役へ就任しました。なお石川氏はさくらさくプラス経営管理本部長も兼任しております。",
+      "source_commit_id": "stable-21",
+      "source": "ui_exported_segments",
+      "reason": "already_in_canonical_export"
+    },
+    {
+      "text_preview": "石川市の就任によりさくらさくみらいおよびグループ全体の財務戦略およびガバナンス体制をより強固に補強向上させるための経営管理体制の刷新をいたしました、連結子会社の保育のデザイン研究所においては矢藤誠慈郎氏が取締役に就任いたしました。",
+      "source_commit_id": "stable-22",
+      "source": "ui_exported_segments",
+      "reason": "already_in_canonical_export"
+    },
+    {
+      "text_preview": "皆さん、こんにちは。",
+      "source_commit_id": "stable-1",
+      "source": "stable_commits",
+      "reason": "already_in_canonical_export"
+    },
+    {
+      "text_preview": "株式会社さくらさくプラス代表の中山です。",
+      "source_commit_id": "stable-2",
+      "source": "stable_commits",
+      "reason": "already_in_canonical_export"
+    },
+    {
+      "text_preview": "本日は2026年7月期、第3四半期決算についてご案内申し上げます。",
+      "source_commit_id": "stable-3",
+      "source": "stable_commits",
+      "reason": "already_in_canonical_export"
+    },
+    {
+      "text_preview": "まずは2026年7月期、第3四半期決算概要についてお知らせいたします。",
+      "source_commit_id": "stable-4",
+      "source": "stable_commits",
+      "reason": "already_in_canonical_export"
+    }
+  ],
+  "warnings": [],
+  "pre_correction_reentry_report_path": "C:/Users/islamm/Documents/Tariqul/Alpha_Translator V 1.0/Alpha_Live_Translator_v3.3.5_JAPANESE_TEST/troubleshooting/runs/v3.3.5.5.8.5.26.1-20260716-015915/accuracy/pre_correction_reentry_report.json",
+  "latest_pre_correction_reentry_report_path": "troubleshooting/latest/pre_correction_reentry_report.json",
+  "canonical_transcript_ledger_path": "C:/Users/islamm/Documents/Tariqul/Alpha_Translator V 1.0/Alpha_Live_Translator_v3.3.5_JAPANESE_TEST/troubleshooting/runs/v3.3.5.5.8.5.26.1-20260716-015915/transcripts/canonical_transcript_ledger.jsonl",
+  "latest_canonical_transcript_ledger_path": "troubleshooting/latest/canonical_transcript_ledger.jsonl",
+  "canonical_records": [
+    {
+      "canonical_line_id": "cl_4cc4016a6b14",
+      "stable_line_id": "sl_lineage_00001",
+      "text": "[Speaker 2] 皆さん、こんにちは。",
+      "speaker": 2,
+      "status": "active",
+      "source_commit_ids": [
+        "stable-1"
+      ],
+      "represented_source_ids": [
+        "stable-1"
+      ],
+      "revision_number": 1,
+      "created_at": 1784135119.3861988,
+      "updated_at": 1784135119.3861995,
+      "transformation_chain": [
+        "assembler",
+        "boundary_merge",
+        "duplicate_cleanup",
+        "punctuation_cleanup"
+      ],
+      "glossary_corrections": [],
+      "financial_number_corrections": [],
+      "raw_mutation": false,
+      "replaced_by_canonical_line_id": "",
+      "lineage_missing_but_retained": false
+    },
+    {
+      "canonical_line_id": "cl_f720880a9358",
+      "stable_line_id": "sl_lineage_00002",
+      "text": "[Speaker 2] 株式会社さくらさくプラス代表の中山です。",
+      "speaker": 2,
+      "status": "active",
+      "source_commit_ids": [
+        "stable-2"
+      ],
+      "represented_source_ids": [
+        "stable-2"
+      ],
+      "revision_number": 1,
+      "created_at": 1784135119.3863337,
+      "updated_at": 1784135119.386334,
+      "transformation_chain": [
+        "assembler",
+        "boundary_merge",
+        "duplicate_cleanup",
+        "punctuation_cleanup"
+      ],
+      "glossary_corrections": [],
+      "financial_number_corrections": [],
+      "raw_mutation": false,
+      "replaced_by_canonical_line_id": "",
+      "lineage_missing_but_retained": false
+    },
+    {
+      "canonical_line_id": "cl_ce3dca0209d9",
+      "stable_line_id": "sl_lineage_00003",
+      "text": "[Speaker 2] 本日は2026年7月期、第3四半期決算についてご案内申し上げます。",
+      "speaker": 2,
+      "status": "active",
+      "source_commit_ids": [
+        "stable-3"
+      ],
+      "represented_source_ids": [
+        "stable-3"
+      ],
+      "revision_number": 1,
+      "created_at": 1784135119.3864176,
+      "updated_at": 1784135119.3864179,
+      "transformation_chain": [
+        "assembler",
+        "boundary_merge",
+        "duplicate_cleanup",
+        "punctuation_cleanup"
+      ],
+      "glossary_corrections": [],
+      "financial_number_corrections": [],
+      "raw_mutation": false,
+      "replaced_by_canonical_line_id": "",
+      "lineage_missing_but_retained": false
+    },
+    {
+      "canonical_line_id": "cl_aa6de5cd604e",
+      "stable_line_id": "sl_lineage_00004",
+      "text": "[Speaker 2] まずは2026年7月期、第3四半期決算概要についてお知らせいたします。",
+      "speaker": 2,
+      "status": "active",
+      "source_commit_ids": [
+        "stable-4"
+      ],
+      "represented_source_ids": [
+        "stable-4"
+      ],
+      "revision_number": 1,
+      "created_at": 1784135119.386489,
+      "updated_at": 1784135119.3864892,
+      "transformation_chain": [
+        "assembler",
+        "boundary_merge",
+        "duplicate_cleanup",
+        "punctuation_cleanup"
+      ],
+      "glossary_corrections": [],
+      "financial_number_corrections": [],
+      "raw_mutation": false,
+      "replaced_by_canonical_line_id": "",
+      "lineage_missing_but_retained": false
+    },
+    {
+      "canonical_line_id": "cl_f989550e5b06",
+      "stable_line_id": "sl_lineage_00005",
+      "text": "[Speaker 2] 売上高については百三十六億七千九百万となり、旧前年同期比五点四パーセントの減収となりました。",
+      "speaker": 2,
+      "status": "active",
+      "source_commit_ids": [
+        "stable-5"
+      ],
+      "represented_source_ids": [
+        "stable-5"
+      ],
+      "revision_number": 1,
+      "created_at": 1784135119.3865516,
+      "updated_at": 1784135119.3865519,
+      "transformation_chain": [
+        "assembler",
+        "boundary_merge",
+        "duplicate_cleanup",
+        "punctuation_cleanup"
+      ],
+      "glossary_corrections": [],
+      "financial_number_corrections": [],
+      "raw_mutation": false,
+      "replaced_by_canonical_line_id": "",
+      "lineage_missing_but_retained": false
+    },
+    {
+      "canonical_line_id": "cl_1e68510ea20f",
+      "stable_line_id": "sl_lineage_00006",
+      "text": "[Speaker 2] これは既存円の在籍率向上や工程価格の上昇による補助金増額、保育所の新規開設や増床が寄与し主力の保育サービスにおいて増収となりました、不動産事業は前期に計上した大型不動産売却案件の反動により当期も不動産売却は実施したものの全体としては厳粛となりました。",
+      "speaker": 2,
+      "status": "active",
+      "source_commit_ids": [
+        "stable-6",
+        "stable-7"
+      ],
+      "represented_source_ids": [
+        "stable-6",
+        "stable-7"
+      ],
+      "revision_number": 1,
+      "created_at": 1784135119.386613,
+      "updated_at": 1784135119.3866131,
+      "transformation_chain": [
+        "assembler",
+        "boundary_merge",
+        "duplicate_cleanup",
+        "punctuation_cleanup"
+      ],
+      "glossary_corrections": [],
+      "financial_number_corrections": [],
+      "raw_mutation": false,
+      "replaced_by_canonical_line_id": "",
+      "lineage_missing_but_retained": false
+    },
+    {
+      "canonical_line_id": "cl_d56d4999b23a",
+      "stable_line_id": "sl_lineage_00007",
+      "text": "[Speaker 2] なお、その他サービスは概ね計画どおり進捗しております。",
+      "speaker": 2,
+      "status": "active",
+      "source_commit_ids": [
+        "stable-8"
+      ],
+      "represented_source_ids": [
+        "stable-8"
+      ],
+      "revision_number": 1,
+      "created_at": 1784135119.3866751,
+      "updated_at": 1784135119.3866751,
+      "transformation_chain": [
+        "assembler",
+        "boundary_merge",
+        "duplicate_cleanup",
+        "punctuation_cleanup"
+      ],
+      "glossary_corrections": [],
+      "financial_number_corrections": [],
+      "raw_mutation": false,
+      "replaced_by_canonical_line_id": "",
+      "lineage_missing_but_retained": false
+    },
+    {
+      "canonical_line_id": "cl_a6f9447135c1",
+      "stable_line_id": "sl_lineage_00008",
+      "text": "[Speaker 2] 営業利益は10億6千百万円となり、前年同期比1。5の減益となりました。",
+      "speaker": 2,
+      "status": "active",
+      "source_commit_ids": [
+        "stable-9"
+      ],
+      "represented_source_ids": [
+        "stable-9"
+      ],
+      "revision_number": 1,
+      "created_at": 1784135119.3867338,
+      "updated_at": 1784135119.386734,
+      "transformation_chain": [
+        "assembler",
+        "boundary_merge",
+        "duplicate_cleanup",
+        "punctuation_cleanup"
+      ],
+      "glossary_corrections": [],
+      "financial_number_corrections": [],
+      "raw_mutation": false,
+      "replaced_by_canonical_line_id": "",
+      "lineage_missing_but_retained": false
+    },
+    {
+      "canonical_line_id": "cl_c0b4b8815b07",
+      "stable_line_id": "sl_lineage_00009",
+      "text": "[Speaker 2] 不採算事業の撤退や中核事業の合理化、業務効率化により営業利益率は七点五パーセントから七に向上経常利益は11億2800万円となり前年同期比9。5の増益となりました。",
+      "speaker": 2,
+      "status": "active",
+      "source_commit_ids": [
+        "stable-10",
+        "stable-11"
+      ],
+      "represented_source_ids": [
+        "stable-10",
+        "stable-11"
+      ],
+      "revision_number": 1,
+      "created_at": 1784135119.3867915,
+      "updated_at": 1784135119.3867917,
+      "transformation_chain": [
+        "assembler",
+        "boundary_merge",
+        "duplicate_cleanup",
+        "punctuation_cleanup"
+      ],
+      "glossary_corrections": [],
+      "financial_number_corrections": [],
+      "raw_mutation": false,
+      "replaced_by_canonical_line_id": "",
+      "lineage_missing_but_retained": false
+    },
+    {
+      "canonical_line_id": "cl_871bb1faf6fe",
+      "stable_line_id": "sl_lineage_00010",
+      "text": "[Speaker 2] 保育所の新規開設や蔵書の実施によりこれらに伴う開園前の補助金収入が加算されたことにより増益となります。",
+      "speaker": 2,
+      "status": "active",
+      "source_commit_ids": [
+        "stable-12"
+      ],
+      "represented_source_ids": [
+        "stable-12"
+      ],
+      "revision_number": 1,
+      "created_at": 1784135119.3868506,
+      "updated_at": 1784135119.3868508,
+      "transformation_chain": [
+        "assembler",
+        "boundary_merge",
+        "duplicate_cleanup",
+        "punctuation_cleanup"
+      ],
+      "glossary_corrections": [],
+      "financial_number_corrections": [],
+      "raw_mutation": false,
+      "replaced_by_canonical_line_id": "",
+      "lineage_missing_but_retained": false
+    },
+    {
+      "canonical_line_id": "cl_df6afdc9fcf3",
+      "stable_line_id": "sl_lineage_00011",
+      "text": "[Speaker 2] 親会社株主に属する当期純利益率前期に計上した採算事業の撤退に伴う特別損失がなくなったため、同期は増益となりました。続いて進捗についてお知らせいたします。",
+      "speaker": 2,
+      "status": "active",
+      "source_commit_ids": [
+        "stable-13",
+        "stable-14",
+        "stable-15",
+        "stable-16"
+      ],
+      "represented_source_ids": [
+        "stable-13",
+        "stable-14",
+        "stable-15",
+        "stable-16"
+      ],
+      "revision_number": 1,
+      "created_at": 1784135119.3869085,
+      "updated_at": 1784135119.3869088,
+      "transformation_chain": [
+        "assembler",
+        "boundary_merge",
+        "duplicate_cleanup",
+        "punctuation_cleanup"
+      ],
+      "glossary_corrections": [],
+      "financial_number_corrections": [],
+      "raw_mutation": false,
+      "replaced_by_canonical_line_id": "",
+      "lineage_missing_but_retained": false
+    },
+    {
+      "canonical_line_id": "cl_a309434454cd",
+      "stable_line_id": "sl_lineage_00012",
+      "text": "[Speaker 2] 売上高は通期予算各サービス等も堅調に成長しており当四半期累計期間において順調に推移しております営業利益は通期予算に対し対応のない成果や不採算事業の定義といった毎期継続している費用削減の施策が確実に低下を収益が概ね予算通りに推移する中、これらの施策が利益の上振れをけん引し",
+      "speaker": 2,
+      "status": "active",
+      "source_commit_ids": [
+        "stable-17"
+      ],
+      "represented_source_ids": [
+        "stable-17"
+      ],
+      "revision_number": 1,
+      "created_at": 1784135119.386968,
+      "updated_at": 1784135119.3869681,
+      "transformation_chain": [
+        "assembler",
+        "boundary_merge",
+        "duplicate_cleanup",
+        "punctuation_cleanup"
+      ],
+      "glossary_corrections": [],
+      "financial_number_corrections": [],
+      "raw_mutation": false,
+      "replaced_by_canonical_line_id": "",
+      "lineage_missing_but_retained": false
+    },
+    {
+      "canonical_line_id": "cl_bee09a205950",
+      "stable_line_id": "sl_lineage_00013",
+      "text": "[Speaker 2] 当四半期累計期間において通期予算を前倒して達成しました続いて貸借対照表です。",
+      "speaker": 2,
+      "status": "active",
+      "source_commit_ids": [
+        "stable-18",
+        "stable-19"
+      ],
+      "represented_source_ids": [
+        "stable-18",
+        "stable-19"
+      ],
+      "revision_number": 1,
+      "created_at": 1784135119.3870246,
+      "updated_at": 1784135119.3870249,
+      "transformation_chain": [
+        "assembler",
+        "boundary_merge",
+        "duplicate_cleanup",
+        "punctuation_cleanup"
+      ],
+      "glossary_corrections": [],
+      "financial_number_corrections": [],
+      "raw_mutation": false,
+      "replaced_by_canonical_line_id": "",
+      "lineage_missing_but_retained": false
+    },
+    {
+      "canonical_line_id": "cl_fa994047668c",
+      "stable_line_id": "sl_lineage_00014",
+      "text": "[Speaker 2] 資産の後は販売に伴う販売用不動産の減少があった一方で補助金収入による未収入金の増加、不動産取得、保育施設の新設、増証による資産合計は28億7100万円増加しまた。",
+      "speaker": 2,
+      "status": "active",
+      "source_commit_ids": [
+        "stable-20"
+      ],
+      "represented_source_ids": [
+        "stable-20"
+      ],
+      "revision_number": 1,
+      "created_at": 1784135119.3870847,
+      "updated_at": 1784135119.387085,
+      "transformation_chain": [
+        "assembler",
+        "boundary_merge",
+        "duplicate_cleanup",
+        "punctuation_cleanup"
+      ],
+      "glossary_corrections": [],
+      "financial_number_corrections": [],
+      "raw_mutation": false,
+      "replaced_by_canonical_line_id": "",
+      "lineage_missing_but_retained": false
+    },
+    {
+      "canonical_line_id": "cl_9b782ca1a28b",
+      "stable_line_id": "sl_lineage_00015",
+      "text": "[Speaker 2] 房野部は主に増床に禁忌不動産負債合計は21億3300万円増加しました。これらの結果、自己資本比率は。9から40。",
+      "speaker": 2,
+      "status": "active",
+      "source_commit_ids": [
+        "stable-21"
+      ],
+      "represented_source_ids": [
+        "stable-21"
+      ],
+      "revision_number": 1,
+      "created_at": 1784135119.3871439,
+      "updated_at": 1784135119.387144,
+      "transformation_chain": [
+        "assembler",
+        "boundary_merge",
+        "duplicate_cleanup",
+        "punctuation_cleanup"
+      ],
+      "glossary_corrections": [],
+      "financial_number_corrections": [],
+      "raw_mutation": false,
+      "replaced_by_canonical_line_id": "",
+      "lineage_missing_but_retained": false
+    },
+    {
+      "canonical_line_id": "cl_430e2c319a16",
+      "stable_line_id": "sl_lineage_00016",
+      "text": "[Speaker 2] 7に低下いたしました。",
+      "speaker": 2,
+      "status": "active",
+      "source_commit_ids": [
+        "stable-22",
+        "stable-23",
+        "stable-24"
+      ],
+      "represented_source_ids": [
+        "stable-22",
+        "stable-23",
+        "stable-24"
+      ],
+      "revision_number": 1,
+      "created_at": 1784135119.387203,
+      "updated_at": 1784135119.3872032,
+      "transformation_chain": [
+        "assembler",
+        "boundary_merge",
+        "duplicate_cleanup",
+        "punctuation_cleanup"
+      ],
+      "glossary_corrections": [],
+      "financial_number_corrections": [],
+      "raw_mutation": false,
+      "replaced_by_canonical_line_id": "",
+      "lineage_missing_but_retained": false
+    },
+    {
+      "canonical_line_id": "cl_84ef6e1bfdfe",
+      "stable_line_id": "sl_lineage_00017",
+      "text": "[Speaker 2] 続いて2026年7月期、軽トピックスをお知らせいたし保育サービスにおいては大阪市中央区でさくらさくみらい東平を予定通り解説しておりさくらさくみらい晴海におても予定通り増床を行い児童定員数が増加しました他人口増加で保育所が不足してる晴海エリアから月島エリアへ、親子で乗れる送迎バスの運行も開始しておます。",
+      "speaker": 2,
+      "status": "active",
+      "source_commit_ids": [
+        "stable-25"
+      ],
+      "represented_source_ids": [
+        "stable-25"
+      ],
+      "revision_number": 1,
+      "created_at": 1784135119.3872595,
+      "updated_at": 1784135119.3872597,
+      "transformation_chain": [
+        "assembler",
+        "boundary_merge",
+        "duplicate_cleanup",
+        "punctuation_cleanup"
+      ],
+      "glossary_corrections": [],
+      "financial_number_corrections": [],
+      "raw_mutation": false,
+      "replaced_by_canonical_line_id": "",
+      "lineage_missing_but_retained": false
+    },
+    {
+      "canonical_line_id": "cl_329d552ac9f9",
+      "stable_line_id": "sl_lineage_00018",
+      "text": "[Speaker 2] 2027年7月期では、東京都中央区にて1施設の新居保育所の開設を予定しておます。",
+      "speaker": 2,
+      "status": "active",
+      "source_commit_ids": [
+        "stable-26"
+      ],
+      "represented_source_ids": [
+        "stable-26"
+      ],
+      "revision_number": 1,
+      "created_at": 1784135119.3873165,
+      "updated_at": 1784135119.3873167,
+      "transformation_chain": [
+        "assembler",
+        "boundary_merge",
+        "duplicate_cleanup",
+        "punctuation_cleanup"
+      ],
+      "glossary_corrections": [],
+      "financial_number_corrections": [],
+      "raw_mutation": false,
+      "replaced_by_canonical_line_id": "",
+      "lineage_missing_but_retained": false
+    },
+    {
+      "canonical_line_id": "cl_30c0ede98170",
+      "stable_line_id": "sl_lineage_00019",
+      "text": "[Speaker 2] フェムケア、フェムテックサービスにおいては連結子会社のYELLにて2026年夏頃に新製品の発売を予定しておます。",
+      "speaker": 2,
+      "status": "active",
+      "source_commit_ids": [
+        "stable-27"
+      ],
+      "represented_source_ids": [
+        "stable-27"
+      ],
+      "revision_number": 1,
+      "created_at": 1784135119.387375,
+      "updated_at": 1784135119.387375,
+      "transformation_chain": [
+        "assembler",
+        "boundary_merge",
+        "duplicate_cleanup",
+        "punctuation_cleanup"
+      ],
+      "glossary_corrections": [],
+      "financial_number_corrections": [],
+      "raw_mutation": false,
+      "replaced_by_canonical_line_id": "",
+      "lineage_missing_but_retained": false
+    },
+    {
+      "canonical_line_id": "cl_8ddccc7a7f78",
+      "stable_line_id": "sl_lineage_00020",
+      "text": "[Speaker 2] 新製品の発売により葉酸サプリメント市場でさらなるケアの拡大を見込ん続いて覚悟会社の取締役の就任についてお知らせいたします。",
+      "speaker": 2,
+      "status": "active",
+      "source_commit_ids": [
+        "stable-28",
+        "stable-29"
+      ],
+      "represented_source_ids": [
+        "stable-28",
+        "stable-29"
+      ],
+      "revision_number": 1,
+      "created_at": 1784135119.387434,
+      "updated_at": 1784135119.3874342,
+      "transformation_chain": [
+        "assembler",
+        "boundary_merge",
+        "duplicate_cleanup",
+        "punctuation_cleanup"
+      ],
+      "glossary_corrections": [],
+      "financial_number_corrections": [],
+      "raw_mutation": false,
+      "replaced_by_canonical_line_id": "",
+      "lineage_missing_but_retained": false
+    },
+    {
+      "canonical_line_id": "cl_7ef280d54bbf",
+      "stable_line_id": "sl_lineage_00021",
+      "text": "[Speaker 2] 連結子会社のさくらさくみらいで石川祐介氏が取締役へ就任しました。なお石川氏はさくらさくプラス経営管理本部長も兼任しております。",
+      "speaker": 2,
+      "status": "active",
+      "source_commit_ids": [
+        "stable-30",
+        "stable-31",
+        "stable-32",
+        "stable-33"
+      ],
+      "represented_source_ids": [
+        "stable-30",
+        "stable-31",
+        "stable-32",
+        "stable-33"
+      ],
+      "revision_number": 1,
+      "created_at": 1784135119.3874934,
+      "updated_at": 1784135119.3874934,
+      "transformation_chain": [
+        "assembler",
+        "boundary_merge",
+        "duplicate_cleanup",
+        "punctuation_cleanup"
+      ],
+      "glossary_corrections": [],
+      "financial_number_corrections": [],
+      "raw_mutation": false,
+      "replaced_by_canonical_line_id": "",
+      "lineage_missing_but_retained": false
+    },
+    {
+      "canonical_line_id": "cl_e0741e02c499",
+      "stable_line_id": "sl_lineage_00024",
+      "text": "[Speaker 2] 不動産企画開発ではマンション開発事業と買取再販事業ホテル再生事業も計画通り進捗しております2026年7月期第3四半期決算投機予想に対し順調に進捗しておりますので、引き続き教えのほどお願いいたます。どうもありがとうござい。",
+      "speaker": 2,
+      "status": "active",
+      "source_commit_ids": [
+        "stable-30"
+      ],
+      "represented_source_ids": [
+        "stable-30"
+      ],
+      "revision_number": 1,
+      "created_at": 1784135119.3876765,
+      "updated_at": 1784135119.3876767,
+      "transformation_chain": [
+        "assembler",
+        "boundary_merge",
+        "duplicate_cleanup",
+        "punctuation_cleanup"
+      ],
+      "glossary_corrections": [],
+      "financial_number_corrections": [],
+      "raw_mutation": false,
+      "replaced_by_canonical_line_id": "",
+      "lineage_missing_but_retained": false
+    }
+  ],
+  "glossary_correction_count": 0,
+  "clean_active_transcript_path": "C:/Users/islamm/Documents/Tariqul/Alpha_Translator V 1.0/Alpha_Live_Translator_v3.3.5_JAPANESE_TEST/troubleshooting/runs/v3.3.5.5.8.5.26.1-20260716-015915/transcripts/clean_active_transcript.jsonl",
+  "latest_clean_active_transcript_path": "troubleshooting/latest/clean_active_transcript.jsonl",
+  "stable_revision_history_path": "C:/Users/islamm/Documents/Tariqul/Alpha_Translator V 1.0/Alpha_Live_Translator_v3.3.5_JAPANESE_TEST/troubleshooting/runs/v3.3.5.5.8.5.26.1-20260716-015915/transcripts/stable_revision_history.jsonl",
+  "latest_stable_revision_history_path": "troubleshooting/latest/stable_revision_history.jsonl",
+  "boundary_decisions_path": "C:/Users/islamm/Documents/Tariqul/Alpha_Translator V 1.0/Alpha_Live_Translator_v3.3.5_JAPANESE_TEST/troubleshooting/runs/v3.3.5.5.8.5.26.1-20260716-015915/accuracy/boundary_stabilizer_decisions.jsonl",
+  "latest_boundary_stabilizer_decisions_path": "troubleshooting/latest/boundary_stabilizer_decisions.jsonl",
+  "glossary_correction_summary_path": "C:/Users/islamm/Documents/Tariqul/Alpha_Translator V 1.0/Alpha_Live_Translator_v3.3.5_JAPANESE_TEST/troubleshooting/runs/v3.3.5.5.8.5.26.1-20260716-015915/accuracy/glossary_correction_summary.json",
+  "latest_glossary_correction_summary_path": "troubleshooting/latest/glossary_correction_summary.json",
+  "glossary_path": "troubleshooting/accuracy_benchmark/glossaries/test01_corporate_ir_glossary.json",
+  "glossary_keyterm_count": 0,
+  "glossary_corrections_applied": [],
+  "financial_number_correction_count": 0,
+  "decisions_path": "",
+  "corporate_term_accuracy_report_path": "",
+  "financial_number_accuracy_report_path": ""
+}

@@ -1,0 +1,5 @@
+validate_canonical_pipeline_852532 — 3.3.5.5.8.5.25.3.2
+Mode: post-live
+Status: FAILED
+Failures: ['run_version_mismatch', 'audio_delivery_summary_missing', 'stop_flags_still_true']
+Warnings: none

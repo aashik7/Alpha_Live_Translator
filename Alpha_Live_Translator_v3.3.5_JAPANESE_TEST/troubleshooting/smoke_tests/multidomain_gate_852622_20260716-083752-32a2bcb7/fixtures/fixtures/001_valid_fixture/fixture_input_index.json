@@ -1,0 +1,23 @@
+{
+  "test_number": 1,
+  "test_name": "valid_fixture_produces_implementation_ready_verification",
+  "kind": "positive",
+  "single_mutation_description": "no mutation; fixture uses a complete, unmutated reference/stable/final/audio/request/isolation baseline",
+  "files": [
+    {
+      "relative_path": "actual_gate_result.json",
+      "byte_size": 816,
+      "sha256": "2dd69afaada65afb4f01de93028134a52f84cf2d5090d47cdd35bc69b25e31ed"
+    },
+    {
+      "relative_path": "expected_gate_result.json",
+      "byte_size": 346,
+      "sha256": "c9243691ee15e64d49e82553de6808e62d36be5ea404103f583d5443b5da9bd7"
+    },
+    {
+      "relative_path": "regression_assertion.json",
+      "byte_size": 575,
+      "sha256": "64c55f2c7bf2b4aef76c4ba31b7e0c4b5b6b7d761ddf1a03886e5ebb27802a79"
+    }
+  ]
+}

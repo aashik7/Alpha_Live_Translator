@@ -1,0 +1,46 @@
+{
+  "app_version": "3.3.5.5.8.5.26.2",
+  "reference_path": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\smoke_tests\\multidomain_gate_85262_20260716-030808\\test26_stf_loss\\reference_copy\\multidomain_meeting_v1.txt",
+  "reference_sha256": "fb175084f302f53fa00c7dc05f4373d10e20845244efd6f09598dacaecd4815b",
+  "truth_path": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\smoke_tests\\multidomain_gate_85262_20260716-030808\\test26_stf_loss\\reference_copy\\multidomain_meeting_v1_truth.json",
+  "raw": {
+    "reference_character_count": 233,
+    "hypothesis_character_count": 233,
+    "substitutions": 0,
+    "deletions": 0,
+    "insertions": 0,
+    "total_edit_distance": 0,
+    "cer": 0.0,
+    "cer_percent": 0.0,
+    "accuracy_percent": 100.0,
+    "accuracy_percent_display": 100.0,
+    "cer_percent_display": 0.0
+  },
+  "stable": {
+    "reference_character_count": 233,
+    "hypothesis_character_count": 233,
+    "substitutions": 0,
+    "deletions": 0,
+    "insertions": 0,
+    "total_edit_distance": 0,
+    "cer": 0.0,
+    "cer_percent": 0.0,
+    "accuracy_percent": 100.0,
+    "accuracy_percent_display": 100.0,
+    "cer_percent_display": 0.0
+  },
+  "final": {
+    "reference_character_count": 233,
+    "hypothesis_character_count": 7,
+    "substitutions": 4,
+    "deletions": 226,
+    "insertions": 0,
+    "total_edit_distance": 230,
+    "cer": 0.9871244635193133,
+    "cer_percent": 98.71244635193133,
+    "accuracy_percent": 1.2875536480686662,
+    "accuracy_percent_display": 1.29,
+    "cer_percent_display": 98.71
+  },
+  "stable_to_final_loss_percent": 98.71244635193133
+}

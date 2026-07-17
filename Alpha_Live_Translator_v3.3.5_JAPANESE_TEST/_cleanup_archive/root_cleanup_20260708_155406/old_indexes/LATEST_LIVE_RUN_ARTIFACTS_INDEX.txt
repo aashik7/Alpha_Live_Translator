@@ -1,0 +1,18 @@
+# Pointer only — see troubleshooting/latest/
+status=completed
+current_run_status=completed
+run_id=live-v3.3.5.5.8.5.23.2-20260708-135349-e837ae47
+run_folder=C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\runs\v3.3.5.5.8.5.23.2-20260708-135349
+app_version=3.3.5.5.8.5.23.2
+completed_at=2026-07-08T14:06:55
+updated_at=2026-07-08T14:06:55
+stop_finalize_completed=true
+app_close_status=normal
+artifact_index=C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\runs\v3.3.5.5.8.5.23.2-20260708-135349\artifacts\RUN_ARTIFACTS_INDEX.txt
+alpha_output=C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\runs\v3.3.5.5.8.5.23.2-20260708-135349\transcripts\Alpha output.txt
+latest_alpha_output=C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\latest\latest_alpha_output.txt
+accuracy_evidence_index=C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\latest\latest_accuracy_evidence_index.json
+upload_index=C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\runs\v3.3.5.5.8.5.23.2-20260708-135349\upload_package\UPLOAD_PACKAGE_INDEX.txt
+upload_zip=
+upload_package_created=false
+upload_package_wav_excluded=true

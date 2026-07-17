@@ -1,0 +1,13 @@
+{
+  "test_number": 1,
+  "test_name": "alpha_all_files_scanned",
+  "passed": true,
+  "expected": {
+    "all_scanned": true
+  },
+  "actual": {
+    "passed": true,
+    "discovered": 143,
+    "scanned": 143
+  }
+}

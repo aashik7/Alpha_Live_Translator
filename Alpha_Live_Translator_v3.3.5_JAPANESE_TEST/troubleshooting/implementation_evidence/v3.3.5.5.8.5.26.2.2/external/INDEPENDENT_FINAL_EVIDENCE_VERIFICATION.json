@@ -1,0 +1,57 @@
+{
+  "generated_at_utc": "2026-07-16T08:47:15Z",
+  "evidence_version": "3.3.5.5.8.5.26.2.2",
+  "acceptance_contract_verified": true,
+  "alpha_scan_complete": true,
+  "alpha_scan_exclusion_count": 0,
+  "prohibited_reference_leak_count": 0,
+  "physical_fixture_count_recalculated": 32,
+  "negative_fixture_count_recalculated": 28,
+  "negative_gate_failures_recalculated": 28,
+  "exact_failure_code_matches_recalculated": 28,
+  "negative_unhandled_exception_count": 0,
+  "policy_fixture_results_recalculated": {
+    "030_fixture_cannot_create_accepted_result": {
+      "actual_policy_result": "FIXTURE_ACCEPTANCE_BLOCKED",
+      "expected_policy_result": "FIXTURE_ACCEPTANCE_BLOCKED",
+      "matches": true,
+      "actual_gate_status": "PASSED"
+    },
+    "031_fixture_cannot_overwrite_latest_live_artifacts": {
+      "actual_policy_result": "LATEST_LIVE_ARTIFACTS_UNCHANGED",
+      "expected_policy_result": "LATEST_LIVE_ARTIFACTS_UNCHANGED",
+      "matches": true,
+      "actual_gate_status": "PASSED"
+    },
+    "032_audio_files_excluded_from_package": {
+      "actual_policy_result": "AUDIO_FILES_EXCLUDED",
+      "expected_policy_result": "AUDIO_FILES_EXCLUDED",
+      "matches": true,
+      "actual_gate_status": "PASSED"
+    }
+  },
+  "source_immutability_recalculated": {
+    "snapshot_file_count": 175,
+    "changed_files": [],
+    "missing_files": [],
+    "source_immutable": true
+  },
+  "inner_zip_opened": true,
+  "inner_zip_corrupt_entry_count": 0,
+  "inner_zip_duplicate_entry_count": 0,
+  "inner_zip_actual_sha256": "eef315452ff2b73c6fce316354da0d93a02c461eb2114b3ee5428ecfd0450797",
+  "inner_zip_sidecar_sha256": "eef315452ff2b73c6fce316354da0d93a02c461eb2114b3ee5428ecfd0450797",
+  "inner_zip_sha256_match": true,
+  "inner_zip_actual_size": 240489,
+  "inner_zip_sidecar_size": 240489,
+  "inner_zip_size_match": true,
+  "inner_zip_actual_entry_count": 271,
+  "inner_zip_manifest_entry_count": 271,
+  "inner_zip_entries_match": true,
+  "inner_zip_modified_after_seal": false,
+  "reported_value_mismatches": [],
+  "missing_files": [],
+  "parse_errors": [],
+  "verification_passed": true,
+  "_verifier_subprocess_exit_code": 0
+}

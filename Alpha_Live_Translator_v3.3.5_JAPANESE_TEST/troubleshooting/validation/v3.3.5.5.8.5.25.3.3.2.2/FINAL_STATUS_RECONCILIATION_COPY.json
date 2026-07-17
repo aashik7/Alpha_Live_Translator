@@ -1,0 +1,140 @@
+{
+  "generated_utc": "2026-07-14T06:10:47Z",
+  "run_folder": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\runs\\v3.3.5.5.8.5.25.3.3.1-20260714-111519",
+  "live_status_path": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\runs\\v3.3.5.5.8.5.25.3.3.1-20260714-111519\\artifacts\\LIVE_RUN_STATUS.json",
+  "live_status_mutated": false,
+  "fields": {
+    "speaker_distribution": {
+      "value": {
+        "2": 22
+      },
+      "source_files": [
+        "transcripts/final_export_records.jsonl"
+      ],
+      "derivation_rule": "count_speaker_from_final_export_records",
+      "confidence": "high",
+      "conflicts_with_live_status": true
+    },
+    "process_health_timeline_exists": {
+      "value": true,
+      "source_files": [
+        "health/PROCESS_HEALTH_TIMELINE.jsonl"
+      ],
+      "derivation_rule": "file_exists_nonempty",
+      "confidence": "high",
+      "conflicts_with_live_status": true
+    },
+    "memory_trend_summary_exists": {
+      "value": true,
+      "source_files": [
+        "health/MEMORY_TREND_SUMMARY.json"
+      ],
+      "derivation_rule": "file_exists_nonempty",
+      "confidence": "high",
+      "conflicts_with_live_status": true
+    },
+    "stop_drain_barrier_passed": {
+      "value": true,
+      "source_files": [
+        "logs/japanese_accuracy.log#UI_STOP_DRAIN_BARRIER_ACKNOWLEDGED"
+      ],
+      "derivation_rule": "drain_barrier_ack_passed_true",
+      "confidence": "high",
+      "conflicts_with_live_status": true
+    },
+    "transcript_queue_remaining": {
+      "value": 0,
+      "source_files": [
+        "logs/japanese_accuracy.log#UI_STOP_DRAIN_BARRIER_ACKNOWLEDGED"
+      ],
+      "derivation_rule": "barrier_ack_transcript_queue_remaining",
+      "confidence": "high",
+      "conflicts_with_live_status": false
+    },
+    "ui_bus_queue_remaining": {
+      "value": 0,
+      "source_files": [
+        "logs/japanese_accuracy.log#UI_STOP_DRAIN_BARRIER_ACKNOWLEDGED"
+      ],
+      "derivation_rule": "barrier_ack_ui_bus_queue_remaining",
+      "confidence": "high",
+      "conflicts_with_live_status": false
+    },
+    "language_pipeline_queue_size": {
+      "value": 0,
+      "source_files": [
+        "artifacts/LIVE_RUN_STATUS.json",
+        "artifacts/POST_RUN_EXIT_SUMMARY.json"
+      ],
+      "derivation_rule": "worker_dead_and_stop_finalize_completed_implies_queue_drained",
+      "confidence": "medium",
+      "conflicts_with_live_status": false
+    },
+    "audio_queue_size": {
+      "value": 0,
+      "source_files": [
+        "logs/japanese_accuracy.log#UI_STOP_DRAIN_BARRIER_ACKNOWLEDGED",
+        "artifacts/LIVE_RUN_STATUS.json",
+        "artifacts/POST_RUN_EXIT_SUMMARY.json"
+      ],
+      "derivation_rule": "drain_completed_evidence_reconciles_sentinel_audio_queue_size",
+      "confidence": "high",
+      "conflicts_with_live_status": true
+    },
+    "language_pipeline_worker_alive": {
+      "value": false,
+      "source_files": [
+        "artifacts/LIVE_RUN_STATUS.json"
+      ],
+      "derivation_rule": "live_explicit_boolean",
+      "confidence": "high",
+      "conflicts_with_live_status": false
+    },
+    "is_stopping": {
+      "value": false,
+      "source_files": [
+        "artifacts/LIVE_RUN_STATUS.json"
+      ],
+      "derivation_rule": "live_explicit_boolean",
+      "confidence": "high",
+      "conflicts_with_live_status": false
+    },
+    "is_finalizing": {
+      "value": false,
+      "source_files": [
+        "artifacts/LIVE_RUN_STATUS.json"
+      ],
+      "derivation_rule": "live_explicit_boolean",
+      "confidence": "high",
+      "conflicts_with_live_status": false
+    },
+    "stop_finalize_completed": {
+      "value": true,
+      "source_files": [
+        "artifacts/LIVE_RUN_STATUS.json",
+        "artifacts/POST_RUN_EXIT_SUMMARY.json"
+      ],
+      "derivation_rule": "live_or_post_run_exit_summary",
+      "confidence": "high",
+      "conflicts_with_live_status": false
+    },
+    "stop_finalize_failed": {
+      "value": false,
+      "source_files": [
+        "artifacts/LIVE_RUN_STATUS.json"
+      ],
+      "derivation_rule": "live_explicit_boolean_default_false_only_if_bool",
+      "confidence": "high",
+      "conflicts_with_live_status": false
+    }
+  },
+  "disagreements_with_live_status": [
+    "speaker_distribution",
+    "process_health_timeline_exists",
+    "memory_trend_summary_exists",
+    "stop_drain_barrier_passed",
+    "audio_queue_size"
+  ],
+  "status_reconciliation_passed": true,
+  "output_path": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\runs\\v3.3.5.5.8.5.25.3.3.1-20260714-111519\\artifacts\\FINAL_STATUS_RECONCILIATION.json"
+}

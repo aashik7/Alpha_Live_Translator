@@ -1,0 +1,4 @@
+V3.3.5.5.8.5.23.3 REFERENCE ALIGNMENT DIAGNOSIS VALIDATION
+Result: PASSED
+APP_VERSION: 3.3.5.5.8.5.23.3
+Warnings: translation_ready_ratio_below_80, cer_not_trusted_reference_questionable, no_valid_verbatim_reference_transcript_provided

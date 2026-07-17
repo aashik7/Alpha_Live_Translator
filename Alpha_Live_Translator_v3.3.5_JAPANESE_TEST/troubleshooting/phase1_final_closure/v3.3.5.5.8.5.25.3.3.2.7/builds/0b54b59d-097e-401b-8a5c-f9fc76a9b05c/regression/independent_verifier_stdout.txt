@@ -1,0 +1,10 @@
+verification_passed=True
+pending_files_remaining=0
+staging_paths_remaining=0
+archive_claim_mismatches=0
+deletion_claim_mismatches=0
+duplicate_claim_mismatches=0
+before_after_diff_mismatches=0
+protected_hash_mismatches=0
+metadata_current=True
+STATUS=PASSED

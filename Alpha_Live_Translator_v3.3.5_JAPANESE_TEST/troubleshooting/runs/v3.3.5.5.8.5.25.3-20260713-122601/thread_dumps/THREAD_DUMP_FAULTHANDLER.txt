@@ -1,0 +1,95 @@
+Thread 0x00006790 [SessionHangWatchdog] (most recent call first):
+  File "C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\Lib\threading.py", line 373 in wait
+  File "C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\Lib\threading.py", line 670 in wait
+  File "C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\alpha\utils\session_watchdog.py", line 245 in _watchdog_loop
+  File "C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\Lib\threading.py", line 1024 in run
+  File "C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\Lib\threading.py", line 1082 in _bootstrap_inner
+  File "C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\Lib\threading.py", line 1044 in _bootstrap
+
+Thread 0x00003e10 [CrashGuardLogWriter] (most recent call first):
+  File "C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\Lib\threading.py", line 369 in wait
+  File "C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\Lib\queue.py", line 199 in get
+  File "C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\alpha\utils\crash_guard_log.py", line 106 in _writer_loop
+  File "C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\Lib\threading.py", line 1024 in run
+  File "C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\Lib\threading.py", line 1082 in _bootstrap_inner
+  File "C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\Lib\threading.py", line 1044 in _bootstrap
+
+Current thread 0x00001e68 [Thread-2 (_deepgram_worker)] (most recent call first):
+  File "C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\alpha\utils\thread_dump.py", line 68 in write_thread_dumps
+  File "C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\alpha\utils\run_artifacts.py", line 890 in write_thread_dump_file
+  File "C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\alpha\utils\crash_guard_log.py", line 279 in handle_crash_event
+  File "C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\alpha\utils\crash_guard_log.py", line 358 in _threading_excepthook
+  File "C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\Lib\threading.py", line 1333 in invoke_excepthook
+  File "C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\Lib\threading.py", line 1084 in _bootstrap_inner
+  File "C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\Lib\threading.py", line 1044 in _bootstrap
+
+Thread 0x0000690c [Thread-1 (audio_mixer_worker)] (most recent call first):
+  File "C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\alpha\ui\main_window.py", line 5774 in audio_mixer_worker
+  File "C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\alpha\utils\diagnostic_test_log.py", line 874 in patched_mixer
+  File "C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\Lib\threading.py", line 1024 in run
+  File "C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\Lib\threading.py", line 1082 in _bootstrap_inner
+  File "C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\Lib\threading.py", line 1044 in _bootstrap
+
+Thread 0x00005068 [WasapiReader] (most recent call first):
+  File "C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\alpha\audio\wasapi.py", line 68 in _wasapi_reader_worker
+  File "C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\Lib\threading.py", line 1024 in run
+  File "C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\Lib\threading.py", line 1082 in _bootstrap_inner
+  File "C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\Lib\threading.py", line 1044 in _bootstrap
+
+Thread 0x00007284 [JsonlWriter-ui_event_bus_timeline.jsonl] (most recent call first):
+  File "C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\alpha\utils\evidence_jsonl.py", line 64 in _loop
+  File "C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\Lib\threading.py", line 1024 in run
+  File "C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\Lib\threading.py", line 1082 in _bootstrap_inner
+  File "C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\Lib\threading.py", line 1044 in _bootstrap
+
+Thread 0x00004d9c [DiagnosticLogWriter] (most recent call first):
+  File "C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\Lib\threading.py", line 369 in wait
+  File "C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\Lib\queue.py", line 199 in get
+  File "C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\alpha\utils\diagnostic_test_log.py", line 206 in _writer_loop
+  File "C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\Lib\threading.py", line 1024 in run
+  File "C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\Lib\threading.py", line 1082 in _bootstrap_inner
+  File "C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\Lib\threading.py", line 1044 in _bootstrap
+
+Thread 0x00006cac [LanguagePipelineWorker] (most recent call first):
+  File "C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\Lib\threading.py", line 373 in wait
+  File "C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\alpha\utils\language_pipeline_worker.py", line 130 in _loop
+  File "C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\Lib\threading.py", line 1024 in run
+  File "C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\Lib\threading.py", line 1082 in _bootstrap_inner
+  File "C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\Lib\threading.py", line 1044 in _bootstrap
+
+Thread 0x000046f8 [AsyncDebugLogWriter] (most recent call first):
+  File "C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\Lib\threading.py", line 373 in wait
+  File "C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\Lib\queue.py", line 210 in get
+  File "C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\alpha\utils\async_debug_log.py", line 137 in _writer_loop
+  File "C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\Lib\threading.py", line 1024 in run
+  File "C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\Lib\threading.py", line 1082 in _bootstrap_inner
+  File "C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\Lib\threading.py", line 1044 in _bootstrap
+
+Thread 0x00003ca8 [JsonlWriter-correction_decisions.jsonl] (most recent call first):
+  File "C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\alpha\utils\evidence_jsonl.py", line 64 in _loop
+  File "C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\Lib\threading.py", line 1024 in run
+  File "C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\Lib\threading.py", line 1082 in _bootstrap_inner
+  File "C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\Lib\threading.py", line 1044 in _bootstrap
+
+Thread 0x00003bfc [JapaneseAccuracyLogWriter] (most recent call first):
+  File "C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\Lib\pathlib\__init__.py", line 1011 in mkdir
+  File "C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\alpha\utils\troubleshooting_paths.py", line 318 in register_runtime_writer
+  File "C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\alpha\utils\troubleshooting_paths.py", line 182 in safe_register_writer
+  File "C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\alpha\utils\troubleshooting_paths.py", line 412 in get_log_path
+  File "C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\alpha\utils\japanese_accuracy_log.py", line 138 in _resolve_log_file
+  File "C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\alpha\utils\japanese_accuracy_log.py", line 148 in _writer_loop
+  File "C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\Lib\threading.py", line 1024 in run
+  File "C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\Lib\threading.py", line 1082 in _bootstrap_inner
+  File "C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\Lib\threading.py", line 1044 in _bootstrap
+
+Thread 0x00006bf8 (most recent call first):
+  File "C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\Lib\pathlib\__init__.py", line 1011 in mkdir
+  File "C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\alpha\utils\freeze_guard_log.py", line 69 in freeze_guard_log_sync
+  File "C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\alpha\utils\session_watchdog.py", line 320 in start_session_watchdog
+  File "C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\alpha\ui\main_window.py", line 6412 in _finish_start_listening
+  File "C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\alpha\ui\main_window.py", line 6258 in <lambda>
+  File "C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\Lib\tkinter\__init__.py", line 876 in callit
+  File "C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\Lib\tkinter\__init__.py", line 2093 in __call__
+  File "C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\Lib\tkinter\__init__.py", line 1613 in mainloop
+  File "C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\customtkinter\windows\ctk_tk.py", line 165 in mainloop
+  File "C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\main.py", line 304 in <module>

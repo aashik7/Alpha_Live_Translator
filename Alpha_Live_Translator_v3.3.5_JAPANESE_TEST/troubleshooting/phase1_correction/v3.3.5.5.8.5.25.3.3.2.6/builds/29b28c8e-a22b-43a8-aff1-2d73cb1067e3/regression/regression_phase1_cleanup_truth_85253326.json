@@ -1,0 +1,333 @@
+{
+  "total": 65,
+  "expected_total": 65,
+  "passed": 65,
+  "failed": 0,
+  "results": [
+    {
+      "name": "t01_filesystem_before_nonzero",
+      "ok": true,
+      "detail": "1710"
+    },
+    {
+      "name": "t02_filesystem_after_nonzero",
+      "ok": true,
+      "detail": "1725"
+    },
+    {
+      "name": "t03_cleanup_actions_nonzero",
+      "ok": true,
+      "detail": "a=48,d=9"
+    },
+    {
+      "name": "t04_archived_exists_in_archive",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t05_archived_hash_matches",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t06_archived_original_absent",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t07_deleted_path_absent",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t08_retained_exists",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t09_every_legacy_accounted",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t10_tool_registry_matches",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t11_archived_not_at_root",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t12_active_not_archived",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t13_unknown_retained_main",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t14_abandoned_staging_zero",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t15_cache_cleanup_allowed",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t16_unique_pending_disposition",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t17_duplicate_disposition",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t18_retention_all_categories",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t19_retention_validation_complete",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t20_transcript_logs_sensitive",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t21_alias_rollback_tests",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t22_partial_generation_impossible",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t23_transaction_passed",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t24_inject_fail_raises",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t25_aliases_match_final",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t26_evidence_verified_before_acceptance",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t27_acceptance_requires_evidence",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t28_acceptance_has_full_fields",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t29_report_Cursor final report.txt",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t30_report_FILESYSTEM_BEFORE.json",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t31_report_ARCHIVE_MANIFEST.json",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t32_report_DELETION_MANIFEST.json",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t33_report_RETAINED_FILES_REPORT.json",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t34_report_PACKAGE_CONTENT_AUDIT.json",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t35_protected_unexpected_empty",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t36_auth_run_unchanged",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t37_reference_unchanged",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t38_raw_unchanged",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t39_stable_unchanged",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t40_final_unchanged",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t41_glossary_consistent",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t42_language_order",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t43_version_meanings",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t44_old_packages_not_current",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t45_prev_regression_markers",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t46_engine_compiles",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t47_imports_resolve",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t48_entrypoints_exist",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t49_no_live_command",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t50_acceptance_from_manifests",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t51_legacy_cleanup_completed",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t52_files_scanned_nonzero",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t53_archive_count_matches",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t54_deletion_count_matches",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t55_retained_count_positive",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t56_remaining_issues_zero",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t57_bundle_required_entries",
+      "ok": true,
+      "detail": "['acceptance/Cursor final report.txt', 'acceptance/PHASE1_CORRECTION_FINAL_ACCEPTANCE.json', 'delivery/BUILD_IDENTITY.json', 'delivery/OUTER_BUNDLE_AUDIT.json', 'delivery/PACKAGE_CONTENT_AUDIT.json', 'delivery/PACKAGE_MANIFEST.json', 'evidence/PHASE1_CORRECTION_EVIDENCE_29b28c8e-a22b-43a8-aff1-2d73cb1067e3.zip']"
+    },
+    {
+      "name": "t58_bundle_reopenable",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t59_legacy_absent_root",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t60_no_current_tool_archived",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t61_protected_final_intact",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t62_restore_script_exists",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t63_restore_mentions_hash",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t64_final_bundle_verified",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "t65_phase1_remaining_zero",
+      "ok": true,
+      "detail": ""
+    }
+  ]
+}

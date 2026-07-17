@@ -1,0 +1,18 @@
+{
+  "build_id": "238eeb44-f420-4d93-b846-24f1268f63bd",
+  "bundle_verified": true,
+  "entries": [
+    "evidence/PHASE1_CORRECTION_EVIDENCE_238eeb44-f420-4d93-b846-24f1268f63bd.zip",
+    "acceptance/PHASE1_CORRECTION_FINAL_ACCEPTANCE.json",
+    "acceptance/Cursor final report.txt",
+    "delivery/PACKAGE_MANIFEST.json",
+    "delivery/PACKAGE_CONTENT_AUDIT.json",
+    "delivery/OUTER_BUNDLE_AUDIT.json",
+    "delivery/BUILD_IDENTITY.json"
+  ],
+  "file": "PHASE1_CORRECTION_FINAL_BUNDLE_v3.3.5.5.8.5.25.3.3.2.6_238eeb44-f420-4d93-b846-24f1268f63bd.zip",
+  "generated_at": "2026-07-15T06:49:41Z",
+  "patch_version": "3.3.5.5.8.5.25.3.3.2.6",
+  "path": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\phase1_correction\\v3.3.5.5.8.5.25.3.3.2.6\\PHASE1_CORRECTION_FINAL_BUNDLE_v3.3.5.5.8.5.25.3.3.2.6_238eeb44-f420-4d93-b846-24f1268f63bd.zip",
+  "sha256": "5dde16be63629ee292893abe070ad54d64d6e8b8e368f631e0c901313ffcba02"
+}

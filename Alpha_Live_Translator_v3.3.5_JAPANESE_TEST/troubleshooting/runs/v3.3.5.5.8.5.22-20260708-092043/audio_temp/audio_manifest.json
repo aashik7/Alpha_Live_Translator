@@ -1,0 +1,61 @@
+{
+  "app_version": "3.3.5.5.8.5.22",
+  "run_id": "live-v3.3.5.5.8.5.22-20260708-092043-6985393e",
+  "run_timestamp": "20260708-092043",
+  "capture_enabled": true,
+  "retention_hours": 2,
+  "auto_delete_enabled": true,
+  "include_in_upload_package": false,
+  "max_total_gb": 3,
+  "chunk_duration_seconds": 60,
+  "sample_rate": 16000,
+  "channels": 1,
+  "sample_width": 2,
+  "format": "wav_pcm16",
+  "streams_saved": [
+    "mixed"
+  ],
+  "streams_available": [
+    "mixed"
+  ],
+  "files": [
+    {
+      "filename": "mixed_live-v3.3.5.5.8.5.22-20260708-092043-6985393e_0000.wav",
+      "relative_path": "audio_temp\\mixed_audio\\mixed_live-v3.3.5.5.8.5.22-20260708-092043-6985393e_0000.wav",
+      "stream_type": "mixed",
+      "chunk_index": 0,
+      "path": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\runs\\v3.3.5.5.8.5.22-20260708-092043\\audio_temp\\mixed_audio\\mixed_live-v3.3.5.5.8.5.22-20260708-092043-6985393e_0000.wav",
+      "start_time": "2026-07-08T09:20:00",
+      "end_time": "2026-07-08T09:21:00",
+      "start_timestamp": 1783470000.2938507,
+      "end_timestamp": 1783470060.2938514,
+      "duration_seconds": 60,
+      "size_bytes": 423084,
+      "bytes": 423084,
+      "deleted": false
+    }
+  ],
+  "chunks": [
+    {
+      "filename": "mixed_live-v3.3.5.5.8.5.22-20260708-092043-6985393e_0000.wav",
+      "relative_path": "audio_temp\\mixed_audio\\mixed_live-v3.3.5.5.8.5.22-20260708-092043-6985393e_0000.wav",
+      "stream_type": "mixed",
+      "chunk_index": 0,
+      "path": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\runs\\v3.3.5.5.8.5.22-20260708-092043\\audio_temp\\mixed_audio\\mixed_live-v3.3.5.5.8.5.22-20260708-092043-6985393e_0000.wav",
+      "start_time": "2026-07-08T09:20:00",
+      "end_time": "2026-07-08T09:21:00",
+      "start_timestamp": 1783470000.2938507,
+      "end_timestamp": 1783470060.2938514,
+      "duration_seconds": 60,
+      "size_bytes": 423084,
+      "bytes": 423084,
+      "deleted": true,
+      "delete_reason": "after_stop"
+    }
+  ],
+  "created_at": "2026-07-08T09:20:44",
+  "expires_at": "2026-07-08T11:20:44",
+  "total_chunks": 1,
+  "total_bytes": 423084,
+  "total_duration_seconds_estimate": 60.0
+}

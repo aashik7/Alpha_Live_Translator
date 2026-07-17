@@ -1,0 +1,23 @@
+{
+  "test_number": 26,
+  "test_name": "stable_to_final_loss_above_zero_fails",
+  "kind": "negative",
+  "single_mutation_description": "final transcript replaced with a much shorter unrelated sentence",
+  "files": [
+    {
+      "relative_path": "actual_gate_result.json",
+      "byte_size": 950,
+      "sha256": "730e023e5cf900fd1a91c32e0d958ffbc6d02b8dfa84c46e9507d4f0d41d5487"
+    },
+    {
+      "relative_path": "expected_gate_result.json",
+      "byte_size": 330,
+      "sha256": "032a176ddaa65829e8650e7b4458dca444345cf9504ac9354e6484c0d7294a0c"
+    },
+    {
+      "relative_path": "regression_assertion.json",
+      "byte_size": 701,
+      "sha256": "63ac32f44a0e8e4da5f074ba5b86b053ccf6385ebc780bf59a7bae3ac040d5f5"
+    }
+  ]
+}

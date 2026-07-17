@@ -1,0 +1,26 @@
+{
+  "added_paths": [
+    "troubleshooting/phase1_final_closure/v3.3.5.5.8.5.25.3.3.2.7/builds/db926ba2-d619-403f-b441-574b198523fc/before/DIRECTORIES_BEFORE.json",
+    "troubleshooting/phase1_final_closure/v3.3.5.5.8.5.25.3.3.2.7/builds/db926ba2-d619-403f-b441-574b198523fc/before/FILES_BEFORE.json",
+    "troubleshooting/phase1_final_closure/v3.3.5.5.8.5.25.3.3.2.7/builds/db926ba2-d619-403f-b441-574b198523fc/reports/DUPLICATE_ACTUAL_DISPOSITION.json",
+    "troubleshooting/phase1_final_closure/v3.3.5.5.8.5.25.3.3.2.7/builds/db926ba2-d619-403f-b441-574b198523fc/reports/LEGACY_ARCHIVE_DEDUPLICATION.json",
+    "troubleshooting/phase1_final_closure/v3.3.5.5.8.5.25.3.3.2.7/builds/db926ba2-d619-403f-b441-574b198523fc/reports/PENDING_RUN_ACTUAL_DISPOSITION.json",
+    "troubleshooting/phase1_final_closure/v3.3.5.5.8.5.25.3.3.2.7/builds/db926ba2-d619-403f-b441-574b198523fc/reports/STAGING_ACTUAL_DISPOSITION.json"
+  ],
+  "build_id": "db926ba2-d619-403f-b441-574b198523fc",
+  "bytes_after": 148940296,
+  "bytes_before": 147852963,
+  "changed_paths": [
+    "tools/TOOLS_CURRENT.json",
+    "troubleshooting/phase1_correction/v3.3.5.5.8.5.25.3.3.2.6/builds/195fd50e-6273-4609-813b-dd31e2ff9b3e/reports/ARCHIVE_MANIFEST.json",
+    "troubleshooting/phase1_correction/v3.3.5.5.8.5.25.3.3.2.6/builds/238eeb44-f420-4d93-b846-24f1268f63bd/reports/ARCHIVE_MANIFEST.json",
+    "troubleshooting/phase1_correction/v3.3.5.5.8.5.25.3.3.2.6/builds/29b28c8e-a22b-43a8-aff1-2d73cb1067e3/reports/ARCHIVE_MANIFEST.json",
+    "troubleshooting/phase1_correction/v3.3.5.5.8.5.25.3.3.2.6/builds/85abf19d-62d0-4073-9a1c-f9eb08ee9c5a/reports/ARCHIVE_MANIFEST.json",
+    "troubleshooting/phase1_correction/v3.3.5.5.8.5.25.3.3.2.6/builds/fc32560b-df54-4f77-89da-39106c9d4d5a/reports/ARCHIVE_MANIFEST.json"
+  ],
+  "closure_version": "3.3.5.5.8.5.25.3.3.2.7",
+  "files_after": 1824,
+  "files_before": 1818,
+  "removed_paths": [],
+  "unchanged_path_count": 1812
+}

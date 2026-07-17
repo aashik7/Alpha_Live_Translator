@@ -1,0 +1,12 @@
+Cursor final report — Frozen Nine-Issue Filesystem Closure
+build_id=0b54b59d-097e-401b-8a5c-f9fc76a9b05c
+version=3.3.5.5.8.5.25.3.3.2.7
+VERSION=PENDING_DELIVERY_VERIFICATION
+STATUS=PENDING
+known_issues_total=9
+known_issues_closed=9
+known_issues_remaining=0
+outer_bundle_verified=False
+new_live_test_required=False
+regression_failures=0
+generated_at=2026-07-15T07:40:05Z

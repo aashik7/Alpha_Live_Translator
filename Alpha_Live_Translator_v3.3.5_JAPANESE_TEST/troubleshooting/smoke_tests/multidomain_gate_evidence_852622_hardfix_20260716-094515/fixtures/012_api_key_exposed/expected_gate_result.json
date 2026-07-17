@@ -1,0 +1,10 @@
+{
+  "test_number": 12,
+  "test_name": "api_key_in_request_evidence_fails",
+  "expected_gate_status": "FAILED",
+  "expected_failure_codes": [
+    "SECRET_PRESENT_IN_REQUEST_EVIDENCE"
+  ],
+  "expected_policy_result": "",
+  "single_mutation_description": "deepgram_request_actual.json sanitized_query_string contains token=SECRET"
+}

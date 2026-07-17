@@ -1,0 +1,25 @@
+{
+  "passed": false,
+  "hits": [
+    {
+      "relative_path": "alpha/transcription/corporate_ir_glossary.py",
+      "needle": "company_names",
+      "channel": "raw_text"
+    },
+    {
+      "relative_path": "alpha/transcription/corporate_ir_glossary.py",
+      "needle": "company_names",
+      "channel": "ast_string"
+    },
+    {
+      "relative_path": "alpha/transcription/corporate_ir_stable_corrector.py",
+      "needle": "company_names",
+      "channel": "raw_text"
+    },
+    {
+      "relative_path": "alpha/transcription/corporate_ir_stable_corrector.py",
+      "needle": "company_names",
+      "channel": "ast_string"
+    }
+  ]
+}

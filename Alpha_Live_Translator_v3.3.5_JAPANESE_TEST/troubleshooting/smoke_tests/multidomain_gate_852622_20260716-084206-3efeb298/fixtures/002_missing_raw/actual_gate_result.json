@@ -1,0 +1,19 @@
+{
+  "test_number": 2,
+  "test_name": "missing_raw_file_fails",
+  "actual_gate_status": "FAILED",
+  "actual_failure_codes": [
+    "MISSING_RAW_TRANSCRIPT"
+  ],
+  "actual_failure_messages": [
+    "verification.missing_files=raw_deepgram.txt -> MISSING_RAW_TRANSCRIPT"
+  ],
+  "actual_gate_exit_code": 0,
+  "actual_acceptance_version": "NOT_ACCEPTED",
+  "actual_acceptance_status": "FIXTURE_ONLY",
+  "source_result_file": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\smoke_tests\\multidomain_gate_852622_20260716-084206-3efeb298\\fixtures\\002_missing_raw\\accuracy_stage_compare\\independent_verification.json",
+  "source_result_file_sha256": "3536bc02ee2d20f90ff4b7572f621416a9cd4e43e0746a4960ee5de51981d317",
+  "unhandled_exception": false,
+  "exception_class": "",
+  "exception_message": ""
+}

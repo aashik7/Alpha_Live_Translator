@@ -1,0 +1,13 @@
+THREE-STAGE JAPANESE ACCURACY VERDICT
+
+Reference trusted: True
+Reference trust reason: prepared_reference_valid
+Scoring completed: True
+Raw Deepgram accuracy: 72.59%
+Assembler-only accuracy: 72.53%
+Final Alpha accuracy: 72.53%
+Final minus raw: -0.06 pts
+Likely bottleneck: audio_or_deepgram_stage
+Reference trust status: valid_for_cer
+
+Warning: 

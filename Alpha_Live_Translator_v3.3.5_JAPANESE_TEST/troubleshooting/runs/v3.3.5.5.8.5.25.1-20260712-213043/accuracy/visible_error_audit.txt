@@ -1,0 +1,14 @@
+# Visible Error Audit (audit-only — no auto-correction)
+# app_version: 3.3.5.5.8.5.25.1
+# run_id: live-v3.3.5.5.8.5.25.1-20260712-213043-0cd8fe2f
+# visible_error_count: 8
+# high: 0 medium: 0 low: 8
+
+line=2 severity=low pattern=company_number_risk category=meaning_risk snippet=株式会社さくらさくプラス代表の中山です。本日は2026年7月期第3四半期決算についてご案内申し上げます。は二千二十六年七月期、第三四半期決算概要についてお知らせいたします。
+line=11 severity=low pattern=company_number_risk category=meaning_risk snippet=続いて2026年7月に軽トピックスをお知らせいたし保育サービスにおては大阪市中央区で桜咲く未来東平を予定通り開設しており桜咲く未来晴海においても予定通り増床を行い自動定員数が増加しました他人口増加で保育所が不足しいる晴海エリアから月島エリア
+line=12 severity=low pattern=company_number_risk category=meaning_risk snippet=2027年7月期では東京都中央区にて一施設の新規保育所の開設を予定しております。
+line=13 severity=low pattern=company_number_risk category=meaning_risk snippet=フェムケア、フェムテックサービスにおいては、連結子会社のイェールにて2026年夏頃に新製品の発売を予定しておます。
+line=16 severity=low pattern=company_number_risk category=meaning_risk snippet=不動産企画開発ではマンション開発事業と買取再販事業ホテル再生事業も計画通り進捗しており。以上2026年7月期第3四半期決算登記予想に対し順調に進捗しておりますので引き続きご支援のほどよろしくお願いいし。もありがとうございます。
+line=17 severity=low pattern=company_number_risk category=meaning_risk snippet=株式会社さくら作プラス代表の中山です。本日は2026年7月期第3四半期決算についてご案内申し上げます。
+line=23 severity=low pattern=company_number_risk category=meaning_risk snippet=続いて2026年7月に軽トピックスをお知らせいたし保育サービスにおては大阪市中国で桜咲く未来東平を予定通り解説しており
+line=27 severity=low pattern=company_number_risk category=meaning_risk snippet=不動産企画開発ではマンション開発事業と買取再販事業ホテル再生事業も計画通り進捗しており。以上2026年7月期第3四半期決算登記予想に対し順調に進捗しておりますので引き続き教えの程よろしくお願いいし。もありがとうございます。

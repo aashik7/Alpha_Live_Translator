@@ -1,0 +1,301 @@
+================================================================================
+CURSOR FINAL REPORT — V3.3.5.5.8.5.24.1 Boundary Merge Revision & Clean Alpha Export
+LIVE TEST COMPLETE
+================================================================================
+Generated: 2026-07-09
+Prior baseline: V3.3.5.5.8.5.24 — Japanese Boundary Stabilizer
+
+================================================================================
+EXECUTIVE VERDICT
+================================================================================
+
+V3.3.5.5.8.5.24.1 is SUCCESSFUL for its primary goal.
+
+The cumulative duplicate export bug from V24 is fixed in live runtime:
+  merge_with_previous now REVISES the previous line instead of appending duplicates.
+  Alpha export line count now tracks clean active lines, not full stable commit history.
+
+Live comparison V24 → V24.1:
+  Alpha lines:              136 → 40   (clean export, not cumulative)
+  stable_commits (debug):   136 → 58
+  cumulative_duplicates:     40 → 3    (93% reduction)
+  duplicate_continuation:    41 → 3    (93% reduction)
+  total_boundary_risks:      60 → 9    (85% reduction)
+  leading_fragments:          9 → 2    (78% reduction)
+
+CER not trusted (alignment coverage failed) — do not use raw CER for decisions.
+Remaining minor gap: clean_active_transcript.jsonl not written to run folder at runtime
+  (revision model works in-memory; export is correct; file persistence needs follow-up).
+
+Ready to continue Japanese accuracy work without cumulative export pollution.
+
+================================================================================
+1. FILES CHANGED (IMPLEMENTATION)
+================================================================================
+
+NEW:
+  alpha/transcription/stable_line_revision.py
+  repair_clean_alpha_export.py
+  collect_preflight_85241.py
+  validate_accuracy_85241.py
+  runtime_smoke_start_stop_85241.py
+  troubleshooting/preflight_85241/
+
+MODIFIED:
+  alpha/constants.py — APP_VERSION 3.3.5.5.8.5.24.1 + revision/export flags
+  main.py — 24.1 startup logs
+  alpha/transcription/japanese_boundary_stabilizer.py — output contract + summary path
+  alpha/transcription/japanese_sentence_assembler.py — revision in _publish_sentence
+  alpha/utils/transcript_snapshot_store.py — revise_last_transcript_snapshot
+  alpha/utils/accuracy_evidence_export.py — clean active transcript on Stop
+  alpha/utils/run_artifacts.py — active_only snapshot export
+  alpha/utils/alpha_output_protection.py — LATEST_SMOKE_RUN_POINTER
+  alpha/utils/troubleshooting_paths.py — LATEST_LIVE_RUN_POINTER
+  score_latest_accuracy.py — cumulative duplicate detection
+  package_latest_troubleshooting_run.py — boundary + clean export in zip
+
+================================================================================
+2. VERSION CONFIRMATION
+================================================================================
+
+APP_VERSION = 3.3.5.5.8.5.24.1
+APP_CODENAME = Boundary Merge Revision & Clean Alpha Export
+
+Key flags active:
+  BOUNDARY_MERGE_REVISION_ENABLED = True
+  STABLE_LINE_REVISION_MODEL_ENABLED = True
+  CLEAN_ALPHA_EXPORT_ENABLED = True
+  CUMULATIVE_MERGE_DUPLICATE_GUARD_ENABLED = True
+  BOUNDARY_SUMMARY_PATH_FIX_ENABLED = True
+  RAW_DEEPGRAM_IMMUTABLE = True
+  AUTO_BUSINESS_CORRECTION_LEVEL = minimal
+
+================================================================================
+3. PREFLIGHT COLLECTION (Task 0)
+================================================================================
+
+Folder: troubleshooting/preflight_85241/
+collected_at: 2026-07-09T22:15:07
+app_version_before_change: 3.3.5.5.8.5.24
+V24 alpha sha256: 33e289ebe9cf662ee86eb1ee5642d40716418d45d401a9668b178d3b53f0bf18
+Warning: latest_accuracy_evidence_index.json missing in latest/ subfolder at preflight time
+
+================================================================================
+4. DEEPGRAM UNCHANGED
+================================================================================
+
+model=nova-3, language=ja, endpointing=500, utterance_end_ms=1500
+JAPANESE_STT_PROFILE=no_diarize, JAPANESE_KEYTERM_PROFILE=business_japanese
+diarize_model=absent
+
+================================================================================
+5. RUNTIME BASELINE — PASSED
+================================================================================
+
+Live run completed: Start → Stop normal, no freeze
+STOP_UI_RESTORE confirmed
+raw_mutation_count=0, dangerous_correction_count=0, business_correction_count=0
+
+validate_accuracy_85241.py: PASSED
+runtime_smoke_start_stop_85241.py: PASSED (live_alpha_protected=True, smoke_pointer separated)
+
+================================================================================
+6. ROOT CAUSE & FIX SUMMARY
+================================================================================
+
+V24 bug:
+  merge_with_previous appended merged text as NEW line while old line remained
+  → cumulative prefix chains in latest_live_alpha_output.txt
+
+V24.1 fix:
+  StableLineRevisionManager — active/revised/suppressed line model
+  Boundary output contract — should_revise / should_append / suppress_current
+  revise_last_transcript_snapshot() on merge (not append)
+  Alpha export uses clean active lines only
+  stable_commits.jsonl keeps full debug history separately
+
+================================================================================
+7. LIVE RUN — V24.1
+================================================================================
+
+run_id:        live-v3.3.5.5.8.5.24.1-20260709-225534-b0d036d7
+run_folder:    troubleshooting/runs/v3.3.5.5.8.5.24.1-20260709-225534/
+started:       2026-07-09 22:55:34
+completed:     2026-07-09 23:05:18
+duration:      ~10 minutes
+final_status:  completed
+
+Alpha export:
+  latest_live_alpha_output.txt: 40 lines, 6,579 bytes
+  sha256: 3d5ea0bf66d313ebf7d82a6f3b0e5a125525ad6b14b30cc2ef09f1656b59a46a
+
+Export vs history:
+  stable_commits (debug history): 58
+  ui_exported_segments:           43
+  clean active lines (export):    40
+  revise_previous_line_count:     17  (live revisions applied)
+
+================================================================================
+8. BOUNDARY STABILIZER LIVE METRICS (24.1)
+================================================================================
+
+Source: troubleshooting/latest/boundary_stabilizer_summary.json
+
+input_stable_candidate_count:   64
+output_stable_commit_count:     57
+output_clean_line_count:        40
+revise_previous_line_count:     17
+merge_previous_count:           11
+merge_pending_count:            6
+cumulative_duplicate_converted: 11
+leading_fragment_before:        12 → after: 2
+translation_ready shadow:       67.2% → 91.2%
+raw_mutation_count:             0
+
+Logs confirm live revisions:
+  STABLE_LINE_REVISED, BOUNDARY_OUTPUT_REVISE_PREVIOUS_LINE
+  CLEAN_ALPHA_EXPORT_SOURCE_ACTIVE_LINES action=revise_previous
+
+================================================================================
+9. BOUNDARY ERROR REPORT — V24 vs V24.1
+================================================================================
+
+                        V24 (live)     V24.1 (live)    Change
+total_boundary_risks:       60             9          -85%
+leading_fragment_count:      9             2          -78%
+duplicate_continuation:       41             3          -93%
+punctuation_artifact:          5             3          -40%
+assembler_candidate:          50             5          -90%
+
+================================================================================
+10. ACCURACY SCORING (24.1 live vs test01.txt)
+================================================================================
+
+score_report: latest_accuracy_score_report.json (20260709_231443)
+reference: test01.txt (sha 522a271d...)
+
+cer_score:                 34.49%
+final_trusted_score:       false
+score_should_be_used:      false
+score_blockers:
+  - alpha_output_cumulative_duplicate_suspected (3 chains — much improved from 40)
+  - unaligned_alpha_char_ratio_too_high (0.275)
+  - average_window_overlap_too_low (0.392)
+  - alignment_integrity_v2_not_acceptable
+
+clean_alpha_export_enabled: true
+stable_revision_model_enabled: true
+cumulative_duplicate_count: 3 (was 40 on V24 alpha)
+alpha_output_cumulative_duplicate_suspected: true (threshold: >=3 chains)
+
+Note: Shorter session (~10 min) vs V24 (~22 min); reference alignment still weak.
+CER 34.5% vs V24 57.8% — not directly comparable (different session length/content).
+
+================================================================================
+11. OFFLINE REPAIR ON V24 DATA (pre-live validation)
+================================================================================
+
+repair_clean_alpha_export.py --latest on V24 cumulative alpha:
+  136 lines → 89 clean lines (47 removed)
+  cumulative_duplicate_count: 40 → 1
+  alpha_output_cumulative_duplicate_suspected: true → false
+
+Output: troubleshooting/accuracy_benchmark/clean_export_repair/20260709_224601_clean_alpha_output.txt
+
+================================================================================
+12. UPLOAD PACKAGE
+================================================================================
+
+UPLOAD_PACKAGE_v3.3.5.5.8.5.24.1_20260709_231600.zip (123 files)
+
+Included:
+  boundary_stabilizer_summary_included=true (from latest mirror)
+  clean_alpha_export_included=true
+  analyzer reports synced
+  latest_live_alpha_output.txt (clean 40-line export)
+
+Not in run folder (minor gap):
+  boundary_stabilizer_decisions.jsonl — still in _pending
+  clean_active_transcript.jsonl — not flushed to run transcripts/
+  stable_revision_history.jsonl — not flushed to run transcripts/
+
+================================================================================
+13. POLICY COMPLIANCE — PASSED
+================================================================================
+
+raw_deepgram_finals.jsonl: immutable (raw_mutation_count=0)
+auto_business_correction: minimal (0 applied)
+No broad word correction, no DeepL/Groq/MeetingBaaS, no diarization
+English path untouched
+
+================================================================================
+14. WHAT WORKED
+================================================================================
+
+✓ Cumulative duplicate export bug fixed — 40 chains → 3 in live export
+✓ merge_with_previous revises in-place (17 live revisions logged)
+✓ Alpha line count (40) << stable_commits (58) — no longer 1:1 append
+✓ duplicate_continuation diagnostic: 41 → 3
+✓ leading_fragments: 9 → 2
+✓ total_boundary_risks: 60 → 9
+✓ Runtime stable — Stop normal, live Alpha protected
+✓ Boundary summary written to latest/ mirror with revision metrics
+✓ Upload package includes boundary summary + clean alpha
+✓ Smoke/live pointer separation working
+
+================================================================================
+15. REMAINING GAPS (FUTURE PATCH)
+================================================================================
+
+✗ clean_active_transcript.jsonl not persisted to run folder (in-memory works)
+✗ stable_revision_history.jsonl not persisted to run folder
+✗ boundary_stabilizer_decisions.jsonl still under _pending not run/accuracy/
+✗ 3 residual cumulative prefix chains in live alpha (tune guard threshold)
+✗ CER still not trusted — need matched-length reference alignment test
+✗ translation_ready_ratio 70.2% on final alpha (target >=80%)
+
+================================================================================
+16. FILES TO UPLOAD
+================================================================================
+
+1.  UPLOAD_PACKAGE_v3.3.5.5.8.5.24.1_20260709_231600.zip
+2.  troubleshooting/latest_accuracy_evidence_index.json
+3.  troubleshooting/accuracy_benchmark/latest_reports/LATEST_REPORT_SET_INDEX.json
+4.  troubleshooting/accuracy_benchmark/latest_reports/latest_accuracy_score_report.json
+5.  troubleshooting/accuracy_benchmark/latest_reports/latest_alignment_report.json
+6.  troubleshooting/accuracy_benchmark/latest_reports/latest_alignment_report.txt
+7.  troubleshooting/accuracy_benchmark/latest_reports/latest_boundary_error_report.json
+8.  troubleshooting/accuracy_benchmark/latest_reports/latest_business_term_risk_report.json
+9.  troubleshooting/accuracy_benchmark/latest_reports/latest_glossary_candidates.json
+10. troubleshooting/latest/latest_live_alpha_output.txt
+11. troubleshooting/latest/boundary_stabilizer_summary.json
+12. troubleshooting/runs/_pending/accuracy/boundary_stabilizer_decisions.jsonl
+13. troubleshooting/Cursor final report.txt (this file)
+14. troubleshooting/accuracy_benchmark/reference_transcripts/test01.txt
+
+Optional:
+  troubleshooting/accuracy_benchmark/clean_export_repair/20260709_224601_clean_alpha_output.txt
+  (offline repair of V24 cumulative alpha for comparison)
+
+Do not upload WAV/audio unless requested.
+
+================================================================================
+17. SUCCESS CRITERIA CHECKLIST
+================================================================================
+
+[PASS] Runtime stable, Stop does not freeze
+[PASS] Deepgram config unchanged
+[PASS] Raw Deepgram untouched (raw_mutation_count=0)
+[PASS] Auto correction minimal, no broad word correction
+[PASS] merge_with_previous revises instead of appending cumulative line
+[PASS] latest_live_alpha_output is clean final transcript (40 lines vs 58 commits)
+[PASS] duplicate continuation after merge significantly reduced (41→3)
+[PASS] boundary summary included in upload package
+[PARTIAL] clean_active_transcript.jsonl exists in-memory but not run folder file
+[PASS] scoring detects cumulative duplicate (correctly flags remaining 3)
+[PASS] smoke run does not overwrite live benchmark pointer
+[PASS] Ready to continue Japanese accuracy without cumulative export pollution
+
+================================================================================
+END OF REPORT — V3.3.5.5.8.5.24.1 LIVE TEST COMPLETE
+================================================================================

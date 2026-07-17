@@ -1,0 +1,23 @@
+{
+  "test_number": 15,
+  "test_name": "reference_opened_before_runtime_exit_fails",
+  "kind": "negative",
+  "single_mutation_description": "reference_isolation_actual.json reference_opened_after_runtime_exit set False",
+  "files": [
+    {
+      "relative_path": "actual_gate_result.json",
+      "byte_size": 993,
+      "sha256": "fc3b6a6ccfe59e93bc751dc05b68cfef8db11703a3230684292ded78c5b57ad6"
+    },
+    {
+      "relative_path": "expected_gate_result.json",
+      "byte_size": 355,
+      "sha256": "c23aaaa408b407bf77b2eb57df63cead44f16cb7e76f281a54ce1b1539afc7c8"
+    },
+    {
+      "relative_path": "regression_assertion.json",
+      "byte_size": 734,
+      "sha256": "37f5d90c4b09133d2cd0afdfbbc504cb867564b12b63633de6418bbc833830fc"
+    }
+  ]
+}

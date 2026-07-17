@@ -1,0 +1,6 @@
+{
+  "test_number": 12,
+  "test_name": "api_key_in_request_evidence_fails",
+  "expected_pass_or_fail": "fail",
+  "expected_failure_reason": "api_key"
+}

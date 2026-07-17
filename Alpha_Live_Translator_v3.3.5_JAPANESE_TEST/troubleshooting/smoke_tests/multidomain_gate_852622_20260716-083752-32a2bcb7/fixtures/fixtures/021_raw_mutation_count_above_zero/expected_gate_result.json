@@ -1,0 +1,10 @@
+{
+  "test_number": 21,
+  "test_name": "raw_mutation_count_above_zero_fails",
+  "expected_gate_status": "FAILED",
+  "expected_failure_codes": [
+    "RAW_MUTATION_COUNT_NOT_ZERO"
+  ],
+  "expected_policy_result": "",
+  "single_mutation_description": "runtime_regression_report.json runtime_regressions set to ['raw_mutation_count_nonzero']"
+}

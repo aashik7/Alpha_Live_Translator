@@ -1,0 +1,33 @@
+{
+  "app_version": "3.3.5.5.8.5.24.1",
+  "generated_at": "2026-07-10T09:17:57",
+  "alpha_path": "troubleshooting\\latest\\latest_live_alpha_output.txt",
+  "alpha_sha256": "3d5ea0bf66d313ebf7d82a6f3b0e5a125525ad6b14b30cc2ef09f1656b59a46a",
+  "reference_path": "",
+  "reference_sha256": "",
+  "report_set_timestamp": "20260709_231353",
+  "report_set_consistent": false,
+  "warnings": [
+    "missing_reports:score,reference_quality,alignment_json,alignment_txt,boundary,cleanup"
+  ],
+  "alignment_algorithm_version": "",
+  "alignment_integrity_verdict_v2": "",
+  "final_trusted_score": null,
+  "score_should_be_used_for_decision": null,
+  "report_paths": {
+    "business": "troubleshooting/accuracy_benchmark/latest_reports/latest_business_term_risk_report.json",
+    "glossary": "troubleshooting/accuracy_benchmark/latest_reports/latest_glossary_candidates.json"
+  },
+  "report_hashes": {
+    "business": "511d7bf12121f590adb60e895045f9ec215e588d5460b4f70a9e0564814ac3d4",
+    "glossary": "d52e48bb3a18f0e41a21880dec3b4f567fe819f70fab9bd64ae70d005d49500d"
+  },
+  "missing_reports": [
+    "latest_accuracy_score_report.json",
+    "latest_reference_quality_report.json",
+    "latest_alignment_report.json",
+    "latest_alignment_report.txt",
+    "latest_boundary_error_report.json",
+    "latest_reference_cleanup_suggestions.txt"
+  ]
+}

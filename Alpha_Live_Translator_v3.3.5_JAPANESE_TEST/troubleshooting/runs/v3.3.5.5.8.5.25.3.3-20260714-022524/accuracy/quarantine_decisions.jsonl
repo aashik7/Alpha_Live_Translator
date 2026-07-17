@@ -1,0 +1,2 @@
+{"event": "LOG_INITIALIZED", "reason": "no_events_yet", "timestamp": 1783963525.0046284, "app_version": "3.3.5.5.8.5.25.3.3"}
+{"raw_text": "不動産取得保育施設の新設増床による", "compact_length": 17, "time_since_last_good_commit_ms": 0.0, "source_activity": "unknown", "quarantine_decision": "quarantined", "reason": "noise_fragment", "later_committed_to_stable": false, "raw_mutated": false, "timestamp": 1783963712.503851}

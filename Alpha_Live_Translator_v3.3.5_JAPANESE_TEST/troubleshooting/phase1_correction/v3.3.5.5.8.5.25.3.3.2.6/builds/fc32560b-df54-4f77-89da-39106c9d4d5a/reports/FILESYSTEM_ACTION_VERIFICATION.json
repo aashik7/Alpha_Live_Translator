@@ -1,0 +1,13 @@
+{
+  "abandoned_staging_after": 0,
+  "archive_manifest_count": 48,
+  "archive_manifest_length": 48,
+  "build_id": "fc32560b-df54-4f77-89da-39106c9d4d5a",
+  "claim_matches_manifest": true,
+  "deletion_manifest_count": 4,
+  "files_archived": 48,
+  "files_archived_plus_deleted": 52,
+  "files_deleted": 4,
+  "generated_at": "2026-07-14T16:09:11Z",
+  "patch_version": "3.3.5.5.8.5.25.3.3.2.6"
+}

@@ -1,0 +1,10 @@
+{
+  "test_number": 5,
+  "test_name": "altered_transcript_hash_fails",
+  "expected_gate_status": "FAILED",
+  "expected_failure_codes": [
+    "TRANSCRIPT_HASH_MISMATCH"
+  ],
+  "expected_policy_result": "",
+  "single_mutation_description": "stage_manifest.json raw_sha256 set to a wrong value"
+}

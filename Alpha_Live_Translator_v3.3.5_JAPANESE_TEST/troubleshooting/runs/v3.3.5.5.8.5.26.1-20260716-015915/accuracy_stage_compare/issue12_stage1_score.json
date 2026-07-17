@@ -1,0 +1,109 @@
+{
+  "reference_quality_verdict": "valid_for_cer",
+  "trusted_score": true,
+  "reference_path": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\accuracy_benchmark\\reference_transcripts\\test01.txt",
+  "reference_sha256": "09634a0da9ff86ce4825fb8326c3bca99e64be955c971d7e2db7f7b7823e5b8b",
+  "raw": {
+    "reference_character_count": 1773,
+    "hypothesis_character_count": 1550,
+    "substitutions": 77,
+    "deletions": 239,
+    "insertions": 16,
+    "total_edit_distance": 332,
+    "cer": 0.18725324309080654,
+    "cer_percent": 18.725324309080655,
+    "accuracy_percent": 81.27467569091934,
+    "accuracy_percent_display": 81.27,
+    "cer_percent_display": 18.73
+  },
+  "stable": {
+    "reference_character_count": 1773,
+    "hypothesis_character_count": 1547,
+    "substitutions": 76,
+    "deletions": 242,
+    "insertions": 16,
+    "total_edit_distance": 334,
+    "cer": 0.1883812746756909,
+    "cer_percent": 18.83812746756909,
+    "accuracy_percent": 81.1618725324309,
+    "accuracy_percent_display": 81.16,
+    "cer_percent_display": 18.84
+  },
+  "final": {
+    "reference_character_count": 1773,
+    "hypothesis_character_count": 1547,
+    "substitutions": 76,
+    "deletions": 242,
+    "insertions": 16,
+    "total_edit_distance": 334,
+    "cer": 0.1883812746756909,
+    "cer_percent": 18.83812746756909,
+    "accuracy_percent": 81.1618725324309,
+    "accuracy_percent_display": 81.16,
+    "cer_percent_display": 18.84
+  },
+  "stable_to_final_loss_percent": 0.0,
+  "name_accuracy_percent": 100.0,
+  "number_accuracy_percent": 100.0,
+  "business_term_accuracy_percent": 81.48148148148148,
+  "combined_critical_term_accuracy_percent": 87.5,
+  "category_details": {
+    "names": {
+      "expected_count": 10,
+      "found_count": 10,
+      "accuracy_percent": 100.0,
+      "missing_terms": []
+    },
+    "numbers": {
+      "expected_count": 3,
+      "found_count": 3,
+      "accuracy_percent": 100.0,
+      "missing_terms": []
+    },
+    "business_terms": {
+      "expected_count": 27,
+      "found_count": 22,
+      "accuracy_percent": 81.48148148148148,
+      "missing_terms": [
+        "進捗率",
+        "有形固定資産",
+        "短期借入金",
+        "長期借入金",
+        "公定価格"
+      ]
+    },
+    "combined": {
+      "expected_count": 40,
+      "found_count": 35,
+      "accuracy_percent": 87.5,
+      "missing_terms": [
+        "進捗率",
+        "有形固定資産",
+        "短期借入金",
+        "長期借入金",
+        "公定価格"
+      ]
+    }
+  },
+  "target_85_passed": false,
+  "failures": [
+    "stable_accuracy_below_85",
+    "stable_cer_above_15",
+    "combined_critical_term_below_90"
+  ],
+  "gap_to_85_percent": 3.8381274675690946,
+  "highest_impact_edit_categories": [
+    {
+      "category": "financial_term",
+      "missing_term_count": 5
+    },
+    {
+      "category": "raw_substitutions",
+      "missing_term_count": 76
+    },
+    {
+      "category": "raw_deletions",
+      "missing_term_count": 242
+    }
+  ]
+}

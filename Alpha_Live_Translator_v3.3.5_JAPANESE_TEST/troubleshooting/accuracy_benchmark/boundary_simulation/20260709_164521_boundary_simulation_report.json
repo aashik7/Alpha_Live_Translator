@@ -1,0 +1,118 @@
+{
+  "app_version": "3.3.5.5.8.5.24",
+  "input_path": "troubleshooting\\latest\\latest_live_alpha_output.txt",
+  "reference_path": "troubleshooting/accuracy_benchmark/reference_transcripts/test01.txt",
+  "input_line_count": 121,
+  "output_line_count": 87,
+  "leading_fragment_before_count": 0,
+  "leading_fragment_after_count": 0,
+  "duplicate_before_count": 0,
+  "duplicate_after_count": 0,
+  "punctuation_artifact_before_count": 1,
+  "punctuation_artifact_after_count": 0,
+  "estimated_translation_ready_before": 0.7273,
+  "estimated_translation_ready_after": 0.977,
+  "stabilizer_metrics": {
+    "boundary_stabilizer_enabled": true,
+    "boundary_stabilizer_mode": "safe_active",
+    "input_stable_candidate_count": 121,
+    "output_stable_commit_count": 101,
+    "held_fragment_count": 20,
+    "merge_previous_count": 14,
+    "merge_pending_count": 20,
+    "duplicate_suppressed_count": 0,
+    "punctuation_cleanup_count": 1,
+    "timeout_emit_count": 0,
+    "stop_flush_emit_count": 0,
+    "stop_flush_drop_count": 0,
+    "raw_mutation_count": 0,
+    "dangerous_correction_count": 0,
+    "leading_fragment_before_count": 0,
+    "leading_fragment_after_count": 0,
+    "punctuation_artifact_before_count": 1,
+    "punctuation_artifact_after_count": 0,
+    "duplicate_continuation_before_count": 0,
+    "duplicate_continuation_after_count": 4,
+    "translation_ready_before_ratio": 0.7273,
+    "translation_ready_after_ratio": 0.901,
+    "boundary_risk_estimate_before": 0,
+    "boundary_risk_estimate_after": 4
+  },
+  "examples_before_after": [
+    {
+      "before": "[Speaker 2] それでは始めましょうそれでは表現から確認していきましょうまずこちらの二つの表現を確認します",
+      "after": "[Speaker 2] それでは始めましょうそれでは表現から確認していきましょうまずこちらの二つの表現を確認します[Speaker 2] 一つ目相対、遅刻、休暇かっこ自分の都合で長く休んこの場合の表現についてです。",
+      "action": "hold_leading_fragment",
+      "reason": "incomplete_ending_ます"
+    },
+    {
+      "before": "[Speaker 2] 一つ目相対、遅刻、休暇かっこ自分の都合で長く休んこの場合の表現についてです。",
+      "after": "[Speaker 2] 場合はどんな表現を使うんでしたか覚えていますか。",
+      "action": "merge_pending_and_current",
+      "reason": "incomplete_previous"
+    },
+    {
+      "before": "[Speaker 2] 場合はどんな表現を使うんでしたか覚えていますか。",
+      "after": "[Speaker 2] て申し訳ありませんでしたこの表現を使うんでしたね例えば[Speaker 2] 忙しい時に休んでしまって申し訳ありませんでした。",
+      "action": "emit_unchanged",
+      "reason": "ready_to_emit"
+    },
+    {
+      "before": "[Speaker 2] て申し訳ありませんでしたこの表現を使うんでしたね例えば",
+      "after": "[Speaker 2] 遅くなって申し訳ありませんでした。いたふうに表現を使ってください。",
+      "action": "emit_unchanged",
+      "reason": "ready_to_emit"
+    },
+    {
+      "before": "[Speaker 2] 忙しい時に休んでしまって申し訳ありませんでした。",
+      "after": "[Speaker 2] 相対休暇家の場合は忙しい時にを使ってください。遅刻の場合は遅くなって申し訳ありません。",
+      "action": "merge_with_previous",
+      "reason": "incomplete_previous"
+    },
+    {
+      "before": "[Speaker 2] 遅くなって申し訳ありませんでした。いたふうに表現を使ってください。",
+      "after": "[Speaker 2] は遅刻して申し訳ありませんでした。",
+      "action": "emit_unchanged",
+      "reason": "ready_to_emit"
+    },
+    {
+      "before": "[Speaker 2] 相対休暇家の場合は忙しい時にを使ってください。遅刻の場合は遅くなって申し訳ありません。",
+      "after": "[Speaker 2] でも構いませんね。では一緒にリピートしてください。",
+      "action": "emit_unchanged",
+      "reason": "ready_to_emit"
+    },
+    {
+      "before": "[Speaker 2] は遅刻して申し訳ありませんでした。",
+      "after": "[Speaker 2] 忙しい時に休んでしまって申し訳ありませんでした。",
+      "action": "emit_unchanged",
+      "reason": "ready_to_emit"
+    },
+    {
+      "before": "[Speaker 2] でも構いませんね。では一緒にリピートしてください。",
+      "after": "[Speaker 2] 遅くなって申し訳ありませんでした。",
+      "action": "emit_unchanged",
+      "reason": "ready_to_emit"
+    },
+    {
+      "before": "[Speaker 2] 忙しい時に休んでしまって申し訳ありませんでした。",
+      "after": "[Speaker 2] はいこの小さいつがある時のアクセント注意しましたか。",
+      "action": "emit_unchanged",
+      "reason": "ready_to_emit"
+    },
+    {
+      "before": "[Speaker 2] 遅くなって申し訳ありませんでした。",
+      "after": "[Speaker 2] 休んでしまってと上がらないように注意してください。",
+      "action": "emit_unchanged",
+      "reason": "ready_to_emit"
+    },
+    {
+      "before": "[Speaker 2] はいこの小さいつがある時のアクセント注意しましたか。",
+      "after": "[Speaker 2] 休んでしまって遅くなってこの小さいつの発音たくさんこれからも出てきますのでいつも注意てください。",
+      "action": "emit_unchanged",
+      "reason": "ready_to_emit"
+    }
+  ],
+  "simulated_at": "2026-07-09T16:45:21",
+  "simulated_score": false,
+  "simulated_score_note": "reference_provided_scoring_deferred_to_user_cli"
+}

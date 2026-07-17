@@ -1,0 +1,19 @@
+{
+  "test_number": 7,
+  "test_name": "missing_sent_chunk_fails",
+  "actual_gate_status": "FAILED",
+  "actual_failure_codes": [
+    "AUDIO_CHUNK_MISSING"
+  ],
+  "actual_failure_messages": [
+    "acceptance.failures=audio_delivery_missing_chunks -> AUDIO_CHUNK_MISSING"
+  ],
+  "actual_gate_exit_code": 0,
+  "actual_acceptance_version": "NOT_ACCEPTED",
+  "actual_acceptance_status": "FIXTURE_ONLY",
+  "source_result_file": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\smoke_tests\\multidomain_gate_evidence_852622_hardfix_20260716-094515\\fixtures\\007_missing_sent_chunk\\accuracy_stage_compare\\multidomain_gate_acceptance.json",
+  "source_result_file_sha256": "1f4ba4baffa3b988a2b85f84a21afbe7d9c1ebbedcdf6a4185f45da7e62bed9e",
+  "unhandled_exception": false,
+  "exception_class": "",
+  "exception_message": ""
+}

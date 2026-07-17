@@ -1,0 +1,7 @@
+status=stopped_runtime_minimal
+run_id=live-v3.3.5.5.8.5.22-20260708-092043-6985393e
+run_timestamp=20260708-092043
+app_version=3.3.5.5.8.5.22
+stop_core_completed=true
+stop_finalize_completed=true
+evidence_package_status=disabled_during_runtime

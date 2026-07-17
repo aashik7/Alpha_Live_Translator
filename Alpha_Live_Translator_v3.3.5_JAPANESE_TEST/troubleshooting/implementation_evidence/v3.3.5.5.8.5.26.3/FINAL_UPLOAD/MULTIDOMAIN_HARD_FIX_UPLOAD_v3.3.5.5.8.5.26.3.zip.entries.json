@@ -1,0 +1,13 @@
+{
+  "entry_count": 8,
+  "entries": [
+    "sealed/MULTIDOMAIN_HARD_FIX_INNER_v3.3.5.5.8.5.26.3.zip",
+    "sealed/MULTIDOMAIN_HARD_FIX_INNER_v3.3.5.5.8.5.26.3.zip.sha256",
+    "sealed/MULTIDOMAIN_HARD_FIX_INNER_v3.3.5.5.8.5.26.3.zip.size.txt",
+    "sealed/MULTIDOMAIN_HARD_FIX_INNER_v3.3.5.5.8.5.26.3.zip.entries.json",
+    "sealed/MULTIDOMAIN_HARD_FIX_INNER_v3.3.5.5.8.5.26.3.zip.seal.json",
+    "external/INDEPENDENT_HARD_FIX_VERIFICATION.json",
+    "external/FINAL_HARD_FIX_ACCEPTANCE.json",
+    "external/Cursor final report.txt"
+  ]
+}

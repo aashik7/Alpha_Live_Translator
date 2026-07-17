@@ -1,0 +1,3 @@
+file_count=1867
+directory_count=560
+bytes=153821474

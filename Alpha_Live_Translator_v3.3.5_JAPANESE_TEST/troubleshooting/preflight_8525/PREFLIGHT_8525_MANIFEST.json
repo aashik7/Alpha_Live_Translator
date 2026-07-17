@@ -1,0 +1,14 @@
+{
+  "collected_at": "2026-07-10T15:09:44",
+  "app_version_before_change": "3.3.5.5.8.5.24.2",
+  "latest_run_id": "",
+  "latest_alpha_path": "troubleshooting\\latest\\latest_live_alpha_output.txt",
+  "latest_alpha_size_bytes": 4585,
+  "latest_alpha_sha256": "c85c308de02e01f5ca9fbfb9f8b583029280c54357c8fc665f969d6626401844",
+  "latest_alpha_line_count": 0,
+  "residual_duplicate_after_count": 0,
+  "punctuation_artifact_after_count": 0,
+  "warnings": [
+    "critical_missing:latest_accuracy_evidence_index.json"
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "test_number": 30,
+  "test_name": "fixture_run_cannot_create_version_accepted",
+  "kind": "policy",
+  "single_mutation_description": "no mutation; verifies fixture_mode structurally blocks VERSION=ACCEPTED",
+  "files": [
+    {
+      "relative_path": "actual_gate_result.json",
+      "byte_size": 877,
+      "sha256": "221bf6b64497bacd3e1fa1ca9cecd4331b589be129b274d3c6678f124b5a39c4"
+    },
+    {
+      "relative_path": "expected_gate_result.json",
+      "byte_size": 327,
+      "sha256": "36b7c8e50bb443d1be3fdba07e364834789be7ad4f490a9ebb0ef3ac114a0748"
+    },
+    {
+      "relative_path": "regression_assertion.json",
+      "byte_size": 668,
+      "sha256": "db72563551d88662caab18b327ae1834752c6081d70e3291b0e35b8f993544d4"
+    }
+  ]
+}

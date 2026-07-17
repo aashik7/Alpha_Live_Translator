@@ -1,0 +1,63 @@
+{
+  "selected_run_id": "live-v3.3.5.5.8.5.25.3.3.1-20260714-111519-14b93a8a",
+  "selected_run_folder": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\runs\\v3.3.5.5.8.5.25.3.3.1-20260714-111519",
+  "selected_run_app_version": "3.3.5.5.8.5.25.3.3.1",
+  "validation_patch_version": "3.3.5.5.8.5.25.3.3.2.2",
+  "runtime_file_identity_checks": [
+    {
+      "field": "RUN_MANIFEST.json:run_id",
+      "embedded": "live-v3.3.5.5.8.5.25.3.3.1-20260714-111519-14b93a8a",
+      "selected": "live-v3.3.5.5.8.5.25.3.3.1-20260714-111519-14b93a8a",
+      "passed": true,
+      "existence_only_rejected": false
+    },
+    {
+      "field": "RUN_MANIFEST.json:app_version",
+      "embedded": "3.3.5.5.8.5.25.3.3.1",
+      "selected": "3.3.5.5.8.5.25.3.3.1",
+      "passed": true
+    },
+    {
+      "field": "artifacts/LIVE_RUN_STATUS.json:run_id",
+      "embedded": "live-v3.3.5.5.8.5.25.3.3.1-20260714-111519-14b93a8a",
+      "selected": "live-v3.3.5.5.8.5.25.3.3.1-20260714-111519-14b93a8a",
+      "passed": true,
+      "existence_only_rejected": false
+    },
+    {
+      "field": "artifacts/LIVE_RUN_STATUS.json:app_version",
+      "embedded": "3.3.5.5.8.5.25.3.3.1",
+      "selected": "3.3.5.5.8.5.25.3.3.1",
+      "passed": true
+    },
+    {
+      "field": "transcripts/FINAL_EXPORT_SEAL.json:run_id",
+      "embedded": "live-v3.3.5.5.8.5.25.3.3.1-20260714-111519-14b93a8a",
+      "selected": "live-v3.3.5.5.8.5.25.3.3.1-20260714-111519-14b93a8a",
+      "passed": true,
+      "existence_only_rejected": false
+    }
+  ],
+  "validation_file_version_checks": [
+    {
+      "field": "validation_metadata.validation_patch_version",
+      "embedded": "3.3.5.5.8.5.25.3.3.2.2",
+      "expected": "3.3.5.5.8.5.25.3.3.2.2",
+      "passed": true
+    }
+  ],
+  "reference_identity_checks": [
+    {
+      "field": "prepared_reference.preparation_version",
+      "embedded": "3.3.5.5.8.5.25.3.3.2.2",
+      "source_sha256": "09634a0da9ff86ce4825fb8326c3bca99e64be955c971d7e2db7f7b7823e5b8b",
+      "snapshot_sha256": "09634a0da9ff86ce4825fb8326c3bca99e64be955c971d7e2db7f7b7823e5b8b",
+      "normalized_sha256_match": true,
+      "passed": true
+    }
+  ],
+  "run_id_mismatches": [],
+  "run_version_mismatches": [],
+  "validation_version_mismatches": [],
+  "package_identity_passed": true
+}

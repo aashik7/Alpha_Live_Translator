@@ -1,0 +1,6 @@
+{
+  "test_number": 22,
+  "test_name": "translation_provider_active_fails",
+  "expected_pass_or_fail": "fail",
+  "expected_failure_reason": "translation"
+}

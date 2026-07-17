@@ -1,0 +1,123 @@
+{
+  "test_number": 6,
+  "test_name": "altered_audio_delivery_hash_fails",
+  "kind": "negative",
+  "single_mutation_description": "audio_delivery_summary.json delivery_ratio altered post-generation",
+  "files": [
+    {
+      "relative_path": "accuracy_stage_compare/audio_delivery_events.jsonl",
+      "byte_size": 1960,
+      "sha256": "f798ebaff2c63a5aa83627fa94fc202f969e59a0d9b53e3e5ad23d69b074e5aa"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/audio_delivery_summary.json",
+      "byte_size": 1108,
+      "sha256": "2ab686c60d69c794c7f06b05221523e8ab0e5231ac5748e3bc5c7c10da7747f5"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/Cursor final report.txt",
+      "byte_size": 16,
+      "sha256": "e25d9e87a10d0c32265dc21eedccd081076a638fb70023cf7ec4a74a55f7f2e9"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/deepgram_request_actual.json",
+      "byte_size": 926,
+      "sha256": "9b2088f521230dcf25dbf623c01f6e5953652aa7592bd7ea0304d60e9fac782f"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/domain_category_score.json",
+      "byte_size": 4823,
+      "sha256": "47f54057a4ad9bd3131464adb3f9cd5a7d862bf242fc12d7d21ff712d2fb63f0"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/final_alpha_output.txt",
+      "byte_size": 1450,
+      "sha256": "f5f7ba4480ee10dc408e2f24d3e2865520a1d666a57bbbdaeea50c4dc6c0a5b7"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/independent_verification.json",
+      "byte_size": 2435,
+      "sha256": "6ffbc0a5cc696f61146680af4a5ea938943e3d347102c2d35c74acdc68e5d4dc"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/meaning_equivalent_score.json",
+      "byte_size": 3838,
+      "sha256": "e55d9c8b372b733c9c43d89f9700c4c0d6248ec50c9fc8e5244aa7e26f452fbb"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/multidomain_gate_acceptance.json",
+      "byte_size": 1261,
+      "sha256": "14031e1c6442e472fc19bfd5ff8e918266051f82d0b7f6e7dc17871d90a6a26d"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/noise.wav",
+      "byte_size": 4,
+      "sha256": "a40ff3d5900fb7698b8c865041347cb49eccedc8f93945f89629ad104aaecce4"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/raw_deepgram.txt",
+      "byte_size": 1450,
+      "sha256": "f5f7ba4480ee10dc408e2f24d3e2865520a1d666a57bbbdaeea50c4dc6c0a5b7"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/reference_isolation_actual.json",
+      "byte_size": 781,
+      "sha256": "a490ac7d7683244125a55f31a0459a5ec0ea73057a1d2053eb38077e2494baa4"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/runtime_regression_report.json",
+      "byte_size": 156,
+      "sha256": "42e8a3380243101dbe0511f33d1a51704171586771f3e96cb1179f2ef2ec71c3"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/stable_transcript.txt",
+      "byte_size": 1450,
+      "sha256": "f5f7ba4480ee10dc408e2f24d3e2865520a1d666a57bbbdaeea50c4dc6c0a5b7"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/strict_score.json",
+      "byte_size": 1802,
+      "sha256": "a8fdd1a19b5250a90f6a5cd9899d7004c7a3b793715d853512d256f52d811d76"
+    },
+    {
+      "relative_path": "actual_gate_result.json",
+      "byte_size": 964,
+      "sha256": "05414a5cef50d48e37c4bc5ed9d2def3b2a924cd769851958b1cbc8a30b3a5cb"
+    },
+    {
+      "relative_path": "expected_gate_result.json",
+      "byte_size": 326,
+      "sha256": "a57af48498826d244c277e8de4d0ea651eecd4018a71aa96e7f0a4603f15f2af"
+    },
+    {
+      "relative_path": "MULTIDOMAIN_GATE_ANALYSIS_PACKAGE_006_altered_audio_delivery_hash.sha256",
+      "byte_size": 66,
+      "sha256": "f629f06171828320291110db0058ee2c13ee51b1a84d61e33ec4a018f512f0cc"
+    },
+    {
+      "relative_path": "MULTIDOMAIN_GATE_ANALYSIS_PACKAGE_006_altered_audio_delivery_hash.size.txt",
+      "byte_size": 7,
+      "sha256": "70e5ec8aaaa0a7401d3f4809c70c9546e1da13ea9aa760079166fce2e68a83dc"
+    },
+    {
+      "relative_path": "MULTIDOMAIN_GATE_ANALYSIS_PACKAGE_006_altered_audio_delivery_hash.zip",
+      "byte_size": 13427,
+      "sha256": "c510f6995b24a66fbf9e054b8581fe58fb23b3b5f85c19d087d91935baffb4ae"
+    },
+    {
+      "relative_path": "reference_copy/multidomain_meeting_v1.txt",
+      "byte_size": 1450,
+      "sha256": "f5f7ba4480ee10dc408e2f24d3e2865520a1d666a57bbbdaeea50c4dc6c0a5b7"
+    },
+    {
+      "relative_path": "reference_copy/multidomain_meeting_v1_truth.json",
+      "byte_size": 2000,
+      "sha256": "ecfbe03916714bd6978dcf926b66def33fb881b394a6ea9594df538f608b2112"
+    },
+    {
+      "relative_path": "regression_assertion.json",
+      "byte_size": 692,
+      "sha256": "594267b8a312e2e4189b3c4b53c24fe8afae5be0bee2c8d0b6077012e1fd98ae"
+    }
+  ]
+}

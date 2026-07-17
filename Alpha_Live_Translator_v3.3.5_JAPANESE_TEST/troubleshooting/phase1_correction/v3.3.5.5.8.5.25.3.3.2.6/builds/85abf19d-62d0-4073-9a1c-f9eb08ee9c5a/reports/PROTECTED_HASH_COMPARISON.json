@@ -1,0 +1,16 @@
+{
+  "authoritative_reference_unchanged": true,
+  "authoritative_run_unchanged": true,
+  "build_id": "85abf19d-62d0-4073-9a1c-f9eb08ee9c5a",
+  "changed_paths": [
+    "troubleshooting/PROJECT_STATE.json"
+  ],
+  "final_transcript_unchanged": true,
+  "generated_at": "2026-07-14T15:58:52Z",
+  "missing_protected_paths": [],
+  "patch_version": "3.3.5.5.8.5.25.3.3.2.6",
+  "protected_file_changes": 0,
+  "raw_transcript_unchanged": true,
+  "stable_transcript_unchanged": true,
+  "unexpected_changed_paths": []
+}

@@ -1,0 +1,23 @@
+{
+  "test_number": 19,
+  "test_name": "test01_profile_active_fails",
+  "kind": "negative",
+  "single_mutation_description": "deepgram_request_actual.json test01_profile_active set True",
+  "files": [
+    {
+      "relative_path": "actual_gate_result.json",
+      "byte_size": 923,
+      "sha256": "22c08970a618870c67a47ea720189fab9c1b4c5b2e47bedad1fd7ecca566f6fa"
+    },
+    {
+      "relative_path": "expected_gate_result.json",
+      "byte_size": 307,
+      "sha256": "e18e0aed36e7abcd80e6309c5213f483f2333968fd34e8e5a46f3c00a18b3e3f"
+    },
+    {
+      "relative_path": "regression_assertion.json",
+      "byte_size": 659,
+      "sha256": "1a98ab0246ff64e56d0e72b4e8d1bb624f4a60c95831d1b82d6f522a34e11d22"
+    }
+  ]
+}

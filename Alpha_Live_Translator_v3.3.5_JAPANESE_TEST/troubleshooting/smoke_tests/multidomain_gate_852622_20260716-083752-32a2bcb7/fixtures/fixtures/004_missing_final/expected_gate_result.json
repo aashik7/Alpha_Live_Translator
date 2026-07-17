@@ -1,0 +1,10 @@
+{
+  "test_number": 4,
+  "test_name": "missing_final_file_fails",
+  "expected_gate_status": "FAILED",
+  "expected_failure_codes": [
+    "MISSING_FINAL_TRANSCRIPT"
+  ],
+  "expected_policy_result": "",
+  "single_mutation_description": "final_alpha_output.txt omitted"
+}

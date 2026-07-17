@@ -1,0 +1,52 @@
+{
+  "app_version": "3.3.5.5.8.5.25.3",
+  "run_folder": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\runs\\v3.3.5.5.8.5.25.3-20260713-123233",
+  "reference_path": "troubleshooting\\accuracy_benchmark\\reference_transcripts\\test01.txt",
+  "reference_quality_verdict": "valid_for_cer",
+  "trusted_score": true,
+  "score_should_be_used_for_decision": true,
+  "diagnostic_score_available": true,
+  "warning": "",
+  "raw_deepgram_cer": 0.261139,
+  "raw_deepgram_accuracy_percent": 73.89,
+  "stable_assembler_cer": 0.36943,
+  "stable_assembler_accuracy_percent": 63.06,
+  "final_alpha_cer": 0.36943,
+  "final_alpha_accuracy_percent": 63.06,
+  "stable_minus_raw_accuracy_points": -10.83,
+  "final_minus_stable_accuracy_points": 0.0,
+  "final_minus_raw_accuracy_points": -10.83,
+  "assembler_stage_degradation": true,
+  "final_post_processing_degradation": false,
+  "largest_accuracy_loss_stage": "assembler_stage",
+  "likely_bottleneck": "assembler_stage",
+  "stages": {
+    "raw_deepgram": {
+      "raw_character_count": 1526,
+      "reference_character_count": 1773,
+      "substitution_count": 0,
+      "deletion_count": 0,
+      "insertion_count": 0,
+      "cer": 0.261139,
+      "accuracy_percent": 73.89
+    },
+    "stable_assembler": {
+      "raw_character_count": 1279,
+      "reference_character_count": 1773,
+      "substitution_count": 0,
+      "deletion_count": 0,
+      "insertion_count": 0,
+      "cer": 0.36943,
+      "accuracy_percent": 63.06
+    },
+    "final_alpha": {
+      "raw_character_count": 1279,
+      "reference_character_count": 1773,
+      "substitution_count": 0,
+      "deletion_count": 0,
+      "insertion_count": 0,
+      "cer": 0.36943,
+      "accuracy_percent": 63.06
+    }
+  }
+}

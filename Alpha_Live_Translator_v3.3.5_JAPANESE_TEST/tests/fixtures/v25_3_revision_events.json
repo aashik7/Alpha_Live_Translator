@@ -1,0 +1,258 @@
+{
+  "app_version": "3.3.5.5.8.5.25.3.1",
+  "source_run": "troubleshooting\\runs\\v3.3.5.5.8.5.25.3-20260713-123233\\accuracy_stage_compare\\stable_assembler_events.jsonl",
+  "cases": [
+    {
+      "case_id": "asm-000003",
+      "event_id": "asm-000003",
+      "previous_record": {
+        "line_id": "line-000002",
+        "text": "ます。まずは二千二十六年七月期第三四半期決算概要についてお知らせいたします。売上高については百三十六億七千九百万となり前年同期比五点四パーセントの減収となりま。",
+        "source_raw_event_ids": []
+      },
+      "candidate_text": "これは既存園の在籍率向上や工程価格の上昇による補助金増額保育所の新規開設や増床が寄与し主力の保育サービスにおて増収となりました不動産事業は前期に計上した大型不動産売却案件の反動により当期も不動産売却は実施したものの全体としては厳粛となりました。",
+      "update_previous_requested": true,
+      "action": "revise_previous",
+      "reason": "safe_chunk_boundary_commit",
+      "commit_reason": "safe_chunk_boundary_commit",
+      "source_raw_event_ids": [],
+      "expected_safe_action": "append"
+    },
+    {
+      "case_id": "asm-000007",
+      "event_id": "asm-000007",
+      "previous_record": {
+        "line_id": "line-000005",
+        "text": "不採算事業の撤退や中核事業の合理化業務効率化により営業利益率は七点五パーセントから七点に向上しまた",
+        "source_raw_event_ids": []
+      },
+      "candidate_text": "不採算事業の撤退や中核事業の合理化業務効率化により営業利益率は七点五パーセントから七点に向上しまた。経常利益は十一億二千八百万円となり、前年同期比9。5の増益となりました。",
+      "update_previous_requested": true,
+      "action": "revise_previous",
+      "reason": "hold_timeout_sentence_end_punctuation",
+      "commit_reason": "hold_timeout_sentence_end_punctuation",
+      "source_raw_event_ids": [],
+      "expected_safe_action": "revise_previous"
+    },
+    {
+      "case_id": "asm-000010",
+      "event_id": "asm-000010",
+      "previous_record": {
+        "line_id": "line-000007",
+        "text": "親会社株主に属する当期純利",
+        "source_raw_event_ids": []
+      },
+      "candidate_text": "親会社株主に属する当期純利前期に計上した不採算事業の撤退に伴う特別損失がなくなった、早期は増益となります。",
+      "update_previous_requested": true,
+      "action": "revise_previous",
+      "reason": "hold_timeout_sentence_end_punctuation",
+      "commit_reason": "hold_timeout_sentence_end_punctuation",
+      "source_raw_event_ids": [],
+      "expected_safe_action": null
+    },
+    {
+      "case_id": "asm-000014",
+      "event_id": "asm-000014",
+      "previous_record": {
+        "line_id": "line-000010",
+        "text": "営業利益は通期予算に対し対応のない成果や",
+        "source_raw_event_ids": []
+      },
+      "candidate_text": "営業利益は通期予算に対し対応のない成果や不採算事業の定義といった毎期継続している費用削減の比較が確実に低下を送信収益が概ね予算通りに推移する中これらの施策が利益の上振れを牽引し当四半期累計期間において通期予算を前倒して",
+      "update_previous_requested": true,
+      "action": "revise_previous",
+      "reason": "safe_hold_timeout_incomplete_but_stable",
+      "commit_reason": "safe_hold_timeout_incomplete_but_stable",
+      "source_raw_event_ids": [],
+      "expected_safe_action": null
+    },
+    {
+      "case_id": "asm-000015",
+      "event_id": "asm-000015",
+      "previous_record": {
+        "line_id": "line-000010",
+        "text": "営業利益は通期予算に対し対応のない成果や不採算事業の定義といった毎期継続している費用削減の比較が確実に低下を送信収益が概ね予算通りに推移する中これらの施策が利益の上振れを牽引し当四半期累計期間において通期予算を前倒して",
+        "source_raw_event_ids": []
+      },
+      "candidate_text": "営業利益は通期予算に対し対応のない成果や不採算事業の定義といった毎期継続している費用削減の比較が確実に低下を送信収益が概ね予算通りに推移する中これらの施策が利益の上振れを牽引し当四半期累計期間において通期予算を前倒して達成しました続いて貸借対照表です。",
+      "update_previous_requested": true,
+      "action": "revise_previous",
+      "reason": "safe_chunk_boundary_commit",
+      "commit_reason": "safe_chunk_boundary_commit",
+      "source_raw_event_ids": [],
+      "expected_safe_action": "revise_previous"
+    },
+    {
+      "case_id": "asm-000017",
+      "event_id": "asm-000017",
+      "previous_record": {
+        "line_id": "line-000011",
+        "text": "資産の分は販売に伴う販売用不動産の減少があった一方、補助金収入による未収入金の増加、不動産取得保育施設の新設増床による",
+        "source_raw_event_ids": []
+      },
+      "candidate_text": "資産の分は販売に伴う販売用不動産の減少があった一方、補助金収入による未収入金の増加、不動産取得保育施設の新設増床による資産合計は二十八億七千百万円増加しました負債の部は主に蔵書に禁忌不動産",
+      "update_previous_requested": true,
+      "action": "revise_previous",
+      "reason": "safe_hold_timeout_incomplete_but_stable",
+      "commit_reason": "safe_hold_timeout_incomplete_but_stable",
+      "source_raw_event_ids": [],
+      "expected_safe_action": null
+    },
+    {
+      "case_id": "asm-000018",
+      "event_id": "asm-000018",
+      "previous_record": {
+        "line_id": "line-000011",
+        "text": "資産の分は販売に伴う販売用不動産の減少があった一方、補助金収入による未収入金の増加、不動産取得保育施設の新設増床による資産合計は二十八億七千百万円増加しました負債の部は主に蔵書に禁忌不動産",
+        "source_raw_event_ids": []
+      },
+      "candidate_text": "資産の分は販売に伴う販売用不動産の減少があった一方、補助金収入による未収入金の増加、不動産取得保育施設の新設増床による資産合計は二十八億七千百万円増加しました負債の部は主に蔵書に禁忌不動産負債合計は二十一億三千三百万円らの結果、自己資本比率は四十三点九",
+      "update_previous_requested": true,
+      "action": "revise_previous",
+      "reason": "safe_hold_timeout_incomplete_but_stable",
+      "commit_reason": "safe_hold_timeout_incomplete_but_stable",
+      "source_raw_event_ids": [],
+      "expected_safe_action": null
+    },
+    {
+      "case_id": "asm-000019",
+      "event_id": "asm-000019",
+      "previous_record": {
+        "line_id": "line-000011",
+        "text": "資産の分は販売に伴う販売用不動産の減少があった一方、補助金収入による未収入金の増加、不動産取得保育施設の新設増床による資産合計は二十八億七千百万円増加しました負債の部は主に蔵書に禁忌不動産負債合計は二十一億三千三百万円らの結果、自己資本比率は四十三点九",
+        "source_raw_event_ids": []
+      },
+      "candidate_text": "資産の分は販売に伴う販売用不動産の減少があった一方、補助金収入による未収入金の増加、不動産取得保育施設の新設増床による資産合計は二十八億七千百万円増加しました負債の部は主に蔵書に禁忌不動産負債合計は二十一億三千三百万円らの結果、自己資本比率は四十三点九から40。7に低下いたしました。",
+      "update_previous_requested": true,
+      "action": "revise_previous",
+      "reason": "hold_timeout_sentence_end_punctuation",
+      "commit_reason": "hold_timeout_sentence_end_punctuation",
+      "source_raw_event_ids": [],
+      "expected_safe_action": null
+    },
+    {
+      "case_id": "asm-000024",
+      "event_id": "asm-000024",
+      "previous_record": {
+        "line_id": "line-000015",
+        "text": "2027年7月期では東京都中国にて一施設の新規保育所の開設を予定しております。",
+        "source_raw_event_ids": []
+      },
+      "candidate_text": "フェムケアフェムテックサービスにおいては、連結子会社のイェールにて2026年夏頃に新製品の発売を予定しておますこの新製品の発売によ量産サプリメント市場でさらなるレアの格納続いて覚悟会社の取締役の収入についてお知らせいたします。",
+      "update_previous_requested": true,
+      "action": "revise_previous",
+      "reason": "target_chunk_boundary",
+      "commit_reason": "target_chunk_boundary",
+      "source_raw_event_ids": [],
+      "expected_safe_action": "append"
+    },
+    {
+      "case_id": "asm-000027",
+      "event_id": "asm-000027",
+      "previous_record": {
+        "line_id": "line-000017",
+        "text": "なお石川氏は佐倉作プラス経営管理本部長も兼任しております。",
+        "source_raw_event_ids": []
+      },
+      "candidate_text": "石川市の就任により桜咲く未来およびグループ全体の財務戦略およびガバナンス体制をより強固に補強・向上させるための経営管理体制の刷新をいたしましたまた連結子会社の保育のデザイン研究所におては野党誠治氏が取締役に就任いしました。",
+      "update_previous_requested": true,
+      "action": "revise_previous",
+      "reason": "hold_timeout_sentence_end_punctuation",
+      "commit_reason": "hold_timeout_sentence_end_punctuation",
+      "source_raw_event_ids": [],
+      "expected_safe_action": "append"
+    },
+    {
+      "case_id": "asm-000029",
+      "event_id": "asm-000029",
+      "previous_record": {
+        "line_id": "line-000018",
+        "text": "野党氏の取締役就任により、専門的な学術的知見を経営と保育研修へ直接反映させてまいます。さらに、独自の講師ネットワークを生かして全国の研修体制を拡充し、企業価値の更なる向上を推進いたします。",
+        "source_raw_event_ids": []
+      },
+      "candidate_text": "不動産企画開発ではマンション開発事業と買取再販事業ホテル再生事業も計画通り進捗しております。以上2026年7月期第三四半期決算のご報告投機予想に対し順調に進捗しております",
+      "update_previous_requested": true,
+      "action": "revise_previous",
+      "reason": "soft_boundary_incomplete_tail",
+      "commit_reason": "soft_boundary_incomplete_tail",
+      "source_raw_event_ids": [],
+      "expected_safe_action": "append"
+    },
+    {
+      "case_id": "asm-000030",
+      "event_id": "asm-000030",
+      "previous_record": {
+        "line_id": "line-000018",
+        "text": "不動産企画開発ではマンション開発事業と買取再販事業ホテル再生事業も計画通り進捗しております。以上2026年7月期第三四半期決算のご報告投機予想に対し順調に進捗しております",
+        "source_raw_event_ids": []
+      },
+      "candidate_text": "不動産企画開発ではマンション開発事業と買取再販事業ホテル再生事業も計画通り進捗しております。以上2026年7月期第三四半期決算のご報告投機予想に対し順調に進捗しておりますので引き続きの程お願いいしもありがとうます",
+      "update_previous_requested": true,
+      "action": "revise_previous",
+      "reason": "safe_hold_timeout_incomplete_but_stable",
+      "commit_reason": "safe_hold_timeout_incomplete_but_stable",
+      "source_raw_event_ids": [],
+      "expected_safe_action": null
+    },
+    {
+      "case_id": "synthetic_direct_extension",
+      "previous_record": {
+        "line_id": "line-001",
+        "text": "本日は決算概要について",
+        "source_raw_event_ids": [
+          "raw-000001"
+        ]
+      },
+      "candidate_text": "本日は決算概要についてご説明いたします。",
+      "update_previous_requested": true,
+      "candidate_raw_event_ids": [
+        "raw-000001"
+      ],
+      "expected_safe_action": "revise_previous"
+    },
+    {
+      "case_id": "synthetic_exact_duplicate",
+      "previous_record": {
+        "line_id": "line-002",
+        "text": "売上高は堅調です。",
+        "source_raw_event_ids": [
+          "raw-000002"
+        ]
+      },
+      "candidate_text": "売上高は堅調です。",
+      "update_previous_requested": true,
+      "candidate_raw_event_ids": [
+        "raw-000002"
+      ],
+      "expected_safe_action": "no_op"
+    },
+    {
+      "case_id": "synthetic_unrelated_completed",
+      "previous_record": {
+        "line_id": "line-003",
+        "text": "2027年7月期では東京都中国にて一施設の新規保育所の開設を予定しております。",
+        "source_raw_event_ids": [
+          "raw-000003"
+        ]
+      },
+      "candidate_text": "フェムケアフェムテックサービスにおいては新製品の発売を予定しておます。",
+      "update_previous_requested": true,
+      "candidate_raw_event_ids": [
+        "raw-000099"
+      ],
+      "expected_safe_action": "append"
+    },
+    {
+      "case_id": "synthetic_missing_lineage",
+      "previous_record": {
+        "line_id": "line-004",
+        "text": "営業利益は通期予算に対し",
+        "source_raw_event_ids": []
+      },
+      "candidate_text": "続いて進捗率についてお知らせいたします。",
+      "update_previous_requested": true,
+      "candidate_raw_event_ids": [],
+      "expected_safe_action": "append"
+    }
+  ]
+}

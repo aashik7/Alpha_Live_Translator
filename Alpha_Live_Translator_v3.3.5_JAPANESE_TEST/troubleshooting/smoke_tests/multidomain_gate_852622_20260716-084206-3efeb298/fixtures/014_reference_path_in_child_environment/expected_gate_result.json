@@ -1,0 +1,10 @@
+{
+  "test_number": 14,
+  "test_name": "reference_path_in_runtime_child_environment_fails",
+  "expected_gate_status": "FAILED",
+  "expected_failure_codes": [
+    "REFERENCE_PATH_PRESENT_IN_CHILD_ENVIRONMENT"
+  ],
+  "expected_policy_result": "",
+  "single_mutation_description": "reference_isolation_actual.json runtime_child_environment_contains_reference set True"
+}

@@ -1,0 +1,21 @@
+{
+  "test_number": 6,
+  "test_name": "altered_audio_delivery_hash_fails",
+  "regression_test_status": "PASSED",
+  "expected_gate_status": "FAILED",
+  "actual_gate_status": "FAILED",
+  "expected_failure_codes": [
+    "AUDIO_DELIVERY_HASH_MISMATCH"
+  ],
+  "actual_failure_codes": [
+    "AUDIO_DELIVERY_HASH_MISMATCH"
+  ],
+  "exact_failure_code_match": true,
+  "unexpected_failure_codes": [],
+  "missing_failure_codes": [],
+  "unrelated_exception_detected": false,
+  "assertion_messages": [
+    "expected_gate_status=FAILED actual_gate_status=FAILED",
+    "expected_failure_codes=['AUDIO_DELIVERY_HASH_MISMATCH'] actual_failure_codes=['AUDIO_DELIVERY_HASH_MISMATCH']"
+  ]
+}

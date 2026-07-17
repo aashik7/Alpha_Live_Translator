@@ -1,0 +1,5 @@
+Reference Cleanup Suggestions
+verdict: valid_for_cer
+formatting_risk_flags: none
+
+Reference appears usable for trusted CER.

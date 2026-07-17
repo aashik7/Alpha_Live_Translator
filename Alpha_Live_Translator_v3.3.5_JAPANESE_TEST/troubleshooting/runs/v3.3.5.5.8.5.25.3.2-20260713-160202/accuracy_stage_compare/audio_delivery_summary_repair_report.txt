@@ -1,0 +1,6 @@
+repair_status=REPAIRED_WITH_MISSING_METRICS
+metrics_recovered=['run_elapsed_seconds', 'mixed_audio_chunks_created', 'wire_sample_rate']
+metrics_unavailable=['audio_chunks_sent', 'audio_bytes_sent', 'calculated_audio_seconds_sent', 'deepgram_send_errors', 'system_audio_chunks_received', 'microphone_chunks_received', 'capture_errors', 'audio_queue_overflow_count']
+source_files_used=['RUN_MANIFEST.json', 'accuracy_stage_compare/deepgram_request_snapshot.json', 'artifacts/LIVE_RUN_STATUS.json', 'audio_temp/audio_manifest.json']
+generated_by_offline_repair=true
+repaired_at=2026-07-13T16:26:58

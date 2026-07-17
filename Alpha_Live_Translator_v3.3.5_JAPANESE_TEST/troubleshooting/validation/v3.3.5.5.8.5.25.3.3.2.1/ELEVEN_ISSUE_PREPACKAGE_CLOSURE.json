@@ -1,0 +1,37 @@
+{
+  "source_of_truth": "canonical_acceptance_state",
+  "validation_version": "3.3.5.5.8.5.25.3.3.2.1",
+  "run_id": "live-v3.3.5.5.8.5.25.3.3.1-20260714-111519-14b93a8a",
+  "run_folder": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\runs\\v3.3.5.5.8.5.25.3.3.1-20260714-111519",
+  "VERSION": "PENDING_PACKAGE_VERIFICATION",
+  "POST_LIVE_STATUS": "PENDING",
+  "issues_total": 11,
+  "issues_closed": 9,
+  "closure_ratio": 0.8182,
+  "issue_results": {
+    "final_content_loss_closed": true,
+    "raw_lineage_closed": true,
+    "action_counter_mismatch_closed": true,
+    "finalizer_crash_closed": true,
+    "runtime_audio_counters_closed": true,
+    "stop_drain_closed": true,
+    "false_coverage_closed": true,
+    "stage_completion_truthful": true,
+    "stall_classification_closed": true,
+    "package_isolation_closed": "pending_package_verification",
+    "current_validation_packaged": "pending_package_verification"
+  },
+  "package_pending_issues": [
+    "package_isolation_closed",
+    "current_validation_packaged"
+  ],
+  "package_staging_complete": false,
+  "package_archive_verified": false,
+  "current_validation_packaged": false,
+  "immutable_runtime_artifacts_unchanged": true,
+  "main_zip_path": "",
+  "main_zip_sha256": "",
+  "new_live_test_required": false,
+  "failures": [],
+  "closure_ratio_before_package": 0.8182
+}

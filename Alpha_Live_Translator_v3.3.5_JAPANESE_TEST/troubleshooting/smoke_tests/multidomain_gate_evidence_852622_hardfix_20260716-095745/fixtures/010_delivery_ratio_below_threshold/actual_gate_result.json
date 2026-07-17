@@ -1,0 +1,20 @@
+{
+  "test_number": 10,
+  "test_name": "delivery_ratio_below_0_999_fails",
+  "actual_gate_status": "FAILED",
+  "actual_failure_codes": [
+    "AUDIO_DELIVERY_RATIO_BELOW_0_999"
+  ],
+  "actual_failure_messages": [
+    "acceptance.failures=audio_delivery_ratio_below_threshold -> AUDIO_DELIVERY_RATIO_BELOW_0_999",
+    "acceptance.failures=audio_delivery_missing_chunks -> AUDIO_CHUNK_MISSING"
+  ],
+  "actual_gate_exit_code": 0,
+  "actual_acceptance_version": "NOT_ACCEPTED",
+  "actual_acceptance_status": "FIXTURE_ONLY",
+  "source_result_file": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\smoke_tests\\multidomain_gate_evidence_852622_hardfix_20260716-095745\\fixtures\\010_delivery_ratio_below_threshold\\accuracy_stage_compare\\multidomain_gate_acceptance.json",
+  "source_result_file_sha256": "ee6e7d4337b44c3a5e9bb27fb7d45b9d1c84c2041d1f38439df4787a7c3d00bf",
+  "unhandled_exception": false,
+  "exception_class": "",
+  "exception_message": ""
+}

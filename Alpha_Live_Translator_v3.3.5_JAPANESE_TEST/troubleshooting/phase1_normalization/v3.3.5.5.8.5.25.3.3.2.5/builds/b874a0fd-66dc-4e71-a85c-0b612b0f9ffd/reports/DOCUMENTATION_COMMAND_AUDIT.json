@@ -1,0 +1,18 @@
+{
+  "readme_updated": true,
+  "archived_previous": "docs/archive/README_CURRENT_before_3.3.5.5.8.5.25.3.3.2.5.md",
+  "current_commands": [
+    "run_phase1_project_normalization_85253325.py",
+    "regression_phase1_project_normalization_85253325.py",
+    "tools/run_all_current_checks.py",
+    "validate_runtime_environment.py",
+    "score_three_stage_accuracy.py --run-folder ... --reference ..."
+  ],
+  "stale_commands_removed_from_readme": [
+    "validate_accuracy_85232.py",
+    "runtime_smoke_start_stop_85232.py"
+  ],
+  "build_id": "b874a0fd-66dc-4e71-a85c-0b612b0f9ffd",
+  "patch_version": "3.3.5.5.8.5.25.3.3.2.5",
+  "generated_at": "2026-07-14T09:14:37Z"
+}

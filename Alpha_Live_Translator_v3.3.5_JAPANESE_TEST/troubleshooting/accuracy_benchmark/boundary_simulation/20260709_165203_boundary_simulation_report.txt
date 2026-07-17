@@ -1,0 +1,9 @@
+BOUNDARY SIMULATION REPORT
+app_version=3.3.5.5.8.5.24
+input_lines=121
+output_lines=69
+leading_fragment_before=39
+leading_fragment_after=7
+translation_ready_before=0.4711
+translation_ready_after=0.8551
+simulated_alpha=troubleshooting\accuracy_benchmark\boundary_simulation\20260709_165203_simulated_alpha_output.txt

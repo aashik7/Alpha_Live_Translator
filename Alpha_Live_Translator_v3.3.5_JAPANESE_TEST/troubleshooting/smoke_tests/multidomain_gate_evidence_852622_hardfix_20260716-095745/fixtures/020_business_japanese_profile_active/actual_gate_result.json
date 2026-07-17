@@ -1,0 +1,19 @@
+{
+  "test_number": 20,
+  "test_name": "business_japanese_profile_active_fails",
+  "actual_gate_status": "FAILED",
+  "actual_failure_codes": [
+    "BUSINESS_JAPANESE_PROFILE_ACTIVE"
+  ],
+  "actual_failure_messages": [
+    "verification.reported_value_mismatches=business_japanese_profile_active -> BUSINESS_JAPANESE_PROFILE_ACTIVE"
+  ],
+  "actual_gate_exit_code": 0,
+  "actual_acceptance_version": "NOT_ACCEPTED",
+  "actual_acceptance_status": "FIXTURE_ONLY",
+  "source_result_file": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\smoke_tests\\multidomain_gate_evidence_852622_hardfix_20260716-095745\\fixtures\\020_business_japanese_profile_active\\accuracy_stage_compare\\independent_verification.json",
+  "source_result_file_sha256": "9b4378960f16227ba24e777a2a95c8cf12299ae9a7dc9993ebaa55f2e5c59757",
+  "unhandled_exception": false,
+  "exception_class": "",
+  "exception_message": ""
+}

@@ -1,0 +1,43 @@
+{
+  "app_version": "3.3.5.5.8.5.21",
+  "app_codename": "Japanese Stable Transcript Accuracy Fix",
+  "run_id": "live-v3.3.5.5.8.5.21-20260708-001512-f6dd7998",
+  "run_timestamp": "20260708-001512",
+  "run_type": "live",
+  "selected_language": "ja",
+  "troubleshooting_folder": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\runs\\v3.3.5.5.8.5.21-20260708-001512",
+  "deepgram_config_snapshot": {
+    "model": "nova-3",
+    "language": "ja",
+    "endpointing_ms": 500,
+    "utterance_end_ms": 1500,
+    "diarize_model": "absent"
+  },
+  "japanese_profile": {
+    "JAPANESE_STT_PROFILE": "no_diarize",
+    "JAPANESE_KEYTERM_PROFILE": "business_japanese"
+  },
+  "logging_modes": {
+    "TROUBLESHOOTING_MODE": true,
+    "CENTRALIZED_TROUBLESHOOTING_DIR": true,
+    "FULL_DIAGNOSTIC_LOGGING_ENABLED": true,
+    "PENDING_RUN_REBINDING_ENABLED": true,
+    "LOG_ROTATION_ENABLED": true,
+    "LOG_MAX_FILE_MB": 50,
+    "LOG_ROTATION_BACKUPS": 5
+  },
+  "audio_temp_config": {
+    "AUDIO_TEMP_CAPTURE_ENABLED": true,
+    "AUDIO_TEMP_RETENTION_HOURS": 3,
+    "AUDIO_TEMP_MAX_TOTAL_GB": 3,
+    "AUDIO_TEMP_CHUNK_SECONDS": 60,
+    "AUDIO_TEMP_INCLUDE_IN_UPLOAD_ZIP": false
+  },
+  "created_at": "2026-07-08T00:15:12",
+  "completed_at": "",
+  "final_status": "completed_with_warnings",
+  "stop_core_completed": true,
+  "stop_finalize_completed": true,
+  "evidence_package_status": "disabled_during_runtime",
+  "deepgram_close_status": ""
+}

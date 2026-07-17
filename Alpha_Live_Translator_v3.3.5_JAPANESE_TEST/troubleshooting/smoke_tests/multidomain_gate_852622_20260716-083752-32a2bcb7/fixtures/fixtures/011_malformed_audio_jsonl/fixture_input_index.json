@@ -1,0 +1,23 @@
+{
+  "test_number": 11,
+  "test_name": "malformed_jsonl_fails",
+  "kind": "negative",
+  "single_mutation_description": "one malformed (non-JSON) line appended to audio_delivery_events.jsonl",
+  "files": [
+    {
+      "relative_path": "actual_gate_result.json",
+      "byte_size": 943,
+      "sha256": "07324cff8643c56edc823a57a90cf0ab2b0827c568c1f7318c2fac863d059a06"
+    },
+    {
+      "relative_path": "expected_gate_result.json",
+      "byte_size": 322,
+      "sha256": "05f1cb081e3bb6fc13d4045c1bcf85551adb274ff1cfd49ef1e62ce2d6414d64"
+    },
+    {
+      "relative_path": "regression_assertion.json",
+      "byte_size": 697,
+      "sha256": "87fb6603bbc57d87ee8c4d61665ed6065f31ddbe58a807fa74b8f787de82a7f3"
+    }
+  ]
+}

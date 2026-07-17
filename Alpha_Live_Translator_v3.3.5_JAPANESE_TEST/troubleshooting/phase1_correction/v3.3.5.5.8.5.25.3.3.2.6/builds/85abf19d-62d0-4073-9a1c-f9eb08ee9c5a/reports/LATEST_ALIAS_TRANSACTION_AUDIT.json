@@ -1,0 +1,30 @@
+{
+  "all_aliases_match": true,
+  "backup_created": true,
+  "build_id": "85abf19d-62d0-4073-9a1c-f9eb08ee9c5a",
+  "completed_generation_id": "a59b4439-80e4-4f66-99c0-9abfa205448f",
+  "generated_at": "2026-07-14T15:58:52Z",
+  "injection_results": [
+    {
+      "fail_after": 0,
+      "message": "alias_transaction_rolled_back:injected_failure_after_alias:0:rollback_errors=[]",
+      "raised": true
+    },
+    {
+      "fail_after": 1,
+      "message": "alias_transaction_rolled_back:injected_failure_after_alias:1:rollback_errors=[]",
+      "raised": true
+    },
+    {
+      "fail_after": 2,
+      "message": "alias_transaction_rolled_back:injected_failure_after_alias:2:rollback_errors=[]",
+      "raised": true
+    }
+  ],
+  "partial_generation_possible": false,
+  "patch_version": "3.3.5.5.8.5.25.3.3.2.6",
+  "rollback_tests_passed": true,
+  "source_final_sha256": "6e70dd171862527da2f2de0305ab82154cf9c1591b73860e4fd75e06f570c178",
+  "temporary_files_verified": true,
+  "transaction_passed": true
+}

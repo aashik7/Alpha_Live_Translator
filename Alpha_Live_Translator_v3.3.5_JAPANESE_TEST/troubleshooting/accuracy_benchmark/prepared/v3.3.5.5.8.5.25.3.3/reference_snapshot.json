@@ -1,0 +1,14 @@
+{
+  "app_version": "3.3.5.5.8.5.25.3.3",
+  "source_path": "troubleshooting\\accuracy_benchmark\\reference_transcripts\\test01.txt",
+  "snapshot_path": "troubleshooting\\accuracy_benchmark\\prepared\\v3.3.5.5.8.5.25.3.3\\reference.txt",
+  "source_sha256": "09634a0da9ff86ce4825fb8326c3bca99e64be955c971d7e2db7f7b7823e5b8b",
+  "snapshot_sha256": "09634a0da9ff86ce4825fb8326c3bca99e64be955c971d7e2db7f7b7823e5b8b",
+  "normalization_version": "v25.3.2_nfkc_strip_speaker",
+  "reference_quality_verdict": "valid_for_cer",
+  "valid_for_cer": true,
+  "failure_reasons": [],
+  "prepared_at": "2026-07-13T17:33:00+09:00",
+  "created_by": "validation",
+  "copied_unchanged_from_version": "3.3.5.5.8.5.25.3.2"
+}

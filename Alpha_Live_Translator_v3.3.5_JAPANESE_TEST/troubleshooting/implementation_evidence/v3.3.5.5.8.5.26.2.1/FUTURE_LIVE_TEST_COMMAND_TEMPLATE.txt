@@ -1,0 +1,6 @@
+# Future live multidomain gate command — DO NOT RUN during evidence closure
+# Replace <ACTUAL_RECORDING_DURATION_SECONDS> with the measured recording duration in seconds.
+# Planned recording is approximately 12–15 minutes, but the actual duration must be used.
+# Do not run this command during evidence closure.
+
+python run_multidomain_gate_85262.py --project-root "C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST" --reference "troubleshooting/accuracy_benchmark/reference_transcripts/multidomain_meeting_v1.txt" --truth-metadata "troubleshooting/accuracy_benchmark/reference_transcripts/multidomain_meeting_v1_truth.json" --recording-label multidomain_meeting_v1 --expected-duration-seconds <ACTUAL_RECORDING_DURATION_SECONDS>

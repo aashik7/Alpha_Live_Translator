@@ -1,0 +1,6 @@
+{
+  "build_id": "195fd50e-6273-4609-813b-dd31e2ff9b3e",
+  "error": "alias_transaction_rolled_back:[Errno 9] Bad file descriptor:rollback_errors=[]",
+  "generated_at": "2026-07-14T15:51:39Z",
+  "patch_version": "3.3.5.5.8.5.25.3.3.2.6"
+}

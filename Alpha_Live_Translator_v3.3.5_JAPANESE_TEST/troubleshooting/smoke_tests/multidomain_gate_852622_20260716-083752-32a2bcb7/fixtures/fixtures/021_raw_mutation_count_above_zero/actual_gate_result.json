@@ -1,0 +1,19 @@
+{
+  "test_number": 21,
+  "test_name": "raw_mutation_count_above_zero_fails",
+  "actual_gate_status": "FAILED",
+  "actual_failure_codes": [
+    "RAW_MUTATION_COUNT_NOT_ZERO"
+  ],
+  "actual_failure_messages": [
+    "runtime_regression_report.runtime_regressions=raw_mutation_count_nonzero -> RAW_MUTATION_COUNT_NOT_ZERO"
+  ],
+  "actual_gate_exit_code": 0,
+  "actual_acceptance_version": "NOT_ACCEPTED",
+  "actual_acceptance_status": "FIXTURE_ONLY",
+  "source_result_file": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\smoke_tests\\multidomain_gate_852622_20260716-083752-32a2bcb7\\fixtures\\021_raw_mutation_count_above_zero\\accuracy_stage_compare\\runtime_regression_report.json",
+  "source_result_file_sha256": "b385417d512291f53661cd603c9192f3d1f3fa3422140d23d5fdda00cad832cd",
+  "unhandled_exception": false,
+  "exception_class": "",
+  "exception_message": ""
+}

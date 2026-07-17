@@ -1,0 +1,22 @@
+{
+  "app_version": "3.3.5.5.8.5.25.2.1",
+  "run_id": "live-v3.3.5.5.8.5.25.2.1-20260713-103018-2c0bfc93",
+  "glossary_enabled": true,
+  "glossary_path": "troubleshooting/accuracy_benchmark/glossaries/test01_corporate_ir_glossary.json",
+  "glossary_keyterm_count": 0,
+  "glossary_correction_count": 0,
+  "glossary_corrections_applied": [],
+  "company_name_correction_count": 0,
+  "financial_term_correction_count": 0,
+  "business_term_correction_count": 0,
+  "person_name_correction_count": 0,
+  "location_correction_count": 0,
+  "formal_phrase_correction_count": 0,
+  "financial_number_correction_count": 0,
+  "raw_mutation_count": 0,
+  "dangerous_correction_count": 0,
+  "decisions_path": "",
+  "corporate_term_accuracy_report_path": "",
+  "financial_number_accuracy_report_path": "",
+  "written_at": "2026-07-13T10:37:37"
+}

@@ -1,0 +1,6 @@
+{
+  "test_number": 8,
+  "test_name": "duplicate_sent_chunk_fails",
+  "expected_pass_or_fail": "fail",
+  "expected_failure_reason": "duplicate_sent"
+}

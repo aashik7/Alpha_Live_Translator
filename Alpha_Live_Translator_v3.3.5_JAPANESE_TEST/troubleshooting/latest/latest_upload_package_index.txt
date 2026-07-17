@@ -1,0 +1,46 @@
+# Upload package index — v3.3.5.5.8.5.20.1 — status=completed
+run_id=live-v3.3.5.5.8.5.20.1-20260707-152953-17862187
+run_timestamp=20260707-152953
+run_folder=C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\runs\v3.3.5.5.8.5.20.1-20260707-152953
+
+
+# Audio WAV files excluded by policy
+RUN_MANIFEST.json	C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\runs\v3.3.5.5.8.5.20.1-20260707-152953\RUN_MANIFEST.json	EXISTS
+japanese_accuracy.log	C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\runs\v3.3.5.5.8.5.20.1-20260707-152953\logs\japanese_accuracy.log	EXISTS
+diagnostic_test.log	C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\runs\v3.3.5.5.8.5.20.1-20260707-152953\logs\diagnostic_test.log	EXISTS
+freeze_guard.log	C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\runs\v3.3.5.5.8.5.20.1-20260707-152953\logs\freeze_guard.log	EXISTS
+debug.log	C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\runs\v3.3.5.5.8.5.20.1-20260707-152953\logs\debug.log	EXISTS
+async_debug.log	C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\runs\v3.3.5.5.8.5.20.1-20260707-152953\logs\async_debug.log	EXISTS
+deepgram_events.jsonl	C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\runs\v3.3.5.5.8.5.20.1-20260707-152953\logs\deepgram_events.jsonl	EXISTS
+stop_finalize_timeline.jsonl	C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\runs\v3.3.5.5.8.5.20.1-20260707-152953\logs\stop_finalize_timeline.jsonl	EXISTS
+ui_event_bus_timeline.jsonl	C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\runs\v3.3.5.5.8.5.20.1-20260707-152953\logs\ui_event_bus_timeline.jsonl	EXISTS
+queue_timeline.jsonl	C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\runs\v3.3.5.5.8.5.20.1-20260707-152953\logs\queue_timeline.jsonl	EXISTS
+thread_safety.jsonl	C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\runs\v3.3.5.5.8.5.20.1-20260707-152953\logs\thread_safety.jsonl	EXISTS
+background_tk_guard.jsonl	C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\runs\v3.3.5.5.8.5.20.1-20260707-152953\logs\background_tk_guard.jsonl	EXISTS
+Alpha output.txt	C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\runs\v3.3.5.5.8.5.20.1-20260707-152953\transcripts\Alpha output.txt	EXISTS
+Alpha_output_PARTIAL.txt	C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\runs\v3.3.5.5.8.5.20.1-20260707-152953\transcripts\Alpha_output_PARTIAL.txt	EXISTS
+Alpha_output_FINAL.txt	C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\runs\v3.3.5.5.8.5.20.1-20260707-152953\transcripts\Alpha_output_FINAL.txt	EXISTS
+raw_deepgram_finals.jsonl	C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\runs\v3.3.5.5.8.5.20.1-20260707-152953\transcripts\raw_deepgram_finals.jsonl	EXISTS
+raw_deepgram_interims_sampled.jsonl	C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\runs\v3.3.5.5.8.5.20.1-20260707-152953\transcripts\raw_deepgram_interims_sampled.jsonl	EXISTS
+stable_commits.jsonl	C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\runs\v3.3.5.5.8.5.20.1-20260707-152953\transcripts\stable_commits.jsonl	EXISTS
+ui_exported_segments.jsonl	C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\runs\v3.3.5.5.8.5.20.1-20260707-152953\transcripts\ui_exported_segments.jsonl	EXISTS
+assembler_decisions.jsonl	C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\runs\v3.3.5.5.8.5.20.1-20260707-152953\accuracy\assembler_decisions.jsonl	EXISTS
+quarantine_decisions.jsonl	C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\runs\v3.3.5.5.8.5.20.1-20260707-152953\accuracy\quarantine_decisions.jsonl	EXISTS
+correction_decisions.jsonl	C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\runs\v3.3.5.5.8.5.20.1-20260707-152953\accuracy\correction_decisions.jsonl	EXISTS
+japanese_accuracy_summary.json	C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\runs\v3.3.5.5.8.5.20.1-20260707-152953\accuracy\japanese_accuracy_summary.json	EXISTS
+translation_readiness_summary.json	C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\runs\v3.3.5.5.8.5.20.1-20260707-152953\accuracy\translation_readiness_summary.json	EXISTS
+LAST_HEALTH_SNAPSHOT.json	C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\runs\v3.3.5.5.8.5.20.1-20260707-152953\health\LAST_HEALTH_SNAPSHOT.json	EXISTS
+HEALTH_TIMELINE.jsonl	C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\runs\v3.3.5.5.8.5.20.1-20260707-152953\health\HEALTH_TIMELINE.jsonl	EXISTS
+PROCESS_HEALTH_TIMELINE.jsonl	C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\runs\v3.3.5.5.8.5.20.1-20260707-152953\health\PROCESS_HEALTH_TIMELINE.jsonl	EXISTS
+QUEUE_HEALTH_TIMELINE.jsonl	C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\runs\v3.3.5.5.8.5.20.1-20260707-152953\health\QUEUE_HEALTH_TIMELINE.jsonl	EXISTS
+MEMORY_TREND_SUMMARY.json	C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\runs\v3.3.5.5.8.5.20.1-20260707-152953\health\MEMORY_TREND_SUMMARY.json	EXISTS
+RUN_ARTIFACTS_INDEX.txt	C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\runs\v3.3.5.5.8.5.20.1-20260707-152953\artifacts\RUN_ARTIFACTS_INDEX.txt	EXISTS
+RUN_ARTIFACTS_INDEX.partial.txt	C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\runs\v3.3.5.5.8.5.20.1-20260707-152953\artifacts\RUN_ARTIFACTS_INDEX.partial.txt	MISSING_ERROR
+LIVE_RUN_STATUS.json	C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\runs\v3.3.5.5.8.5.20.1-20260707-152953\artifacts\LIVE_RUN_STATUS.json	EXISTS
+FLIGHT_RECORDER.log	C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\runs\v3.3.5.5.8.5.20.1-20260707-152953\artifacts\FLIGHT_RECORDER.log	EXISTS
+PREVIOUS_RUN_FORENSIC_SUMMARY.txt	C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\runs\v3.3.5.5.8.5.20.1-20260707-152953\artifacts\PREVIOUS_RUN_FORENSIC_SUMMARY.txt	MISSING_ERROR
+THREAD_DUMP_SELFTEST.txt	C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\runs\v3.3.5.5.8.5.20.1-20260707-152953\thread_dumps\THREAD_DUMP_SELFTEST.txt	EXISTS
+THREAD_DUMP_LAST.txt	C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\runs\v3.3.5.5.8.5.20.1-20260707-152953\thread_dumps\THREAD_DUMP_LAST.txt	MISSING_ERROR
+audio_manifest.json	C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\runs\v3.3.5.5.8.5.20.1-20260707-152953\audio_temp\audio_manifest.json	EXISTS
+audio_temp_summary.txt	C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\runs\v3.3.5.5.8.5.20.1-20260707-152953\audio_temp\audio_temp_summary.txt	EXISTS
+validate_8520_1_output.txt	C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\runs\v3.3.5.5.8.5.20.1-20260707-152953\validation\validate_8520_1_output.txt	MISSING_ERROR

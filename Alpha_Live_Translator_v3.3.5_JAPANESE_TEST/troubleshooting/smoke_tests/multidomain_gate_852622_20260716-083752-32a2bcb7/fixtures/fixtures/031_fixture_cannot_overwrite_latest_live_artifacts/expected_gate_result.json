@@ -1,0 +1,8 @@
+{
+  "test_number": 31,
+  "test_name": "fixture_outputs_cannot_overwrite_latest_live_run_artifacts",
+  "expected_gate_status": "PASSED",
+  "expected_failure_codes": [],
+  "expected_policy_result": "LATEST_LIVE_ARTIFACTS_UNCHANGED",
+  "single_mutation_description": "no mutation; hashes troubleshooting/runs before and after fixture execution"
+}

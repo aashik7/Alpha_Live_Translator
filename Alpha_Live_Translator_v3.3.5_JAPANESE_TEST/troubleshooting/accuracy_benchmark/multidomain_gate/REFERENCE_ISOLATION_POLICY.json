@@ -1,0 +1,17 @@
+{
+  "policy_version": "multidomain_gate_85262",
+  "rules": [
+    "The application child process must not receive the reference path.",
+    "The application child process must not receive the truth metadata path.",
+    "The application child environment must not contain reference text.",
+    "The application child environment must not contain a reference SHA.",
+    "The reference must not be opened until the application process exits.",
+    "Benchmark scoring modules must not be imported by the live application.",
+    "Benchmark truth metadata must be used only after runtime exit.",
+    "Deepgram request construction must not import benchmark files."
+  ],
+  "reference_path": "troubleshooting/accuracy_benchmark/reference_transcripts/multidomain_meeting_v1.txt",
+  "truth_metadata_path": "troubleshooting/accuracy_benchmark/reference_transcripts/multidomain_meeting_v1_truth.json",
+  "orchestrator_may_receive_paths": true,
+  "orchestrator_may_open_before_exit": false
+}

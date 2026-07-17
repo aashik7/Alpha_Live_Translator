@@ -1,0 +1,8 @@
+{
+  "test_number": 18,
+  "invocation_mode": "direct_callable",
+  "callable_module": "regression_multidomain_gate_85262",
+  "callable_name": "_run_fixture_pipeline",
+  "python_invocation": "regression_multidomain_gate_evidence_852622.b_018_keyword_count_above_zero('018_keyword_count_above_zero')",
+  "invoked_at_utc": "2026-07-16T08:42:36Z"
+}

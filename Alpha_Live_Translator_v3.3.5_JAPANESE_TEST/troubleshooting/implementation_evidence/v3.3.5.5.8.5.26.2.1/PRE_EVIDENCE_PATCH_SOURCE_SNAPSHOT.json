@@ -1,0 +1,127 @@
+{
+  "entries": [
+    {
+      "byte_size": 23476,
+      "exists": true,
+      "file_type": "file",
+      "modified_time_utc": "2026-07-16T02:58:51Z",
+      "relative_path": "alpha/constants.py",
+      "sha256": "20bf7ee4ce1bb5ba8a3b8ca80f4fa3db8374756d773888f829f37cc326978654",
+      "snapshot_timestamp_utc": "2026-07-16T04:45:21Z"
+    },
+    {
+      "byte_size": 133618,
+      "exists": true,
+      "file_type": "file",
+      "modified_time_utc": "2026-07-16T03:00:56Z",
+      "relative_path": "alpha/transcription/deepgram_client.py",
+      "sha256": "5c4c7d5e5ac515f7cd8199931561b6a100402f971250f81cda1490a6509cda3f",
+      "snapshot_timestamp_utc": "2026-07-16T04:45:21Z"
+    },
+    {
+      "byte_size": 308179,
+      "exists": true,
+      "file_type": "file",
+      "modified_time_utc": "2026-07-16T03:01:18Z",
+      "relative_path": "alpha/ui/main_window.py",
+      "sha256": "040afcdaacb4f206b2fb7316be0b2fc449286e8cd7647f67b1d3cfeebccf66f5",
+      "snapshot_timestamp_utc": "2026-07-16T04:45:21Z"
+    },
+    {
+      "byte_size": 24144,
+      "exists": true,
+      "file_type": "file",
+      "modified_time_utc": "2026-07-16T02:58:38Z",
+      "relative_path": "alpha/utils/multidomain_gate_evidence.py",
+      "sha256": "43997b7a47c2f9bcf30247de35d2b48651307875afe3c83ed28a76ddf387b6b0",
+      "snapshot_timestamp_utc": "2026-07-16T04:45:21Z"
+    },
+    {
+      "byte_size": 18018,
+      "exists": true,
+      "file_type": "file",
+      "modified_time_utc": "2026-07-16T03:01:52Z",
+      "relative_path": "main.py",
+      "sha256": "b733e4465a24497627d000675367ba3c097eb3948b0d0de86fe5b2e903786c36",
+      "snapshot_timestamp_utc": "2026-07-16T04:45:21Z"
+    },
+    {
+      "byte_size": 9059,
+      "exists": true,
+      "file_type": "file",
+      "modified_time_utc": "2026-07-16T03:05:27Z",
+      "relative_path": "prepare_multidomain_gate_85262.py",
+      "sha256": "53a791bb66c4c5ef4b55121c3bb65f857758bc597f9d3d09083baa97777e0dfd",
+      "snapshot_timestamp_utc": "2026-07-16T04:45:21Z"
+    },
+    {
+      "byte_size": 33128,
+      "exists": true,
+      "file_type": "file",
+      "modified_time_utc": "2026-07-16T03:06:01Z",
+      "relative_path": "regression_multidomain_gate_85262.py",
+      "sha256": "00bdf69b1303044c6a76796634f8039bba2b4bae2b3744e8e654c1df25978225",
+      "snapshot_timestamp_utc": "2026-07-16T04:45:21Z"
+    },
+    {
+      "byte_size": 32185,
+      "exists": true,
+      "file_type": "file",
+      "modified_time_utc": "2026-07-16T03:04:47Z",
+      "relative_path": "run_multidomain_gate_85262.py",
+      "sha256": "7a00199f40325cc2ba3407645daead9090064497754bbfe4b55cf9ab5e0abab3",
+      "snapshot_timestamp_utc": "2026-07-16T04:45:21Z"
+    },
+    {
+      "byte_size": 13855,
+      "exists": true,
+      "file_type": "file",
+      "modified_time_utc": "2026-07-16T03:02:46Z",
+      "relative_path": "score_multidomain_gate_85262.py",
+      "sha256": "f7e9988c2093c19e1cc126e8ca391e5f4c31324c28478334c9515577efead78c",
+      "snapshot_timestamp_utc": "2026-07-16T04:45:21Z"
+    },
+    {
+      "byte_size": 995,
+      "exists": true,
+      "file_type": "file",
+      "modified_time_utc": "2026-07-16T03:08:07Z",
+      "relative_path": "troubleshooting/accuracy_benchmark/multidomain_gate/REFERENCE_ISOLATION_POLICY.json",
+      "sha256": "83c547bb25be40102cfebbe1283648cf6e4d153aafc514abbfdd57fdd231a961",
+      "snapshot_timestamp_utc": "2026-07-16T04:45:21Z"
+    },
+    {
+      "byte_size": 162,
+      "exists": true,
+      "file_type": "file",
+      "modified_time_utc": "2026-07-16T03:08:07Z",
+      "relative_path": "troubleshooting/accuracy_benchmark/multidomain_gate/test01_meeting_context_status.json",
+      "sha256": "25e66c399ce1fe55596139d0fcc4404c93209cb175ec5daf8662d0a141208fa5",
+      "snapshot_timestamp_utc": "2026-07-16T04:45:21Z"
+    },
+    {
+      "byte_size": 2000,
+      "exists": true,
+      "file_type": "file",
+      "modified_time_utc": "2026-07-16T03:08:07Z",
+      "relative_path": "troubleshooting/accuracy_benchmark/reference_transcripts/multidomain_meeting_v1_truth.json",
+      "sha256": "ecfbe03916714bd6978dcf926b66def33fb881b394a6ea9594df538f608b2112",
+      "snapshot_timestamp_utc": "2026-07-16T04:45:21Z"
+    },
+    {
+      "byte_size": 23065,
+      "exists": true,
+      "file_type": "file",
+      "modified_time_utc": "2026-07-16T03:03:12Z",
+      "relative_path": "verify_multidomain_gate_85262.py",
+      "sha256": "ea21597a59e19b810e3a0de8ed831598b4c19483773839a6edfe6db37dc5f430",
+      "snapshot_timestamp_utc": "2026-07-16T04:45:21Z"
+    }
+  ],
+  "entry_count": 13,
+  "evidence_patch_version": "3.3.5.5.8.5.26.2.1",
+  "implementation_version": "3.3.5.5.8.5.26.2",
+  "project_root": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST",
+  "snapshot_kind": "PRE_EVIDENCE_PATCH_SOURCE_SNAPSHOT",
+  "snapshot_timestamp_utc": "2026-07-16T04:45:21Z"
+}

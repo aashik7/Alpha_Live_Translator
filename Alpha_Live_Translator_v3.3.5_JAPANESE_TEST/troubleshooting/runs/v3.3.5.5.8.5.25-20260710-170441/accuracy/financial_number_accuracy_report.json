@@ -1,0 +1,119 @@
+{
+  "expected_number_count": 12,
+  "detected_number_count": 0,
+  "corrected_number_count": 0,
+  "audited_number_count": 13,
+  "skipped_uncertain_count": 0,
+  "corrections": [],
+  "warnings": [
+    {
+      "label": "前年同期比減収率",
+      "expected": "5.4%",
+      "detected_fragments": [
+        "10億6千百万",
+        "一",
+        "五"
+      ]
+    },
+    {
+      "label": "営業利益",
+      "expected": "10億6100万円",
+      "detected_fragments": [
+        "10億6千百万",
+        "一",
+        "五"
+      ]
+    },
+    {
+      "label": "営業利益率",
+      "expected": "7.8%",
+      "detected_fragments": [
+        "10億6千百万",
+        "一",
+        "五"
+      ]
+    },
+    {
+      "label": "経常利益",
+      "expected": "11億2800万円",
+      "detected_fragments": [
+        "10億6千百万",
+        "一",
+        "五"
+      ]
+    },
+    {
+      "label": "当期純利益増益率",
+      "expected": "14.6%",
+      "detected_fragments": [
+        "10億6千百万",
+        "一",
+        "五"
+      ]
+    },
+    {
+      "label": "営業利益進捗率",
+      "expected": "107.6%",
+      "detected_fragments": [
+        "10億6千百万",
+        "一",
+        "五"
+      ]
+    },
+    {
+      "label": "売上高",
+      "expected": "136億7900万円",
+      "detected_fragments": [
+        "四"
+      ]
+    },
+    {
+      "label": "売上高進捗率",
+      "expected": "76.8%",
+      "detected_fragments": [
+        "四"
+      ]
+    },
+    {
+      "label": "営業利益",
+      "expected": "10億6100万円",
+      "detected_fragments": [
+        "四"
+      ]
+    },
+    {
+      "label": "営業利益進捗率",
+      "expected": "107.6%",
+      "detected_fragments": [
+        "四"
+      ]
+    },
+    {
+      "label": "資産合計増加額",
+      "expected": "28億7100万円",
+      "detected_fragments": [
+        "一",
+        "二十八億7100万",
+        "二十一億三千三百万"
+      ]
+    },
+    {
+      "label": "負債合計増加額",
+      "expected": "21億300万円",
+      "detected_fragments": [
+        "一",
+        "二十八億7100万",
+        "二十一億三千三百万"
+      ]
+    },
+    {
+      "label": "自己資本比率",
+      "expected": "40.7%",
+      "detected_fragments": [
+        "四十三",
+        "9",
+        "40"
+      ]
+    }
+  ]
+}

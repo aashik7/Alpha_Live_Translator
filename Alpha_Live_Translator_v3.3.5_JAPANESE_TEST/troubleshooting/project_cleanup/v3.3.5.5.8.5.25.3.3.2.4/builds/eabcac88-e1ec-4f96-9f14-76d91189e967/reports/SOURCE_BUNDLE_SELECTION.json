@@ -1,0 +1,36 @@
+{
+  "build_id": "eabcac88-e1ec-4f96-9f14-76d91189e967",
+  "patch_version": "3.3.5.5.8.5.25.3.3.2.4",
+  "generated_at": "2026-07-14T07:21:10Z",
+  "candidate_bundles": [
+    "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\post_acceptance_audit\\v3.3.5.5.8.5.25.3.3.2.3\\FINAL_SINGLE_AUTHORITY_AUDIT_BUNDLE_v3.3.5.5.8.5.25.3.3.2.3_59a32685-e9b3-4967-b5a1-e253706a1fb3.zip",
+    "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\post_acceptance_audit\\v3.3.5.5.8.5.25.3.3.2.3\\FINAL_SINGLE_AUTHORITY_AUDIT_BUNDLE_v3.3.5.5.8.5.25.3.3.2.3_e4b73a6a-a704-49b9-a673-09aa54e1022a.zip"
+  ],
+  "valid_candidates": [
+    {
+      "path": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\post_acceptance_audit\\v3.3.5.5.8.5.25.3.3.2.3\\FINAL_SINGLE_AUTHORITY_AUDIT_BUNDLE_v3.3.5.5.8.5.25.3.3.2.3_59a32685-e9b3-4967-b5a1-e253706a1fb3.zip",
+      "name": "FINAL_SINGLE_AUTHORITY_AUDIT_BUNDLE_v3.3.5.5.8.5.25.3.3.2.3_59a32685-e9b3-4967-b5a1-e253706a1fb3.zip",
+      "build_id": "59a32685-e9b3-4967-b5a1-e253706a1fb3",
+      "build_timestamp": "2026-07-14T06:29:59Z",
+      "acceptance_path": "acceptance/ZERO_ISSUE_FINAL_ACCEPTANCE.json",
+      "evidence_inner": "evidence/ZERO_ISSUE_EVIDENCE_v3.3.5.5.8.5.25.3.3.2.3_59a32685-e9b3-4967-b5a1-e253706a1fb3.zip",
+      "sidecar": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\post_acceptance_audit\\v3.3.5.5.8.5.25.3.3.2.3\\FINAL_SINGLE_AUTHORITY_AUDIT_BUNDLE_v3.3.5.5.8.5.25.3.3.2.3_59a32685-e9b3-4967-b5a1-e253706a1fb3.sha256.json",
+      "sha256": "422ccb4ddd325fec7f0554af20463de16de9f382bdcaebdde9ee05abbb05f761"
+    },
+    {
+      "path": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\post_acceptance_audit\\v3.3.5.5.8.5.25.3.3.2.3\\FINAL_SINGLE_AUTHORITY_AUDIT_BUNDLE_v3.3.5.5.8.5.25.3.3.2.3_e4b73a6a-a704-49b9-a673-09aa54e1022a.zip",
+      "name": "FINAL_SINGLE_AUTHORITY_AUDIT_BUNDLE_v3.3.5.5.8.5.25.3.3.2.3_e4b73a6a-a704-49b9-a673-09aa54e1022a.zip",
+      "build_id": "e4b73a6a-a704-49b9-a673-09aa54e1022a",
+      "build_timestamp": "2026-07-14T06:34:26Z",
+      "acceptance_path": "acceptance/ZERO_ISSUE_FINAL_ACCEPTANCE.json",
+      "evidence_inner": "evidence/ZERO_ISSUE_EVIDENCE_v3.3.5.5.8.5.25.3.3.2.3_e4b73a6a-a704-49b9-a673-09aa54e1022a.zip",
+      "sidecar": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\post_acceptance_audit\\v3.3.5.5.8.5.25.3.3.2.3\\FINAL_SINGLE_AUTHORITY_AUDIT_BUNDLE_v3.3.5.5.8.5.25.3.3.2.3_e4b73a6a-a704-49b9-a673-09aa54e1022a.sha256.json",
+      "sha256": "8dcd7c49e41f88622da550581176dc011538e875bf3f17707d19d74205ec905a"
+    }
+  ],
+  "invalid_candidates": [],
+  "selected_bundle": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\post_acceptance_audit\\v3.3.5.5.8.5.25.3.3.2.3\\FINAL_SINGLE_AUTHORITY_AUDIT_BUNDLE_v3.3.5.5.8.5.25.3.3.2.3_e4b73a6a-a704-49b9-a673-09aa54e1022a.zip",
+  "selected_bundle_sha256": "8dcd7c49e41f88622da550581176dc011538e875bf3f17707d19d74205ec905a",
+  "selected_sidecar": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\post_acceptance_audit\\v3.3.5.5.8.5.25.3.3.2.3\\FINAL_SINGLE_AUTHORITY_AUDIT_BUNDLE_v3.3.5.5.8.5.25.3.3.2.3_e4b73a6a-a704-49b9-a673-09aa54e1022a.sha256.json",
+  "selection_reason": "latest_embedded_build_timestamp_among_valid_accepted_bundles"
+}

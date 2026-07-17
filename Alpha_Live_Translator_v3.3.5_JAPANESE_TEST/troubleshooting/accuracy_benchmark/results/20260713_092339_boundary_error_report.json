@@ -1,0 +1,33 @@
+{
+  "app_version": "3.3.5.5.8.5.25.2",
+  "japanese_boundary_diagnosis_enabled": true,
+  "alpha_path": "troubleshooting\\latest\\latest_live_alpha_output.txt",
+  "reference_path": "troubleshooting\\accuracy_benchmark\\reference_transcripts\\test01.txt",
+  "findings": [
+    {
+      "line_number": 4,
+      "previous_line": "なおその他サービスは概ね計画どおり進捗しております営業利益は十億六千百万円となり、前年同期比一点五パーセントの原因となりました。",
+      "current_line": "しかし不採算事業の絶対や中核事業の合理化業務効率化により営業利益率は五パーセントから七点八パーセントに向上しました。",
+      "next_line": "経常利益は十11億2800万円と、前年同期9。5の増益となりました。",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    }
+  ],
+  "total_boundary_risks": 1,
+  "leading_fragment_count": 1,
+  "glue_risk_count": 0,
+  "punctuation_artifact_count": 0,
+  "duplicate_continuation_count": 0,
+  "assembler_candidate_count": 1,
+  "raw_stt_likely_count": 0,
+  "needs_reference_count": 0,
+  "generated_at": "2026-07-13T09:23:39",
+  "report_type": "boundary_error_report",
+  "alpha_sha256": "d4fe119b39d952034a09714abd46870e2451c89935c8d5444c44c7fa3b4dbd9f",
+  "alpha_size_bytes": 1286,
+  "reference_sha256": "09634a0da9ff86ce4825fb8326c3bca99e64be955c971d7e2db7f7b7823e5b8b",
+  "reference_size_bytes": 5149,
+  "latest_live_run_id": "live-v3.3.5.5.8.5.25.2-20260713-091703-23fb3a9d"
+}

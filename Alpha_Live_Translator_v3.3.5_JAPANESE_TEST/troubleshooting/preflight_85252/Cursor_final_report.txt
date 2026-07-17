@@ -1,0 +1,214 @@
+Alpha Live Translator — Cursor Final Report
+V3.3.5.5.8.5.25.1 — Lossless Clean Export & Glossary Evidence Sync
+Generated: 2026-07-10
+
+================================================================================
+EXECUTIVE SUMMARY
+================================================================================
+V25.1 implements lossless clean export, conservative duplicate suppression,
+export coverage gating, suppression decision logging, and canonical glossary
+evidence sync. V25 runtime/glossary/Deepgram baseline preserved. Offline validation
+and smoke PASSED. V25 live alpha repair recovered 4 dropped lines (21→25) but
+full lossless gate requires a new live test with 25.1 Stop pipeline.
+
+================================================================================
+1. FILES CHANGED
+================================================================================
+New:
+  collect_preflight_85251.py
+  validate_accuracy_85251.py
+  runtime_smoke_start_stop_85251.py
+  alpha/utils/clean_export_coverage.py
+  alpha/utils/glossary_evidence_sync.py
+  troubleshooting/preflight_85251/
+
+Modified:
+  alpha/constants.py (version + 25.1 flags)
+  main.py (startup logs)
+  alpha/utils/boundary_evidence_finalize.py (lossless Stop pipeline)
+  alpha/transcription/stable_line_revision.py (no blind suppression in lossless mode)
+  score_latest_accuracy.py (canonical glossary + export coverage metadata)
+  analyze_alpha_vs_reference.py (alignment glossary + coverage metadata)
+  alpha/utils/accuracy_report_sync.py (index glossary/coverage fields)
+  package_latest_troubleshooting_run.py (export evidence in package)
+  repair_clean_alpha_export.py (--lossless mode)
+
+================================================================================
+2. VERSION CONFIRMATION
+================================================================================
+APP_VERSION = 3.3.5.5.8.5.25.1
+APP_CODENAME = Lossless Clean Export & Glossary Evidence Sync
+
+================================================================================
+3. PREFLIGHT 85251 COLLECTION
+================================================================================
+Folder: troubleshooting/preflight_85251/
+Baseline: V25 (3.3.5.5.8.5.25)
+ui_exported_segments: 25
+alpha_lines: 21
+clean_active_lines: 21
+glossary_corrections: 8
+missing_valid_segment_warning: ui_segments(25) > alpha_lines(21)
+Status: COLLECTED (confirms V25 export loss problem)
+
+================================================================================
+4. DEEPGRAM UNCHANGED
+================================================================================
+model=nova-3, language=ja, endpointing=500, utterance_end_ms=1500
+no_diarize, business_japanese keyterm profile — unchanged
+
+================================================================================
+5. RUNTIME BASELINE PRESERVED
+================================================================================
+Start/Stop minimal path preserved
+raw_mutation_count=0, dangerous_correction_count=0
+AUTO_BUSINESS_CORRECTION_LEVEL=minimal_plus_user_glossary
+V24.2 duplicate/punctuation cleanup preserved
+V25 corporate glossary layer preserved
+runtime_smoke_start_stop_85251.py: PASSED (0.45s, live alpha protected)
+
+================================================================================
+6. LOSSLESS EXPORT COVERAGE IMPLEMENTATION
+================================================================================
+Module: alpha/utils/clean_export_coverage.py
+Stop pipeline order:
+  1. conservative_sweep_residual_duplicates (with decision log)
+  2. corporate IR glossary corrections
+  3. build_lossless_export_lines (recover UI/stable missing segments)
+  4. analyze_export_coverage + write reports
+  5. apply_final_clean_lines + finalize_on_stop
+
+Outputs:
+  troubleshooting/runs/<run>/accuracy/export_coverage_report.json
+  troubleshooting/latest/export_coverage_report.json
+  troubleshooting/runs/<run>/accuracy/export_suppression_decisions.jsonl
+  troubleshooting/latest/export_suppression_decisions.jsonl
+
+================================================================================
+7. SUPPRESSION DECISION LOG
+================================================================================
+Each suppression/retention decision logged with:
+  decision, reason, coverage_ratio, unique_char_count,
+  contains_number/glossary_term/business_term, safe_to_suppress
+
+Conservative rules: retain segments with unique numbers, glossary terms,
+business terms, >15 unique chars, or complete sentences not fully covered.
+
+================================================================================
+8. OFFLINE REPAIR RESULT (V25 alpha, --lossless)
+================================================================================
+Command: repair_clean_alpha_export.py --latest --lossless
+Input lines: 21 → Output lines: 25 (+4 recovered)
+cumulative_duplicate_count: 0 (before and after)
+valid_segment_loss_count: 5 (remaining gaps vs 25 UI segments)
+export_coverage_ratio: 0.8611 (86.1%)
+clean_export_ready_for_scoring: false (repair only, not promoted)
+Output: troubleshooting/accuracy_benchmark/clean_export_repair/
+  20260710_183041_lossless_clean_alpha_output.txt
+  20260710_183041_lossless_export_coverage_report.json
+
+Note: Full lossless gate (valid_segment_loss_count=0) expected after live 25.1 Stop.
+
+================================================================================
+9. GLOSSARY CANONICAL SUMMARY
+================================================================================
+Module: alpha/utils/glossary_evidence_sync.py
+Canonical file: troubleshooting/latest/glossary_correction_summary.json
+Synced to: evidence index, score report, alignment report, package index
+
+================================================================================
+10. SCORE / ANALYZER METADATA SYNC
+================================================================================
+score_latest_accuracy.py reads glossary_correction_summary.json first
+Blocks trusted_score if valid_segment_loss_count > 0
+analyze_alpha_vs_reference.py includes glossary + export coverage fields
+accuracy_report_sync.py propagates fields to evidence index
+
+================================================================================
+11. PACKAGE INCLUSION
+================================================================================
+New package fields:
+  lossless_clean_export_enabled
+  export_coverage_report_included
+  export_suppression_decisions_included
+  glossary_correction_summary_included
+  valid_segment_loss_count
+  clean_export_ready_for_scoring
+  export_coverage_ratio
+preflight_85251 folder included
+
+================================================================================
+12. VALIDATION & SMOKE
+================================================================================
+validate_accuracy_85251.py: PASSED
+runtime_smoke_start_stop_85251.py: PASSED
+All py_compile targets: PASSED
+
+Warnings (expected):
+  no_new_live_test_after_25.1
+  trusted_score_still_false
+  reference_transcript_not_human_cleaned
+
+================================================================================
+13. USER LIVE TEST INSTRUCTIONS
+================================================================================
+After starting app (V25.1 confirmed in console):
+
+1. Run Japanese corporate/IR audio test (Start → Stop)
+2. Post-test commands:
+   python reference_transcript_quality_check.py --alpha troubleshooting/latest/latest_live_alpha_output.txt --reference troubleshooting/accuracy_benchmark/reference_transcripts/test01.txt
+   python analyze_alpha_vs_reference.py --latest --reference troubleshooting/accuracy_benchmark/reference_transcripts/test01.txt
+   python score_latest_accuracy.py --alpha troubleshooting/latest/latest_live_alpha_output.txt --reference troubleshooting/accuracy_benchmark/reference_transcripts/test01.txt
+   python package_latest_troubleshooting_run.py
+
+Expected after live 25.1:
+  valid_segment_loss_count = 0
+  clean_export_ready_for_scoring = true
+  export_coverage_ratio = 1.0 (or near)
+  glossary_correction_count consistent across all reports
+  alpha line count >= UI meaningful segments (no valid loss)
+  cumulative_duplicate_count = 0
+  raw_mutation_count = 0
+
+================================================================================
+14. FILES TO UPLOAD AFTER LIVE TEST
+================================================================================
+1.  UPLOAD_PACKAGE_v3.3.5.5.8.5.25.1_<timestamp>.zip
+2.  troubleshooting/latest/export_coverage_report.json
+3.  troubleshooting/latest/export_suppression_decisions.jsonl
+4.  troubleshooting/latest/glossary_correction_summary.json
+5.  troubleshooting/latest/latest_accuracy_evidence_index.json
+6.  troubleshooting/latest/latest_live_alpha_output.txt
+7.  troubleshooting/latest/clean_active_transcript.jsonl
+8.  troubleshooting/latest/boundary_stabilizer_summary.json
+9.  troubleshooting/accuracy_benchmark/glossaries/test01_corporate_ir_glossary.json
+10. troubleshooting/accuracy_benchmark/latest_reports/*
+11. troubleshooting/Cursor final report.txt
+12. troubleshooting/preflight_85251/
+
+================================================================================
+15. WARNINGS
+================================================================================
+* V25 live alpha still in latest/ until new live test overwrites it
+* Offline repair recovered 4/4 missing lines vs V25 but 5 UI variant gaps remain
+* CER still not trusted until reference human-cleaned + full alignment
+* Promote repaired alpha only with --promote after export_coverage_gate passes
+
+================================================================================
+SUCCESS CRITERIA CHECKLIST (pending live test)
+================================================================================
+[PASS] Runtime/smoke stable, Stop does not freeze
+[PASS] Deepgram unchanged, raw Deepgram immutable
+[PASS] V24.2 + V25 layers preserved
+[PASS] Lossless export module + suppression log implemented
+[PASS] Glossary canonical summary + evidence sync implemented
+[PASS] Package includes export coverage evidence
+[PASS] validate_accuracy_85251.py PASSED
+[PASS] runtime_smoke_start_stop_85251.py PASSED
+[PENDING] valid_segment_loss_count = 0 (needs live 25.1 test)
+[PENDING] clean_export_ready_for_scoring = true (needs live 25.1 test)
+[PENDING] glossary_correction_count consistent (needs live 25.1 test)
+
+================================================================================
+END OF REPORT
+================================================================================

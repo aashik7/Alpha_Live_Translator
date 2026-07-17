@@ -1,0 +1,17 @@
+{
+  "gate_passed": true,
+  "failures": [],
+  "conditions": {
+    "compile_failures": 0,
+    "required_regression_suites_failed": 0,
+    "regression_tests_failed": 0,
+    "reference_preparation_passed": true,
+    "immutable_evidence_contract_passed": true,
+    "strict_stop_evidence_passed": true,
+    "status_reconciliation_passed": true,
+    "lineage_reconciliation_passed": true,
+    "stop_timeline_reconciliation_passed": true,
+    "finalizer_event_reconciliation_passed": true,
+    "package_identity_precheck_passed": true
+  }
+}

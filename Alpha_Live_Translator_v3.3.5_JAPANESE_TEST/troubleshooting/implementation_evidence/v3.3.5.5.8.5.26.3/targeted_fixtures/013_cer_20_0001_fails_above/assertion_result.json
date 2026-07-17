@@ -1,0 +1,21 @@
+{
+  "test_number": 13,
+  "test_name": "cer_20_0001_fails_above",
+  "passed": true,
+  "expected": {
+    "expect_failures": [
+      "stable_cer_above_20"
+    ],
+    "expect_pass": false
+  },
+  "actual": {
+    "passed": true,
+    "failures": [
+      "stable_cer_above_20"
+    ],
+    "stable_cer_percent": 20.0001,
+    "ready_for_translation_beta": false,
+    "ignored_failure_codes": [],
+    "normalized_away_failure_codes": []
+  }
+}

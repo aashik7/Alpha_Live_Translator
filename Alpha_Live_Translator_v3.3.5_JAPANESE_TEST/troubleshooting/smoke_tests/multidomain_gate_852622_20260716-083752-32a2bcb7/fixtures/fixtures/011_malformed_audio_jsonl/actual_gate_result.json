@@ -1,0 +1,19 @@
+{
+  "test_number": 11,
+  "test_name": "malformed_jsonl_fails",
+  "actual_gate_status": "FAILED",
+  "actual_failure_codes": [
+    "AUDIO_DELIVERY_JSONL_PARSE_ERROR"
+  ],
+  "actual_failure_messages": [
+    "audio_delivery_summary_recalculated.evidence_record_parse_errors=1 -> AUDIO_DELIVERY_JSONL_PARSE_ERROR"
+  ],
+  "actual_gate_exit_code": 0,
+  "actual_acceptance_version": "NOT_ACCEPTED",
+  "actual_acceptance_status": "FIXTURE_ONLY",
+  "source_result_file": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\smoke_tests\\multidomain_gate_852622_20260716-083752-32a2bcb7\\fixtures\\011_malformed_audio_jsonl\\accuracy_stage_compare\\audio_delivery_summary.json",
+  "source_result_file_sha256": "dda6f9e7a0014028ba8b72d203ae14de7b21e5c9e45b4bedb5ccbf8a899b82d4",
+  "unhandled_exception": false,
+  "exception_class": "",
+  "exception_message": ""
+}

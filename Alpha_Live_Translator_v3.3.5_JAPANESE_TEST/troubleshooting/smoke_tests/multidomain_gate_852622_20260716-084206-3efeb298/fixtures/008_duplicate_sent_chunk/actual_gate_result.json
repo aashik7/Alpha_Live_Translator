@@ -1,0 +1,19 @@
+{
+  "test_number": 8,
+  "test_name": "duplicate_sent_chunk_fails",
+  "actual_gate_status": "FAILED",
+  "actual_failure_codes": [
+    "AUDIO_CHUNK_DUPLICATED"
+  ],
+  "actual_failure_messages": [
+    "audio_delivery_summary_recalculated.duplicate_sent_chunk_ids=[2] -> AUDIO_CHUNK_DUPLICATED"
+  ],
+  "actual_gate_exit_code": 0,
+  "actual_acceptance_version": "NOT_ACCEPTED",
+  "actual_acceptance_status": "FIXTURE_ONLY",
+  "source_result_file": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\smoke_tests\\multidomain_gate_852622_20260716-084206-3efeb298\\fixtures\\008_duplicate_sent_chunk\\accuracy_stage_compare\\audio_delivery_summary.json",
+  "source_result_file_sha256": "538f006d16ba8e3aa0481d9587ecc52bb7edb7a11f6cadd36f30f3a293687426",
+  "unhandled_exception": false,
+  "exception_class": "",
+  "exception_message": ""
+}

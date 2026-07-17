@@ -1,0 +1,71 @@
+# Visible Error Audit (audit-only — no auto-correction)
+# app_version: 3.3.5.5.8.5.23.2
+# run_id: v3.3.5.5.8.5.23.1-20260708-114410
+# visible_error_count: 65
+# high: 5 medium: 49 low: 11
+
+line=2 severity=medium pattern=yatte_kimashi category=particle_ending snippet=今回も第3回目の授業の内容をこちらのビデオで復習します。これまでのビデオの第一回目から第三回目、こちらのビデオまではビジネス日本語三十時間の一のトピック、紹介するをやってきまし。そして今回がこの紹介するのトピック最後になります。
+line=5 severity=low pattern=department_risk category=meaning_risk snippet=えー、三ではまず一緒にリピートしてくださいは弊社の営業部長の永井でございます。
+line=6 severity=low pattern=department_risk category=meaning_risk snippet=部長こちらは開発部長の江藤様でいらっしゃいます。
+line=7 severity=medium pattern=leading_fragment_particle category=sentence_boundary snippet=はじめまして、永井と申しますもチンがいろいろとお世話になっております。
+line=10 severity=medium pattern=leading_fragment_particle category=sentence_boundary snippet=はい、みなさんリピートしましたか内容を確認しましょう。
+line=11 severity=medium pattern=leading_fragment_particle category=sentence_boundary snippet=の談話は、三人の人が登場していますね。
+line=12 severity=medium pattern=shin_vs_chin category=name_honorific snippet=シンさん、永井さん、江藤さんの三人です。
+line=12 severity=medium pattern=eigyou_bucho_sa category=name_honorific snippet=シンさん、永井さん、江藤さんの三人です。
+line=12 severity=medium pattern=etou_sa category=name_honorific snippet=シンさん、永井さん、江藤さんの三人です。
+line=13 severity=low pattern=tasha_vs_tasha category=business_term snippet=誰が他者、誰が自社になるでしょうか。
+line=14 severity=low pattern=tasha_vs_tasha category=business_term snippet=誰が他者、誰が自社になるでしょうか。ですね。
+line=14 severity=medium pattern=duplicate_line_continuation category=sentence_boundary snippet=誰が他者、誰が自社になるでしょうか。ですね。
+line=15 severity=medium pattern=eigyou_bucho_sa category=name_honorific snippet=江藤さんが他社チンさんと永井さんが自社という立場になります。
+line=15 severity=medium pattern=etou_sa category=name_honorific snippet=江藤さんが他社チンさんと永井さんが自社という立場になります。
+line=16 severity=medium pattern=eigyou_bucho_sa category=name_honorific snippet=ちんさんと永井さは同じ会社の社員ということですね。
+line=19 severity=medium pattern=leading_fragment_particle category=sentence_boundary snippet=が注意点があましたね。
+line=22 severity=medium pattern=leading_fragment_particle category=sentence_boundary snippet=は敬語のルールでしたね。
+line=23 severity=low pattern=tasha_vs_tasha category=business_term snippet=て他者の人に対しては何々様、何々さん、このどちらかを使ってください。
+line=23 severity=medium pattern=leading_fragment_particle category=sentence_boundary snippet=て他者の人に対しては何々様、何々さん、このどちらかを使ってください。
+line=25 severity=medium pattern=etou_sa category=name_honorific snippet=て江藤さんの会話です。いえ、こちらこそ。
+line=25 severity=medium pattern=leading_fragment_particle category=sentence_boundary snippet=て江藤さんの会話です。いえ、こちらこそ。
+line=26 severity=medium pattern=chii_san_typo category=name_honorific snippet=ちーさんにはよくやっていただいております。
+line=27 severity=medium pattern=leading_fragment_particle category=sentence_boundary snippet=は意味としては、まあチンさんは普段一生懸命働いています。
+line=28 severity=low pattern=itayouni category=particle_ending snippet=しっかり結果を出していますといたように、まあチンさんの上司である永井さんに小さなことを褒めている。
+line=28 severity=medium pattern=eigyou_bucho_sa category=name_honorific snippet=しっかり結果を出していますといたように、まあチンさんの上司である永井さんに小さなことを褒めている。
+line=31 severity=medium pattern=leading_fragment_particle category=sentence_boundary snippet=の他にどんな表現がありましたか。
+line=32 severity=medium pattern=midline_punct category=punctuation_artifact snippet=の他にどんな表現がありましたか。、例えばいろいろ助けていただいております。
+line=32 severity=medium pattern=leading_fragment_particle category=sentence_boundary snippet=の他にどんな表現がありましたか。、例えばいろいろ助けていただいております。
+line=32 severity=medium pattern=duplicate_line_continuation category=sentence_boundary snippet=の他にどんな表現がありましたか。、例えばいろいろ助けていただいております。
+line=35 severity=medium pattern=eigyou_bucho_sa category=name_honorific snippet=ちんさんと永井さんにとって、江藤さはまあビジネスパートナーです。
+line=35 severity=medium pattern=etou_sa category=name_honorific snippet=ちんさんと永井さんにとって、江藤さはまあビジネスパートナーです。
+line=36 severity=medium pattern=etou_sa category=name_honorific snippet=そのビジネスパートナーの江藤さんがちんさんのことをこういった表現で褒めている表現になります。
+line=40 severity=low pattern=department_risk category=meaning_risk snippet=江藤部長、こちらは弊社の営業部長の永井でございます。
+line=41 severity=low pattern=department_risk category=meaning_risk snippet=部長こちらは開発部長の江藤様でいらっしゃいます。
+line=43 severity=high pattern=osewa_nate category=polite_artifact snippet=もチンがいろいろとお世話になております。
+line=43 severity=high pattern=nate_orimasu category=particle_ending snippet=もチンがいろいろとお世話になております。
+line=45 severity=medium pattern=leading_fragment_particle category=sentence_boundary snippet=が非常によくやっていただいております。
+line=48 severity=medium pattern=yoroshiku_double_i category=polite_artifact snippet=ともよろしくお願いいします。
+line=49 severity=medium pattern=shite_ikimashi category=particle_ending snippet=では内容を確認していきましょう。
+line=50 severity=medium pattern=leading_fragment_particle category=sentence_boundary snippet=は上司の紹介ということで、先ほど勉強した談話の表現のより長いバージョンになります。
+line=51 severity=medium pattern=etou_sa category=name_honorific snippet=江藤さんのところですね。
+line=53 severity=medium pattern=leading_fragment_particle category=sentence_boundary snippet=がという表現が加わっていますね。
+line=54 severity=medium pattern=leading_fragment_particle category=sentence_boundary snippet=は皆さん実際の状況によってここも変えることができます。
+line=57 severity=medium pattern=leading_fragment_particle category=sentence_boundary snippet=からもう半年近くになりますが何々近く、つまりこれはもうすぐ半年ということですね。
+line=58 severity=medium pattern=leading_fragment_particle category=sentence_boundary snippet=にこの非常にという言葉が加わりました非常にはとても大変と同じ意味ですね。
+line=61 severity=medium pattern=leading_fragment_particle category=sentence_boundary snippet=てこの表現もいろいろ助けていただいております。
+line=62 severity=medium pattern=leading_fragment_particle category=sentence_boundary snippet=の他にもいろんな表現がありましたね。
+line=64 severity=medium pattern=duplicate_line_continuation category=sentence_boundary snippet=いろんな表現でを入れて、そして実際の自分の部長の名前やお客様の名前を入れてぜひ練習してみてください、こですね。
+line=66 severity=medium pattern=leading_fragment_particle category=sentence_boundary snippet=はこれからになるので、今後ともというのはこれからもの丁寧、改まった表現になります。
+line=67 severity=high pattern=meishi_koukan category=business_term snippet=ではぜひ皆さん、たくさん練習してみてください第3回目の最後は名詞交換について勉強したいと思います。
+line=68 severity=medium pattern=leading_fragment_particle category=sentence_boundary snippet=は名刺交換をしたことがありますか。
+line=70 severity=medium pattern=leading_fragment_particle category=sentence_boundary snippet=が今日はその表現について一緒に確認していきたいと思います。
+line=72 severity=medium pattern=leading_fragment_particle category=sentence_boundary snippet=は会社の名前、そして自分の名前を言います。何々会社の沖田と申します。
+line=73 severity=medium pattern=watasite_kudai category=particle_ending snippet=て両手で名刺を持って名前を言った後にどうぞよろしくお願いいたしますと言ってから名詞を渡してくだい。
+line=73 severity=high pattern=meishi_watashi category=business_term snippet=て両手で名刺を持って名前を言った後にどうぞよろしくお願いいたしますと言ってから名詞を渡してくだい。
+line=73 severity=medium pattern=leading_fragment_particle category=sentence_boundary snippet=て両手で名刺を持って名前を言った後にどうぞよろしくお願いいたしますと言ってから名詞を渡してくだい。
+line=76 severity=high pattern=meishou_morau category=business_term snippet=と言って名刺を渡しますてもらう側名称をもらう側は何と言ってもらえます
+line=84 severity=low pattern=moushiwake_ai_niku_punct category=punctuation_artifact snippet=申し訳ございませんあいにく本日は名刺を切らしておりましてでは一緒にリピートしてください。
+line=85 severity=low pattern=moushiwake_ai_niku_punct category=punctuation_artifact snippet=申し訳ございませんあいにく本日は名刺を切らしておりまして
+line=85 severity=medium pattern=duplicate_line_continuation category=sentence_boundary snippet=申し訳ございませんあいにく本日は名刺を切らしておりまして
+line=86 severity=medium pattern=leading_fragment_particle category=sentence_boundary snippet=は素直に今日は名詞を持ってきていません。忘れていました。
+line=89 severity=medium pattern=kotaerarenai category=particle_ending snippet=あいにくというのは、まあ相手の期待に応えられないときつまり今名詞、相手に渡すことができないことそれは期待に応えられなですよね。
+line=91 severity=medium pattern=leading_fragment_particle category=sentence_boundary snippet=て本日、これは今日改まった表現は本日名刺を切らしておりまして、まあ、名刺を切らす
+line=93 severity=low pattern=moushiwake_ai_niku_punct category=punctuation_artifact snippet=この表現を使ってくださいて、申し訳ございません、あいにく本日は名称切らしておりまして、と言った後に自己紹介何々会社の何々と申します。
+line=95 severity=medium pattern=leading_fragment_particle category=sentence_boundary snippet=が時にはこういう状況になることもあるかもしれません。

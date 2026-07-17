@@ -1,0 +1,15 @@
+{
+  "build_id": "85abf19d-62d0-4073-9a1c-f9eb08ee9c5a",
+  "bundle": "PHASE1_CORRECTION_FINAL_BUNDLE_v3.3.5.5.8.5.25.3.3.2.6_85abf19d-62d0-4073-9a1c-f9eb08ee9c5a.zip",
+  "entries": [
+    "evidence/PHASE1_CORRECTION_EVIDENCE_85abf19d-62d0-4073-9a1c-f9eb08ee9c5a.zip",
+    "acceptance/PHASE1_CORRECTION_FINAL_ACCEPTANCE.json",
+    "acceptance/Cursor final report.txt",
+    "delivery/PACKAGE_MANIFEST.json",
+    "delivery/PACKAGE_CONTENT_AUDIT.json",
+    "delivery/OUTER_BUNDLE_AUDIT.json",
+    "delivery/BUILD_IDENTITY.json"
+  ],
+  "generated_at": "2026-07-14T15:59:09Z",
+  "patch_version": "3.3.5.5.8.5.25.3.3.2.6"
+}

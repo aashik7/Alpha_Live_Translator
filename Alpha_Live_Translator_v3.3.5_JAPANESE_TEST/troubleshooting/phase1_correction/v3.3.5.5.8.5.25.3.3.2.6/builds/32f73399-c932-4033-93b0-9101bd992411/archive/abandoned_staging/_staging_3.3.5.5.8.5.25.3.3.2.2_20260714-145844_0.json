@@ -1,0 +1,50 @@
+{
+  "action": "deleted_after_manifest",
+  "build_id": "32f73399-c932-4033-93b0-9101bd992411",
+  "file_count": 44,
+  "generated_at": "2026-07-14T15:19:13Z",
+  "patch_version": "3.3.5.5.8.5.25.3.3.2.6",
+  "sample_identity_files": [
+    {
+      "path": "troubleshooting/project_cleanup/v3.3.5.5.8.5.25.3.3.2.4/builds/be77c0ec-1972-4aaa-b166-8323475d1f30/quarantine/troubleshooting/project_cleanup/v3.3.5.5.8.5.25.3.3.2.4/builds/eabcac88-e1ec-4f96-9f14-76d91189e967/quarantine/troubleshooting/project_cleanup/v3.3.5.5.8.5.25.3.3.2.4/builds/29585b19-29bd-49e8-a455-f7a4c1c531eb/quarantine/troubleshooting/post_acceptance_audit/v3.3.5.5.8.5.25.3.3.2.2/_staging_3.3.5.5.8.5.25.3.3.2.2_20260714-145844/reference/reference.txt",
+      "sha256": "09634a0da9ff86ce4825fb8326c3bca99e64be955c971d7e2db7f7b7823e5b8b"
+    },
+    {
+      "path": "troubleshooting/project_cleanup/v3.3.5.5.8.5.25.3.3.2.4/builds/be77c0ec-1972-4aaa-b166-8323475d1f30/quarantine/troubleshooting/project_cleanup/v3.3.5.5.8.5.25.3.3.2.4/builds/eabcac88-e1ec-4f96-9f14-76d91189e967/quarantine/troubleshooting/project_cleanup/v3.3.5.5.8.5.25.3.3.2.4/builds/29585b19-29bd-49e8-a455-f7a4c1c531eb/quarantine/troubleshooting/post_acceptance_audit/v3.3.5.5.8.5.25.3.3.2.2/_staging_3.3.5.5.8.5.25.3.3.2.2_20260714-145844/reference/reference_quality_report.json",
+      "sha256": "b1bcfecf3971405ac1f2068a31b5b3e58335323a0eaa94c18062a2e8ded483ca"
+    },
+    {
+      "path": "troubleshooting/project_cleanup/v3.3.5.5.8.5.25.3.3.2.4/builds/be77c0ec-1972-4aaa-b166-8323475d1f30/quarantine/troubleshooting/project_cleanup/v3.3.5.5.8.5.25.3.3.2.4/builds/eabcac88-e1ec-4f96-9f14-76d91189e967/quarantine/troubleshooting/project_cleanup/v3.3.5.5.8.5.25.3.3.2.4/builds/29585b19-29bd-49e8-a455-f7a4c1c531eb/quarantine/troubleshooting/post_acceptance_audit/v3.3.5.5.8.5.25.3.3.2.2/_staging_3.3.5.5.8.5.25.3.3.2.2_20260714-145844/reference/reference_snapshot.json",
+      "sha256": "84141fd60d1475369190b70e00d71db28b52d880feb2ba803e291738a6cdeaae"
+    },
+    {
+      "path": "troubleshooting/project_cleanup/v3.3.5.5.8.5.25.3.3.2.4/builds/be77c0ec-1972-4aaa-b166-8323475d1f30/quarantine/troubleshooting/project_cleanup/v3.3.5.5.8.5.25.3.3.2.4/builds/eabcac88-e1ec-4f96-9f14-76d91189e967/quarantine/troubleshooting/project_cleanup/v3.3.5.5.8.5.25.3.3.2.4/builds/29585b19-29bd-49e8-a455-f7a4c1c531eb/quarantine/troubleshooting/post_acceptance_audit/v3.3.5.5.8.5.25.3.3.2.2/_staging_3.3.5.5.8.5.25.3.3.2.2_20260714-145844/validation/CURRENT_RUN_ONLY_AUDIT.json",
+      "sha256": "885e2c4495e20554afeb7a263d2688fc00ce292ea7aa65295e5f1e1b33a2f9e6"
+    },
+    {
+      "path": "troubleshooting/project_cleanup/v3.3.5.5.8.5.25.3.3.2.4/builds/be77c0ec-1972-4aaa-b166-8323475d1f30/quarantine/troubleshooting/project_cleanup/v3.3.5.5.8.5.25.3.3.2.4/builds/eabcac88-e1ec-4f96-9f14-76d91189e967/quarantine/troubleshooting/project_cleanup/v3.3.5.5.8.5.25.3.3.2.4/builds/29585b19-29bd-49e8-a455-f7a4c1c531eb/quarantine/troubleshooting/post_acceptance_audit/v3.3.5.5.8.5.25.3.3.2.2/_staging_3.3.5.5.8.5.25.3.3.2.2_20260714-145844/validation/FINALIZER_EVENT_RECONCILIATION_COPY.json",
+      "sha256": "199ab3c2784fca0f9f826db73a4f7ca650b0977e6496c7d20b93eea763bcd55c"
+    },
+    {
+      "path": "troubleshooting/project_cleanup/v3.3.5.5.8.5.25.3.3.2.4/builds/be77c0ec-1972-4aaa-b166-8323475d1f30/quarantine/troubleshooting/project_cleanup/v3.3.5.5.8.5.25.3.3.2.4/builds/eabcac88-e1ec-4f96-9f14-76d91189e967/quarantine/troubleshooting/project_cleanup/v3.3.5.5.8.5.25.3.3.2.4/builds/29585b19-29bd-49e8-a455-f7a4c1c531eb/quarantine/troubleshooting/post_acceptance_audit/v3.3.5.5.8.5.25.3.3.2.2/_staging_3.3.5.5.8.5.25.3.3.2.2_20260714-145844/validation/FINAL_STATUS_RECONCILIATION_COPY.json",
+      "sha256": "b5c2acacbefadf207f1ed5ba6982d4681fae0161db71ddb97db81883a654cec9"
+    },
+    {
+      "path": "troubleshooting/project_cleanup/v3.3.5.5.8.5.25.3.3.2.4/builds/be77c0ec-1972-4aaa-b166-8323475d1f30/quarantine/troubleshooting/project_cleanup/v3.3.5.5.8.5.25.3.3.2.4/builds/eabcac88-e1ec-4f96-9f14-76d91189e967/quarantine/troubleshooting/project_cleanup/v3.3.5.5.8.5.25.3.3.2.4/builds/29585b19-29bd-49e8-a455-f7a4c1c531eb/quarantine/troubleshooting/post_acceptance_audit/v3.3.5.5.8.5.25.3.3.2.2/_staging_3.3.5.5.8.5.25.3.3.2.2_20260714-145844/validation/IMMUTABLE_RUNTIME_ARTIFACT_HASHES_AFTER.json",
+      "sha256": "a1966887992a5dc751912b67146d415110e0774323ea352ad4d58d5382d843f1"
+    },
+    {
+      "path": "troubleshooting/project_cleanup/v3.3.5.5.8.5.25.3.3.2.4/builds/be77c0ec-1972-4aaa-b166-8323475d1f30/quarantine/troubleshooting/project_cleanup/v3.3.5.5.8.5.25.3.3.2.4/builds/eabcac88-e1ec-4f96-9f14-76d91189e967/quarantine/troubleshooting/project_cleanup/v3.3.5.5.8.5.25.3.3.2.4/builds/29585b19-29bd-49e8-a455-f7a4c1c531eb/quarantine/troubleshooting/post_acceptance_audit/v3.3.5.5.8.5.25.3.3.2.2/_staging_3.3.5.5.8.5.25.3.3.2.2_20260714-145844/validation/IMMUTABLE_RUNTIME_ARTIFACT_HASHES_BEFORE.json",
+      "sha256": "c889cd2e03c8d2c46d8b0e5c4d2fa4eb05005f61324d86f8c179ddad877b984a"
+    },
+    {
+      "path": "troubleshooting/project_cleanup/v3.3.5.5.8.5.25.3.3.2.4/builds/be77c0ec-1972-4aaa-b166-8323475d1f30/quarantine/troubleshooting/project_cleanup/v3.3.5.5.8.5.25.3.3.2.4/builds/eabcac88-e1ec-4f96-9f14-76d91189e967/quarantine/troubleshooting/project_cleanup/v3.3.5.5.8.5.25.3.3.2.4/builds/29585b19-29bd-49e8-a455-f7a4c1c531eb/quarantine/troubleshooting/post_acceptance_audit/v3.3.5.5.8.5.25.3.3.2.2/_staging_3.3.5.5.8.5.25.3.3.2.2_20260714-145844/validation/PACKAGE_IDENTITY_AUDIT.json",
+      "sha256": "61fa8c7220d76ec137d5649d73010fafa74366a13799cb68ab1cd724e86af28e"
+    },
+    {
+      "path": "troubleshooting/project_cleanup/v3.3.5.5.8.5.25.3.3.2.4/builds/be77c0ec-1972-4aaa-b166-8323475d1f30/quarantine/troubleshooting/project_cleanup/v3.3.5.5.8.5.25.3.3.2.4/builds/eabcac88-e1ec-4f96-9f14-76d91189e967/quarantine/troubleshooting/project_cleanup/v3.3.5.5.8.5.25.3.3.2.4/builds/29585b19-29bd-49e8-a455-f7a4c1c531eb/quarantine/troubleshooting/post_acceptance_audit/v3.3.5.5.8.5.25.3.3.2.2/_staging_3.3.5.5.8.5.25.3.3.2.2_20260714-145844/validation/PACKAGE_IDENTITY_PRECHECK.json",
+      "sha256": "61fa8c7220d76ec137d5649d73010fafa74366a13799cb68ab1cd724e86af28e"
+    }
+  ],
+  "source": "troubleshooting/project_cleanup/v3.3.5.5.8.5.25.3.3.2.4/builds/be77c0ec-1972-4aaa-b166-8323475d1f30/quarantine/troubleshooting/project_cleanup/v3.3.5.5.8.5.25.3.3.2.4/builds/eabcac88-e1ec-4f96-9f14-76d91189e967/quarantine/troubleshooting/project_cleanup/v3.3.5.5.8.5.25.3.3.2.4/builds/29585b19-29bd-49e8-a455-f7a4c1c531eb/quarantine/troubleshooting/post_acceptance_audit/v3.3.5.5.8.5.25.3.3.2.2/_staging_3.3.5.5.8.5.25.3.3.2.2_20260714-145844"
+}

@@ -1,0 +1,58 @@
+Cursor final report — Multidomain Gate Evidence Closure 3.3.5.5.8.5.26.2.1
+generated_at=2026-07-16T05:52:00Z
+
+1. Files created:
+   - run_multidomain_evidence_closure_852621.py
+   - verify_multidomain_evidence_closure_852621.py
+
+2. Files modified:
+   - regression_multidomain_gate_85262.py (patched before PRE snapshot by parent)
+
+3. Production files changed during evidence patch:
+   []
+
+4. Pre-evidence snapshot: C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\implementation_evidence\v3.3.5.5.8.5.26.2.1\PRE_EVIDENCE_PATCH_SOURCE_SNAPSHOT.json
+   sha256=8d740c4c5b520025df6ab4211fa7506cf5ca349630c14c09bcd277f4ce61d442
+
+5. Retrospective baseline discovery:
+   retrospective_baseline_available=False
+
+6. Retrospective before hashes available:
+   False
+
+7. Corrected source manifest: C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\implementation_evidence\v3.3.5.5.8.5.26.2.1\source_change_manifest_corrected.json
+
+8. Regression command: C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\implementation_evidence\v3.3.5.5.8.5.26.2.1\regression_command.txt
+
+9. Regression exit code: 0
+
+10. Raw stdout: C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\implementation_evidence\v3.3.5.5.8.5.26.2.1\regression_stdout.txt
+11. Raw stderr: C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\implementation_evidence\v3.3.5.5.8.5.26.2.1\regression_stderr.txt
+
+12. Regression results: C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\implementation_evidence\v3.3.5.5.8.5.26.2.1\regression_results.json
+
+13. Fixture root: C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\smoke_tests\multidomain_gate_852621_20260716-055139-939e9996\fixtures
+14. Physical fixture count: 32
+
+15. Leak scan: C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\implementation_evidence\v3.3.5.5.8.5.26.2.1\reference_leak_scan.json
+    runtime_prohibited_hits=0
+
+16. Production immutability: production_source_immutable=True
+
+17. Independent verification: verification_passed=True
+
+18. Evidence acceptance: EVIDENCE_STATUS=ACCEPTED
+
+19. Future command template: C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\implementation_evidence\v3.3.5.5.8.5.26.2.1\FUTURE_LIVE_TEST_COMMAND_TEMPLATE.txt
+    uses <ACTUAL_RECORDING_DURATION_SECONDS> not 3600
+
+20. Evidence ZIP: C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\implementation_evidence\v3.3.5.5.8.5.26.2.1\MULTIDOMAIN_EVIDENCE_CLOSURE_v3.3.5.5.8.5.26.2.1.zip
+    sha256=f87b84d53e60de9242f791e77259c84848a136788bf495dd0a546bf6bc251705
+    size=120203
+    entries=116
+
+21. Alpha was not launched during evidence closure.
+22. No live benchmark was run; translation beta remains disabled.
+
+compiled_scripts=['regression_multidomain_gate_85262.py', 'run_multidomain_gate_85262.py', 'run_multidomain_evidence_closure_852621.py', 'verify_multidomain_gate_85262.py', 'verify_multidomain_evidence_closure_852621.py', 'prepare_multidomain_gate_85262.py', 'score_multidomain_gate_85262.py']
+smoke_root=C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\smoke_tests\multidomain_gate_852621_20260716-055139-939e9996

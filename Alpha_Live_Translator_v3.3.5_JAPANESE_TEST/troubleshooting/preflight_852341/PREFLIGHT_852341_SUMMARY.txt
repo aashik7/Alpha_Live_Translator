@@ -1,0 +1,7 @@
+PREFLIGHT 852341 SUMMARY
+collected_at=2026-07-09T13:24:59
+app_version_before_change=3.3.5.5.8.5.23.4
+latest_run_id=live-v3.3.5.5.8.5.23.4-20260709-112449-8f93fbc5
+latest_alpha_sha256=26aa2edab22d3db1...
+latest_upload_package=troubleshooting\runs\v3.3.5.5.8.5.23.4-20260709-112449\upload_package\UPLOAD_PACKAGE_v3.3.5.5.8.5.23.4_20260709-115601.zip
+warnings=[]

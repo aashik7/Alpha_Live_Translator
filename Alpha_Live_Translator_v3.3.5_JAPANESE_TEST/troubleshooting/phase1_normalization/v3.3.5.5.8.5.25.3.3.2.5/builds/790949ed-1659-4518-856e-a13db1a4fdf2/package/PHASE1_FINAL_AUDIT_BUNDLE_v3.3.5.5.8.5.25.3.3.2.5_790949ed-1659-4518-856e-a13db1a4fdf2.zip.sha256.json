@@ -1,0 +1,15 @@
+{
+  "file": "PHASE1_FINAL_AUDIT_BUNDLE_v3.3.5.5.8.5.25.3.3.2.5_790949ed-1659-4518-856e-a13db1a4fdf2.zip",
+  "sha256": "a6358cf64ff8c9318ecb78aeb627d7ead631a231fc5018a09d23c14bf23dd6c4",
+  "build_id": "790949ed-1659-4518-856e-a13db1a4fdf2",
+  "patch_version": "3.3.5.5.8.5.25.3.3.2.5",
+  "generated_at": "2026-07-14T09:05:16Z",
+  "excludes": [
+    "secrets",
+    "audio",
+    ".env",
+    ".git",
+    "venv",
+    "archive contents"
+  ]
+}

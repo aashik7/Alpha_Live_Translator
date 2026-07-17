@@ -1,0 +1,11 @@
+{
+  "source_commit_total_count": 29,
+  "source_commit_represented_count": 29,
+  "source_commit_coverage_ratio": 1.0,
+  "lineage_coverage_ratio": 1.0,
+  "valid_segment_loss_count": 0,
+  "export_lossless": true,
+  "export_coverage_ratio": 1.0,
+  "clean_export_ready_for_scoring": true,
+  "final_export_contains_pre_correction_lines": false
+}

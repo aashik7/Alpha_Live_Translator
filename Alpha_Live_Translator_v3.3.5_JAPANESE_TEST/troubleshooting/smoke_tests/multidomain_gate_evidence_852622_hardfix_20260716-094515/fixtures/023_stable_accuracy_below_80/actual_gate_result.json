@@ -1,0 +1,19 @@
+{
+  "test_number": 23,
+  "test_name": "stable_accuracy_below_80_fails",
+  "actual_gate_status": "FAILED",
+  "actual_failure_codes": [
+    "STABLE_ACCURACY_BELOW_80"
+  ],
+  "actual_failure_messages": [
+    "acceptance.failures=stable_accuracy_below_80 -> STABLE_ACCURACY_BELOW_80"
+  ],
+  "actual_gate_exit_code": 0,
+  "actual_acceptance_version": "NOT_ACCEPTED",
+  "actual_acceptance_status": "FIXTURE_ONLY",
+  "source_result_file": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\smoke_tests\\multidomain_gate_evidence_852622_hardfix_20260716-094515\\fixtures\\023_stable_accuracy_below_80\\accuracy_stage_compare\\multidomain_gate_acceptance.json",
+  "source_result_file_sha256": "e5814df742587beedf794c53efdf917e139930e10fc917de53461e5aeb3c379a",
+  "unhandled_exception": false,
+  "exception_class": "",
+  "exception_message": ""
+}

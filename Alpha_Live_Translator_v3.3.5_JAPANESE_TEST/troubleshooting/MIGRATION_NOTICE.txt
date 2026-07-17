@@ -1,0 +1,2 @@
+# All runtime evidence is stored under troubleshooting/
+Legacy paths logs/, debug/, run_artifacts/ are deprecated.

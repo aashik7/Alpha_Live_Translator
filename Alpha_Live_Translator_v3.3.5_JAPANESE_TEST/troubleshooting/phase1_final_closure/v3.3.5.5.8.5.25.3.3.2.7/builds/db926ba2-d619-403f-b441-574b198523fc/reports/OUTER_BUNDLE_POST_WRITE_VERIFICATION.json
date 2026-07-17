@@ -1,0 +1,16 @@
+{
+  "build_id": "db926ba2-d619-403f-b441-574b198523fc",
+  "closure_version": "3.3.5.5.8.5.25.3.3.2.7",
+  "evidence_zip_verified": true,
+  "generated_at": "2026-07-15T07:33:52Z",
+  "manifest_hashes_passed": true,
+  "metadata_current": true,
+  "outer_bundle_file_count": 9,
+  "outer_bundle_path": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\phase1_final_closure\\v3.3.5.5.8.5.25.3.3.2.7\\FROZEN_NINE_ISSUE_OUTER_BUNDLE_db926ba2-d619-403f-b441-574b198523fc.zip",
+  "outer_bundle_sha256": "32c286fab8377b8fcec83c020863a18b2008b864490b9c8e93a4317f1cd66ecb",
+  "outer_bundle_size": 253386,
+  "required_reports_present": true,
+  "verification_passed": true,
+  "verified_after_write": true,
+  "zip_integrity_passed": true
+}

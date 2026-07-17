@@ -1,0 +1,3 @@
+C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\python.exe C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\implementation_evidence\v3.3.5.5.8.5.26.3\run_existing_regression_compat_wrapper.py
+# wrapper loads on-disk truth JSON into legacy import build_truth_metadata_template
+# bootstrap=C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\troubleshooting\implementation_evidence\v3.3.5.5.8.5.26.3\legacy_truth_import_bootstrap.py

@@ -1,0 +1,9 @@
+# Visible Error Audit (audit-only — no auto-correction)
+# app_version: 3.3.5.5.8.5.24.2
+# run_id: live-v3.3.5.5.8.5.24.2-20260710-114021-c682755a
+# visible_error_count: 3
+# high: 0 medium: 0 low: 3
+
+line=2 severity=low pattern=company_number_risk category=meaning_risk snippet=本日は2026年7月期第三四半期決算についてご案内申し上げます。は二千二十六年七月期第三四半期決算概要についてお知らせいたします。
+line=12 severity=low pattern=company_number_risk category=meaning_risk snippet=続いて2026年7月期軽トピックスをお知らせいたします。保育サービスにおいては大阪市中国で桜咲く未来東平を予定どおり解説して桜咲く未来晴海におても予定通り蔵書を行い定員数が増加しまた。
+line=17 severity=low pattern=company_number_risk category=meaning_risk snippet=不動産企画開発ではマンション開発事業と買取再販事業ホテル再生事業も計画通り進捗しており以上2026年7月期第三四半期決算投機予想に対し順調に進捗しておますので引き続き教えの程お願いどうもあり

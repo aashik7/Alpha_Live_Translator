@@ -1,0 +1,8 @@
+# Visible Error Audit (audit-only — no auto-correction)
+# app_version: 3.3.5.5.8.5.25.3
+# run_id: live-v3.3.5.5.8.5.25.3-20260713-123233-2f1ed00b
+# visible_error_count: 2
+# high: 0 medium: 0 low: 2
+
+line=15 severity=low pattern=company_number_risk category=meaning_risk snippet=フェムケアフェムテックサービスにおいては、連結子会社のイェールにて2026年夏頃に新製品の発売を予定しておますこの新製品の発売によ量産サプリメント市場でさらなるレアの格納続いて覚悟会社の取締役の収入についてお知らせいたします。
+line=18 severity=low pattern=company_number_risk category=meaning_risk snippet=不動産企画開発ではマンション開発事業と買取再販事業ホテル再生事業も計画通り進捗しております。以上2026年7月期第三四半期決算のご報告投機予想に対し順調に進捗しておりますので引き続きの程お願いいしもありがとうます

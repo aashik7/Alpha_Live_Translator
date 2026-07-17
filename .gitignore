@@ -1,0 +1,46 @@
+﻿# Secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+.cache/
+
+# Logs and bulky generated run artifacts
+*.log
+troubleshooting/runs/**/logs/
+**/troubleshooting/runs/**/logs/
+**/quarantine/
+troubleshooting/**/staging*/
+**/troubleshooting/**/staging*/
+
+# Audio / temp
+*.wav
+*.mp3
+*.flac
+*.m4a
+tmp/
+temp/
+*.tmp
+*.temp
+
+# OS / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+.cursor/
+.vscode/
+*.swp
+
+# Local helpers
+_scan_summary.txt

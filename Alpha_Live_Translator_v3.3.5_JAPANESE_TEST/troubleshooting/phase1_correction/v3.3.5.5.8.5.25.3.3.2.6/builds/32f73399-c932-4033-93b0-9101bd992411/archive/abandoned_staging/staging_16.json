@@ -1,0 +1,50 @@
+{
+  "action": "deleted_after_manifest",
+  "build_id": "32f73399-c932-4033-93b0-9101bd992411",
+  "file_count": 66,
+  "generated_at": "2026-07-14T15:19:16Z",
+  "patch_version": "3.3.5.5.8.5.25.3.3.2.6",
+  "sample_identity_files": [
+    {
+      "path": "troubleshooting/post_acceptance_audit/v3.3.5.5.8.5.25.3.3.2.3/builds/59a32685-e9b3-4967-b5a1-e253706a1fb3/staging/acceptance/Cursor final report.txt",
+      "sha256": "cd0258f0e420ab08991dd30601bd0b97d44cbf42a0c7cbe317a3271e83ce6f35"
+    },
+    {
+      "path": "troubleshooting/post_acceptance_audit/v3.3.5.5.8.5.25.3.3.2.3/builds/59a32685-e9b3-4967-b5a1-e253706a1fb3/staging/acceptance/ZERO_ISSUE_FINAL_ACCEPTANCE.json",
+      "sha256": "d9adf608823422128ec8ad1925f0a2861c6e267cbd79510e634a639479199b2c"
+    },
+    {
+      "path": "troubleshooting/post_acceptance_audit/v3.3.5.5.8.5.25.3.3.2.3/builds/59a32685-e9b3-4967-b5a1-e253706a1fb3/staging/delivery/BUILD_IDENTITY.json",
+      "sha256": "9d8259bfab1e0a0cb299684231056cb3f135c77b523a3f73d3f85a22fdf25829"
+    },
+    {
+      "path": "troubleshooting/post_acceptance_audit/v3.3.5.5.8.5.25.3.3.2.3/builds/59a32685-e9b3-4967-b5a1-e253706a1fb3/staging/delivery/EVIDENCE_ZIP_AUDIT.json",
+      "sha256": "3b44771b41814ba5e872e5d08956b6143530d2217a536d0920a3bf872d1752af"
+    },
+    {
+      "path": "troubleshooting/post_acceptance_audit/v3.3.5.5.8.5.25.3.3.2.3/builds/59a32685-e9b3-4967-b5a1-e253706a1fb3/staging/delivery/OUTER_BUNDLE_CONTENT_AUDIT.json",
+      "sha256": "cd08ddd6f7fcb40a49466ad33f9f801394e6e1ac6098d448f46305a74d4c4c7f"
+    },
+    {
+      "path": "troubleshooting/post_acceptance_audit/v3.3.5.5.8.5.25.3.3.2.3/builds/59a32685-e9b3-4967-b5a1-e253706a1fb3/staging/delivery/OUTER_BUNDLE_INTERNAL_VERIFICATION.json",
+      "sha256": "532440441a3356db1386a559d9722293c9245ff535b0328b208452d49e2a6886"
+    },
+    {
+      "path": "troubleshooting/post_acceptance_audit/v3.3.5.5.8.5.25.3.3.2.3/builds/59a32685-e9b3-4967-b5a1-e253706a1fb3/staging/delivery/OUTER_BUNDLE_MANIFEST.json",
+      "sha256": "4a87fc0645746b5645f0a4c719aa1cb9e4860593f5d3dcc1517b994826722b9e"
+    },
+    {
+      "path": "troubleshooting/post_acceptance_audit/v3.3.5.5.8.5.25.3.3.2.3/builds/59a32685-e9b3-4967-b5a1-e253706a1fb3/staging/delivery/SOURCE_BUNDLE_INSPECTION.json",
+      "sha256": "feb9f4e0c59abd55a6740314c27c4c60951122c2dc291340bb6115232fd1b170"
+    },
+    {
+      "path": "troubleshooting/post_acceptance_audit/v3.3.5.5.8.5.25.3.3.2.3/builds/59a32685-e9b3-4967-b5a1-e253706a1fb3/staging/regression/regression_single_authority_packaging_85253323.txt",
+      "sha256": "e6fc376c9df0f34503f5e3c3b973acd0621463b2bbc25aedf0ffb20e9d7d9677"
+    },
+    {
+      "path": "troubleshooting/post_acceptance_audit/v3.3.5.5.8.5.25.3.3.2.3/builds/59a32685-e9b3-4967-b5a1-e253706a1fb3/staging/evidence/reference/reference.txt",
+      "sha256": "09634a0da9ff86ce4825fb8326c3bca99e64be955c971d7e2db7f7b7823e5b8b"
+    }
+  ],
+  "source": "troubleshooting/post_acceptance_audit/v3.3.5.5.8.5.25.3.3.2.3/builds/59a32685-e9b3-4967-b5a1-e253706a1fb3/staging"
+}

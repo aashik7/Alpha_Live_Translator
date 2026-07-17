@@ -1,0 +1,21 @@
+{
+  "archive_claim_mismatches": [],
+  "authoritative_reference_unchanged": true,
+  "before_after_diff_mismatches": [],
+  "build_id": "db926ba2-d619-403f-b441-574b198523fc",
+  "closure_version": "3.3.5.5.8.5.25.3.3.2.7",
+  "deletion_claim_mismatches": [],
+  "duplicate_claim_mismatches": [],
+  "expected_final_sha256": "6e70dd171862527da2f2de0305ab82154cf9c1591b73860e4fd75e06f570c178",
+  "final_sha256": "6e70dd171862527da2f2de0305ab82154cf9c1591b73860e4fd75e06f570c178",
+  "final_transcript_unchanged": true,
+  "generated_at": "2026-07-15T07:33:51Z",
+  "independent_duplicate_groups_on_disk": 122,
+  "metadata_current": true,
+  "pending_files_remaining": [],
+  "protected_hash_mismatches": [],
+  "raw_transcript_unchanged": true,
+  "stable_transcript_unchanged": true,
+  "staging_paths_remaining": [],
+  "verification_passed": true
+}

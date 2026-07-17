@@ -1,0 +1,123 @@
+{
+  "test_number": 16,
+  "test_name": "scoring_module_imported_during_runtime_fails",
+  "kind": "negative",
+  "single_mutation_description": "reference_isolation_actual.json runtime_imported_scoring_modules set non-empty",
+  "files": [
+    {
+      "relative_path": "accuracy_stage_compare/audio_delivery_events.jsonl",
+      "byte_size": 1960,
+      "sha256": "f798ebaff2c63a5aa83627fa94fc202f969e59a0d9b53e3e5ad23d69b074e5aa"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/audio_delivery_summary.json",
+      "byte_size": 1126,
+      "sha256": "1e695667fd35f143443370f641d4f564c055cb83cd890929cdabd15745bb53a6"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/Cursor final report.txt",
+      "byte_size": 16,
+      "sha256": "e25d9e87a10d0c32265dc21eedccd081076a638fb70023cf7ec4a74a55f7f2e9"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/deepgram_request_actual.json",
+      "byte_size": 926,
+      "sha256": "71764bb979cb16c2a6c69ff274daa6c00954bf35065f33d3ca11669ed2116966"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/domain_category_score.json",
+      "byte_size": 4823,
+      "sha256": "47f54057a4ad9bd3131464adb3f9cd5a7d862bf242fc12d7d21ff712d2fb63f0"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/final_alpha_output.txt",
+      "byte_size": 1450,
+      "sha256": "f5f7ba4480ee10dc408e2f24d3e2865520a1d666a57bbbdaeea50c4dc6c0a5b7"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/independent_verification.json",
+      "byte_size": 2452,
+      "sha256": "dae2895e0a81c7079486f8b593ae0853b521e25f51fbe87710633ddcb9240b16"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/meaning_equivalent_score.json",
+      "byte_size": 3838,
+      "sha256": "e55d9c8b372b733c9c43d89f9700c4c0d6248ec50c9fc8e5244aa7e26f452fbb"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/multidomain_gate_acceptance.json",
+      "byte_size": 1284,
+      "sha256": "99ff68424946398d81c31cd600931e552cf2dca36fb99ecdeb7d88f97b79b3fe"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/noise.wav",
+      "byte_size": 4,
+      "sha256": "a40ff3d5900fb7698b8c865041347cb49eccedc8f93945f89629ad104aaecce4"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/raw_deepgram.txt",
+      "byte_size": 1450,
+      "sha256": "f5f7ba4480ee10dc408e2f24d3e2865520a1d666a57bbbdaeea50c4dc6c0a5b7"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/reference_isolation_actual.json",
+      "byte_size": 821,
+      "sha256": "41a8965e256b981dc4ba174afdfbd3af7c6d3c6b2d98da8d632ea5b114357c63"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/runtime_regression_report.json",
+      "byte_size": 156,
+      "sha256": "42e8a3380243101dbe0511f33d1a51704171586771f3e96cb1179f2ef2ec71c3"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/stable_transcript.txt",
+      "byte_size": 1450,
+      "sha256": "f5f7ba4480ee10dc408e2f24d3e2865520a1d666a57bbbdaeea50c4dc6c0a5b7"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/strict_score.json",
+      "byte_size": 1840,
+      "sha256": "feb80a9b1ec45ebd7cf96d2347ee8378f167c30257f45e2d9c16d84641e45b6a"
+    },
+    {
+      "relative_path": "actual_gate_result.json",
+      "byte_size": 1013,
+      "sha256": "b1a5c73be6e1a4ce2e5d9b7d9c239e909dd7e71f7f5a2d60bb4af31eb48ee874"
+    },
+    {
+      "relative_path": "expected_gate_result.json",
+      "byte_size": 360,
+      "sha256": "2125cdda28d326fa11e6381ce7ed0f64312734fae332544eb6c0c2d29ae4d3f1"
+    },
+    {
+      "relative_path": "MULTIDOMAIN_GATE_ANALYSIS_PACKAGE_016_scoring_module_imported_during_runtime.sha256",
+      "byte_size": 66,
+      "sha256": "1f3f43e6a72d74f7a01015bc7e17a0f97cd2259caece96975f5f86db7b6e9587"
+    },
+    {
+      "relative_path": "MULTIDOMAIN_GATE_ANALYSIS_PACKAGE_016_scoring_module_imported_during_runtime.size.txt",
+      "byte_size": 7,
+      "sha256": "61d570e099d65afdb1c678cb39c375d009b1bcad203eaf18145fd3fbd858e375"
+    },
+    {
+      "relative_path": "MULTIDOMAIN_GATE_ANALYSIS_PACKAGE_016_scoring_module_imported_during_runtime.zip",
+      "byte_size": 12168,
+      "sha256": "90007d07bd1b8dd066f2dd620162cf7e24dfb3744339b594400b2360d948a844"
+    },
+    {
+      "relative_path": "reference_copy/multidomain_meeting_v1.txt",
+      "byte_size": 1450,
+      "sha256": "f5f7ba4480ee10dc408e2f24d3e2865520a1d666a57bbbdaeea50c4dc6c0a5b7"
+    },
+    {
+      "relative_path": "reference_copy/multidomain_meeting_v1_truth.json",
+      "byte_size": 2000,
+      "sha256": "ecfbe03916714bd6978dcf926b66def33fb881b394a6ea9594df538f608b2112"
+    },
+    {
+      "relative_path": "regression_assertion.json",
+      "byte_size": 744,
+      "sha256": "796238dcba5119145df2b35d70fe029d8f074bf1d4d42413297fd6afc533fe80"
+    }
+  ]
+}

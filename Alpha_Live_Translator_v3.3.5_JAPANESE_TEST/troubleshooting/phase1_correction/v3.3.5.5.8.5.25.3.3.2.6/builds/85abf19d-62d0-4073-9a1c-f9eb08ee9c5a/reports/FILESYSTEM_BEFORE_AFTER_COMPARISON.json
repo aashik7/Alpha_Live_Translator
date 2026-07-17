@@ -1,0 +1,20 @@
+{
+  "abandoned_staging_after": 0,
+  "abandoned_staging_before": 0,
+  "build_id": "85abf19d-62d0-4073-9a1c-f9eb08ee9c5a",
+  "bytes_after": 148546103,
+  "bytes_before": 145638369,
+  "directories_after": 547,
+  "directories_before": 549,
+  "files_added": 24,
+  "files_after": 1784,
+  "files_archived": 48,
+  "files_before": 1806,
+  "files_changed": 0,
+  "files_deleted": 46,
+  "files_retained": 1784,
+  "generated_at": "2026-07-14T15:58:58Z",
+  "legacy_root_tools_after": 0,
+  "legacy_root_tools_before": 0,
+  "patch_version": "3.3.5.5.8.5.25.3.3.2.6"
+}

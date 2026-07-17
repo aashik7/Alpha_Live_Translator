@@ -1,0 +1,47 @@
+Alpha/Reference Alignment Summary
+reference_quality_verdict: invalid_for_cer
+alignment_mode: qualitative_only
+missing_sections: 38
+extra_alpha_sections: 0
+
+Sections:
+- section_1: alpha_lines=None..None confidence=low overlap=0.0556 hint= note=No reliable alpha alignment found
+- section_2: alpha_lines=2..2 confidence=low overlap=0.0857 hint= note=Soft anchor alignment
+- section_3: alpha_lines=None..None confidence=low overlap=0.0263 hint= note=No reliable alpha alignment found
+- section_4: alpha_lines=1..1 confidence=low overlap=0.0811 hint= note=Soft anchor alignment
+- section_5: alpha_lines=None..None confidence=low overlap=0.0 hint= note=No reliable alpha alignment found
+- section_6: alpha_lines=None..None confidence=low overlap=0.0 hint= note=No reliable alpha alignment found
+- section_7: alpha_lines=None..None confidence=low overlap=0.0 hint= note=No reliable alpha alignment found
+- section_8: alpha_lines=None..None confidence=low overlap=0.0 hint= note=No reliable alpha alignment found
+- section_9: alpha_lines=None..None confidence=low overlap=0.0 hint= note=No reliable alpha alignment found
+- section_10: alpha_lines=None..None confidence=low overlap=0.0 hint= note=No reliable alpha alignment found
+- section_11: alpha_lines=None..None confidence=low overlap=0.0 hint= note=No reliable alpha alignment found
+- section_12: alpha_lines=None..None confidence=low overlap=0.0 hint= note=No reliable alpha alignment found
+- section_13: alpha_lines=None..None confidence=low overlap=0.0 hint= note=No reliable alpha alignment found
+- section_14: alpha_lines=None..None confidence=low overlap=0.0 hint= note=No reliable alpha alignment found
+- section_15: alpha_lines=None..None confidence=low overlap=0.0 hint= note=No reliable alpha alignment found
+- section_16: alpha_lines=None..None confidence=low overlap=0.0 hint= note=No reliable alpha alignment found
+- section_17: alpha_lines=None..None confidence=low overlap=0.0 hint= note=No reliable alpha alignment found
+- section_18: alpha_lines=None..None confidence=low overlap=0.0 hint= note=No reliable alpha alignment found
+- section_19: alpha_lines=None..None confidence=low overlap=0.0 hint= note=No reliable alpha alignment found
+- section_20: alpha_lines=None..None confidence=low overlap=0.0 hint= note=No reliable alpha alignment found
+- section_21: alpha_lines=None..None confidence=low overlap=0.0 hint= note=No reliable alpha alignment found
+- section_22: alpha_lines=None..None confidence=low overlap=0.0 hint= note=No reliable alpha alignment found
+- section_23: alpha_lines=None..None confidence=low overlap=0.0 hint= note=No reliable alpha alignment found
+- section_24: alpha_lines=None..None confidence=low overlap=0.0 hint= note=No reliable alpha alignment found
+- section_25: alpha_lines=None..None confidence=low overlap=0.0 hint= note=No reliable alpha alignment found
+- section_26: alpha_lines=None..None confidence=low overlap=0.0 hint= note=No reliable alpha alignment found
+- section_27: alpha_lines=None..None confidence=low overlap=0.0 hint= note=No reliable alpha alignment found
+- section_28: alpha_lines=None..None confidence=low overlap=0.0 hint= note=No reliable alpha alignment found
+- section_29: alpha_lines=None..None confidence=low overlap=0.0 hint= note=No reliable alpha alignment found
+- section_30: alpha_lines=None..None confidence=low overlap=0.0 hint= note=No reliable alpha alignment found
+- section_31: alpha_lines=None..None confidence=low overlap=0.0 hint= note=No reliable alpha alignment found
+- section_32: alpha_lines=None..None confidence=low overlap=0.0 hint= note=No reliable alpha alignment found
+- section_33: alpha_lines=None..None confidence=low overlap=0.0 hint= note=No reliable alpha alignment found
+- section_34: alpha_lines=None..None confidence=low overlap=0.0 hint= note=No reliable alpha alignment found
+- section_35: alpha_lines=None..None confidence=low overlap=0.0 hint= note=No reliable alpha alignment found
+- section_36: alpha_lines=None..None confidence=low overlap=0.0 hint= note=No reliable alpha alignment found
+- section_37: alpha_lines=None..None confidence=low overlap=0.0 hint= note=No reliable alpha alignment found
+- section_38: alpha_lines=None..None confidence=low overlap=0.0 hint= note=No reliable alpha alignment found
+- section_39: alpha_lines=None..None confidence=low overlap=0.0 hint= note=No reliable alpha alignment found
+- section_40: alpha_lines=None..None confidence=low overlap=0.0 hint= note=No reliable alpha alignment found

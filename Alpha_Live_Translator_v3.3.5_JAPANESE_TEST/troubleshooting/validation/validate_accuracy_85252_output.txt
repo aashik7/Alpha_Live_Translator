@@ -1,0 +1,4 @@
+V3.3.5.5.8.5.25.2 CANONICAL TRANSCRIPT LINEAGE VALIDATION
+Result: PASSED
+APP_VERSION: 3.3.5.5.8.5.25.2
+Warnings: no_new_live_test_after_25.2, trusted_score_still_false_due_to_reference_alignment, reference_transcript_not_human_cleaned

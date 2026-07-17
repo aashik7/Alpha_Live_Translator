@@ -1,0 +1,7 @@
+{
+  "alpha_path": "troubleshooting\\latest\\latest_live_alpha_output.txt",
+  "reference_path": "troubleshooting\\accuracy_benchmark\\reference_transcripts\\test01.txt",
+  "score_report_path": "troubleshooting\\accuracy_benchmark\\results\\20260713_104012_accuracy_score_report.json",
+  "scored_at": "2026-07-13T10:40:11",
+  "updated_at": "2026-07-13T10:40:12"
+}

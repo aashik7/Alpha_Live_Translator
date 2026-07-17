@@ -1,0 +1,3 @@
+VALIDATE_LINEAGE_REGRESSION_852521
+Result: PASSED
+fixture_a: observed=9 required=8 coverage=1.0

@@ -1,0 +1,123 @@
+{
+  "test_number": 20,
+  "test_name": "business_japanese_profile_active_fails",
+  "kind": "negative",
+  "single_mutation_description": "deepgram_request_actual.json business_japanese_profile_active set True",
+  "files": [
+    {
+      "relative_path": "accuracy_stage_compare/audio_delivery_events.jsonl",
+      "byte_size": 1960,
+      "sha256": "f798ebaff2c63a5aa83627fa94fc202f969e59a0d9b53e3e5ad23d69b074e5aa"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/audio_delivery_summary.json",
+      "byte_size": 1120,
+      "sha256": "4c7f63d42f9add0615f5bcc1049abd68e0d4bfbee2a3aaade03be98c7a7a8579"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/Cursor final report.txt",
+      "byte_size": 16,
+      "sha256": "e25d9e87a10d0c32265dc21eedccd081076a638fb70023cf7ec4a74a55f7f2e9"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/deepgram_request_actual.json",
+      "byte_size": 925,
+      "sha256": "04c53cd9839b1d451096af557ba9a405dc4dd9feb6f6a249ea8730600c3ecdad"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/domain_category_score.json",
+      "byte_size": 4823,
+      "sha256": "47f54057a4ad9bd3131464adb3f9cd5a7d862bf242fc12d7d21ff712d2fb63f0"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/final_alpha_output.txt",
+      "byte_size": 1450,
+      "sha256": "f5f7ba4480ee10dc408e2f24d3e2865520a1d666a57bbbdaeea50c4dc6c0a5b7"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/independent_verification.json",
+      "byte_size": 2443,
+      "sha256": "42c0dde2201e370ffaee7dc15bf6551c9dac2e9629191feda84f745d3b04294c"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/meaning_equivalent_score.json",
+      "byte_size": 3838,
+      "sha256": "e55d9c8b372b733c9c43d89f9700c4c0d6248ec50c9fc8e5244aa7e26f452fbb"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/multidomain_gate_acceptance.json",
+      "byte_size": 1284,
+      "sha256": "62f26047c7cb1d873ed76cf9cf53a4721d620b371cd377a8140c0303b367a460"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/noise.wav",
+      "byte_size": 4,
+      "sha256": "a40ff3d5900fb7698b8c865041347cb49eccedc8f93945f89629ad104aaecce4"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/raw_deepgram.txt",
+      "byte_size": 1450,
+      "sha256": "f5f7ba4480ee10dc408e2f24d3e2865520a1d666a57bbbdaeea50c4dc6c0a5b7"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/reference_isolation_actual.json",
+      "byte_size": 781,
+      "sha256": "a490ac7d7683244125a55f31a0459a5ec0ea73057a1d2053eb38077e2494baa4"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/runtime_regression_report.json",
+      "byte_size": 156,
+      "sha256": "42e8a3380243101dbe0511f33d1a51704171586771f3e96cb1179f2ef2ec71c3"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/stable_transcript.txt",
+      "byte_size": 1450,
+      "sha256": "f5f7ba4480ee10dc408e2f24d3e2865520a1d666a57bbbdaeea50c4dc6c0a5b7"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/strict_score.json",
+      "byte_size": 1828,
+      "sha256": "b0a4838efd557995a2242c9d10f0d7fa9ac7df0e2adefaa4c7a3c00a8e4933a6"
+    },
+    {
+      "relative_path": "actual_gate_result.json",
+      "byte_size": 986,
+      "sha256": "3e95348e963f821ab375290bb5d37e71a51db1056d0a8fc82d85aae2af2e5765"
+    },
+    {
+      "relative_path": "expected_gate_result.json",
+      "byte_size": 340,
+      "sha256": "91a8c491d2f4c939a32f42d5c7d0ae5e3216bfc32b48055deaea53fdcd5bfa52"
+    },
+    {
+      "relative_path": "MULTIDOMAIN_GATE_ANALYSIS_PACKAGE_020_business_japanese_profile_active.sha256",
+      "byte_size": 66,
+      "sha256": "6db77c530a3333dcca68e71571d2bf573587ee2759f0d78b339fea3b20fbc4fc"
+    },
+    {
+      "relative_path": "MULTIDOMAIN_GATE_ANALYSIS_PACKAGE_020_business_japanese_profile_active.size.txt",
+      "byte_size": 7,
+      "sha256": "48bc006b885289b06c68e2becf0ea66ef25fa1d41596615100ab5d2119c28237"
+    },
+    {
+      "relative_path": "MULTIDOMAIN_GATE_ANALYSIS_PACKAGE_020_business_japanese_profile_active.zip",
+      "byte_size": 12141,
+      "sha256": "eeaf4607494c4dd2e70de585761148dfd8f5e52ca88d31716dd05730b87eea50"
+    },
+    {
+      "relative_path": "reference_copy/multidomain_meeting_v1.txt",
+      "byte_size": 1450,
+      "sha256": "f5f7ba4480ee10dc408e2f24d3e2865520a1d666a57bbbdaeea50c4dc6c0a5b7"
+    },
+    {
+      "relative_path": "reference_copy/multidomain_meeting_v1_truth.json",
+      "byte_size": 2000,
+      "sha256": "ecfbe03916714bd6978dcf926b66def33fb881b394a6ea9594df538f608b2112"
+    },
+    {
+      "relative_path": "regression_assertion.json",
+      "byte_size": 714,
+      "sha256": "4dc5464fb15969a1d5a8a09adc2091f4437854675748a72d2b257ef45a3574c6"
+    }
+  ]
+}

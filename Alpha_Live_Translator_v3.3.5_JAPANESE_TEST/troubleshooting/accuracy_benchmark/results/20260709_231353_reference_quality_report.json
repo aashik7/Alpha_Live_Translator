@@ -1,0 +1,23 @@
+{
+  "app_version": "3.3.5.5.8.5.24.1",
+  "reference_transcript_quality_check_enabled": true,
+  "alpha_path": "troubleshooting\\latest\\latest_live_alpha_output.txt",
+  "reference_path": "troubleshooting\\accuracy_benchmark\\reference_transcripts\\test01.txt",
+  "verdict": "valid_for_cer",
+  "alpha_char_count": 2015,
+  "reference_char_count": 2128,
+  "char_count_ratio": 1.0561,
+  "shared_char_overlap_ratio": 0.687,
+  "business_term_overlap_ratio": 0.0,
+  "formatting_risk_flags": [],
+  "recommendation": "Reference appears aligned enough for trusted CER scoring.",
+  "should_run_cer": true,
+  "checked_at": "2026-07-09T23:13:53",
+  "report_type": "reference_quality_report",
+  "alpha_sha256": "3d5ea0bf66d313ebf7d82a6f3b0e5a125525ad6b14b30cc2ef09f1656b59a46a",
+  "alpha_size_bytes": 6579,
+  "reference_sha256": "522a271dd7b4cfc477a4e334f6cc30482681913414ef1c368444e256aa6e98cc",
+  "reference_size_bytes": 6467,
+  "latest_live_run_id": "live-v3.3.5.5.8.5.24.1-20260709-225534-b0d036d7",
+  "reference_quality_report_path": "troubleshooting\\accuracy_benchmark\\results\\20260709_231353_reference_quality_report.json"
+}

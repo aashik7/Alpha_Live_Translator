@@ -1,0 +1,11 @@
+{"event": "normalized_chunk_queued", "delivery_chunk_id": 1, "run_id": "fixture", "monotonic_ns": 1000000, "frame_count": 320, "byte_count": 640, "sample_rate": 16000, "channels": 1}
+{"event": "normalized_chunk_sent", "delivery_chunk_id": 1, "run_id": "fixture", "monotonic_ns": 1005000, "frame_count": 320, "byte_count": 640, "sample_rate": 16000, "channels": 1, "send_result": "success"}
+{"event": "normalized_chunk_queued", "delivery_chunk_id": 2, "run_id": "fixture", "monotonic_ns": 2000000, "frame_count": 320, "byte_count": 640, "sample_rate": 16000, "channels": 1}
+{"event": "normalized_chunk_sent", "delivery_chunk_id": 2, "run_id": "fixture", "monotonic_ns": 2005000, "frame_count": 320, "byte_count": 640, "sample_rate": 16000, "channels": 1, "send_result": "success"}
+{"event": "normalized_chunk_queued", "delivery_chunk_id": 3, "run_id": "fixture", "monotonic_ns": 3000000, "frame_count": 320, "byte_count": 640, "sample_rate": 16000, "channels": 1}
+{"event": "normalized_chunk_sent", "delivery_chunk_id": 3, "run_id": "fixture", "monotonic_ns": 3005000, "frame_count": 320, "byte_count": 640, "sample_rate": 16000, "channels": 1, "send_result": "success"}
+{"event": "normalized_chunk_queued", "delivery_chunk_id": 4, "run_id": "fixture", "monotonic_ns": 4000000, "frame_count": 320, "byte_count": 640, "sample_rate": 16000, "channels": 1}
+{"event": "normalized_chunk_sent", "delivery_chunk_id": 4, "run_id": "fixture", "monotonic_ns": 4005000, "frame_count": 320, "byte_count": 640, "sample_rate": 16000, "channels": 1, "send_result": "success"}
+{"event": "normalized_chunk_queued", "delivery_chunk_id": 5, "run_id": "fixture", "monotonic_ns": 5000000, "frame_count": 320, "byte_count": 640, "sample_rate": 16000, "channels": 1}
+{"event": "normalized_chunk_sent", "delivery_chunk_id": 5, "run_id": "fixture", "monotonic_ns": 5005000, "frame_count": 320, "byte_count": 640, "sample_rate": 16000, "channels": 1, "send_result": "success"}
+{"event": "normalized_chunk_sent", "delivery_chunk_id": 99, "run_id": "fixture", "monotonic_ns": 1, "frame_count": 1, "byte_count": 2, "sample_rate": 16000, "channels": 1, "send_result": "success"}

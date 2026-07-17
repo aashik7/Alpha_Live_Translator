@@ -1,0 +1,42 @@
+{
+  "generated_utc": "2026-07-14T06:10:47Z",
+  "run_folder": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\runs\\v3.3.5.5.8.5.25.3.3.1-20260714-111519",
+  "required_stages": [
+    "stop_requested",
+    "audio_producers_stopped",
+    "audio_queue_drain_completed",
+    "deepgram_finalize_completed",
+    "transcript_gate_closed",
+    "assembler_flush_completed",
+    "language_worker_stopped",
+    "ui_drain_completed",
+    "canonical_ledger_frozen",
+    "final_alpha_written",
+    "final_export_sealed",
+    "three_stage_finalizer_completed",
+    "stop_finalize_completed"
+  ],
+  "stages_found": [
+    "stop_requested",
+    "audio_producers_stopped",
+    "audio_queue_drain_completed",
+    "deepgram_finalize_completed",
+    "transcript_gate_closed",
+    "assembler_flush_completed",
+    "language_worker_stopped",
+    "ui_drain_completed",
+    "canonical_ledger_frozen",
+    "final_alpha_written",
+    "final_export_sealed",
+    "three_stage_finalizer_completed",
+    "stop_finalize_completed"
+  ],
+  "stages_missing": [],
+  "ordering_valid": true,
+  "timeline_complete": true,
+  "original_timeline_mutated": false,
+  "stop_timeline_reconciliation_passed": true,
+  "reconstructed_event_count": 13,
+  "reconciled_timeline_path": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\runs\\v3.3.5.5.8.5.25.3.3.1-20260714-111519\\logs\\stop_finalize_timeline_reconciled.jsonl",
+  "report_path": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\runs\\v3.3.5.5.8.5.25.3.3.1-20260714-111519\\logs\\STOP_TIMELINE_RECONCILIATION_REPORT.json"
+}

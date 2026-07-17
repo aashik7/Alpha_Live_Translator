@@ -1,0 +1,23 @@
+{
+  "test_number": 21,
+  "test_name": "raw_mutation_count_above_zero_fails",
+  "kind": "negative",
+  "single_mutation_description": "runtime_regression_report.json runtime_regressions set to ['raw_mutation_count_nonzero']",
+  "files": [
+    {
+      "relative_path": "actual_gate_result.json",
+      "byte_size": 964,
+      "sha256": "6a68a91f53f58036dced2e52a1816ac2c7f87860fe7970d8642b5f970bf3c33d"
+    },
+    {
+      "relative_path": "expected_gate_result.json",
+      "byte_size": 350,
+      "sha256": "124791f4f1c282609c20293cca70c29bc885986dd9939a83aea85a54f5a1e2a2"
+    },
+    {
+      "relative_path": "regression_assertion.json",
+      "byte_size": 691,
+      "sha256": "3132e41dca1b66d29eacb92aacae3b28b4a53dfbaaedffc32a86b3b6483afaf7"
+    }
+  ]
+}

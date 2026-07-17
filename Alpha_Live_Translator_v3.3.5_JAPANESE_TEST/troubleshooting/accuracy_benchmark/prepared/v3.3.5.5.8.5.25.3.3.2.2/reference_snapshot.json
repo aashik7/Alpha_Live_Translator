@@ -1,0 +1,20 @@
+{
+  "app_version": "3.3.5.5.8.5.25.3.3.2.1",
+  "validation_patch_version": "3.3.5.5.8.5.25.3.3.2.2",
+  "preparation_version": "3.3.5.5.8.5.25.3.3.2.2",
+  "output_version": "3.3.5.5.8.5.25.3.3.2.2",
+  "source_path": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\accuracy_benchmark\\reference_transcripts\\test01.txt",
+  "snapshot_path": "troubleshooting\\accuracy_benchmark\\prepared\\v3.3.5.5.8.5.25.3.3.2.2\\reference.txt",
+  "source_sha256": "09634a0da9ff86ce4825fb8326c3bca99e64be955c971d7e2db7f7b7823e5b8b",
+  "snapshot_sha256": "09634a0da9ff86ce4825fb8326c3bca99e64be955c971d7e2db7f7b7823e5b8b",
+  "source_normalized_sha256": "f141eae2e8356c0247babeaf9c044d8bafc56b6a6bd5cfd975db0936cf51aa2f",
+  "snapshot_normalized_sha256": "f141eae2e8356c0247babeaf9c044d8bafc56b6a6bd5cfd975db0936cf51aa2f",
+  "normalized_sha256_match": true,
+  "normalization_version": "v25.3.3.2.2_faithful_copy_normalized_identity",
+  "reference_quality_verdict": "valid_for_cer",
+  "valid_for_cer": true,
+  "failure_reasons": [],
+  "prepared_at": "2026-07-14T15:10:43",
+  "created_by": "validation",
+  "faithful_copy": true
+}

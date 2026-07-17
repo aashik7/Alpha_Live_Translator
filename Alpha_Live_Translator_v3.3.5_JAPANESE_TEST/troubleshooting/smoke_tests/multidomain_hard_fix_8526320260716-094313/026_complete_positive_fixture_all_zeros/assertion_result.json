@@ -1,0 +1,19 @@
+{
+  "test_number": 26,
+  "test_name": "complete_positive_fixture_all_zeros",
+  "passed": true,
+  "expected": {
+    "failures": [],
+    "ready_for_translation_beta": true
+  },
+  "actual": {
+    "passed": true,
+    "failures": [],
+    "ignored_failure_codes": [],
+    "normalized_away_failure_codes": [],
+    "ready_for_translation_beta": true,
+    "VERSION": "ACCEPTED",
+    "stable_cer_percent": 0.0,
+    "persisted_to_live_path": false
+  }
+}

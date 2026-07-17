@@ -1,0 +1,12 @@
+{
+  "test_number": 8,
+  "test_name": "alpha_no_gate_module_imports",
+  "passed": true,
+  "expected": {
+    "hits": []
+  },
+  "actual": {
+    "passed": true,
+    "hits": []
+  }
+}

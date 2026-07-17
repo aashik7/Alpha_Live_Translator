@@ -1,0 +1,6 @@
+capture_enabled=True
+streams_captured=mixed
+total_chunks=8
+total_size_bytes=15360352
+retention_hours=3
+included_in_upload_zip=false

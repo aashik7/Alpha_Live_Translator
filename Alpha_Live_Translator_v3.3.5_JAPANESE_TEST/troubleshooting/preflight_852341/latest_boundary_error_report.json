@@ -1,0 +1,683 @@
+{
+  "app_version": "3.3.5.5.8.5.23.4",
+  "japanese_boundary_diagnosis_enabled": true,
+  "alpha_path": "troubleshooting\\latest\\latest_live_alpha_output.txt",
+  "reference_path": "troubleshooting\\accuracy_benchmark\\reference_transcripts\\test01.txt",
+  "findings": [
+    {
+      "line_number": 3,
+      "previous_line": "第四回のビジネス会話クラスお疲れ様でした。今回のビデから新しいトピック2挨拶をするに入ります。",
+      "current_line": "それでは始めましょうそれでは表現から確認していきましょうまずこちらの二つの表現を確認します",
+      "next_line": "一つ目相対遅刻休暇形括弧自分の都合で長く休んだ後この場合の表現についてです。",
+      "pattern_id": "glue_missing_boundary",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 4,
+      "previous_line": "それでは始めましょうそれでは表現から確認していきましょうまずこちらの二つの表現を確認します",
+      "current_line": "一つ目相対遅刻休暇形括弧自分の都合で長く休んだ後この場合の表現についてです。",
+      "next_line": "場合はどんな表現を使うんでしたか覚えていますか。",
+      "pattern_id": "clause_continuation_risk",
+      "severity": "low",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 6,
+      "previous_line": "場合はどんな表現を使うんでしたか覚えていますか。",
+      "current_line": "て申し訳ありませんでしたこの表現を使うんでしたね例えば",
+      "next_line": "忙しい時に休んでしまって申し訳ありませんでした。",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 11,
+      "previous_line": "または遅刻して申し訳ありませんでした構いませんね。",
+      "current_line": "では一緒にリピートしてください。",
+      "next_line": "忙しい時に休んでしまって申し訳ありませんでした。",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 18,
+      "previous_line": "この小さいつの発音たくさんこれからも出てきますのでいつも注意してください。",
+      "current_line": "では二つ目、久しぶりに会う時の表現です。",
+      "next_line": "三つありましたけど皆さ覚えていますか。",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 22,
+      "previous_line": "ビジネスの場面で使う場合はどの表現がいと思いますか。",
+      "current_line": "ですねご無沙汰しております。",
+      "next_line": "は献上語になりますから、ビジネス場面ではよく使われています。",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 23,
+      "previous_line": "ですねご無沙汰しております。",
+      "current_line": "は献上語になりますから、ビジネス場面ではよく使われています。",
+      "next_line": "直接会った時メールを送る時このご無沙汰しておりますを使ってください。お久しぶりでございます。",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 30,
+      "previous_line": "例えばご営店おめでとうございますのように永天という言葉の前に語をつけておめでとうございます",
+      "current_line": "を使ってください。",
+      "next_line": "では一緒にリピートしてくださいご永天おめでとうございます",
+      "pattern_id": "clause_continuation_risk",
+      "severity": "low",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 31,
+      "previous_line": "を使ってください。",
+      "current_line": "では一緒にリピートしてくださいご永天おめでとうございます",
+      "next_line": "永店意味は何でしたか。",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 31,
+      "previous_line": "を使ってください。",
+      "current_line": "では一緒にリピートしてくださいご永天おめでとうございます",
+      "next_line": "永店意味は何でしたか。",
+      "pattern_id": "glue_missing_boundary",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 32,
+      "previous_line": "では一緒にリピートしてくださいご永天おめでとうございます",
+      "current_line": "永店意味は何でしたか。",
+      "next_line": "ですね永天というのは仕事のポジション、地位が上がることさらに勤務地が変わることを言います。",
+      "pattern_id": "clause_continuation_risk",
+      "severity": "low",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 33,
+      "previous_line": "永店意味は何でしたか。",
+      "current_line": "ですね永天というのは仕事のポジション、地位が上がることさらに勤務地が変わることを言います。",
+      "next_line": "似たような言葉で昇進という言葉昇進は地位が上がるだけです。",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 38,
+      "previous_line": "ただし実際には特に地位が上がらない転勤であってもご永天おめでとうございますを使う習慣があります",
+      "current_line": "ですから同僚、上司が転勤する場合にこのご永店おめでとうございます。",
+      "next_line": "というふにメッセージを送ったりしてくだい。",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 38,
+      "previous_line": "ただし実際には特に地位が上がらない転勤であってもご永天おめでとうございますを使う習慣があります",
+      "current_line": "ですから同僚、上司が転勤する場合にこのご永店おめでとうございます。",
+      "next_line": "というふにメッセージを送ったりしてくだい。",
+      "pattern_id": "clause_continuation_risk",
+      "severity": "low",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 39,
+      "previous_line": "ですから同僚、上司が転勤する場合にこのご永店おめでとうございます。",
+      "current_line": "というふにメッセージを送ったりしてくだい。",
+      "next_line": "では退職、転勤、獄色々お世話になりましたを使いますね。",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 40,
+      "previous_line": "というふにメッセージを送ったりしてくだい。",
+      "current_line": "では退職、転勤、獄色々お世話になりましたを使いますね。",
+      "next_line": "層別するとき自分がそこから離れるといろいろお世話になりました使います。",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 43,
+      "previous_line": "もちろん相手に対して離れる相手に対して使うこともできます。お世話になっております。",
+      "current_line": "だとまた意味が違いますから、必ずお世話になりましたって覚えて",
+      "next_line": "は次です。",
+      "pattern_id": "stop_tail_incomplete_risk",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 44,
+      "previous_line": "だとまた意味が違いますから、必ずお世話になりましたって覚えて",
+      "current_line": "は次です。",
+      "next_line": "知り合いの家族や親戚が亡くなった時の表現これは覚えています",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 44,
+      "previous_line": "だとまた意味が違いますから、必ずお世話になりましたって覚えて",
+      "current_line": "は次です。",
+      "next_line": "知り合いの家族や親戚が亡くなった時の表現これは覚えています",
+      "pattern_id": "clause_continuation_risk",
+      "severity": "low",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 44,
+      "previous_line": "だとまた意味が違いますから、必ずお世話になりましたって覚えて",
+      "current_line": "は次です。",
+      "next_line": "知り合いの家族や親戚が亡くなった時の表現これは覚えています",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 46,
+      "previous_line": "知り合いの家族や親戚が亡くなった時の表現これは覚えています",
+      "current_line": "かこの度はご愁傷様でございました",
+      "next_line": "これは決まり文句ですね",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 46,
+      "previous_line": "知り合いの家族や親戚が亡くなった時の表現これは覚えています",
+      "current_line": "かこの度はご愁傷様でございました",
+      "next_line": "これは決まり文句ですね",
+      "pattern_id": "clause_continuation_risk",
+      "severity": "low",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 49,
+      "previous_line": "お葬式に出席したり同僚が休んでいて仕事に復帰した時に直接この度はご就職といううにただし直接会う機会がなかったり離れている場合はメールやメッセージ手紙などで伝えることもあります",
+      "current_line": "よね。",
+      "next_line": "時にはこのご愁傷様でござい使いません。",
+      "pattern_id": "clause_continuation_risk",
+      "severity": "low",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 49,
+      "previous_line": "お葬式に出席したり同僚が休んでいて仕事に復帰した時に直接この度はご就職といううにただし直接会う機会がなかったり離れている場合はメールやメッセージ手紙などで伝えることもあります",
+      "current_line": "よね。",
+      "next_line": "時にはこのご愁傷様でござい使いません。",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 52,
+      "previous_line": "その時はこの度は心よりお悔やみ申し上げますという表現を使います。は文章で伝える場合に使います。",
+      "current_line": "次、お礼です。",
+      "next_line": "その説はご丁寧にありがとうございました",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 54,
+      "previous_line": "その説はご丁寧にありがとうございました",
+      "current_line": "は前回お世話になったことに対してもう一度お礼を言う場合に使います。説というのはその時という意味ですね。",
+      "next_line": "時の改まった表現で説を使います。",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 56,
+      "previous_line": "時の改まった表現で説を使います。",
+      "current_line": "のことに使います。そのい。",
+      "next_line": "日本人はお礼を二回言う習慣があります。",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 59,
+      "previous_line": "前回お世話になったこと相手に何かサポートしてもらったこと丁寧にしてもらったことに対しては二回お礼を言う習慣があります。",
+      "current_line": "ですからその二回目のお礼の時にこういう表現を使います。",
+      "next_line": "友人ならこの舞はありがとうね前いろいろ招待してくれてありがとうね。",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 61,
+      "previous_line": "友人ならこの舞はありがとうね前いろいろ招待してくれてありがとうね。",
+      "current_line": "と誓うんですが、仕事の場合はその説はありがとうございました",
+      "next_line": "その説はご丁寧にありがとうございましたという表現を次、年末の表現これは",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 62,
+      "previous_line": "と誓うんですが、仕事の場合はその説はありがとうございました",
+      "current_line": "その説はご丁寧にありがとうございましたという表現を次、年末の表現これは",
+      "next_line": "どうぞ良いお年をお迎えください",
+      "pattern_id": "stop_tail_incomplete_risk",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 68,
+      "previous_line": "上司やお客様に連絡するとき挨拶するときはどうぞ良いお年をお迎えくださいを使いましょう、新年の挨拶です。",
+      "current_line": "は明けましておめでとうございます。",
+      "next_line": "今年もよろしくお願い致しますはお正月、新しく仕事が始まった時この表現を使いますね。",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 70,
+      "previous_line": "今年もよろしくお願い致しますはお正月、新しく仕事が始まった時この表現を使いますね。",
+      "current_line": "はぜひセットで覚えてください。",
+      "next_line": "明けましておめでとうございます。今年もよろしくお願い致します二つが新年の挨拶です。",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 72,
+      "previous_line": "明けましておめでとうございます。今年もよろしくお願い致します二つが新年の挨拶です。",
+      "current_line": "ではリピートしてください。",
+      "next_line": "明けましておめでとうございます今年もよろしくお願い致します",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 74,
+      "previous_line": "明けましておめでとうございます今年もよろしくお願い致します",
+      "current_line": "はいではここまで挨拶の場面のそれぞれの表現方法を確認してきました",
+      "next_line": "が大切なことがあります。それはお辞儀ですね。",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 74,
+      "previous_line": "明けましておめでとうございます今年もよろしくお願い致します",
+      "current_line": "はいではここまで挨拶の場面のそれぞれの表現方法を確認してきました",
+      "next_line": "が大切なことがあります。それはお辞儀ですね。",
+      "pattern_id": "clause_continuation_risk",
+      "severity": "low",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 75,
+      "previous_line": "はいではここまで挨拶の場面のそれぞれの表現方法を確認してきました",
+      "current_line": "が大切なことがあります。それはお辞儀ですね。",
+      "next_line": "お辞儀と一緒にこの表現を使ってください。",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 77,
+      "previous_line": "お辞儀と一緒にこの表現を使ってください。",
+      "current_line": "では談話です1、休んだり相対した時の談話です。",
+      "next_line": "主任忙しい時に三日も休んでしまっで申し訳ありませんでしたあらんさんゆっくりできました",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 79,
+      "previous_line": "主任忙しい時に三日も休んでしまっで申し訳ありませんでしたあらんさんゆっくりできました",
+      "current_line": "かえおかげさまですっかり良くなりましたそれではリピートしてください",
+      "next_line": "主任忙しい時に三日も休んでしまって申し訳ありませんでした",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 83,
+      "previous_line": "表現でも確認しましたが休んだり早退した時遅刻した時はこのて申し訳ありませんでしたを使います",
+      "current_line": "ねそしてあらんさんゆっくりできましたかと主任から聞かれた後、あらんさんは",
+      "next_line": "えおかげさまですっかり良くなりましたこのおかげさまでという表現を使っていますはとても大切です。",
+      "pattern_id": "clause_continuation_risk",
+      "severity": "low",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 83,
+      "previous_line": "表現でも確認しましたが休んだり早退した時遅刻した時はこのて申し訳ありませんでしたを使います",
+      "current_line": "ねそしてあらんさんゆっくりできましたかと主任から聞かれた後、あらんさんは",
+      "next_line": "えおかげさまですっかり良くなりましたこのおかげさまでという表現を使っていますはとても大切です。",
+      "pattern_id": "stop_tail_incomplete_risk",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 85,
+      "previous_line": "えおかげさまですっかり良くなりましたこのおかげさまでという表現を使っていますはとても大切です。",
+      "current_line": "の調子がいい時前より良くなったとき順調なとき元気なときなどにはい元気です",
+      "next_line": "はい良くなりましただけだとちょっと冷たい印象を与えてしまいます",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 86,
+      "previous_line": "の調子がいい時前より良くなったとき順調なとき元気なときなどにはい元気です",
+      "current_line": "はい良くなりましただけだとちょっと冷たい印象を与えてしまいます",
+      "next_line": "お陰様でというのは、周りの人のサポートのおかげで仕事を休ませてもらったおかげでという感謝の気持ちを表しています。",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 87,
+      "previous_line": "はい良くなりましただけだとちょっと冷たい印象を与えてしまいます",
+      "current_line": "お陰様でというのは、周りの人のサポートのおかげで仕事を休ませてもらったおかげでという感謝の気持ちを表しています。",
+      "next_line": "語の会話の場面で今自分が順調な時元気な時にはこのおかげさまで元気ですというように表現することが多いです。",
+      "pattern_id": "clause_continuation_risk",
+      "severity": "low",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 91,
+      "previous_line": "久しぶりに会った時の表現です吉田さん、ご無沙汰しております。こちらこそ最近はいかがですかえなんとか。",
+      "current_line": "ではリピートしてください。",
+      "next_line": "吉田さんご無沙汰しておりますこそ最近はいかがですかえなんとか。",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 93,
+      "previous_line": "吉田さんご無沙汰しておりますこそ最近はいかがですかえなんとか。",
+      "current_line": "吉田さんご無沙汰しておりますこそ最近はいかがですかえなんとか。。まあ久しぶりに会ったaさんとbさん、吉田さとaさんが会話しています",
+      "next_line": "が、ご無沙汰しておりますこの他に久しぶりに会った時の表現あと二つありました",
+      "pattern_id": "midline_punctuation_artifact",
+      "severity": "medium",
+      "likely_cause": "punctuation_merge",
+      "recommendation": "audit_only"
+    },
+    {
+      "line_number": 93,
+      "previous_line": "吉田さんご無沙汰しておりますこそ最近はいかがですかえなんとか。",
+      "current_line": "吉田さんご無沙汰しておりますこそ最近はいかがですかえなんとか。。まあ久しぶりに会ったaさんとbさん、吉田さとaさんが会話しています",
+      "next_line": "が、ご無沙汰しておりますこの他に久しぶりに会った時の表現あと二つありました",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 94,
+      "previous_line": "吉田さんご無沙汰しておりますこそ最近はいかがですかえなんとか。。まあ久しぶりに会ったaさんとbさん、吉田さとaさんが会話しています",
+      "current_line": "が、ご無沙汰しておりますこの他に久しぶりに会った時の表現あと二つありました",
+      "next_line": "ね例えばお久しぶりでございますおかわりございませんか",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 94,
+      "previous_line": "吉田さんご無沙汰しておりますこそ最近はいかがですかえなんとか。。まあ久しぶりに会ったaさんとbさん、吉田さとaさんが会話しています",
+      "current_line": "が、ご無沙汰しておりますこの他に久しぶりに会った時の表現あと二つありました",
+      "next_line": "ね例えばお久しぶりでございますおかわりございませんか",
+      "pattern_id": "clause_continuation_risk",
+      "severity": "low",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 96,
+      "previous_line": "ね例えばお久しぶりでございますおかわりございませんか",
+      "current_line": "さらにしばらくでございますという表現もありますより仕事ビジネスの場面ではこぶさたしております",
+      "next_line": "を使った方がいいでしょう。",
+      "pattern_id": "glue_missing_boundary",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 97,
+      "previous_line": "さらにしばらくでございますという表現もありますより仕事ビジネスの場面ではこぶさたしております",
+      "current_line": "を使った方がいいでしょう。",
+      "next_line": "そしてbさが最近はいかがですかいかがはどうの改まった表現ですね。丁寧な表現。",
+      "pattern_id": "clause_continuation_risk",
+      "severity": "low",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 98,
+      "previous_line": "を使った方がいいでしょう。",
+      "current_line": "そしてbさが最近はいかがですかいかがはどうの改まった表現ですね。丁寧な表現。",
+      "next_line": "最近調子はどうですか仕事はどうですか最近はいかがですかと聞いた後aさんはaなんとかと答えています。",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 100,
+      "previous_line": "最近調子はどうですか仕事はどうですか最近はいかがですかと聞いた後aさんはaなんとかと答えています。",
+      "current_line": "はどういう状況ですかね姉さの最近はどうですか。",
+      "next_line": "そうですねええなんとかというのはまあ良くないけど悪くないまあです",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 102,
+      "previous_line": "そうですねええなんとかというのはまあ良くないけど悪くないまあです",
+      "current_line": "という場合に使います。大変だけど頑張っています。だけどなんとか今まで頑張っています。",
+      "next_line": "大丈夫ですという時にえなんとかまあなんとかという表現を使います",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 104,
+      "previous_line": "大丈夫ですという時にえなんとかまあなんとかという表現を使います",
+      "current_line": "ではとても問題ない特に問題がない時はどうですか丸の場合この時はさっきもありました",
+      "next_line": "ねお陰様で順調ですおかげさまで順調ですこの表現を使います",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 104,
+      "previous_line": "大丈夫ですという時にえなんとかまあなんとかという表現を使います",
+      "current_line": "ではとても問題ない特に問題がない時はどうですか丸の場合この時はさっきもありました",
+      "next_line": "ねお陰様で順調ですおかげさまで順調ですこの表現を使います",
+      "pattern_id": "clause_continuation_risk",
+      "severity": "low",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 106,
+      "previous_line": "ねお陰様で順調ですおかげさまで順調ですこの表現を使います",
+      "current_line": "悪い時はちょっと大変ですね。",
+      "next_line": "ちょっとも本当は事実はちょっとじゃないこともあるんですけどそれも謙遜して少し大変ですね。",
+      "pattern_id": "clause_continuation_risk",
+      "severity": "low",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 112,
+      "previous_line": "いかがですかと聞かれた時には、自分でその時の状況を使うことが使えばいいと思います",
+      "current_line": "でもそれでも大変でも日本人はまあなんとかって答えることが多い。皆さんならどう答えますか。",
+      "next_line": "では最後にお辞儀についてシェアしたいと思います。",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 112,
+      "previous_line": "いかがですかと聞かれた時には、自分でその時の状況を使うことが使えばいいと思います",
+      "current_line": "でもそれでも大変でも日本人はまあなんとかって答えることが多い。皆さんならどう答えますか。",
+      "next_line": "では最後にお辞儀についてシェアしたいと思います。",
+      "pattern_id": "clause_continuation_risk",
+      "severity": "low",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 113,
+      "previous_line": "でもそれでも大変でも日本人はまあなんとかって答えることが多い。皆さんならどう答えますか。",
+      "current_line": "では最後にお辞儀についてシェアしたいと思います。",
+      "next_line": "お辞儀は挨拶をする上でとても大切な動作になります。",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 118,
+      "previous_line": "をする場合は十五度のお辞儀をします。",
+      "current_line": "て次三十度これはお客様のところを訪問するときお客さんが来たり帰るとき",
+      "next_line": "にこの三十度のお辞儀をします。",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 119,
+      "previous_line": "て次三十度これはお客様のところを訪問するときお客さんが来たり帰るとき",
+      "current_line": "にこの三十度のお辞儀をします。",
+      "next_line": "てさらに45度これはお礼または謝罪本当にありがとうございました。誠に申し訳ございませんでした。",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 120,
+      "previous_line": "にこの三十度のお辞儀をします。",
+      "current_line": "てさらに45度これはお礼または謝罪本当にありがとうございました。誠に申し訳ございませんでした。",
+      "next_line": "と言う時には四十五度書くお辞儀をします結婚式お葬式などの場合にもこのお辞儀になります",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 121,
+      "previous_line": "てさらに45度これはお礼または謝罪本当にありがとうございました。誠に申し訳ございませんでした。",
+      "current_line": "と言う時には四十五度書くお辞儀をします結婚式お葬式などの場合にもこのお辞儀になります",
+      "next_line": "普段の挨拶でが十五度お客様がわざ来てくれた時の感謝を表す時は三十度に心から何か謝ったりお礼を言う場合には四十五度。",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 122,
+      "previous_line": "と言う時には四十五度書くお辞儀をします結婚式お葬式などの場合にもこのお辞儀になります",
+      "current_line": "普段の挨拶でが十五度お客様がわざ来てくれた時の感謝を表す時は三十度に心から何か謝ったりお礼を言う場合には四十五度。",
+      "next_line": "というように文字木を使い分けています。",
+      "pattern_id": "clause_continuation_risk",
+      "severity": "low",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 123,
+      "previous_line": "普段の挨拶でが十五度お客様がわざ来てくれた時の感謝を表す時は三十度に心から何か謝ったりお礼を言う場合には四十五度。",
+      "current_line": "というように文字木を使い分けています。",
+      "next_line": "お辞儀は挨拶やコミュニケーションを深める上でとても大切な動作です。",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 126,
+      "previous_line": "お辞儀によって相手に誠意を見せることができます。",
+      "current_line": "ですから皆さんも正しいお辞儀ができるように普段から積極的にお辞儀の練習をしてみてくだい。",
+      "next_line": "",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    }
+  ],
+  "total_boundary_risks": 66,
+  "leading_fragment_count": 39,
+  "glue_risk_count": 3,
+  "punctuation_artifact_count": 1,
+  "duplicate_continuation_count": 1,
+  "assembler_candidate_count": 43,
+  "raw_stt_likely_count": 6,
+  "needs_reference_count": 22,
+  "generated_at": "2026-07-09T11:52:46",
+  "report_type": "boundary_error_report",
+  "alpha_sha256": "26aa2edab22d3db1bbd625cbe2592ab5db185bc8f1515a44deb90369a3639467",
+  "alpha_size_bytes": 13586,
+  "reference_sha256": "2bf8a6f08975334d14f5b6d29f8f2270fb46856949c7246564f95081ef0d88bf",
+  "reference_size_bytes": 12768,
+  "latest_live_run_id": "live-v3.3.5.5.8.5.23.4-20260709-112449-8f93fbc5"
+}

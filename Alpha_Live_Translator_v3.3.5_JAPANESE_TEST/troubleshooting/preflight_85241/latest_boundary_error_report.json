@@ -1,0 +1,623 @@
+{
+  "app_version": "3.3.5.5.8.5.24",
+  "japanese_boundary_diagnosis_enabled": true,
+  "alpha_path": "troubleshooting\\latest\\latest_live_alpha_output.txt",
+  "reference_path": "troubleshooting\\accuracy_benchmark\\reference_transcripts\\test01.txt",
+  "findings": [
+    {
+      "line_number": 3,
+      "previous_line": "第五回目のビジネス会話クラス、お疲れ様でした。",
+      "current_line": "第五回目のビジネス会話クラス、お疲れ様でした。のビデオも前回に引き続き日本語で働くビジネス日本語30時間のトピック2挨拶をするをやっていきたいと思います。",
+      "next_line": "第五回目のビジネス会話クラス、お疲れ様でした。のビデオも前回に引き続き日本語で働くビジネス日本語30時間のトピック2挨拶をするをやっていきたいと思います。では始めましょうでは談話から確認していきたと思います。",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 4,
+      "previous_line": "第五回目のビジネス会話クラス、お疲れ様でした。のビデオも前回に引き続き日本語で働くビジネス日本語30時間のトピック2挨拶をするをやっていきたいと思います。",
+      "current_line": "第五回目のビジネス会話クラス、お疲れ様でした。のビデオも前回に引き続き日本語で働くビジネス日本語30時間のトピック2挨拶をするをやっていきたいと思います。では始めましょうでは談話から確認していきたと思います。",
+      "next_line": "談話3、お祝いを言うです。",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 10,
+      "previous_line": "吉田さんによく似ていらっしゃるそうですね",
+      "current_line": "吉田さんによく似ていらっしゃるそうですねにおめでとうございます内容を確認します。",
+      "next_line": "旦那さんお祝いを言う場面ですね。",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 12,
+      "previous_line": "旦那さんお祝いを言う場面ですね。",
+      "current_line": "旦那さんお祝いを言う場面ですね。はお子さんのお誕生ということですからお子さん、これは子供の丁寧に言うとお子さん、お誕生は生まれたことですね。",
+      "next_line": "お誕生日ではないので注意してください。",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 17,
+      "previous_line": "ただこれが母親に対してだったらどうでしょうか母親に対してはお誕生はどうでしょうか",
+      "current_line": "ただこれが母親に対してだったらどうでしょうか母親に対してはお誕生はどうでしょうか母親は子供を産んだ立場になるのでご出産おめでとうございますの方がより自然な表現です。",
+      "next_line": "ですから父親に対してはお誕生おめでとうございます。",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 18,
+      "previous_line": "ただこれが母親に対してだったらどうでしょうか母親に対してはお誕生はどうでしょうか母親は子供を産んだ立場になるのでご出産おめでとうございますの方がより自然な表現です。",
+      "current_line": "ですから父親に対してはお誕生おめでとうございます。",
+      "next_line": "母親に対してはご出産おめでとうございますと言います他にも前回表現でも確認しました。",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 22,
+      "previous_line": "このどういう時にを、どういう時になのかはルールがあって基本的なルールは尾の後ろが漢語の場合はごになります。",
+      "current_line": "このどういう時にを、どういう時になのかはルールがあって基本的なルールは尾の後ろが漢語の場合はごになります。ではもう一つこの吉田さんによく似ていらっしゃるそうですね。",
+      "next_line": "そうですねの使い方について確認したいと思います。",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 24,
+      "previous_line": "そうですねの使い方について確認したいと思います。",
+      "current_line": "そうですねの使い方について確認したいと思います。は人から見たり、何かの情報から聞いたものを人に伝える",
+      "next_line": "そうですねの使い方について確認したいと思います。は人から見たり、何かの情報から聞いたものを人に伝えるたり聞いたりした情報を他の人に伝える場面で何々そうですね使います。",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 25,
+      "previous_line": "そうですねの使い方について確認したいと思います。は人から見たり、何かの情報から聞いたものを人に伝える",
+      "current_line": "そうですねの使い方について確認したいと思います。は人から見たり、何かの情報から聞いたものを人に伝えるたり聞いたりした情報を他の人に伝える場面で何々そうですね使います。",
+      "next_line": "そうですねの使い方について確認したいと思います。は人から見たり、何かの情報から聞いたものを人に伝えるたり聞いたりした情報を他の人に伝える場面で何々そうですね使います。て必ずこれは動詞の辞書形プラスそうになりますます形プラスそうだとまた違う文法になります",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 26,
+      "previous_line": "そうですねの使い方について確認したいと思います。は人から見たり、何かの情報から聞いたものを人に伝えるたり聞いたりした情報を他の人に伝える場面で何々そうですね使います。",
+      "current_line": "そうですねの使い方について確認したいと思います。は人から見たり、何かの情報から聞いたものを人に伝えるたり聞いたりした情報を他の人に伝える場面で何々そうですね使います。て必ずこれは動詞の辞書形プラスそうになりますます形プラスそうだとまた違う文法になります",
+      "next_line": "ので間違いないように注意してください動詞の普通形+層の場合は伝聞の表現になります。",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 27,
+      "previous_line": "そうですねの使い方について確認したいと思います。は人から見たり、何かの情報から聞いたものを人に伝えるたり聞いたりした情報を他の人に伝える場面で何々そうですね使います。て必ずこれは動詞の辞書形プラスそうになりますます形プラスそうだとまた違う文法になります",
+      "current_line": "ので間違いないように注意してください動詞の普通形+層の場合は伝聞の表現になります。",
+      "next_line": "それでは会話に進みたいと思います。",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 27,
+      "previous_line": "そうですねの使い方について確認したいと思います。は人から見たり、何かの情報から聞いたものを人に伝えるたり聞いたりした情報を他の人に伝える場面で何々そうですね使います。て必ずこれは動詞の辞書形プラスそうになりますます形プラスそうだとまた違う文法になります",
+      "current_line": "ので間違いないように注意してください動詞の普通形+層の場合は伝聞の表現になります。",
+      "next_line": "それでは会話に進みたいと思います。",
+      "pattern_id": "clause_continuation_risk",
+      "severity": "low",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 32,
+      "previous_line": "主任、忙しい時に三日も休んで申し訳ありませんでしたあ、あらん君もういいの、おかげさまですっかり良くなりました。のインフルエンザはひどいそうだねえお腹に来ちゃってひどい目に遭いました。",
+      "current_line": "主任、忙しい時に三日も休んで申し訳ありませんでしたあ、あらん君もういいの、おかげさまですっかり良くなりました。のインフルエンザはひどいそうだねえお腹に来ちゃってひどい目に遭いました。、大変だったね。今日からまた頑張って。",
+      "next_line": "主任、忙しい時に三日も休んで申し訳ありませんでしたあ、あらん君もういいの、おかげさまですっかり良くなりました。のインフルエンザはひどいそうだねえお腹に来ちゃってひどい目に遭いました。、大変だったね。今日からまた頑張って。、今日からまたばりやります。",
+      "pattern_id": "midline_punctuation_artifact",
+      "severity": "medium",
+      "likely_cause": "punctuation_merge",
+      "recommendation": "audit_only"
+    },
+    {
+      "line_number": 32,
+      "previous_line": "主任、忙しい時に三日も休んで申し訳ありませんでしたあ、あらん君もういいの、おかげさまですっかり良くなりました。のインフルエンザはひどいそうだねえお腹に来ちゃってひどい目に遭いました。",
+      "current_line": "主任、忙しい時に三日も休んで申し訳ありませんでしたあ、あらん君もういいの、おかげさまですっかり良くなりました。のインフルエンザはひどいそうだねえお腹に来ちゃってひどい目に遭いました。、大変だったね。今日からまた頑張って。",
+      "next_line": "主任、忙しい時に三日も休んで申し訳ありませんでしたあ、あらん君もういいの、おかげさまですっかり良くなりました。のインフルエンザはひどいそうだねえお腹に来ちゃってひどい目に遭いました。、大変だったね。今日からまた頑張って。、今日からまたばりやります。",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 33,
+      "previous_line": "主任、忙しい時に三日も休んで申し訳ありませんでしたあ、あらん君もういいの、おかげさまですっかり良くなりました。のインフルエンザはひどいそうだねえお腹に来ちゃってひどい目に遭いました。、大変だったね。今日からまた頑張って。",
+      "current_line": "主任、忙しい時に三日も休んで申し訳ありませんでしたあ、あらん君もういいの、おかげさまですっかり良くなりました。のインフルエンザはひどいそうだねえお腹に来ちゃってひどい目に遭いました。、大変だったね。今日からまた頑張って。、今日からまたばりやります。",
+      "next_line": "仕事が山のようにたまっちゃいましたからでは皆さんもリピートしてください。",
+      "pattern_id": "midline_punctuation_artifact",
+      "severity": "medium",
+      "likely_cause": "punctuation_merge",
+      "recommendation": "audit_only"
+    },
+    {
+      "line_number": 33,
+      "previous_line": "主任、忙しい時に三日も休んで申し訳ありませんでしたあ、あらん君もういいの、おかげさまですっかり良くなりました。のインフルエンザはひどいそうだねえお腹に来ちゃってひどい目に遭いました。、大変だったね。今日からまた頑張って。",
+      "current_line": "主任、忙しい時に三日も休んで申し訳ありませんでしたあ、あらん君もういいの、おかげさまですっかり良くなりました。のインフルエンザはひどいそうだねえお腹に来ちゃってひどい目に遭いました。、大変だったね。今日からまた頑張って。、今日からまたばりやります。",
+      "next_line": "仕事が山のようにたまっちゃいましたからでは皆さんもリピートしてください。",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 37,
+      "previous_line": "あらん君、もういいの、おかげさまですっかり良くなりました。",
+      "current_line": "あらん君、もういいの、おかげさまですっかり良くなりました。のインフルエンザはひどいそうだね。",
+      "next_line": "えお腹に来ちゃってひどい目に遭いました。",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 40,
+      "previous_line": "そう、大変だったね。からまたがんばって。",
+      "current_line": "そう、大変だったね。からまたがんばって。、今日からまたばりやります。",
+      "next_line": "仕事が山のようにたまっちゃいましたから。",
+      "pattern_id": "midline_punctuation_artifact",
+      "severity": "medium",
+      "likely_cause": "punctuation_merge",
+      "recommendation": "audit_only"
+    },
+    {
+      "line_number": 40,
+      "previous_line": "そう、大変だったね。からまたがんばって。",
+      "current_line": "そう、大変だったね。からまたがんばって。、今日からまたばりやります。",
+      "next_line": "仕事が山のようにたまっちゃいましたから。",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 46,
+      "previous_line": "丁寧に言う場合は、来てしまってになりますね。",
+      "current_line": "丁寧に言う場合は、来てしまってになりますね。では内容を確認しますが前回もやりましたね。",
+      "next_line": "休んだ時遅刻した時招待した時などはこの手申し訳ありませんでしたという表現を使いましょう。",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 48,
+      "previous_line": "休んだ時遅刻した時招待した時などはこの手申し訳ありませんでしたという表現を使いましょう。",
+      "current_line": "休んだ時遅刻した時招待した時などはこの手申し訳ありませんでしたという表現を使いましょう。てもう大丈夫ですか良くなりましたか。ゆっくりできましたかと聞かれた後は、必ず今の状況ですね、大丈夫です。",
+      "next_line": "だけじゃなくて、おかげさまで大丈夫ですとか、おかげさまで治りましたおかげさまでという表現を使うといいと思います。",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 50,
+      "previous_line": "だけじゃなくて、おかげさまで大丈夫ですとか、おかげさまで治りましたおかげさまでという表現を使うといいと思います。",
+      "current_line": "だけじゃなくて、おかげさまで大丈夫ですとか、おかげさまで治りましたおかげさまでという表現を使うといいと思います。てインフルエンザはひどいそうだね。",
+      "next_line": "お腹に来ちゃって、ひどい目に遭いました。",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 54,
+      "previous_line": "トイレに行かなければいけなかった状況ですね。",
+      "current_line": "トイレに行かなければいけなかった状況ですね。てひどい目にあった。",
+      "next_line": "これも外からの原因、自分の原因ではなくて病気、事故などの外からの影響で自分が何か影響を受けた悪い結果をになった時に、このひどい目に合うを使います。",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 56,
+      "previous_line": "これも外からの原因、自分の原因ではなくて病気、事故などの外からの影響で自分が何か影響を受けた悪い結果をになった時に、このひどい目に合うを使います。",
+      "current_line": "これも外からの原因、自分の原因ではなくて病気、事故などの外からの影響で自分が何か影響を受けた悪い結果をになった時に、このひどい目に合うを使います。てこの今日からバリやります。",
+      "next_line": "バリ。これですね。",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 57,
+      "previous_line": "これも外からの原因、自分の原因ではなくて病気、事故などの外からの影響で自分が何か影響を受けた悪い結果をになった時に、このひどい目に合うを使います。てこの今日からバリやります。",
+      "current_line": "バリ。これですね。",
+      "next_line": "どんな状況ですか。",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 63,
+      "previous_line": "何かアクティブな行動、その行動も仕事働く場合に使います今回は、風邪、インフルエンザで仕事を休んだ時の会話例になります",
+      "current_line": "何かアクティブな行動、その行動も仕事働く場合に使います今回は、風邪、インフルエンザで仕事を休んだ時の会話例になりますがぜひこの河川のところいろんな状況を入れてまたインフルエンザ以外の原因で休んだ場合はどんな会話になるかぜひ自分で練習してみてください。",
+      "next_line": "二つ目の会話です。会話に昇進のお祝い。",
+      "pattern_id": "clause_continuation_risk",
+      "severity": "low",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 63,
+      "previous_line": "何かアクティブな行動、その行動も仕事働く場合に使います今回は、風邪、インフルエンザで仕事を休んだ時の会話例になります",
+      "current_line": "何かアクティブな行動、その行動も仕事働く場合に使います今回は、風邪、インフルエンザで仕事を休んだ時の会話例になりますがぜひこの河川のところいろんな状況を入れてまたインフルエンザ以外の原因で休んだ場合はどんな会話になるかぜひ自分で練習してみてください。",
+      "next_line": "二つ目の会話です。会話に昇進のお祝い。",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 67,
+      "previous_line": "吉田さん、お無沙汰しております。こそご無沙汰しておりますお仕事はいかがですか。なんとか。",
+      "current_line": "ところで吉田さん部長になられたそうですね。",
+      "next_line": "今は時期が時期だから。",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 70,
+      "previous_line": "ご昇進おめでとうございます。ありがとうございます。ですね、大変な時期だとお察しします。",
+      "current_line": "とも一つよろしく頼みますこそよろしくお願いいしますでは皆さんリピートしてください。吉田さん、ご無沙汰しております。",
+      "next_line": "こそご無沙汰しております。",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 73,
+      "previous_line": "お仕事はいかがですか。",
+      "current_line": "お仕事はいかがですか。、なんとか。",
+      "next_line": "ところで吉田さ部長に並べたそうですね。",
+      "pattern_id": "midline_punctuation_artifact",
+      "severity": "medium",
+      "likely_cause": "punctuation_merge",
+      "recommendation": "audit_only"
+    },
+    {
+      "line_number": 73,
+      "previous_line": "お仕事はいかがですか。",
+      "current_line": "お仕事はいかがですか。、なんとか。",
+      "next_line": "ところで吉田さ部長に並べたそうですね。",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 74,
+      "previous_line": "お仕事はいかがですか。、なんとか。",
+      "current_line": "ところで吉田さ部長に並べたそうですね。",
+      "next_line": "ありがとうございます。",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 83,
+      "previous_line": "まあなんとかは、前回もやりましたね順調とは言えないですけど、大変だけど頑張っています。大丈夫です。",
+      "current_line": "という状況でしたね。",
+      "next_line": "ところで吉田さん部長になられたそうですねなられた、これはなったの受け身形でした。",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 84,
+      "previous_line": "という状況でしたね。",
+      "current_line": "ところで吉田さん部長になられたそうですねなられた、これはなったの受け身形でした。",
+      "next_line": "受け身形にすると尊敬語になりましたね部長になったそうですね",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 86,
+      "previous_line": "受け身形にすると尊敬語になりましたね部長になったそうですね",
+      "current_line": "受け身形にすると尊敬語になりましたね部長になったそうですねよりもっと丁寧に言う場合はなられたそうですね。",
+      "next_line": "受け身形にすると尊敬語になりましたね部長になったそうですねよりもっと丁寧に言う場合はなられたそうですね。。すでに今部長になっている状態ですよね。",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 87,
+      "previous_line": "受け身形にすると尊敬語になりましたね部長になったそうですねよりもっと丁寧に言う場合はなられたそうですね。",
+      "current_line": "受け身形にすると尊敬語になりましたね部長になったそうですねよりもっと丁寧に言う場合はなられたそうですね。。すでに今部長になっている状態ですよね。",
+      "next_line": "受け身形にすると尊敬語になりましたね部長になったそうですねよりもっと丁寧に言う場合はなられたそうですね。すでに今部長になっている状態ですよね。から部長になる場合は部長になるそうですね。なるだと受け身形だとなられるですね",
+      "pattern_id": "midline_punctuation_artifact",
+      "severity": "medium",
+      "likely_cause": "punctuation_merge",
+      "recommendation": "audit_only"
+    },
+    {
+      "line_number": 87,
+      "previous_line": "受け身形にすると尊敬語になりましたね部長になったそうですねよりもっと丁寧に言う場合はなられたそうですね。",
+      "current_line": "受け身形にすると尊敬語になりましたね部長になったそうですねよりもっと丁寧に言う場合はなられたそうですね。。すでに今部長になっている状態ですよね。",
+      "next_line": "受け身形にすると尊敬語になりましたね部長になったそうですねよりもっと丁寧に言う場合はなられたそうですね。すでに今部長になっている状態ですよね。から部長になる場合は部長になるそうですね。なるだと受け身形だとなられるですね",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 88,
+      "previous_line": "受け身形にすると尊敬語になりましたね部長になったそうですねよりもっと丁寧に言う場合はなられたそうですね。。すでに今部長になっている状態ですよね。",
+      "current_line": "受け身形にすると尊敬語になりましたね部長になったそうですねよりもっと丁寧に言う場合はなられたそうですね。すでに今部長になっている状態ですよね。から部長になる場合は部長になるそうですね。なるだと受け身形だとなられるですね",
+      "next_line": "受け身形にすると尊敬語になりましたね部長になったそうですねよりもっと丁寧に言う場合はなられたそうですね。すでに今部長になっている状態ですよね。から部長になる場合は部長になるそうですね。なるだと受け身形だとなられるですね月部長になられるそうですね。になります。",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 89,
+      "previous_line": "受け身形にすると尊敬語になりましたね部長になったそうですねよりもっと丁寧に言う場合はなられたそうですね。すでに今部長になっている状態ですよね。から部長になる場合は部長になるそうですね。なるだと受け身形だとなられるですね",
+      "current_line": "受け身形にすると尊敬語になりましたね部長になったそうですねよりもっと丁寧に言う場合はなられたそうですね。すでに今部長になっている状態ですよね。から部長になる場合は部長になるそうですね。なるだと受け身形だとなられるですね月部長になられるそうですね。になります。",
+      "next_line": "ご昇進おめでとうございますありがとうございます。",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 91,
+      "previous_line": "ご昇進おめでとうございますありがとうございます。",
+      "current_line": "しかし今は時期が時期だからですね、大変な時期だとお察しします。",
+      "next_line": "今は時期が時期だからどんな意味だと思いますか。",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 93,
+      "previous_line": "今は時期が時期だからどんな意味だと思いますか。",
+      "current_line": "今は時期が時期だからどんな意味だと思いますか。は必ず同じ名詞が、前と後ろは同じ名詞がきます。",
+      "next_line": "nがnだから例えば時期が時期だからというのはこんな時期だから仕方がない。",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 100,
+      "previous_line": "天気が天気だから外に出かけることはできないとか、場所が場所だから家賃が安いといたように使いますね。",
+      "current_line": "天気が天気だから外に出かけることはできないとか、場所が場所だから家賃が安いといたように使いますね。では次です。大変な時期だとお察しします。",
+      "next_line": "天気が天気だから外に出かけることはできないとか、場所が場所だから家賃が安いといたように使いますね。では次です。大変な時期だとお察しします",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 101,
+      "previous_line": "天気が天気だから外に出かけることはできないとか、場所が場所だから家賃が安いといたように使いますね。では次です。大変な時期だとお察しします。",
+      "current_line": "天気が天気だから外に出かけることはできないとか、場所が場所だから家賃が安いといたように使いますね。では次です。大変な時期だとお察しします",
+      "next_line": "天気が天気だから外に出かけることはできないとか、場所が場所だから家賃が安いといたように使いますね。では次です。大変な時期だとお察ししますというのは察するという動詞を丁寧に言うとお察ししますになります。これは観察の冊の字ですね。",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 102,
+      "previous_line": "天気が天気だから外に出かけることはできないとか、場所が場所だから家賃が安いといたように使いますね。では次です。大変な時期だとお察しします",
+      "current_line": "天気が天気だから外に出かけることはできないとか、場所が場所だから家賃が安いといたように使いますね。では次です。大変な時期だとお察ししますというのは察するという動詞を丁寧に言うとお察ししますになります。これは観察の冊の字ですね。",
+      "next_line": "相手の様子から表情や話し方から相手の気持ちを理解することを観察して相手の気持ちを理解してあげることを察すると言います。",
+      "pattern_id": "clause_continuation_risk",
+      "severity": "low",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 102,
+      "previous_line": "天気が天気だから外に出かけることはできないとか、場所が場所だから家賃が安いといたように使いますね。では次です。大変な時期だとお察しします",
+      "current_line": "天気が天気だから外に出かけることはできないとか、場所が場所だから家賃が安いといたように使いますね。では次です。大変な時期だとお察ししますというのは察するという動詞を丁寧に言うとお察ししますになります。これは観察の冊の字ですね。",
+      "next_line": "相手の様子から表情や話し方から相手の気持ちを理解することを観察して相手の気持ちを理解してあげることを察すると言います。",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 105,
+      "previous_line": "場合、時期が時期だからとビザが四た後、その話し方から大変な時期",
+      "current_line": "場合、時期が時期だからとビザが四た後、その話し方から大変な時期だということを私は理解していますよという意味になります。",
+      "next_line": "場合、時期が時期だからとビザが四た後、その話し方から大変な時期だということを私は理解していますよという意味になります。て今後とも一つよろしく頼みますは目上の人が目下の人に対して使う表現ですね。",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 106,
+      "previous_line": "場合、時期が時期だからとビザが四た後、その話し方から大変な時期だということを私は理解していますよという意味になります。",
+      "current_line": "場合、時期が時期だからとビザが四た後、その話し方から大変な時期だということを私は理解していますよという意味になります。て今後とも一つよろしく頼みますは目上の人が目下の人に対して使う表現ですね。",
+      "next_line": "よろしく頼みますと言われて、こちらこそよろしくお願いいたします。",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 110,
+      "previous_line": "他にも今回は昇進のお祝いの会話でたが、それぞれ転勤のお祝い、出産のお祝いなどいろんな状況での会話を練習してみてください。",
+      "current_line": "他にも今回は昇進のお祝いの会話でたが、それぞれ転勤のお祝い、出産のお祝いなどいろんな状況での会話を練習してみてください。に擬態語についてシェアしたいと思いますのビデオの会話一でも出てきました。",
+      "next_line": "ばり働く。このばりという表現これを擬態語と言います。",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 115,
+      "previous_line": "社内の会話または親しいお客様との会話の中ではこういた擬態語を使うことで、もっと分かりやすく",
+      "current_line": "社内の会話または親しいお客様との会話の中ではこういた擬態語を使うことで、もっと分かりやすくあとは柔らかい印象ですね。厳しくない印象を与えることができます。",
+      "next_line": "ですからこのビジネスで使える擬態語についてシェアしたいと思います。それでは今回はビジネスで使える擬態語を五つ紹介したいと思います。",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 116,
+      "previous_line": "社内の会話または親しいお客様との会話の中ではこういた擬態語を使うことで、もっと分かりやすくあとは柔らかい印象ですね。厳しくない印象を与えることができます。",
+      "current_line": "ですからこのビジネスで使える擬態語についてシェアしたいと思います。それでは今回はビジネスで使える擬態語を五つ紹介したいと思います。",
+      "next_line": "目、めきは片仮名で書くことの方が多いですね。",
+      "pattern_id": "leading_fragment_particle",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 120,
+      "previous_line": "目立って成長進歩している状況をめき成長めき数字が伸びるという風に使って使います。",
+      "current_line": "目立って成長進歩している状況をめき成長めき数字が伸びるという風に使って使います。では二つ目です。どん注文してください。これはどんな様子でしょうかは次々と進める。",
+      "next_line": "ストップしないで止めないでどんどどん注文するという表現になります。",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 123,
+      "previous_line": "も飲み会の席とかでメニューを注文するときに早くメニューが来るようにどん遠慮しないで注文してくださいというふに使い三つ目がん",
+      "current_line": "も飲み会の席とかでメニューを注文するときに早くメニューが来るようにどん遠慮しないで注文してくださいというふに使い三つ目がんのガンどんな様子でしょうかは積極的にという意味です。",
+      "next_line": "ば、分からないことがあれば遠慮しないで積極的に質問した方がいいよ積極的にという表現になりますねどんとガン少しニュアンスが似ているんですがポイントはどんこれはストップをしないで止めないで次々にという様子になります一方このガンというのはスピードがありますね",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 125,
+      "previous_line": "ば、分からないことがあれば遠慮しないで積極的に質問した方がいいよ積極的にという表現になりますねどんとガン少しニュアンスが似ているんですがポイントはどんこれはストップをしないで止めないで次々にという様子になります一方このガンというのはスピードがありますね",
+      "current_line": "ば、分からないことがあれば遠慮しないで積極的に質問した方がいいよ積極的にという表現になりますねどんとガン少しニュアンスが似ているんですがポイントはどんこれはストップをしないで止めないで次々にという様子になります一方このガンというのはスピードがありますね積極的にスピードがあって、勢いがあって遠慮しないでという様子になります",
+      "next_line": "さっと目を通しておいてね目を通す。これはレビューする、書類をレビューすることを目を通すと言ます。",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 126,
+      "previous_line": "ば、分からないことがあれば遠慮しないで積極的に質問した方がいいよ積極的にという表現になりますねどんとガン少しニュアンスが似ているんですがポイントはどんこれはストップをしないで止めないで次々にという様子になります一方このガンというのはスピードがありますね積極的にスピードがあって、勢いがあって遠慮しないでという様子になります",
+      "current_line": "さっと目を通しておいてね目を通す。これはレビューする、書類をレビューすることを目を通すと言ます。",
+      "next_line": "さっと目を通しておいてね。このさっとはどんな様子でしょうか。",
+      "pattern_id": "clause_continuation_risk",
+      "severity": "low",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 128,
+      "previous_line": "さっと目を通しておいてね。このさっとはどんな様子でしょうか。",
+      "current_line": "さっと目を通しておいてね",
+      "next_line": "さっと目を通しておいてねじっくり長い時間チェックするのではなく簡単なポイントだけを短い時間で見ておくという表現になります。",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 129,
+      "previous_line": "さっと目を通しておいてね",
+      "current_line": "さっと目を通しておいてねじっくり長い時間チェックするのではなく簡単なポイントだけを短い時間で見ておくという表現になります。",
+      "next_line": "五つ目きっちり仕事をきっちり引き継ぐきっちり",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 131,
+      "previous_line": "五つ目きっちり仕事をきっちり引き継ぐきっちり",
+      "current_line": "五つ目きっちり仕事をきっちり引き継ぐきっちりはいこれは正確に精密にという意味になります。",
+      "next_line": "ば引き継ぐ引き継ぎですね、仕事の引き継ぎで今自分が担当していたものを次の担当者に引き継ぐ場合漏れがないようにミスがないようにしっかり引き継がなければいけないですよね。",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 134,
+      "previous_line": "そういう場合にこのきっちり正しく正確に精密に内容を全部引き継ぐ。こういう時にきっちりという表現を使います。",
+      "current_line": "そういう場合にこのきっちり正しく正確に精密に内容を全部引き継ぐ。こういう時にきっちりという表現を使います。はビジネスで使える擬態語を五つ紹介しましたビジネスメールなどでは、あまり使わない方がいいです",
+      "next_line": "そういう場合にこのきっちり正しく正確に精密に内容を全部引き継ぐ。こういう時にきっちりという表現を使います。はビジネスで使える擬態語を五つ紹介しましたビジネスメールなどでは、あまり使わない方がいいですが、会話の中では使うことが多いと思いますなかニュアンスをつかみにくい擬態語です",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 135,
+      "previous_line": "そういう場合にこのきっちり正しく正確に精密に内容を全部引き継ぐ。こういう時にきっちりという表現を使います。はビジネスで使える擬態語を五つ紹介しましたビジネスメールなどでは、あまり使わない方がいいです",
+      "current_line": "そういう場合にこのきっちり正しく正確に精密に内容を全部引き継ぐ。こういう時にきっちりという表現を使います。はビジネスで使える擬態語を五つ紹介しましたビジネスメールなどでは、あまり使わない方がいいですが、会話の中では使うことが多いと思いますなかニュアンスをつかみにくい擬態語です",
+      "next_line": "そういう場合にこのきっちり正しく正確に精密に内容を全部引き継ぐ。こういう時にきっちりという表現を使います。はビジネスで使える擬態語を五つ紹介しましたビジネスメールなどでは、あまり使わない方がいいですが、会話の中では使うことが多いと思いますなかニュアンスをつかみにくい擬態語ですが使いこなせたらぐんと会話力が上がると思います。",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 136,
+      "previous_line": "そういう場合にこのきっちり正しく正確に精密に内容を全部引き継ぐ。こういう時にきっちりという表現を使います。はビジネスで使える擬態語を五つ紹介しましたビジネスメールなどでは、あまり使わない方がいいですが、会話の中では使うことが多いと思いますなかニュアンスをつかみにくい擬態語です",
+      "current_line": "そういう場合にこのきっちり正しく正確に精密に内容を全部引き継ぐ。こういう時にきっちりという表現を使います。はビジネスで使える擬態語を五つ紹介しましたビジネスメールなどでは、あまり使わない方がいいですが、会話の中では使うことが多いと思いますなかニュアンスをつかみにくい擬態語ですが使いこなせたらぐんと会話力が上がると思います。",
+      "next_line": "",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    }
+  ],
+  "total_boundary_risks": 60,
+  "leading_fragment_count": 9,
+  "glue_risk_count": 0,
+  "punctuation_artifact_count": 5,
+  "duplicate_continuation_count": 41,
+  "assembler_candidate_count": 50,
+  "raw_stt_likely_count": 1,
+  "needs_reference_count": 5,
+  "generated_at": "2026-07-09T17:40:05",
+  "report_type": "boundary_error_report",
+  "alpha_sha256": "33e289ebe9cf662ee86eb1ee5642d40716418d45d401a9668b178d3b53f0bf18",
+  "alpha_size_bytes": 22241,
+  "reference_sha256": "aba724e687e8e758b89eab1422dba49bed247aae114032283dcb9e0b77568e71",
+  "reference_size_bytes": 15066,
+  "latest_live_run_id": "live-v3.3.5.5.8.5.24-20260709-165605-6ea259ed"
+}

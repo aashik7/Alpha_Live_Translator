@@ -1,0 +1,8 @@
+{
+  "test_number": 2,
+  "invocation_mode": "direct_callable",
+  "callable_module": "regression_multidomain_gate_85262",
+  "callable_name": "_run_fixture_pipeline",
+  "python_invocation": "regression_multidomain_gate_evidence_852622.b_002_missing_raw('002_missing_raw')",
+  "invoked_at_utc": "2026-07-16T09:57:49Z"
+}

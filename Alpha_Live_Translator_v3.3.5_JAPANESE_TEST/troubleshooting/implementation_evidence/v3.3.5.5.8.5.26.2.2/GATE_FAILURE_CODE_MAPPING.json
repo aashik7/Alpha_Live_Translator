@@ -1,0 +1,295 @@
+{
+  "generated_at_utc": "2026-07-16T08:46:26Z",
+  "source_file": "regression_multidomain_gate_evidence_852622.py",
+  "source_file_sha256": "57ff2816cfbfe3431c822019b9c3c375d5aedc6464777760165e8c054b6bafed",
+  "mapping": [
+    {
+      "actual_gate_field": "verification.missing_files",
+      "actual_gate_value": "raw_deepgram.txt",
+      "normalized_failure_code": "MISSING_RAW_TRANSCRIPT",
+      "reason": "verify_multidomain_gate() appends the stage filename to missing_files when the required raw transcript file does not exist or is empty.",
+      "source_file": "verify_multidomain_gate_85262.py",
+      "source_line_or_json_path": "verify_multidomain_gate:missing_files"
+    },
+    {
+      "actual_gate_field": "verification.missing_files",
+      "actual_gate_value": "stable_transcript.txt",
+      "normalized_failure_code": "MISSING_STABLE_TRANSCRIPT",
+      "reason": "verify_multidomain_gate() appends the stage filename to missing_files when the required stable transcript file does not exist or is empty.",
+      "source_file": "verify_multidomain_gate_85262.py",
+      "source_line_or_json_path": "verify_multidomain_gate:missing_files"
+    },
+    {
+      "actual_gate_field": "verification.missing_files",
+      "actual_gate_value": "final_alpha_output.txt",
+      "normalized_failure_code": "MISSING_FINAL_TRANSCRIPT",
+      "reason": "verify_multidomain_gate() appends the stage filename to missing_files when the required final transcript file does not exist or is empty.",
+      "source_file": "verify_multidomain_gate_85262.py",
+      "source_line_or_json_path": "verify_multidomain_gate:missing_files"
+    },
+    {
+      "actual_gate_field": "verification.reported_value_mismatches",
+      "actual_gate_value": "manifest_raw_sha256_mismatch",
+      "normalized_failure_code": "TRANSCRIPT_HASH_MISMATCH",
+      "reason": "verify_multidomain_gate() recomputes sha256 of the stage transcript and compares it against stage_manifest.json's recorded hash; a mismatch means the on-disk transcript no longer matches its recorded identity hash.",
+      "source_file": "verify_multidomain_gate_85262.py",
+      "source_line_or_json_path": "verify_multidomain_gate:reported_value_mismatches"
+    },
+    {
+      "actual_gate_field": "verification.reported_value_mismatches",
+      "actual_gate_value": "audio_summary_delivery_ratio_mismatch",
+      "normalized_failure_code": "AUDIO_DELIVERY_HASH_MISMATCH",
+      "reason": "audio_delivery_summary.json is a deterministic digest of audio_delivery_events.jsonl. verify_multidomain_gate() independently recalculates this digest via recalculate_audio_delivery_summary() and compares it against the on-disk reported summary; a post-generation alteration of the reported summary is detected as a mismatch, proving the delivery evidence was tampered with after being sealed.",
+      "source_file": "verify_multidomain_gate_85262.py",
+      "source_line_or_json_path": "verify_multidomain_gate:reported_value_mismatches"
+    },
+    {
+      "actual_gate_field": "acceptance.failures",
+      "actual_gate_value": "audio_delivery_missing_chunks",
+      "normalized_failure_code": "AUDIO_CHUNK_MISSING",
+      "reason": "build_acceptance() appends this literal failure when audio_summary['missing_sent_chunk_ids'] (computed by the real, unmodified recalculate_audio_delivery_summary()) is non-empty.",
+      "source_file": "run_multidomain_gate_85262.py",
+      "source_line_or_json_path": "build_acceptance:failures"
+    },
+    {
+      "actual_gate_field": "audio_delivery_summary_recalculated.duplicate_sent_chunk_ids",
+      "actual_gate_value": "non_empty_list",
+      "normalized_failure_code": "AUDIO_CHUNK_DUPLICATED",
+      "reason": "recalculate_audio_delivery_summary() (the real, unmodified audio-delivery recalculation function used identically by the live orchestrator) computes duplicate_sent_chunk_ids from the actual delivery events log. build_acceptance() does not currently gate on this specific field directly; this evidence closure treats a non-empty value produced by the real recalculation function itself as proof of the delivery-duplication defect, since it is the actual, unmodified output of the production audio-delivery accounting implementation.",
+      "source_file": "alpha/utils/multidomain_gate_evidence.py",
+      "source_line_or_json_path": "recalculate_audio_delivery_summary:duplicate_sent_chunk_ids"
+    },
+    {
+      "actual_gate_field": "audio_delivery_summary_recalculated.unexpected_sent_chunk_ids",
+      "actual_gate_value": "non_empty_list",
+      "normalized_failure_code": "AUDIO_CHUNK_UNEXPECTED",
+      "reason": "recalculate_audio_delivery_summary() (the real, unmodified function) computes unexpected_sent_chunk_ids (sent IDs never queued) from the actual delivery events log. Treated as proof of the defect for the same reason as AUDIO_CHUNK_DUPLICATED above.",
+      "source_file": "alpha/utils/multidomain_gate_evidence.py",
+      "source_line_or_json_path": "recalculate_audio_delivery_summary:unexpected_sent_chunk_ids"
+    },
+    {
+      "actual_gate_field": "acceptance.failures",
+      "actual_gate_value": "audio_delivery_ratio_below_threshold",
+      "normalized_failure_code": "AUDIO_DELIVERY_RATIO_BELOW_0_999",
+      "reason": "build_acceptance() appends this literal failure when audio_summary['delivery_ratio'] < 0.999.",
+      "source_file": "run_multidomain_gate_85262.py",
+      "source_line_or_json_path": "build_acceptance:failures"
+    },
+    {
+      "actual_gate_field": "audio_delivery_summary_recalculated.evidence_record_parse_errors",
+      "actual_gate_value": "greater_than_zero",
+      "normalized_failure_code": "AUDIO_DELIVERY_JSONL_PARSE_ERROR",
+      "reason": "recalculate_audio_delivery_summary() (the real, unmodified function) increments evidence_record_parse_errors whenever a line in audio_delivery_events.jsonl fails json.loads(). A non-zero value is direct, real-function proof of a malformed JSONL record.",
+      "source_file": "alpha/utils/multidomain_gate_evidence.py",
+      "source_line_or_json_path": "recalculate_audio_delivery_summary:evidence_record_parse_errors"
+    },
+    {
+      "actual_gate_field": "verification.reported_value_mismatches",
+      "actual_gate_value": "request_contains_secret_material",
+      "normalized_failure_code": "SECRET_PRESENT_IN_REQUEST_EVIDENCE",
+      "reason": "verify_multidomain_gate() regex-scans deepgram_request_actual.json['sanitized_query_string'] for api key / authorization / token markers.",
+      "source_file": "verify_multidomain_gate_85262.py",
+      "source_line_or_json_path": "verify_multidomain_gate:reported_value_mismatches"
+    },
+    {
+      "actual_gate_field": "verification.reported_value_mismatches",
+      "actual_gate_value": "reference_in_child_commandline",
+      "normalized_failure_code": "REFERENCE_PATH_PRESENT_IN_CHILD_COMMAND",
+      "reason": "verify_multidomain_gate() checks reference_isolation_actual.json['runtime_child_commandline_contains_reference'].",
+      "source_file": "verify_multidomain_gate_85262.py",
+      "source_line_or_json_path": "verify_multidomain_gate:reported_value_mismatches"
+    },
+    {
+      "actual_gate_field": "verification.reported_value_mismatches",
+      "actual_gate_value": "reference_in_child_environment",
+      "normalized_failure_code": "REFERENCE_PATH_PRESENT_IN_CHILD_ENVIRONMENT",
+      "reason": "verify_multidomain_gate() checks reference_isolation_actual.json['runtime_child_environment_contains_reference'].",
+      "source_file": "verify_multidomain_gate_85262.py",
+      "source_line_or_json_path": "verify_multidomain_gate:reported_value_mismatches"
+    },
+    {
+      "actual_gate_field": "verification.reported_value_mismatches",
+      "actual_gate_value": "reference_not_opened_after_exit",
+      "normalized_failure_code": "REFERENCE_OPENED_BEFORE_RUNTIME_EXIT",
+      "reason": "verify_multidomain_gate() checks reference_isolation_actual.json['reference_opened_after_runtime_exit'] is True.",
+      "source_file": "verify_multidomain_gate_85262.py",
+      "source_line_or_json_path": "verify_multidomain_gate:reported_value_mismatches"
+    },
+    {
+      "actual_gate_field": "verification.reported_value_mismatches",
+      "actual_gate_value": "scoring_modules_imported_at_runtime",
+      "normalized_failure_code": "SCORING_MODULE_IMPORTED_DURING_RUNTIME",
+      "reason": "verify_multidomain_gate() checks reference_isolation_actual.json['runtime_imported_scoring_modules'] is empty.",
+      "source_file": "verify_multidomain_gate_85262.py",
+      "source_line_or_json_path": "verify_multidomain_gate:reported_value_mismatches"
+    },
+    {
+      "actual_gate_field": "acceptance.failures",
+      "actual_gate_value": "keyterm_count_nonzero",
+      "normalized_failure_code": "KEYTERM_COUNT_NOT_ZERO",
+      "reason": "build_acceptance() appends this literal failure when deepgram_request_actual.json['keyterm_count'] != 0. verify_multidomain_gate() independently flags the same condition as request_keyterm_count_nonzero in reported_value_mismatches; both are the same single defect and collapse to one normalized code.",
+      "source_file": "run_multidomain_gate_85262.py",
+      "source_line_or_json_path": "build_acceptance:failures"
+    },
+    {
+      "actual_gate_field": "verification.reported_value_mismatches",
+      "actual_gate_value": "request_keyterm_count_nonzero",
+      "normalized_failure_code": "KEYTERM_COUNT_NOT_ZERO",
+      "reason": "Same defect as acceptance.failures['keyterm_count_nonzero']; verify_multidomain_gate() independently detects it from the request evidence file.",
+      "source_file": "verify_multidomain_gate_85262.py",
+      "source_line_or_json_path": "verify_multidomain_gate:reported_value_mismatches"
+    },
+    {
+      "actual_gate_field": "acceptance.failures",
+      "actual_gate_value": "keyword_count_nonzero",
+      "normalized_failure_code": "KEYWORD_COUNT_NOT_ZERO",
+      "reason": "build_acceptance() appends this literal failure when deepgram_request_actual.json['keyword_count'] != 0.",
+      "source_file": "run_multidomain_gate_85262.py",
+      "source_line_or_json_path": "build_acceptance:failures"
+    },
+    {
+      "actual_gate_field": "verification.reported_value_mismatches",
+      "actual_gate_value": "request_keyword_count_nonzero",
+      "normalized_failure_code": "KEYWORD_COUNT_NOT_ZERO",
+      "reason": "Same defect as acceptance.failures['keyword_count_nonzero']; verify_multidomain_gate() independently detects it from the request evidence file.",
+      "source_file": "verify_multidomain_gate_85262.py",
+      "source_line_or_json_path": "verify_multidomain_gate:reported_value_mismatches"
+    },
+    {
+      "actual_gate_field": "verification.reported_value_mismatches",
+      "actual_gate_value": "test01_profile_active",
+      "normalized_failure_code": "TEST01_PROFILE_ACTIVE",
+      "reason": "verify_multidomain_gate() checks deepgram_request_actual.json['test01_profile_active'] is not True.",
+      "source_file": "verify_multidomain_gate_85262.py",
+      "source_line_or_json_path": "verify_multidomain_gate:reported_value_mismatches"
+    },
+    {
+      "actual_gate_field": "verification.reported_value_mismatches",
+      "actual_gate_value": "business_japanese_profile_active",
+      "normalized_failure_code": "BUSINESS_JAPANESE_PROFILE_ACTIVE",
+      "reason": "verify_multidomain_gate() checks deepgram_request_actual.json['business_japanese_profile_active'] is not True.",
+      "source_file": "verify_multidomain_gate_85262.py",
+      "source_line_or_json_path": "verify_multidomain_gate:reported_value_mismatches"
+    },
+    {
+      "actual_gate_field": "runtime_regression_report.runtime_regressions",
+      "actual_gate_value": "raw_mutation_count_nonzero",
+      "normalized_failure_code": "RAW_MUTATION_COUNT_NOT_ZERO",
+      "reason": "runtime_regression_report.json['runtime_regressions'] contains this specific token; build_acceptance() gates on the list being non-empty via 'runtime_regressions_present'.",
+      "source_file": "run_multidomain_gate_85262.py",
+      "source_line_or_json_path": "build_runtime_regression_report:runtime_regressions"
+    },
+    {
+      "actual_gate_field": "runtime_regression_report.runtime_regressions",
+      "actual_gate_value": "translation_provider_active",
+      "normalized_failure_code": "TRANSLATION_PROVIDER_ACTIVE",
+      "reason": "runtime_regression_report.json['runtime_regressions'] contains this specific token; build_acceptance() gates on the list being non-empty via 'runtime_regressions_present'.",
+      "source_file": "run_multidomain_gate_85262.py",
+      "source_line_or_json_path": "build_runtime_regression_report:runtime_regressions"
+    },
+    {
+      "actual_gate_field": "acceptance.failures",
+      "actual_gate_value": "stable_accuracy_below_80",
+      "normalized_failure_code": "STABLE_ACCURACY_BELOW_80",
+      "reason": "build_acceptance() appends this literal failure when stable accuracy_percent < 80.00. The co-occurring 'stable_cer_above_20' failure is the CER-side expression of the identical single metric (cer_percent == 100 - accuracy_percent whenever cer_percent <= 100) and collapses to this same code.",
+      "source_file": "run_multidomain_gate_85262.py",
+      "source_line_or_json_path": "build_acceptance:failures"
+    },
+    {
+      "actual_gate_field": "acceptance.failures",
+      "actual_gate_value": "combined_name_below_85",
+      "normalized_failure_code": "NAME_ACCURACY_BELOW_85",
+      "reason": "build_acceptance() appends this literal failure when domain_category_score.json['combined_name_accuracy_percent'] < 85.00.",
+      "source_file": "run_multidomain_gate_85262.py",
+      "source_line_or_json_path": "build_acceptance:failures"
+    },
+    {
+      "actual_gate_field": "acceptance.failures",
+      "actual_gate_value": "numbers_below_85",
+      "normalized_failure_code": "NUMBER_ACCURACY_BELOW_85",
+      "reason": "build_acceptance() appends this literal failure when domain_category_score.json['numbers_accuracy_percent'] < 85.00.",
+      "source_file": "run_multidomain_gate_85262.py",
+      "source_line_or_json_path": "build_acceptance:failures"
+    },
+    {
+      "actual_gate_field": "acceptance.failures",
+      "actual_gate_value": "money_percentage_below_85",
+      "normalized_failure_code": "NUMBER_ACCURACY_BELOW_85",
+      "reason": "build_acceptance() appends this literal failure when domain_category_score.json['money_percentage_accuracy_percent'] < 85.00. Money and plain numeric entities are both numeric-domain checks and collapse to the same normalized code.",
+      "source_file": "run_multidomain_gate_85262.py",
+      "source_line_or_json_path": "build_acceptance:failures"
+    },
+    {
+      "actual_gate_field": "acceptance.failures",
+      "actual_gate_value": "stable_to_final_loss_nonzero",
+      "normalized_failure_code": "STABLE_TO_FINAL_LOSS_NOT_ZERO",
+      "reason": "build_acceptance() appends this literal failure when stable_to_final_loss_percent > 0.0.",
+      "source_file": "run_multidomain_gate_85262.py",
+      "source_line_or_json_path": "build_acceptance:failures"
+    },
+    {
+      "actual_gate_field": "runtime_regression_report.runtime_regressions",
+      "actual_gate_value": "ui_main_loop_stall",
+      "normalized_failure_code": "RUNTIME_REGRESSION_PRESENT",
+      "reason": "runtime_regression_report.json['runtime_regressions'] contains this generic runtime-regression token; build_acceptance() gates on the list being non-empty via 'runtime_regressions_present'.",
+      "source_file": "run_multidomain_gate_85262.py",
+      "source_line_or_json_path": "build_runtime_regression_report:runtime_regressions"
+    },
+    {
+      "actual_gate_field": "verification.reported_value_mismatches",
+      "actual_gate_value": "reported_stable_cer_mismatch",
+      "normalized_failure_code": "REPORTED_CER_MISMATCH",
+      "reason": "verify_multidomain_gate() recomputes CER from the raw transcript files and compares it against strict_score.json's reported cer_percent for the stable stage; a drift beyond the epsilon tolerance is flagged.",
+      "source_file": "verify_multidomain_gate_85262.py",
+      "source_line_or_json_path": "verify_multidomain_gate:reported_value_mismatches"
+    },
+    {
+      "actual_gate_field": "verification.reported_value_mismatches",
+      "actual_gate_value": "reported_combined_name_accuracy_percent_mismatch",
+      "normalized_failure_code": "REPORTED_CATEGORY_SCORE_MISMATCH",
+      "reason": "verify_multidomain_gate() recomputes a simplified domain-category score from the truth metadata and compares it against domain_category_score.json's reported value; a drift beyond 5.0 percentage points is flagged.",
+      "source_file": "verify_multidomain_gate_85262.py",
+      "source_line_or_json_path": "verify_multidomain_gate:reported_value_mismatches"
+    },
+    {
+      "actual_gate_field": "acceptance.failures",
+      "actual_gate_value": "fixture_mode_not_live_benchmark",
+      "normalized_failure_code": "EXCLUDED_BASELINE_NOISE",
+      "reason": "Always present for every fixture because fixture_mode=True is used for every fixture in this suite by design (fixtures must never be able to produce VERSION=ACCEPTED). Not attributable to any single test's injected mutation.",
+      "source_file": "run_multidomain_gate_85262.py",
+      "source_line_or_json_path": "build_acceptance:failures"
+    },
+    {
+      "actual_gate_field": "acceptance.failures",
+      "actual_gate_value": "stable_cer_above_20",
+      "normalized_failure_code": "EXCLUDED_BASELINE_NOISE",
+      "reason": "Pre-existing falsy-zero quirk in build_acceptance(): `float(stable.get('cer_percent') or 100.0)` reports CER=100.0 whenever the real cer_percent is exactly 0.0 (a perfect match). Manifests only for fixtures whose stable transcript is an exact byte-for-byte (post-normalization) match to the reference; not attributable to any injected defect. The frozen source file is not modified by this evidence-only change.",
+      "source_file": "run_multidomain_gate_85262.py",
+      "source_line_or_json_path": "build_acceptance:stable_cer"
+    },
+    {
+      "actual_gate_field": "acceptance.failures",
+      "actual_gate_value": "independent_verification_failed",
+      "normalized_failure_code": "EXCLUDED_GENERIC_WRAPPER",
+      "reason": "Generic summary flag; the specific root cause is always captured independently via verification.missing_files / verification.reported_value_mismatches, which are mapped directly above. Counting this wrapper too would double-count a single defect.",
+      "source_file": "run_multidomain_gate_85262.py",
+      "source_line_or_json_path": "build_acceptance:failures"
+    },
+    {
+      "actual_gate_field": "acceptance.failures",
+      "actual_gate_value": "runtime_regressions_present",
+      "normalized_failure_code": "EXCLUDED_GENERIC_WRAPPER",
+      "reason": "Generic summary flag; the specific regression token is always captured via runtime_regression_report.json['runtime_regressions'], mapped directly above.",
+      "source_file": "run_multidomain_gate_85262.py",
+      "source_line_or_json_path": "build_acceptance:failures"
+    },
+    {
+      "actual_gate_field": "acceptance.failures",
+      "actual_gate_value": "reference_isolation_failed",
+      "normalized_failure_code": "EXCLUDED_GENERIC_WRAPPER",
+      "reason": "Generic summary flag; the specific isolation defect is always captured via verification.reported_value_mismatches, mapped directly above.",
+      "source_file": "run_multidomain_gate_85262.py",
+      "source_line_or_json_path": "build_acceptance:failures"
+    }
+  ]
+}

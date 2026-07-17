@@ -1,0 +1,6 @@
+{
+  "result": "PASSED",
+  "elapsed_seconds": 0.67,
+  "live_alpha_protected": true,
+  "glossary_layer_ok": true
+}

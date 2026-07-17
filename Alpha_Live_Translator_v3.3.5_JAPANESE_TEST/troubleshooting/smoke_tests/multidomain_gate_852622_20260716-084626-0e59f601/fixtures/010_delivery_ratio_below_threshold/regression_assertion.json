@@ -1,0 +1,21 @@
+{
+  "test_number": 10,
+  "test_name": "delivery_ratio_below_0_999_fails",
+  "regression_test_status": "PASSED",
+  "expected_gate_status": "FAILED",
+  "actual_gate_status": "FAILED",
+  "expected_failure_codes": [
+    "AUDIO_DELIVERY_RATIO_BELOW_0_999"
+  ],
+  "actual_failure_codes": [
+    "AUDIO_DELIVERY_RATIO_BELOW_0_999"
+  ],
+  "exact_failure_code_match": true,
+  "unexpected_failure_codes": [],
+  "missing_failure_codes": [],
+  "unrelated_exception_detected": false,
+  "assertion_messages": [
+    "expected_gate_status=FAILED actual_gate_status=FAILED",
+    "expected_failure_codes=['AUDIO_DELIVERY_RATIO_BELOW_0_999'] actual_failure_codes=['AUDIO_DELIVERY_RATIO_BELOW_0_999']"
+  ]
+}

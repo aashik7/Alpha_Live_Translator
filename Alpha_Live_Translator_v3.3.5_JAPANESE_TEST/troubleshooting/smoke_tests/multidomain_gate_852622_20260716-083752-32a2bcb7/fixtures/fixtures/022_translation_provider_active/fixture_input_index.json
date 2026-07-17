@@ -1,0 +1,23 @@
+{
+  "test_number": 22,
+  "test_name": "translation_provider_active_fails",
+  "kind": "negative",
+  "single_mutation_description": "runtime_regression_report.json runtime_regressions set to ['translation_provider_active']",
+  "files": [
+    {
+      "relative_path": "actual_gate_result.json",
+      "byte_size": 961,
+      "sha256": "c8e6daeb28d211ec1b7cfd7babe7b7ef5428d345908607336adb1d994601353a"
+    },
+    {
+      "relative_path": "expected_gate_result.json",
+      "byte_size": 349,
+      "sha256": "20197e94d4e5d04a03c30ea9b087156e0dc2d34277ca1c669b239d3548011977"
+    },
+    {
+      "relative_path": "regression_assertion.json",
+      "byte_size": 689,
+      "sha256": "440e14f7fd080f67f27380ab5c9aed41766bf3e45709105818ac19ab7f823c05"
+    }
+  ]
+}

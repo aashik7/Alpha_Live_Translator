@@ -1,0 +1,123 @@
+{
+  "test_number": 13,
+  "test_name": "reference_path_in_runtime_child_command_line_fails",
+  "kind": "negative",
+  "single_mutation_description": "reference_isolation_actual.json runtime_child_commandline_contains_reference set True",
+  "files": [
+    {
+      "relative_path": "accuracy_stage_compare/audio_delivery_events.jsonl",
+      "byte_size": 1960,
+      "sha256": "f798ebaff2c63a5aa83627fa94fc202f969e59a0d9b53e3e5ad23d69b074e5aa"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/audio_delivery_summary.json",
+      "byte_size": 1111,
+      "sha256": "f815a0a15025540e80b661a2021fefcb53f2a721db42fa864a504e283afc471d"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/Cursor final report.txt",
+      "byte_size": 16,
+      "sha256": "e25d9e87a10d0c32265dc21eedccd081076a638fb70023cf7ec4a74a55f7f2e9"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/deepgram_request_actual.json",
+      "byte_size": 926,
+      "sha256": "9b2088f521230dcf25dbf623c01f6e5953652aa7592bd7ea0304d60e9fac782f"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/domain_category_score.json",
+      "byte_size": 4823,
+      "sha256": "47f54057a4ad9bd3131464adb3f9cd5a7d862bf242fc12d7d21ff712d2fb63f0"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/final_alpha_output.txt",
+      "byte_size": 1450,
+      "sha256": "f5f7ba4480ee10dc408e2f24d3e2865520a1d666a57bbbdaeea50c4dc6c0a5b7"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/independent_verification.json",
+      "byte_size": 2432,
+      "sha256": "b44da600cd28540122c2df2cbb4258519bb02f3e00549b812b9942747c0e8b9b"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/meaning_equivalent_score.json",
+      "byte_size": 3838,
+      "sha256": "e55d9c8b372b733c9c43d89f9700c4c0d6248ec50c9fc8e5244aa7e26f452fbb"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/multidomain_gate_acceptance.json",
+      "byte_size": 1342,
+      "sha256": "316eb1324ad4b34b70b1ea36853921986ef1c08adf309d3bd16bc5e1fd133c8d"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/noise.wav",
+      "byte_size": 4,
+      "sha256": "a40ff3d5900fb7698b8c865041347cb49eccedc8f93945f89629ad104aaecce4"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/raw_deepgram.txt",
+      "byte_size": 1450,
+      "sha256": "f5f7ba4480ee10dc408e2f24d3e2865520a1d666a57bbbdaeea50c4dc6c0a5b7"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/reference_isolation_actual.json",
+      "byte_size": 780,
+      "sha256": "e8db510175eeaf47e0aed1e363752209b10b3840d3143e871d9c61414a7426cd"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/runtime_regression_report.json",
+      "byte_size": 156,
+      "sha256": "42e8a3380243101dbe0511f33d1a51704171586771f3e96cb1179f2ef2ec71c3"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/stable_transcript.txt",
+      "byte_size": 1450,
+      "sha256": "f5f7ba4480ee10dc408e2f24d3e2865520a1d666a57bbbdaeea50c4dc6c0a5b7"
+    },
+    {
+      "relative_path": "accuracy_stage_compare/strict_score.json",
+      "byte_size": 1810,
+      "sha256": "2ed4b42fdaa094a5b8a54de2e48e47c6156ee37c3a7cc70ba7c472d267f8a589"
+    },
+    {
+      "relative_path": "actual_gate_result.json",
+      "byte_size": 1001,
+      "sha256": "c55b5184b3a54842364d37d8b5cbd0a634fc617552c91b9acd16ac4106b5a8cc"
+    },
+    {
+      "relative_path": "expected_gate_result.json",
+      "byte_size": 374,
+      "sha256": "3148b74afaffabbe1c883a3097997910460a81b29ef1f0f9908042baadd755d8"
+    },
+    {
+      "relative_path": "MULTIDOMAIN_GATE_ANALYSIS_PACKAGE_013_reference_path_in_child_command.sha256",
+      "byte_size": 66,
+      "sha256": "2f8506faf359fd9b7dd7cce2d71d0ac27eec971796a745f9dfb35b4435058147"
+    },
+    {
+      "relative_path": "MULTIDOMAIN_GATE_ANALYSIS_PACKAGE_013_reference_path_in_child_command.size.txt",
+      "byte_size": 7,
+      "sha256": "c3e8648e753cb966328f7a0d0bf76d76dc09585316291ab11828f5811f29c5ac"
+    },
+    {
+      "relative_path": "MULTIDOMAIN_GATE_ANALYSIS_PACKAGE_013_reference_path_in_child_command.zip",
+      "byte_size": 13456,
+      "sha256": "9be19097b1da1db703901843a89b4e67693d452947cd08e95a23e5ea300e7f2b"
+    },
+    {
+      "relative_path": "reference_copy/multidomain_meeting_v1.txt",
+      "byte_size": 1450,
+      "sha256": "f5f7ba4480ee10dc408e2f24d3e2865520a1d666a57bbbdaeea50c4dc6c0a5b7"
+    },
+    {
+      "relative_path": "reference_copy/multidomain_meeting_v1_truth.json",
+      "byte_size": 2000,
+      "sha256": "ecfbe03916714bd6978dcf926b66def33fb881b394a6ea9594df538f608b2112"
+    },
+    {
+      "relative_path": "regression_assertion.json",
+      "byte_size": 754,
+      "sha256": "13c22d0fe10a369d8074194035cdcdb96919d9690c956b68b9338f454d0cc315"
+    }
+  ]
+}

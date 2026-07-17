@@ -1,0 +1,4 @@
+V3.3.5.5.8.5.25 CORPORATE IR GLOSSARY VALIDATION
+Result: PASSED
+APP_VERSION: 3.3.5.5.8.5.25
+Warnings: no_new_live_test_after_25, trusted_score_still_false_expected, reference_transcript_not_human_cleaned

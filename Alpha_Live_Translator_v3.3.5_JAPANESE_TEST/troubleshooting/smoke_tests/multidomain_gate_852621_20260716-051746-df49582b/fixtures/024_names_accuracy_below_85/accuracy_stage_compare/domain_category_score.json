@@ -1,0 +1,1686 @@
+{
+  "benchmark_id": "multidomain_meeting_v1",
+  "primary_stage": "stable",
+  "participant_name_accuracy_percent": 0.0,
+  "company_name_accuracy_percent": 0.0,
+  "combined_name_accuracy_percent": 0.0,
+  "dates_times_accuracy_percent": 0.0,
+  "numbers_accuracy_percent": 0.0,
+  "money_percentage_accuracy_percent": 0.0,
+  "it_term_accuracy_percent": 0.0,
+  "sales_term_accuracy_percent": 0.0,
+  "marketing_term_accuracy_percent": 0.0,
+  "general_business_term_accuracy_percent": 0.0,
+  "combined_critical_entity_accuracy_percent": 0.0,
+  "category_details": {
+    "participant_names": {
+      "expected_count": 9,
+      "found_count": 0,
+      "accuracy_percent": 0.0,
+      "missed_entities": [
+        {
+          "expected": "田中健",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "participant_name",
+          "reference_position": 20,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "佐藤美咲",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "participant_name",
+          "reference_position": 36,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "鈴木大輔",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "participant_name",
+          "reference_position": 182,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "高橋彩",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "participant_name",
+          "reference_position": 189,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "山本部長",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "participant_name",
+          "reference_position": -1,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "斉藤課長",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "participant_name",
+          "reference_position": -1,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "佐藤主任",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "participant_name",
+          "reference_position": -1,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "小林さん",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "participant_name",
+          "reference_position": -1,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "中村恵子",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "participant_name",
+          "reference_position": -1,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        }
+      ]
+    },
+    "company_names": {
+      "expected_count": 5,
+      "found_count": 0,
+      "accuracy_percent": 0.0,
+      "missed_entities": [
+        {
+          "expected": "アルファソリューションズ株式会社",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "company_name",
+          "reference_position": 3,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "東都物流株式会社",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "company_name",
+          "reference_position": 27,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "青葉商事株式会社",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "company_name",
+          "reference_position": -1,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "北星テクノロジー株式会社",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "company_name",
+          "reference_position": -1,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "株式会社ネクストワークス",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "company_name",
+          "reference_position": 196,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        }
+      ]
+    },
+    "it_terms": {
+      "expected_count": 16,
+      "found_count": 0,
+      "accuracy_percent": 0.0,
+      "missed_entities": [
+        {
+          "expected": "API",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "it_term",
+          "reference_position": 51,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "CSV",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "it_term",
+          "reference_position": -1,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "JSON",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "it_term",
+          "reference_position": 55,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "SSO",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "it_term",
+          "reference_position": 63,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "MFA",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "it_term",
+          "reference_position": -1,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "Webhook",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "it_term",
+          "reference_position": 209,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "CPU",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "it_term",
+          "reference_position": -1,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "CRM",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "it_term",
+          "reference_position": 219,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "SLA",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "it_term",
+          "reference_position": 223,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "シングルサインオン",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "it_term",
+          "reference_position": -1,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "多要素認証",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "it_term",
+          "reference_position": 67,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "バックグラウンド処理",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "it_term",
+          "reference_position": -1,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "タイムアウト",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "it_term",
+          "reference_position": -1,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "回帰テスト",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "it_term",
+          "reference_position": 85,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "外部ライブラリ",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "it_term",
+          "reference_position": -1,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "クラウド環境",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "it_term",
+          "reference_position": -1,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        }
+      ]
+    },
+    "sales_terms": {
+      "expected_count": 12,
+      "found_count": 0,
+      "accuracy_percent": 0.0,
+      "missed_entities": [
+        {
+          "expected": "初回相談",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "sales_term",
+          "reference_position": 97,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "提案書",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "sales_term",
+          "reference_position": 102,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "価格交渉",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "sales_term",
+          "reference_position": -1,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "社内承認",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "sales_term",
+          "reference_position": -1,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "契約手続き",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "sales_term",
+          "reference_position": -1,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "年間契約金額",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "sales_term",
+          "reference_position": 107,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "初期費用",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "sales_term",
+          "reference_position": -1,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "値引き",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "sales_term",
+          "reference_position": -1,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "契約期間",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "sales_term",
+          "reference_position": -1,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "月額利用料",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "sales_term",
+          "reference_position": 119,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "見積書",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "sales_term",
+          "reference_position": -1,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "個別見積もり",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "sales_term",
+          "reference_position": -1,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        }
+      ]
+    },
+    "marketing_terms": {
+      "expected_count": 12,
+      "found_count": 0,
+      "accuracy_percent": 0.0,
+      "missed_entities": [
+        {
+          "expected": "検索広告",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "marketing_term",
+          "reference_position": 137,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "SNS広告",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "marketing_term",
+          "reference_position": -1,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "オンラインセミナー",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "marketing_term",
+          "reference_position": -1,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "表示回数",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "marketing_term",
+          "reference_position": -1,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "クリック数",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "marketing_term",
+          "reference_position": -1,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "クリック率",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "marketing_term",
+          "reference_position": 142,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "問い合わせ件数",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "marketing_term",
+          "reference_position": -1,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "見込み客",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "marketing_term",
+          "reference_position": -1,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "転換率",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "marketing_term",
+          "reference_position": -1,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "A/Bテスト",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "marketing_term",
+          "reference_position": 169,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "CPA",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "marketing_term",
+          "reference_position": -1,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "ランディングページ",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "marketing_term",
+          "reference_position": -1,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        }
+      ]
+    },
+    "general_business_terms": {
+      "expected_count": 9,
+      "found_count": 0,
+      "accuracy_percent": 0.0,
+      "missed_entities": [
+        {
+          "expected": "進捗率",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "general_business_term",
+          "reference_position": -1,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "負荷テスト",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "general_business_term",
+          "reference_position": -1,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "情報システム部",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "general_business_term",
+          "reference_position": 77,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "営業企画部",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "general_business_term",
+          "reference_position": -1,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "購買部",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "general_business_term",
+          "reference_position": -1,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "プロジェクト管理ツール",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "general_business_term",
+          "reference_position": -1,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "重要度",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "general_business_term",
+          "reference_position": -1,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "一次回答",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "general_business_term",
+          "reference_position": -1,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "経営会議",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "general_business_term",
+          "reference_position": -1,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        }
+      ]
+    },
+    "numbers": {
+      "expected_count": 12,
+      "found_count": 0,
+      "accuracy_percent": 0.0,
+      "missed_entities": [
+        {
+          "expected": "1",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "number",
+          "reference_position": 113,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "2",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "number",
+          "reference_position": 114,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "3",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "number",
+          "reference_position": 124,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "120",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "number",
+          "reference_position": 113,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "3.2",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "number",
+          "reference_position": 124,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "4",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "number",
+          "reference_position": -1,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "202",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "number",
+          "reference_position": 153,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "6",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "number",
+          "reference_position": 156,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "7",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "number",
+          "reference_position": 158,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "16",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "number",
+          "reference_position": 160,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "10",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "number",
+          "reference_position": 165,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "5",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "number",
+          "reference_position": -1,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        }
+      ]
+    },
+    "dates_times": {
+      "expected_count": 2,
+      "found_count": 0,
+      "accuracy_percent": 0.0,
+      "missed_entities": [
+        {
+          "expected": "2026年7月16日",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "date_time",
+          "reference_position": 153,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "午前10時",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "date_time",
+          "reference_position": 163,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        }
+      ]
+    },
+    "money_percentages": {
+      "expected_count": 2,
+      "found_count": 0,
+      "accuracy_percent": 0.0,
+      "missed_entities": [
+        {
+          "expected": "120万円",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "money_percentage",
+          "reference_position": 113,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        },
+        {
+          "expected": "3.2%",
+          "observed_candidate": "",
+          "stage": "stable",
+          "category": "money_percentage",
+          "reference_position": 124,
+          "hypothesis_position": -1,
+          "match_type": "exact",
+          "error_type": "missing"
+        }
+      ]
+    }
+  },
+  "extracted_numeric_entities": {
+    "numeric_entities": [
+      "1",
+      "2",
+      "3",
+      "120",
+      "3.2",
+      "4",
+      "202",
+      "6",
+      "7",
+      "16",
+      "10",
+      "5"
+    ],
+    "dates_times": [
+      "2026年7月16日",
+      "午前10時"
+    ],
+    "money_percentages": [
+      "120万円",
+      "3.2%"
+    ]
+  },
+  "missed_entities": [
+    {
+      "expected": "田中健",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "participant_name",
+      "reference_position": 20,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "佐藤美咲",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "participant_name",
+      "reference_position": 36,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "鈴木大輔",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "participant_name",
+      "reference_position": 182,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "高橋彩",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "participant_name",
+      "reference_position": 189,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "山本部長",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "participant_name",
+      "reference_position": -1,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "斉藤課長",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "participant_name",
+      "reference_position": -1,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "佐藤主任",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "participant_name",
+      "reference_position": -1,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "小林さん",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "participant_name",
+      "reference_position": -1,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "中村恵子",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "participant_name",
+      "reference_position": -1,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "アルファソリューションズ株式会社",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "company_name",
+      "reference_position": 3,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "東都物流株式会社",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "company_name",
+      "reference_position": 27,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "青葉商事株式会社",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "company_name",
+      "reference_position": -1,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "北星テクノロジー株式会社",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "company_name",
+      "reference_position": -1,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "株式会社ネクストワークス",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "company_name",
+      "reference_position": 196,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "API",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "it_term",
+      "reference_position": 51,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "CSV",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "it_term",
+      "reference_position": -1,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "JSON",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "it_term",
+      "reference_position": 55,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "SSO",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "it_term",
+      "reference_position": 63,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "MFA",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "it_term",
+      "reference_position": -1,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "Webhook",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "it_term",
+      "reference_position": 209,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "CPU",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "it_term",
+      "reference_position": -1,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "CRM",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "it_term",
+      "reference_position": 219,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "SLA",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "it_term",
+      "reference_position": 223,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "シングルサインオン",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "it_term",
+      "reference_position": -1,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "多要素認証",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "it_term",
+      "reference_position": 67,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "バックグラウンド処理",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "it_term",
+      "reference_position": -1,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "タイムアウト",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "it_term",
+      "reference_position": -1,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "回帰テスト",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "it_term",
+      "reference_position": 85,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "外部ライブラリ",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "it_term",
+      "reference_position": -1,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "クラウド環境",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "it_term",
+      "reference_position": -1,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "初回相談",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "sales_term",
+      "reference_position": 97,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "提案書",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "sales_term",
+      "reference_position": 102,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "価格交渉",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "sales_term",
+      "reference_position": -1,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "社内承認",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "sales_term",
+      "reference_position": -1,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "契約手続き",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "sales_term",
+      "reference_position": -1,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "年間契約金額",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "sales_term",
+      "reference_position": 107,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "初期費用",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "sales_term",
+      "reference_position": -1,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "値引き",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "sales_term",
+      "reference_position": -1,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "契約期間",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "sales_term",
+      "reference_position": -1,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "月額利用料",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "sales_term",
+      "reference_position": 119,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "見積書",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "sales_term",
+      "reference_position": -1,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "個別見積もり",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "sales_term",
+      "reference_position": -1,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "検索広告",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "marketing_term",
+      "reference_position": 137,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "SNS広告",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "marketing_term",
+      "reference_position": -1,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "オンラインセミナー",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "marketing_term",
+      "reference_position": -1,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "表示回数",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "marketing_term",
+      "reference_position": -1,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "クリック数",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "marketing_term",
+      "reference_position": -1,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "クリック率",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "marketing_term",
+      "reference_position": 142,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "問い合わせ件数",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "marketing_term",
+      "reference_position": -1,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "見込み客",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "marketing_term",
+      "reference_position": -1,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "転換率",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "marketing_term",
+      "reference_position": -1,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "A/Bテスト",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "marketing_term",
+      "reference_position": 169,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "CPA",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "marketing_term",
+      "reference_position": -1,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "ランディングページ",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "marketing_term",
+      "reference_position": -1,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "進捗率",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "general_business_term",
+      "reference_position": -1,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "負荷テスト",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "general_business_term",
+      "reference_position": -1,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "情報システム部",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "general_business_term",
+      "reference_position": 77,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "営業企画部",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "general_business_term",
+      "reference_position": -1,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "購買部",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "general_business_term",
+      "reference_position": -1,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "プロジェクト管理ツール",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "general_business_term",
+      "reference_position": -1,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "重要度",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "general_business_term",
+      "reference_position": -1,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "一次回答",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "general_business_term",
+      "reference_position": -1,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "経営会議",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "general_business_term",
+      "reference_position": -1,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "1",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "number",
+      "reference_position": 113,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "2",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "number",
+      "reference_position": 114,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "3",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "number",
+      "reference_position": 124,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "120",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "number",
+      "reference_position": 113,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "3.2",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "number",
+      "reference_position": 124,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "4",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "number",
+      "reference_position": -1,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "202",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "number",
+      "reference_position": 153,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "6",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "number",
+      "reference_position": 156,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "7",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "number",
+      "reference_position": 158,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "16",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "number",
+      "reference_position": 160,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "10",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "number",
+      "reference_position": 165,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "5",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "number",
+      "reference_position": -1,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "2026年7月16日",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "date_time",
+      "reference_position": 153,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "午前10時",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "date_time",
+      "reference_position": 163,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "120万円",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "money_percentage",
+      "reference_position": 113,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    },
+    {
+      "expected": "3.2%",
+      "observed_candidate": "",
+      "stage": "stable",
+      "category": "money_percentage",
+      "reference_position": 124,
+      "hypothesis_position": -1,
+      "match_type": "exact",
+      "error_type": "missing"
+    }
+  ]
+}

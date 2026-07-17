@@ -1,0 +1,6 @@
+{
+  "test_number": 29,
+  "test_name": "reported_category_score_mismatch_fails",
+  "expected_pass_or_fail": "fail",
+  "expected_failure_reason": "category_mismatch"
+}

@@ -1,0 +1,36 @@
+{
+  "generated_at": "2026-07-14T09:01:03Z",
+  "authoritative_final": "C:/Users/islamm/Documents/Tariqul/Alpha_Translator V 1.0/Alpha_Live_Translator_v3.3.5_JAPANESE_TEST/troubleshooting/runs/v3.3.5.5.8.5.25.3.3.1-20260714-111519/transcripts/Alpha_output_FINAL.txt",
+  "authoritative_final_sha256": "6e70dd171862527da2f2de0305ab82154cf9c1591b73860e4fd75e06f570c178",
+  "expected_final_sha256": "6e70dd171862527da2f2de0305ab82154cf9c1591b73860e4fd75e06f570c178",
+  "aliases": [
+    {
+      "path": "troubleshooting/Alpha.txt",
+      "sha256_before": "dac4d8bb359589173b6a1593b0814ccd54cff961554338a3275e4101da14fc57",
+      "sha256_after": "6e70dd171862527da2f2de0305ab82154cf9c1591b73860e4fd75e06f570c178",
+      "rewritten": true
+    },
+    {
+      "path": "troubleshooting/latest_alpha_output.txt",
+      "sha256_before": "dac4d8bb359589173b6a1593b0814ccd54cff961554338a3275e4101da14fc57",
+      "sha256_after": "6e70dd171862527da2f2de0305ab82154cf9c1591b73860e4fd75e06f570c178",
+      "rewritten": true
+    },
+    {
+      "path": "troubleshooting/latest/latest_alpha_output.txt",
+      "sha256_before": "dac4d8bb359589173b6a1593b0814ccd54cff961554338a3275e4101da14fc57",
+      "sha256_after": "6e70dd171862527da2f2de0305ab82154cf9c1591b73860e4fd75e06f570c178",
+      "rewritten": true
+    },
+    {
+      "path": "troubleshooting/latest/latest_live_alpha_output.txt",
+      "sha256_before": "dac4d8bb359589173b6a1593b0814ccd54cff961554338a3275e4101da14fc57",
+      "sha256_after": "6e70dd171862527da2f2de0305ab82154cf9c1591b73860e4fd75e06f570c178",
+      "rewritten": true
+    }
+  ],
+  "all_aliases_match_expected": true,
+  "authoritative_final_rewritten": false,
+  "build_id": "e83bc582-3ab1-491c-9001-86d13fc97b55",
+  "patch_version": "3.3.5.5.8.5.25.3.3.2.5"
+}

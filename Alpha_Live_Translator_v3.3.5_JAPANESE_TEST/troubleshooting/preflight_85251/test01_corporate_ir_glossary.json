@@ -1,0 +1,172 @@
+{
+  "glossary_name": "test01_corporate_ir_glossary",
+  "version": "1.0",
+  "domain": "corporate_ir",
+  "language": "ja",
+  "auto_apply": true,
+  "correction_mode": "high_confidence_only",
+  "keyterm_boost_enabled": true,
+  "company_names": [
+    "さくらさくプラス",
+    "さくらさくみらい",
+    "保育のデザイン研究所"
+  ],
+  "product_service_names": [],
+  "person_names": [
+    "中山",
+    "石川祐介",
+    "矢藤誠慈郎"
+  ],
+  "locations": [
+    "大阪市中央区",
+    "東京都中央区",
+    "晴海",
+    "月島",
+    "東平"
+  ],
+  "financial_terms": [
+    "第3四半期",
+    "決算概要",
+    "売上高",
+    "前年同期比",
+    "営業利益",
+    "経常利益",
+    "当期純利益",
+    "親会社株主に帰属する当期純利益",
+    "貸借対照表",
+    "資産合計",
+    "負債合計",
+    "自己資本比率",
+    "有形固定資産",
+    "未収入金",
+    "短期借入金",
+    "長期借入金",
+    "通期予算",
+    "進捗率",
+    "増収",
+    "減収",
+    "増益",
+    "減益"
+  ],
+  "business_terms": [
+    "既存園",
+    "在籍率",
+    "公定価格",
+    "補助金",
+    "新規開設",
+    "増床",
+    "不採算事業",
+    "保育サービス",
+    "不動産事業",
+    "不動産売却",
+    "合理化",
+    "業務効率化",
+    "費用削減",
+    "施策",
+    "収益",
+    "葉酸サプリメント",
+    "シェア",
+    "取締役",
+    "兼任",
+    "経営管理本部長",
+    "財務戦略",
+    "ガバナンス体制",
+    "学術的知見",
+    "企業価値"
+  ],
+  "formal_phrases": [
+    "ご案内申し上げます",
+    "お知らせいたします",
+    "計画通り進捗しております",
+    "引き続きご支援のほどよろしくお願いいたします",
+    "どうもありがとうございました"
+  ],
+  "expected_numbers": [
+    {
+      "label": "売上高",
+      "expected": "136億7900万円",
+      "aliases": ["136億7,900万円", "136億7900万"],
+      "context_terms": ["売上高"],
+      "correction_allowed": true
+    },
+    {
+      "label": "前年同期比減収率",
+      "expected": "5.4%",
+      "aliases": ["5.4パーセント", "5.4％"],
+      "context_terms": ["前年同期比", "減収"],
+      "correction_allowed": true
+    },
+    {
+      "label": "営業利益",
+      "expected": "10億6100万円",
+      "aliases": ["10億6,100万円", "十億6100万円"],
+      "context_terms": ["営業利益"],
+      "correction_allowed": true
+    },
+    {
+      "label": "営業利益率",
+      "expected": "7.8%",
+      "aliases": ["7.8パーセント", "7.8％"],
+      "context_terms": ["営業利益率"],
+      "correction_allowed": true
+    },
+    {
+      "label": "経常利益",
+      "expected": "11億2800万円",
+      "aliases": ["11億2,800万円", "一億二千八百万円", "経常利益は一億二千八百万円"],
+      "context_terms": ["経常利益"],
+      "correction_allowed": true
+    },
+    {
+      "label": "当期純利益",
+      "expected": "8億3400万円",
+      "aliases": ["8億3,400万円"],
+      "context_terms": ["当期純利益"],
+      "correction_allowed": true
+    },
+    {
+      "label": "当期純利益増益率",
+      "expected": "14.6%",
+      "aliases": ["14.6パーセント", "14.6％"],
+      "context_terms": ["当期純利益", "増益"],
+      "correction_allowed": true
+    },
+    {
+      "label": "売上高進捗率",
+      "expected": "76.8%",
+      "aliases": ["76.8パーセント", "76.8％"],
+      "context_terms": ["売上高", "進捗率"],
+      "correction_allowed": true
+    },
+    {
+      "label": "営業利益進捗率",
+      "expected": "107.6%",
+      "aliases": ["107.6パーセント", "107.6％"],
+      "context_terms": ["営業利益", "進捗率"],
+      "correction_allowed": true
+    },
+    {
+      "label": "資産合計増加額",
+      "expected": "28億7100万円",
+      "aliases": ["28億7,100万円", "二十八兆億7100万円"],
+      "context_terms": ["資産合計", "増加"],
+      "correction_allowed": true
+    },
+    {
+      "label": "負債合計増加額",
+      "expected": "21億300万円",
+      "aliases": ["21億300万", "二十一億三百万円"],
+      "context_terms": ["負債合計", "増加"],
+      "correction_allowed": true
+    },
+    {
+      "label": "自己資本比率",
+      "expected": "40.7%",
+      "aliases": ["40.7パーセント", "40.7％"],
+      "context_terms": ["自己資本比率"],
+      "correction_allowed": true
+    }
+  ],
+  "do_not_correct": [],
+  "notes": "Corporate IR glossary for test01 business video. High-confidence corrections only."
+}

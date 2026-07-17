@@ -1,0 +1,33 @@
+{
+  "version": "3.3.5.5.8.5.26.2",
+  "codename": "Domain-Agnostic Japanese Accuracy & Audio Delivery Gate",
+  "files_created": [
+    "alpha/utils/multidomain_gate_evidence.py",
+    "prepare_multidomain_gate_85262.py",
+    "regression_multidomain_gate_85262.py",
+    "run_multidomain_gate_85262.py",
+    "score_multidomain_gate_85262.py",
+    "troubleshooting/accuracy_benchmark/multidomain_gate/REFERENCE_ISOLATION_POLICY.json",
+    "troubleshooting/accuracy_benchmark/multidomain_gate/test01_meeting_context_status.json",
+    "troubleshooting/accuracy_benchmark/reference_transcripts/multidomain_meeting_v1_truth.json",
+    "verify_multidomain_gate_85262.py"
+  ],
+  "files_modified": [
+    "alpha/constants.py",
+    "alpha/transcription/deepgram_client.py",
+    "alpha/ui/main_window.py",
+    "main.py"
+  ],
+  "forbidden_files_modified": [],
+  "audio_pipeline_file": "alpha/ui/main_window.py",
+  "audio_pipeline_function": "audio_mixer_worker",
+  "deepgram_send_function": "_normalize_and_send_pcm",
+  "before_sha256": "captured_at_implementation",
+  "after_sha256": {
+    "alpha/constants.py": "20bf7ee4ce1bb5ba8a3b8ca80f4fa3db8374756d773888f829f37cc326978654",
+    "alpha/transcription/deepgram_client.py": "5c4c7d5e5ac515f7cd8199931561b6a100402f971250f81cda1490a6509cda3f",
+    "alpha/ui/main_window.py": "040afcdaacb4f206b2fb7316be0b2fc449286e8cd7647f67b1d3cfeebccf66f5",
+    "main.py": "b733e4465a24497627d000675367ba3c097eb3948b0d0de86fe5b2e903786c36"
+  },
+  "implementation_completed_at": "2026-07-16T03:08:08Z"
+}

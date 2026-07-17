@@ -1,0 +1,21 @@
+build_id=29585b19-29bd-49e8-a455-f7a4c1c531eb
+patch_version=3.3.5.5.8.5.25.3.3.2.4
+generated_at=2026-07-14T07:16:10Z
+Alpha Live Translator — Cursor Final Report
+===========================================
+patch_codename=Final Package Closure, Safe Project Cleanup & Zero-Regret Retention
+original_pipeline_issues_closed=11
+previous_audit_issues_closed=12
+previous_packaging_issues_closed=2
+new_packaging_issues_closed=2
+total_known_issues_closed=27
+remaining_issues=0
+required_regression_report_count=6
+packaged_regression_report_count=6
+all_current_build_reports_have_build_id=true
+cleanup_validation_passed=true
+VERSION=ACCEPTED
+STATUS=PASSED
+new_live_test_required=false
+acceptance_source=reports\ZERO_REMAINING_ISSUES_ACCEPTANCE.json
+

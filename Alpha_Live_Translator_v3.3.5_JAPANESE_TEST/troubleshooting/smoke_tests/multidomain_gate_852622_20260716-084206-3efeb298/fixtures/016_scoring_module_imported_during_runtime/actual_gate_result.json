@@ -1,0 +1,19 @@
+{
+  "test_number": 16,
+  "test_name": "scoring_module_imported_during_runtime_fails",
+  "actual_gate_status": "FAILED",
+  "actual_failure_codes": [
+    "SCORING_MODULE_IMPORTED_DURING_RUNTIME"
+  ],
+  "actual_failure_messages": [
+    "verification.reported_value_mismatches=scoring_modules_imported_at_runtime -> SCORING_MODULE_IMPORTED_DURING_RUNTIME"
+  ],
+  "actual_gate_exit_code": 0,
+  "actual_acceptance_version": "NOT_ACCEPTED",
+  "actual_acceptance_status": "FIXTURE_ONLY",
+  "source_result_file": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\smoke_tests\\multidomain_gate_852622_20260716-084206-3efeb298\\fixtures\\016_scoring_module_imported_during_runtime\\accuracy_stage_compare\\independent_verification.json",
+  "source_result_file_sha256": "2c6b3c445f93f1502cbd208e25dfbe55eb0e3cdb5e58f7b7478f298e25542923",
+  "unhandled_exception": false,
+  "exception_class": "",
+  "exception_message": ""
+}

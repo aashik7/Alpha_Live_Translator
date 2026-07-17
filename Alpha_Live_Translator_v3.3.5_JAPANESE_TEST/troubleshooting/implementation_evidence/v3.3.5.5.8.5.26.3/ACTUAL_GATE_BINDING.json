@@ -1,0 +1,10 @@
+{
+  "orchestrator_source": "run_multidomain_hard_fix_85263.py",
+  "orchestrator_sha256": "c65edc0d559d80753f7d75af091f1a7dbb0fe56147a75726b3d472033c0559c3",
+  "acceptance_builder_name": "build_acceptance",
+  "acceptance_builder_source_file": "run_multidomain_gate_85262.py",
+  "acceptance_builder_source_sha256": "a1b1148c469e70cb7cfe03580f980ae139aa126eab92e88803cf6d2362f4a373",
+  "invocation_method": "direct_import_call_from_regression_multidomain_hard_fix_85263",
+  "duplicate_gate_logic_detected": false,
+  "binding_verified": true
+}

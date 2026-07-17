@@ -1,0 +1,39 @@
+{
+  "app_version": "3.3.5.5.8.5.25.2",
+  "run_id": "live-v3.3.5.5.8.5.25.2-20260713-091703-23fb3a9d",
+  "visible_error_audit_expanded": true,
+  "anti_overfit_mode_enabled": true,
+  "benchmark_baseline_lock_enabled": true,
+  "auto_business_correction_level": "minimal_plus_user_glossary",
+  "audit_only": true,
+  "auto_correction_applied": false,
+  "line_count": 5,
+  "candidates": [
+    {
+      "pattern_id": "company_number_risk",
+      "category": "meaning_risk",
+      "severity": "low",
+      "line_number": 1,
+      "line_no": 1,
+      "speaker": 3,
+      "line_text": "皆さんこんにちは株式会社さくら+代表の中山です。本日は2026年7月期第3四半期決算についてご案内申し上げます。は二千二十六年七月期、第三四半期決算概要についてお知らせいたします。売上高については百三十六億七千九百万となり前年同期比五点四パ",
+      "snippet": "皆さんこんにちは株式会社さくら+代表の中山です。本日は2026年7月期第3四半期決算についてご案内申し上げます。は二千二十六年七月期、第三四半期決算概要についてお知らせいたします。売上高については百三十六億七千九百万となり前年同期比五点四パ",
+      "line": "[Speaker 3] 皆さんこんにちは株式会社さくら+代表の中山です。本日は2026年7月期第3四半期決算についてご案内申し上げます。は二千二十六年七月期、第三四半期決算概要についてお知らせいたします。売上高については百三十六億七千九百万となり前年同期比五点四パーセントの減収となりました。",
+      "suspected_issue": "number_or_date_segment",
+      "likely_expected_text": "verify against audio",
+      "auto_corrected": false,
+      "correction_allowed": false,
+      "requires_reference_or_glossary": true,
+      "reason": "audit_only_no_auto_correction"
+    }
+  ],
+  "written_at": "2026-07-13T09:23:13",
+  "visible_error_count": 1,
+  "visible_error_high_count": 0,
+  "visible_error_medium_count": 0,
+  "visible_error_low_count": 1,
+  "name_risk_count": 0,
+  "business_term_risk_count": 0,
+  "punctuation_artifact_count": 0,
+  "sentence_boundary_risk_count": 0
+}

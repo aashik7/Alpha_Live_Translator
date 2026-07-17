@@ -1,0 +1,12 @@
+{
+  "build_id": "238eeb44-f420-4d93-b846-24f1268f63bd",
+  "count": 1905,
+  "generated_at": "2026-07-15T06:49:34Z",
+  "patch_version": "3.3.5.5.8.5.25.3.3.2.6",
+  "policy": "all_non_deleted_files_retained",
+  "protected_examples": [
+    "troubleshooting/runs/v3.3.5.5.8.5.25.3.3.1-20260714-111519/transcripts/Alpha_output_FINAL.txt",
+    "troubleshooting/accuracy_benchmark/reference_transcripts/test01.txt",
+    "main.py"
+  ]
+}

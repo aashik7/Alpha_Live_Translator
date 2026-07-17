@@ -1,0 +1,10 @@
+{
+  "test_number": 7,
+  "test_name": "missing_sent_chunk_fails",
+  "expected_gate_status": "FAILED",
+  "expected_failure_codes": [
+    "AUDIO_CHUNK_MISSING"
+  ],
+  "expected_policy_result": "",
+  "single_mutation_description": "exactly one sent chunk dropped out of a 2000-chunk delivery set (ratio stays >= 0.999)"
+}

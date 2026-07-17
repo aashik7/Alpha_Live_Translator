@@ -1,0 +1,202 @@
+{
+  "app_version": "3.3.5.5.8.5.25.3.3.2.1",
+  "authoritative_writer": "alpha.utils.final_artifact_authority.write_final_once",
+  "authoritative_writer_count": 1,
+  "authoritative_writer_files": [
+    "alpha/utils/final_artifact_authority.py"
+  ],
+  "legacy_runtime_writer_count": 0,
+  "legacy_runtime_writers": [],
+  "post_seal_writer_count": 0,
+  "post_seal_writers": [],
+  "hits": [
+    {
+      "file": "alpha/utils/canonical_export_writer.py",
+      "line": 203,
+      "snippet": "def write_authoritative_outputs_from_payload(",
+      "pattern": "write_authoritative_outputs_from_payload\\s*\\("
+    },
+    {
+      "file": "alpha/utils/final_artifact_authority.py",
+      "line": 170,
+      "snippet": "def write_final_once(",
+      "pattern": "write_final_once\\s*\\("
+    },
+    {
+      "file": "alpha/utils/run_artifacts.py",
+      "line": 781,
+      "snippet": "write_result = write_final_once(",
+      "pattern": "write_final_once\\s*\\("
+    },
+    {
+      "file": "regression_eleven_issue_closure_852533.py",
+      "line": 370,
+      "snippet": "(run / \"transcripts\" / \"Alpha_output_FINAL.txt\").write_text(",
+      "pattern": "\\.write_text\\s*\\("
+    },
+    {
+      "file": "regression_final_writer_stop_tail_8525331.py",
+      "line": 75,
+      "snippet": "write_authoritative_outputs_from_payload(run_folder=Path(\".\"), run_id=\"x\")",
+      "pattern": "write_authoritative_outputs_from_payload\\s*\\("
+    },
+    {
+      "file": "regression_final_writer_stop_tail_8525331.py",
+      "line": 83,
+      "snippet": "assert \"write_authoritative_outputs_from_payload(\" not in src.split(",
+      "pattern": "write_authoritative_outputs_from_payload\\s*\\("
+    },
+    {
+      "file": "regression_final_writer_stop_tail_8525331.py",
+      "line": 95,
+      "snippet": "write_final_once(run, \"r1\", \"snap1\", \"[Speaker 2] hello\\n\", [{\"record_id\": \"a\", \"text\": \"hello\"}])",
+      "pattern": "write_final_once\\s*\\("
+    },
+    {
+      "file": "regression_final_writer_stop_tail_8525331.py",
+      "line": 97,
+      "snippet": "write_final_once(run, \"r1\", \"snap1\", \"[Speaker 2] bye\\n\", [{\"record_id\": \"b\", \"text\": \"bye\"}])",
+      "pattern": "write_final_once\\s*\\("
+    },
+    {
+      "file": "regression_final_writer_stop_tail_8525331.py",
+      "line": 109,
+      "snippet": "write_final_once(run, \"r1\", \"snap1\", \"[Speaker 2] hello\\n\", [{\"record_id\": \"a\", \"text\": \"hello\"}])",
+      "pattern": "write_final_once\\s*\\("
+    },
+    {
+      "file": "regression_final_writer_stop_tail_8525331.py",
+      "line": 112,
+      "snippet": "write_final_once(run, \"r1\", \"snap1\", \"[Speaker 2] again\\n\", [{\"record_id\": \"a\", \"text\": \"again\"}])",
+      "pattern": "write_final_once\\s*\\("
+    },
+    {
+      "file": "regression_final_writer_stop_tail_8525331.py",
+      "line": 125,
+      "snippet": "write_final_once(run, \"r1\", \"snap1\", text, [{\"record_id\": \"a\", \"text\": \"sealed\"}])",
+      "pattern": "write_final_once\\s*\\("
+    },
+    {
+      "file": "regression_final_writer_stop_tail_8525331.py",
+      "line": 386,
+      "snippet": "write_final_once(run, \"r1\", \"s1\", text, [{\"record_id\": \"a\", \"text\": \"one\", \"content_sha256\": _sha(\"one\")}])",
+      "pattern": "write_final_once\\s*\\("
+    },
+    {
+      "file": "regression_final_writer_stop_tail_8525331.py",
+      "line": 412,
+      "snippet": "write_final_once(run, \"r1\", \"s1\", text, [{\"record_id\": \"a\", \"text\": \"sealed-copy\"}])",
+      "pattern": "write_final_once\\s*\\("
+    },
+    {
+      "file": "validate_accuracy_stage_isolation_85253.py",
+      "line": 214,
+      "snippet": "(run_folder / \"transcripts\" / \"Alpha_output_FINAL.txt\").write_text(",
+      "pattern": "\\.write_text\\s*\\("
+    },
+    {
+      "file": "validate_output_artifact_consistency_852521.py",
+      "line": 20,
+      "snippet": "result = write_authoritative_outputs_from_payload(run_folder=run_folder)",
+      "pattern": "write_authoritative_outputs_from_payload\\s*\\("
+    }
+  ],
+  "other_references": [
+    {
+      "file": "alpha/utils/canonical_export_writer.py",
+      "line": 203,
+      "snippet": "def write_authoritative_outputs_from_payload(",
+      "pattern": "write_authoritative_outputs_from_payload\\s*\\(",
+      "disposition": "disabled_raises"
+    },
+    {
+      "file": "alpha/utils/run_artifacts.py",
+      "line": 781,
+      "snippet": "write_result = write_final_once(",
+      "pattern": "write_final_once\\s*\\("
+    },
+    {
+      "file": "regression_eleven_issue_closure_852533.py",
+      "line": 370,
+      "snippet": "(run / \"transcripts\" / \"Alpha_output_FINAL.txt\").write_text(",
+      "pattern": "\\.write_text\\s*\\(",
+      "disposition": "test_or_tool"
+    },
+    {
+      "file": "regression_final_writer_stop_tail_8525331.py",
+      "line": 75,
+      "snippet": "write_authoritative_outputs_from_payload(run_folder=Path(\".\"), run_id=\"x\")",
+      "pattern": "write_authoritative_outputs_from_payload\\s*\\(",
+      "disposition": "test_or_tool_call"
+    },
+    {
+      "file": "regression_final_writer_stop_tail_8525331.py",
+      "line": 83,
+      "snippet": "assert \"write_authoritative_outputs_from_payload(\" not in src.split(",
+      "pattern": "write_authoritative_outputs_from_payload\\s*\\(",
+      "disposition": "test_or_tool_call"
+    },
+    {
+      "file": "regression_final_writer_stop_tail_8525331.py",
+      "line": 95,
+      "snippet": "write_final_once(run, \"r1\", \"snap1\", \"[Speaker 2] hello\\n\", [{\"record_id\": \"a\", \"text\": \"hello\"}])",
+      "pattern": "write_final_once\\s*\\("
+    },
+    {
+      "file": "regression_final_writer_stop_tail_8525331.py",
+      "line": 97,
+      "snippet": "write_final_once(run, \"r1\", \"snap1\", \"[Speaker 2] bye\\n\", [{\"record_id\": \"b\", \"text\": \"bye\"}])",
+      "pattern": "write_final_once\\s*\\("
+    },
+    {
+      "file": "regression_final_writer_stop_tail_8525331.py",
+      "line": 109,
+      "snippet": "write_final_once(run, \"r1\", \"snap1\", \"[Speaker 2] hello\\n\", [{\"record_id\": \"a\", \"text\": \"hello\"}])",
+      "pattern": "write_final_once\\s*\\("
+    },
+    {
+      "file": "regression_final_writer_stop_tail_8525331.py",
+      "line": 112,
+      "snippet": "write_final_once(run, \"r1\", \"snap1\", \"[Speaker 2] again\\n\", [{\"record_id\": \"a\", \"text\": \"again\"}])",
+      "pattern": "write_final_once\\s*\\("
+    },
+    {
+      "file": "regression_final_writer_stop_tail_8525331.py",
+      "line": 125,
+      "snippet": "write_final_once(run, \"r1\", \"snap1\", text, [{\"record_id\": \"a\", \"text\": \"sealed\"}])",
+      "pattern": "write_final_once\\s*\\("
+    },
+    {
+      "file": "regression_final_writer_stop_tail_8525331.py",
+      "line": 386,
+      "snippet": "write_final_once(run, \"r1\", \"s1\", text, [{\"record_id\": \"a\", \"text\": \"one\", \"content_sha256\": _sha(\"one\")}])",
+      "pattern": "write_final_once\\s*\\("
+    },
+    {
+      "file": "regression_final_writer_stop_tail_8525331.py",
+      "line": 412,
+      "snippet": "write_final_once(run, \"r1\", \"s1\", text, [{\"record_id\": \"a\", \"text\": \"sealed-copy\"}])",
+      "pattern": "write_final_once\\s*\\("
+    },
+    {
+      "file": "validate_accuracy_stage_isolation_85253.py",
+      "line": 214,
+      "snippet": "(run_folder / \"transcripts\" / \"Alpha_output_FINAL.txt\").write_text(",
+      "pattern": "\\.write_text\\s*\\(",
+      "disposition": "test_or_tool"
+    },
+    {
+      "file": "validate_output_artifact_consistency_852521.py",
+      "line": 20,
+      "snippet": "result = write_authoritative_outputs_from_payload(run_folder=run_folder)",
+      "pattern": "write_authoritative_outputs_from_payload\\s*\\(",
+      "disposition": "test_or_tool_call"
+    }
+  ],
+  "acceptance": {
+    "authoritative_writer_count": 1,
+    "legacy_runtime_writer_count": 0,
+    "post_seal_writer_count": 0,
+    "passed": true
+  }
+}

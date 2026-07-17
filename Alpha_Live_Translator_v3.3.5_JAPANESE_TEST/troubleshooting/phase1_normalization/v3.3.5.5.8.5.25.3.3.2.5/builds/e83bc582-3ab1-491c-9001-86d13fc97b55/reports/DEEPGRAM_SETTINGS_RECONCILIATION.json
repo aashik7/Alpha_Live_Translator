@@ -1,0 +1,22 @@
+{
+  "canonical_module": "alpha/stt_settings.py",
+  "behavior_changed": false,
+  "effective_japanese": {
+    "endpointing_ms": 500,
+    "utterance_end_ms": 1500
+  },
+  "effective_non_japanese": {
+    "endpointing_ms": 1200,
+    "utterance_end_ms": 1500,
+    "utterance_end_ms_raw": 5000,
+    "clamped": true
+  },
+  "config_reexports_match_stt_settings": true,
+  "constants_diagnostics_are_ja_effective": true,
+  "runtime_importer": "alpha.transcription.deepgram_client -> alpha.config",
+  "preserved_effective_ja_timing": true,
+  "conflict_resolution": "stt_settings is sole canonical source; config re-exports runtime values; constants retains JA diagnostic aliases 500/1500 for validators",
+  "build_id": "e83bc582-3ab1-491c-9001-86d13fc97b55",
+  "patch_version": "3.3.5.5.8.5.25.3.3.2.5",
+  "generated_at": "2026-07-14T09:01:03Z"
+}

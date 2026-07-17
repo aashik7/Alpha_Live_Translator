@@ -1,0 +1,10 @@
+{
+  "test_number": 9,
+  "test_name": "unexpected_sent_chunk_fails",
+  "expected_gate_status": "FAILED",
+  "expected_failure_codes": [
+    "AUDIO_CHUNK_UNEXPECTED"
+  ],
+  "expected_policy_result": "",
+  "single_mutation_description": "one sent chunk event added for an id that was never queued"
+}

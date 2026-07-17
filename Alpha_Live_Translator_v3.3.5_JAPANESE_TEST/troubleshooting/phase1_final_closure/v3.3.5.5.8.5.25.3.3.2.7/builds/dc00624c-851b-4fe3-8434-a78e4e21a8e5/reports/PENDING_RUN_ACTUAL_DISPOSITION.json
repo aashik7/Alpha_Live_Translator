@@ -1,0 +1,199 @@
+{
+  "archived": 15,
+  "build_id": "dc00624c-851b-4fe3-8434-a78e4e21a8e5",
+  "closure_version": "3.3.5.5.8.5.25.3.3.2.7",
+  "deleted": 6,
+  "entries": [
+    {
+      "action": "archive",
+      "archive_path": "troubleshooting/archive/phase1_v3.3.5.5.8.5.25.3.3.2.7/pending_runs/accuracy/Alpha_for_accuracy_check.txt",
+      "classification": "unique_diagnostic_evidence",
+      "path": "troubleshooting/runs/_pending/accuracy/Alpha_for_accuracy_check.txt",
+      "reason": "unique_diagnostic",
+      "sha256": "14aff257b6d86ac608fc19c9bbdf16f3097acdd17d2792fe4c7285d9029a1a0c",
+      "size_bytes": 127
+    },
+    {
+      "action": "delete",
+      "archive_path": null,
+      "classification": "exact_duplicate_of_retained_evidence",
+      "path": "troubleshooting/runs/_pending/accuracy/boundary_stabilizer_decisions.jsonl",
+      "reason": "sha256_matches:troubleshooting/latest/boundary_stabilizer_decisions.jsonl",
+      "sha256": "e3eb0bd8e261410fe452ba60e63f58f61cbc1c2b73927d8a7ebc4e0240bf6f2e",
+      "size_bytes": 847156
+    },
+    {
+      "action": "delete",
+      "archive_path": null,
+      "classification": "exact_duplicate_of_retained_evidence",
+      "path": "troubleshooting/runs/_pending/accuracy/boundary_stabilizer_summary.json",
+      "reason": "sha256_matches:troubleshooting/latest/boundary_stabilizer_summary.json",
+      "sha256": "dc6f8a65f5c273864aa46ad94a1c0621dc2db0b948d6dde296a0a37759b4cacd",
+      "size_bytes": 1537
+    },
+    {
+      "action": "archive",
+      "archive_path": "troubleshooting/archive/phase1_v3.3.5.5.8.5.25.3.3.2.7/pending_runs/accuracy/correction_decisions.jsonl",
+      "classification": "unique_diagnostic_evidence",
+      "path": "troubleshooting/runs/_pending/accuracy/correction_decisions.jsonl",
+      "reason": "unique_diagnostic",
+      "sha256": "2ac729ba09538d6f025086fe72f4135ff98b8e002571b1f70ef81f5dd6fc4f19",
+      "size_bytes": 49343
+    },
+    {
+      "action": "delete",
+      "archive_path": null,
+      "classification": "exact_duplicate_of_retained_evidence",
+      "path": "troubleshooting/runs/_pending/accuracy/translation_readiness_summary.json",
+      "reason": "sha256_matches:troubleshooting/runs/v3.3.5.5.8.5.25.3-20260713-122601/accuracy/translation_readiness_summary.json",
+      "sha256": "0852a58c8fe2264b06e53b0db8fae99c270064942b8699ac2c585d76fa2f834d",
+      "size_bytes": 1853
+    },
+    {
+      "action": "archive",
+      "archive_path": "troubleshooting/archive/phase1_v3.3.5.5.8.5.25.3.3.2.7/pending_runs/accuracy_stage_compare/deepgram_request_snapshot.json",
+      "classification": "unique_diagnostic_evidence",
+      "path": "troubleshooting/runs/_pending/accuracy_stage_compare/deepgram_request_snapshot.json",
+      "reason": "unique_diagnostic",
+      "sha256": "32df073548c6b15c617439714d6f368c2b7cddc4535f36d4d20521e539ce6778",
+      "size_bytes": 3313
+    },
+    {
+      "action": "archive",
+      "archive_path": "troubleshooting/archive/phase1_v3.3.5.5.8.5.25.3.3.2.7/pending_runs/accuracy_stage_compare/raw_deepgram_events.jsonl",
+      "classification": "unique_diagnostic_evidence",
+      "path": "troubleshooting/runs/_pending/accuracy_stage_compare/raw_deepgram_events.jsonl",
+      "reason": "unique_diagnostic",
+      "sha256": "664d2e50b9ee423277749e689a2a9536c047b5ba705529e0a972d7fcd2e1f7d1",
+      "size_bytes": 708
+    },
+    {
+      "action": "archive",
+      "archive_path": "troubleshooting/archive/phase1_v3.3.5.5.8.5.25.3.3.2.7/pending_runs/accuracy_stage_compare/stable_assembler_events.jsonl",
+      "classification": "unique_diagnostic_evidence",
+      "path": "troubleshooting/runs/_pending/accuracy_stage_compare/stable_assembler_events.jsonl",
+      "reason": "unique_diagnostic",
+      "sha256": "17b3377f461e3bc1c6ed52f50ccc0f963eacfa2e482379089cf2d0c4403ea962",
+      "size_bytes": 20436
+    },
+    {
+      "action": "archive",
+      "archive_path": "troubleshooting/archive/phase1_v3.3.5.5.8.5.25.3.3.2.7/pending_runs/artifacts/LIVE_RUN_STATUS.json",
+      "classification": "unique_diagnostic_evidence",
+      "path": "troubleshooting/runs/_pending/artifacts/LIVE_RUN_STATUS.json",
+      "reason": "unique_diagnostic",
+      "sha256": "87eb324b302546c67db7053cc0efb0eedd280abf40dc636a054c34537f8d6c38",
+      "size_bytes": 316
+    },
+    {
+      "action": "delete",
+      "archive_path": null,
+      "classification": "exact_duplicate_of_retained_evidence",
+      "path": "troubleshooting/runs/_pending/artifacts/POST_RUN_EXIT_SUMMARY.json",
+      "reason": "sha256_matches:troubleshooting/runs/v3.3.5.5.8.5.25.3-20260713-122601/artifacts/POST_RUN_EXIT_SUMMARY.json",
+      "sha256": "310a6549f6d779c8c8e6dcca41326b79902433c5bfa4ed9e626f85d18a65ff80",
+      "size_bytes": 245
+    },
+    {
+      "action": "archive",
+      "archive_path": "troubleshooting/archive/phase1_v3.3.5.5.8.5.25.3.3.2.7/pending_runs/artifacts/RUN_ARTIFACTS_INDEX.txt",
+      "classification": "unique_diagnostic_evidence",
+      "path": "troubleshooting/runs/_pending/artifacts/RUN_ARTIFACTS_INDEX.txt",
+      "reason": "unique_diagnostic",
+      "sha256": "a71c95b2389cf47dadc1735525802c8ffae4cbeb9854f287ace835bfa7eb4240",
+      "size_bytes": 176
+    },
+    {
+      "action": "delete",
+      "archive_path": null,
+      "classification": "temporary_or_incomplete",
+      "path": "troubleshooting/runs/_pending/audio_temp/audio_manifest.json",
+      "reason": "small_audio_temp_incomplete",
+      "sha256": "6dd6cdbf2d781ecac59703f5affa52a1a5be09e665519a8f567ad9e5bcacb9d4",
+      "size_bytes": 87
+    },
+    {
+      "action": "delete",
+      "archive_path": null,
+      "classification": "temporary_or_incomplete",
+      "path": "troubleshooting/runs/_pending/audio_temp/audio_temp_summary.txt",
+      "reason": "small_audio_temp_incomplete",
+      "sha256": "043aad715e905624426b1456a591512eb2b753817624ffddf907f3eef3bff4f8",
+      "size_bytes": 385
+    },
+    {
+      "action": "archive",
+      "archive_path": "troubleshooting/archive/phase1_v3.3.5.5.8.5.25.3.3.2.7/pending_runs/logs/async_debug.log",
+      "classification": "unique_diagnostic_evidence",
+      "path": "troubleshooting/runs/_pending/logs/async_debug.log",
+      "reason": "unique_diagnostic",
+      "sha256": "1d7d55ab6eb2b2c1f2d097e7e7dc472dcbe2f35be394b785f119dfa8a5896a00",
+      "size_bytes": 766281
+    },
+    {
+      "action": "archive",
+      "archive_path": "troubleshooting/archive/phase1_v3.3.5.5.8.5.25.3.3.2.7/pending_runs/logs/diagnostic_test.log",
+      "classification": "unique_diagnostic_evidence",
+      "path": "troubleshooting/runs/_pending/logs/diagnostic_test.log",
+      "reason": "unique_diagnostic",
+      "sha256": "78d8fb0156dfd213cd954371eb89c928dd5d7b54759dfca6adb325eece777388",
+      "size_bytes": 59424
+    },
+    {
+      "action": "archive",
+      "archive_path": "troubleshooting/archive/phase1_v3.3.5.5.8.5.25.3.3.2.7/pending_runs/logs/freeze_guard.log",
+      "classification": "unique_diagnostic_evidence",
+      "path": "troubleshooting/runs/_pending/logs/freeze_guard.log",
+      "reason": "unique_diagnostic",
+      "sha256": "b4ee50ca1087fa8cd63d886cd356a5548f65dba088ceba6bc266b5d85747d201",
+      "size_bytes": 1594272
+    },
+    {
+      "action": "archive",
+      "archive_path": "troubleshooting/archive/phase1_v3.3.5.5.8.5.25.3.3.2.7/pending_runs/logs/japanese_accuracy.log",
+      "classification": "unique_diagnostic_evidence",
+      "path": "troubleshooting/runs/_pending/logs/japanese_accuracy.log",
+      "reason": "unique_diagnostic",
+      "sha256": "2d3dfc550b4c68bde0947fca19b23361fc1ec546b7e96ef43491fdea0cbf8abf",
+      "size_bytes": 29785262
+    },
+    {
+      "action": "archive",
+      "archive_path": "troubleshooting/archive/phase1_v3.3.5.5.8.5.25.3.3.2.7/pending_runs/logs/ui_event_bus_timeline.jsonl",
+      "classification": "unique_diagnostic_evidence",
+      "path": "troubleshooting/runs/_pending/logs/ui_event_bus_timeline.jsonl",
+      "reason": "unique_diagnostic",
+      "sha256": "f489db181853cfb22b5d1ea4df39fdf3799cadd2c9959f69b6ace4540c57b0cb",
+      "size_bytes": 11153
+    },
+    {
+      "action": "archive",
+      "archive_path": "troubleshooting/archive/phase1_v3.3.5.5.8.5.25.3.3.2.7/pending_runs/RUN_MANIFEST.json",
+      "classification": "unique_diagnostic_evidence",
+      "path": "troubleshooting/runs/_pending/RUN_MANIFEST.json",
+      "reason": "unique_or_unknown_archived",
+      "sha256": "f5c1ca2eef9b85ed747c9b3edd463e4fe735fd4ab58611b6ad26cb232b2140ab",
+      "size_bytes": 269
+    },
+    {
+      "action": "archive",
+      "archive_path": "troubleshooting/archive/phase1_v3.3.5.5.8.5.25.3.3.2.7/pending_runs/transcripts/Alpha output.txt",
+      "classification": "unique_diagnostic_evidence",
+      "path": "troubleshooting/runs/_pending/transcripts/Alpha output.txt",
+      "reason": "unique_diagnostic",
+      "sha256": "9eda6868cc69d32c42046e2e8886053b511b1392ff9eada016dbbf626427a75f",
+      "size_bytes": 289
+    },
+    {
+      "action": "archive",
+      "archive_path": "troubleshooting/archive/phase1_v3.3.5.5.8.5.25.3.3.2.7/pending_runs/transcripts/Alpha_output_FINAL.txt",
+      "classification": "unique_diagnostic_evidence",
+      "path": "troubleshooting/runs/_pending/transcripts/Alpha_output_FINAL.txt",
+      "reason": "unique_diagnostic",
+      "sha256": "14aff257b6d86ac608fc19c9bbdf16f3097acdd17d2792fe4c7285d9029a1a0c",
+      "size_bytes": 127
+    }
+  ],
+  "files_evaluated": 21,
+  "pending_files_remaining": []
+}

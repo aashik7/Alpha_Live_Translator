@@ -1,0 +1,23 @@
+{
+  "test_number": 9,
+  "test_name": "unexpected_sent_chunk_fails",
+  "kind": "negative",
+  "single_mutation_description": "one sent chunk event added for an id that was never queued",
+  "files": [
+    {
+      "relative_path": "actual_gate_result.json",
+      "byte_size": 928,
+      "sha256": "6ba3c47bb368697af3849b847e64431a58c6f79262c3943944f9c9fc77b35e96"
+    },
+    {
+      "relative_path": "expected_gate_result.json",
+      "byte_size": 306,
+      "sha256": "abca155e0f4245b5241e0b9461e2287d8461ae4959032d5d5b239371e0ae7266"
+    },
+    {
+      "relative_path": "regression_assertion.json",
+      "byte_size": 662,
+      "sha256": "fdbe355ab1977624c7ffc11b6e6ee60e928b23395ab2985ffdfaac00727765ed"
+    }
+  ]
+}

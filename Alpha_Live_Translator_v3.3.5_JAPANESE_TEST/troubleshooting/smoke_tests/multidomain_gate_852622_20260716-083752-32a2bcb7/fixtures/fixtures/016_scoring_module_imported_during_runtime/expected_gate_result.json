@@ -1,0 +1,10 @@
+{
+  "test_number": 16,
+  "test_name": "scoring_module_imported_during_runtime_fails",
+  "expected_gate_status": "FAILED",
+  "expected_failure_codes": [
+    "SCORING_MODULE_IMPORTED_DURING_RUNTIME"
+  ],
+  "expected_policy_result": "",
+  "single_mutation_description": "reference_isolation_actual.json runtime_imported_scoring_modules set non-empty"
+}

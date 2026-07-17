@@ -1,0 +1,5 @@
+independent_verification_passed=True
+outer_hash_matches=True
+outer_size_matches=True
+metadata_hash_matches=True
+STATUS=PASSED

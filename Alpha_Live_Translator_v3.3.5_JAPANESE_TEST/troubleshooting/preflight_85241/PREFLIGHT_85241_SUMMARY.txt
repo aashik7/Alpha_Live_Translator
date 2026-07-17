@@ -1,0 +1,7 @@
+PREFLIGHT 85241 SUMMARY
+collected_at=2026-07-09T22:15:07
+app_version_before_change=3.3.5.5.8.5.24
+latest_run_id=
+latest_alpha_sha256=33e289ebe9cf662e...
+boundary_summary_path=none
+warnings=['critical_missing:latest_accuracy_evidence_index.json']

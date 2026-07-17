@@ -1,0 +1,13 @@
+# Visible Error Audit (audit-only — no auto-correction)
+# app_version: 3.3.5.5.8.5.24.1
+# run_id: live-v3.3.5.5.8.5.24.1-20260709-225534-b0d036d7
+# visible_error_count: 7
+# high: 0 medium: 7 low: 0
+
+line=8 severity=medium pattern=midline_punct category=punctuation_artifact snippet=うっかり動詞のて形使っていただきたいんですがだと依頼になってしまいますので、必ず許可を求めるときは使役形を使うことをいつも忘れないでください会話に社用車を借りる課長、今日会社の車を使わせていただきたいんですがどうしてNT産業へ行くものであそ
+line=8 severity=medium pattern=duplicate_line_continuation category=sentence_boundary snippet=うっかり動詞のて形使っていただきたいんですがだと依頼になってしまいますので、必ず許可を求めるときは使役形を使うことをいつも忘れないでください会話に社用車を借りる課長、今日会社の車を使わせていただきたいんですがどうしてNT産業へ行くものであそ
+line=12 severity=medium pattern=midline_punct category=punctuation_artifact snippet=なんですよ何時から三時です。三時ね。、二時半から部長がお使いになることになっているわね。
+line=12 severity=medium pattern=duplicate_line_continuation category=sentence_boundary snippet=なんですよ何時から三時です。三時ね。、二時半から部長がお使いになることになっているわね。
+line=13 severity=medium pattern=shite_ikimashi category=particle_ending snippet=じゃ、無理ですね。では内容を確認していきましょう。社用者を借りる会話です。
+line=18 severity=medium pattern=midline_punct category=punctuation_artifact snippet=なんですよ。、そうですよではなくてそうなんですよ共感する気持ちをそうなんですよと言います、言っていますね。
+line=18 severity=medium pattern=duplicate_line_continuation category=sentence_boundary snippet=なんですよ。、そうですよではなくてそうなんですよ共感する気持ちをそうなんですよと言います、言っていますね。

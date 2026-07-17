@@ -1,0 +1,19 @@
+{
+  "test_number": 31,
+  "test_name": "fixture_outputs_cannot_overwrite_latest_live_run_artifacts",
+  "actual_gate_status": "PASSED",
+  "actual_failure_codes": [],
+  "actual_failure_messages": [],
+  "actual_gate_exit_code": 0,
+  "actual_acceptance_version": "NOT_ACCEPTED",
+  "actual_acceptance_status": "FIXTURE_ONLY",
+  "source_result_file": "C:\\Users\\islamm\\Documents\\Tariqul\\Alpha_Translator V 1.0\\Alpha_Live_Translator_v3.3.5_JAPANESE_TEST\\troubleshooting\\smoke_tests\\multidomain_gate_evidence_852622_hardfix_20260716-095745\\fixtures\\031_fixture_cannot_overwrite_latest_live_artifacts\\accuracy_stage_compare\\multidomain_gate_acceptance.json",
+  "source_result_file_sha256": "758350f09631c5271609a922b1db1007ca4a31940af6b460ba876e68f834c8d1",
+  "unhandled_exception": false,
+  "exception_class": "",
+  "exception_message": "",
+  "policy_result": "LATEST_LIVE_ARTIFACTS_UNCHANGED",
+  "live_runs_files_before": 1568,
+  "live_runs_files_after": 1568,
+  "fixture_output_inside_smoke_root": true
+}

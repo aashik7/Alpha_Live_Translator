@@ -1,0 +1,9 @@
+CLEAN ALPHA EXPORT REPAIR REPORT
+input_lines=21
+output_lines=25
+lines_removed=-4
+cumulative_before=0
+residual_duplicate_after=0
+punctuation_artifact_after=0
+clean_export_ready=False
+output=troubleshooting\accuracy_benchmark\clean_export_repair\20260710_183842_lossless_clean_alpha_output.txt

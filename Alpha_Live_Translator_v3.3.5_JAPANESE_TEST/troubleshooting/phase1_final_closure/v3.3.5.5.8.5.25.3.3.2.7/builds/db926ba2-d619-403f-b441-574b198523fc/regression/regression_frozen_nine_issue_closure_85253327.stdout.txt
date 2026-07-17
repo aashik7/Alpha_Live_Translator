@@ -1,0 +1,5 @@
+tests=25
+passed=24
+failed=1
+STATUS=FAILED
+FAIL=t24_transport_contains_outer_and_sidecar:True

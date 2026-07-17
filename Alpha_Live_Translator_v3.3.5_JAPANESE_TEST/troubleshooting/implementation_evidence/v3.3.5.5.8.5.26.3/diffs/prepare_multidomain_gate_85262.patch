@@ -1,0 +1,238 @@
+--- a/prepare_multidomain_gate_85262.py
++++ b/prepare_multidomain_gate_85262.py
+@@ -2,6 +2,8 @@
+ 
+ Creates template JSON, placeholder reference, source manifest, and runs fixture regression.
+ Does NOT run the live benchmark.
++
++Benchmark truth-template generation lives ONLY in this offline preparation tool.
+ """
+ 
+ from __future__ import annotations
+@@ -11,23 +13,30 @@
+ import sys
+ from datetime import datetime, timezone
+ from pathlib import Path
++from typing import Any
+ 
+ ROOT = Path(__file__).resolve().parent
+ if str(ROOT) not in sys.path:
+     sys.path.insert(0, str(ROOT))
+ 
+ from alpha.utils.multidomain_gate_evidence import (  # noqa: E402
+-    ISOLATION_POLICY_REL,
+     MULTIDOMAIN_VERSION,
+-    REFERENCE_REL,
+-    TEST01_PROFILE_STATUS_REL,
+-    TRUTH_REL,
+-    build_reference_isolation_policy,
+-    build_truth_metadata_template,
+-    scan_production_for_reference_leaks,
+     sha256_file,
+     test01_profile_status,
+     utc_now_iso,
++)
++
++REFERENCE_REL = Path(
++    "troubleshooting/accuracy_benchmark/reference_transcripts/multidomain_meeting_v1.txt"
++)
++TRUTH_REL = Path(
++    "troubleshooting/accuracy_benchmark/reference_transcripts/multidomain_meeting_v1_truth.json"
++)
++ISOLATION_POLICY_REL = Path(
++    "troubleshooting/accuracy_benchmark/multidomain_gate/REFERENCE_ISOLATION_POLICY.json"
++)
++TEST01_PROFILE_STATUS_REL = Path(
++    "troubleshooting/accuracy_benchmark/multidomain_gate/test01_meeting_context_status.json"
+ )
+ 
+ EVIDENCE_DIR = ROOT / "troubleshooting" / "implementation_evidence" / f"v{MULTIDOMAIN_VERSION}"
+@@ -55,6 +64,161 @@
+     "alpha/ui/main_window.py",
+     "main.py",
+ ]
++
++
++def _build_multidomain_truth_metadata_template_offline() -> dict[str, Any]:
++    """Offline-only truth metadata template. Must not be imported by alpha/main."""
++    return {
++        "benchmark_id": "multidomain_meeting_v1",
++        "runtime_usage_allowed": False,
++        "deepgram_usage_allowed": False,
++        "correction_usage_allowed": False,
++        "participant_and_person_names": [
++            "田中健",
++            "佐藤美咲",
++            "鈴木大輔",
++            "高橋彩",
++            "山本部長",
++            "斉藤課長",
++            "佐藤主任",
++            "小林さん",
++            "中村恵子",
++        ],
++        "company_names": [
++            "アルファソリューションズ株式会社",
++            "東都物流株式会社",
++            "青葉商事株式会社",
++            "北星テクノロジー株式会社",
++            "株式会社ネクストワークス",
++        ],
++        "it_terms": [
++            "API",
++            "CSV",
++            "JSON",
++            "SSO",
++            "MFA",
++            "Webhook",
++            "CPU",
++            "CRM",
++            "SLA",
++            "シングルサインオン",
++            "多要素認証",
++            "バックグラウンド処理",
++            "タイムアウト",
++            "回帰テスト",
++            "外部ライブラリ",
++            "クラウド環境",
++        ],
++        "sales_terms": [
++            "初回相談",
++            "提案書",
++            "価格交渉",
++            "社内承認",
++            "契約手続き",
++            "年間契約金額",
++            "初期費用",
++            "値引き",
++            "契約期間",
++            "月額利用料",
++            "見積書",
++            "個別見積もり",
++        ],
++        "marketing_terms": [
++            "検索広告",
++            "SNS広告",
++            "オンラインセミナー",
++            "表示回数",
++            "クリック数",
++            "クリック率",
++            "問い合わせ件数",
++            "見込み客",
++            "転換率",
++            "A/Bテスト",
++            "CPA",
++            "ランディングページ",
++        ],
++        "general_business_terms": [
++            "進捗率",
++            "負荷テスト",
++            "情報システム部",
++            "営業企画部",
++            "購買部",
++            "プロジェクト管理ツール",
++            "重要度",
++            "一次回答",
++            "経営会議",
++        ],
++        "numeric_entities": "extract_from_reference_after_runtime",
++        "dates_times": "extract_from_reference_after_runtime",
++        "money_percentages": "extract_from_reference_after_runtime",
++    }
++
++
++def build_reference_isolation_policy() -> dict[str, Any]:
++    return {
++        "policy_version": "multidomain_gate_85262",
++        "rules": [
++            "The application child process must not receive the reference path.",
++            "The application child process must not receive the truth metadata path.",
++            "The application child environment must not contain reference text.",
++            "The application child environment must not contain a reference SHA.",
++            "The reference must not be opened until the application process exits.",
++            "Benchmark scoring modules must not be imported by the live application.",
++            "Benchmark truth metadata must be used only after runtime exit.",
++            "Deepgram request construction must not import benchmark files.",
++        ],
++        "reference_path": str(REFERENCE_REL).replace("\\", "/"),
++        "truth_metadata_path": str(TRUTH_REL).replace("\\", "/"),
++        "orchestrator_may_receive_paths": True,
++        "orchestrator_may_open_before_exit": False,
++    }
++
++
++def scan_production_for_reference_leaks(project_root: Path) -> dict[str, Any]:
++    """Fail if production runtime files embed multidomain reference/truth content."""
++    roots = [
++        project_root / "alpha",
++        project_root / "main.py",
++    ]
++    forbidden_needles = [
++        "multidomain_meeting_v1.txt",
++        "multidomain_meeting_v1_truth.json",
++    ]
++    forbidden_snippets = [
++        '"participant_and_person_names"',
++        "アルファソリューションズ株式会社",
++        "BENCHMARK_CORRECTION_TABLE",
++        "multidomain_term_array",
++        "build_truth_metadata_template",
++        "_build_multidomain_truth_metadata_template_offline",
++    ]
++    hits: list[dict[str, str]] = []
++    files: list[Path] = []
++    for root in roots:
++        if root.is_file():
++            files.append(root)
++        elif root.is_dir():
++            files.extend(root.rglob("*.py"))
++    for path in files:
++        name = path.name
++        if name.startswith(
++            (
++                "score_multidomain",
++                "verify_multidomain",
++                "run_multidomain",
++                "prepare_multidomain",
++                "regression_multidomain",
++            )
++        ):
++            continue
++        try:
++            text = path.read_text(encoding="utf-8", errors="replace")
++        except Exception:
++            continue
++        for needle in forbidden_needles + forbidden_snippets:
++            if needle in text:
++                hits.append({"path": str(path.relative_to(project_root)).replace("\\", "/"), "needle": needle})
++    return {"ok": not hits, "hits": hits}
+ 
+ 
+ def ensure_directories() -> None:
+@@ -77,7 +241,8 @@
+ 
+     truth_path = ROOT / TRUTH_REL
+     truth_path.write_text(
+-        json.dumps(build_truth_metadata_template(), ensure_ascii=False, indent=2) + "\n",
++        json.dumps(_build_multidomain_truth_metadata_template_offline(), ensure_ascii=False, indent=2)
++        + "\n",
+         encoding="utf-8",
+     )
+ 
+@@ -113,7 +278,7 @@
+ 
+     return {
+         "version": MULTIDOMAIN_VERSION,
+-        "codename": "Domain-Agnostic Japanese Accuracy & Audio Delivery Gate",
++        "codename": "Hard Benchmark Isolation & Zero-Safe Acceptance Gate",
+         "files_created": sorted(set(files_created)),
+         "files_modified": [f.replace("\\", "/") for f in MODIFIED_FILES if (ROOT / f).exists()],
+         "forbidden_files_modified": [],
+@@ -187,6 +352,7 @@
+ 
+     manifest = build_source_change_manifest()
+     manifest_path = EVIDENCE_DIR / "source_change_manifest.json"
++    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+     manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+ 
+     proc = subprocess.run(

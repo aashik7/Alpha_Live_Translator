@@ -1,0 +1,8 @@
+{
+  "test_number": 15,
+  "invocation_mode": "direct_callable",
+  "callable_module": "regression_multidomain_gate_85262",
+  "callable_name": "_run_fixture_pipeline",
+  "python_invocation": "regression_multidomain_gate_evidence_852622.b_015_reference_opened_before_runtime_exit('015_reference_opened_before_runtime_exit')",
+  "invoked_at_utc": "2026-07-16T09:58:13Z"
+}

@@ -1,0 +1,10 @@
+regression_cer 3.3.5.5.8.5.25.3.2
+
+PASS perfect match
+PASS substitution
+PASS deletion
+PASS insertion
+reference_snapshot_sha256=09634a0da9ff86ce4825fb8326c3bca99e64be955c971d7e2db7f7b7823e5b8b
+valid_for_cer=True
+
+PASSED

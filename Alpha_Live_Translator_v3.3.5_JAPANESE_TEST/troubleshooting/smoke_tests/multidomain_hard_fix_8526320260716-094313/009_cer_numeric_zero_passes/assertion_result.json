@@ -1,0 +1,17 @@
+{
+  "test_number": 9,
+  "test_name": "cer_numeric_zero_passes",
+  "passed": true,
+  "expected": {
+    "expect_failures": [],
+    "expect_pass": true
+  },
+  "actual": {
+    "passed": true,
+    "failures": [],
+    "stable_cer_percent": 0.0,
+    "ready_for_translation_beta": true,
+    "ignored_failure_codes": [],
+    "normalized_away_failure_codes": []
+  }
+}

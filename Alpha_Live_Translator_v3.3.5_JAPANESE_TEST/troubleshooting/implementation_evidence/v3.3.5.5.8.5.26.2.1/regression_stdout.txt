@@ -1,0 +1,38 @@
+tests=32
+passed=32
+failed=0
+  [PASS] valid_fixture_produces_implementation_ready_verification
+  [PASS] missing_raw_file_fails
+  [PASS] missing_stable_file_fails
+  [PASS] missing_final_file_fails
+  [PASS] altered_transcript_hash_fails
+  [PASS] altered_audio_delivery_jsonl_hash_fails
+  [PASS] missing_sent_chunk_fails
+  [PASS] duplicate_sent_chunk_fails
+  [PASS] unexpected_sent_chunk_fails
+  [PASS] delivery_ratio_below_0_999_fails
+  [PASS] malformed_jsonl_fails
+  [PASS] api_key_in_request_evidence_fails
+  [PASS] reference_path_in_runtime_child_command_line_fails
+  [PASS] reference_path_in_runtime_child_environment_fails
+  [PASS] reference_opened_before_runtime_exit_fails
+  [PASS] scoring_module_imported_during_runtime_fails
+  [PASS] keyterm_count_above_zero_fails
+  [PASS] keyword_count_above_zero_fails
+  [PASS] test01_profile_active_fails
+  [PASS] business_japanese_profile_active_fails
+  [PASS] raw_mutation_count_above_zero_fails
+  [PASS] translation_provider_active_fails
+  [PASS] stable_accuracy_below_80_fails
+  [PASS] names_accuracy_below_85_fails
+  [PASS] number_accuracy_below_85_fails
+  [PASS] stable_to_final_loss_above_zero_fails
+  [PASS] runtime_regression_fails
+  [PASS] reported_cer_mismatch_fails
+  [PASS] reported_category_score_mismatch_fails
+  [PASS] fixture_run_cannot_create_version_accepted
+  [PASS] fixture_outputs_cannot_overwrite_latest_live_run_artifacts
+  [PASS] audio_files_excluded_from_package
+IMPLEMENTATION_STATUS=READY
+REAL_BENCHMARK_COMPLETED=false
+READY_FOR_TRANSLATION_BETA=false
