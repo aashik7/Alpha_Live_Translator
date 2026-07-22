@@ -1,7 +1,7 @@
 # Alpha Live Translator — Architecture
 
 **Active project:** `Alpha_Live_Translator_v3.3.5_JAPANESE_TEST`  
-**Current version:** `3.3.5.5.8.5.26.4.1` (Evidence Closure Repair)  
+**Current version:** `3.3.5.5.8.5.26.4.1`  
 **Entry point:** `main.py`  
 **Frozen infrastructure baseline:** `3.3.5.5.8.5.25.3.3.2.8`
 
