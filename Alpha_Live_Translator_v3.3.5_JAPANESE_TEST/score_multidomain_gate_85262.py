@@ -10,14 +10,57 @@ from typing import Any
 
 from alpha.utils.cer_backtracking import levenshtein_operation_counts
 from alpha.utils.multidomain_gate_evidence import (
+    MULTIDOMAIN_VERSION,
     NORMALIZATION_RULES_VERSION,
     apply_meaning_equivalent,
+    build_pre_score_evidence_gate,
     extract_numeric_entities,
     normalize_transcript_text,
     sha256_file,
+    write_scoring_decision,
 )
 
-GATE_VERSION = "3.3.5.5.8.5.26.2"
+# Single version source: alpha/utils/multidomain_gate_evidence.py (which mirrors alpha/constants.py)
+GATE_VERSION = MULTIDOMAIN_VERSION
+
+
+class ScoringNotPermittedError(RuntimeError):
+    """Raised when the canonical pre-score evidence gate has not passed."""
+
+    def __init__(self, status: str, blocked_reasons: list[str]):
+        super().__init__(f"SCORING_NOT_PERMITTED:{status}:{blocked_reasons}")
+        self.status = status
+        self.blocked_reasons = blocked_reasons
+
+
+def enforce_pre_score_gate(run_folder: Path) -> dict[str, Any]:
+    """Fail closed: scoring may only run after PRE_SCORE_EVIDENCE_GATE.json passes."""
+    stage = Path(run_folder) / "accuracy_stage_compare"
+    gate_path = stage / "PRE_SCORE_EVIDENCE_GATE.json"
+    if not gate_path.exists():
+        gate = build_pre_score_evidence_gate(Path(run_folder))
+    else:
+        try:
+            gate = json.loads(gate_path.read_text(encoding="utf-8"))
+        except Exception:
+            gate = {
+                "evidence_gate_passed": False,
+                "scoring_permitted": False,
+                "status": "EVIDENCE_INCOMPLETE",
+                "blocked_reasons": ["PRE_SCORE_EVIDENCE_GATE.json:parse_error"],
+            }
+    if not (gate.get("evidence_gate_passed") is True and gate.get("scoring_permitted") is True):
+        status = str(gate.get("status") or "EVIDENCE_INCOMPLETE")
+        blocked = list(gate.get("blocked_reasons") or ["evidence_gate_not_passed"])
+        write_scoring_decision(
+            Path(run_folder),
+            scoring_permitted=False,
+            real_benchmark_completed=False,
+            status=status,
+            blocked_reasons=blocked,
+        )
+        raise ScoringNotPermittedError(status, blocked)
+    return gate
 
 TRUTH_CATEGORY_KEYS = {
     "participant_and_person_names": "participant_name",
@@ -272,20 +315,33 @@ def score_all(
     if not truth_path.is_absolute():
         truth_path = project_root / truth_path
 
+    # Mandatory fail-closed gate (spec H): raises ScoringNotPermittedError when
+    # any required evidence is missing/invalid; CER is never computed against
+    # an empty or missing hypothesis.
+    gate = enforce_pre_score_gate(run_folder)
+
     stage_dir = run_folder / "accuracy_stage_compare"
     raw_path = stage_dir / "raw_deepgram.txt"
     stable_path = stage_dir / "stable_transcript.txt"
-    if not stable_path.exists():
-        stable_path = stage_dir / "stable_assembler_only.txt"
     final_path = stage_dir / "final_alpha_output.txt"
 
     ref_text = reference_path.read_text(encoding="utf-8")
     ref_norm = normalize_text(ref_text)
     truth = json.loads(truth_path.read_text(encoding="utf-8"))
 
-    raw_text = raw_path.read_text(encoding="utf-8") if raw_path.exists() else ""
-    stable_text = stable_path.read_text(encoding="utf-8") if stable_path.exists() else ""
-    final_text = final_path.read_text(encoding="utf-8") if final_path.exists() else ""
+    raw_text = raw_path.read_text(encoding="utf-8")
+    stable_text = stable_path.read_text(encoding="utf-8")
+    final_text = final_path.read_text(encoding="utf-8")
+    if not raw_text.strip() or not stable_text.strip() or not final_text.strip():
+        blocked = ["empty_hypothesis_blocked"]
+        write_scoring_decision(
+            run_folder,
+            scoring_permitted=False,
+            real_benchmark_completed=False,
+            status="EVIDENCE_INCOMPLETE",
+            blocked_reasons=blocked,
+        )
+        raise ScoringNotPermittedError("EVIDENCE_INCOMPLETE", blocked)
 
     raw = _stage_block(ref_norm, raw_text)
     stable = _stage_block(ref_norm, stable_text)
@@ -312,6 +368,9 @@ def score_all(
 
     strict_payload = {
         "app_version": GATE_VERSION,
+        "harness_version": GATE_VERSION,
+        "run_id": run_folder.name,
+        "pre_score_gate_status": str(gate.get("status") or ""),
         "reference_path": str(reference_path),
         "reference_sha256": sha256_file(reference_path),
         "truth_path": str(truth_path),
@@ -344,6 +403,55 @@ def score_all(
     meaning_path.write_text(json.dumps(meaning_payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     domain_path.write_text(json.dumps(domain_payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
+    # Independent category recomputation fail-closed check (defect D).
+    recomputed = score_domain_categories(
+        reference_text=ref_text,
+        truth=truth,
+        stage_texts={"raw": raw_text, "stable": stable_text, "final": final_text},
+        primary_stage="stable",
+    )
+    category_mismatches = [
+        key
+        for key in recomputed
+        if key.endswith("_accuracy_percent")
+        and abs(float(recomputed[key]) - float(domain_payload.get(key) or 0.0)) > 0.01
+    ]
+    if category_mismatches:
+        # Fail-closed: remove any score bodies written before the mismatch gate.
+        for stale in (strict_path, meaning_path):
+            try:
+                if stale.exists():
+                    stale.unlink()
+            except OSError:
+                pass
+        write_scoring_decision(
+            run_folder,
+            scoring_permitted=False,
+            real_benchmark_completed=False,
+            status="SCORING_VALUE_MISMATCH",
+            blocked_reasons=[f"category_mismatch:{k}" for k in category_mismatches],
+        )
+        raise ScoringNotPermittedError(
+            "SCORING_VALUE_MISMATCH",
+            [f"category_mismatch:{k}" for k in category_mismatches],
+        )
+
+    write_scoring_decision(
+        run_folder,
+        scoring_permitted=True,
+        real_benchmark_completed=False,
+        status="SCORED",
+        blocked_reasons=[],
+        scores={
+            "raw_cer_percent": float(raw.get("cer_percent") or 0.0),
+            "stable_cer_percent": float(stable.get("cer_percent") or 0.0),
+            "final_cer_percent": float(final.get("cer_percent") or 0.0),
+            "raw_accuracy_percent": float(raw.get("accuracy_percent") or 0.0),
+            "stable_accuracy_percent": float(stable.get("accuracy_percent") or 0.0),
+            "final_accuracy_percent": float(final.get("accuracy_percent") or 0.0),
+        },
+    )
+
     return {
         "strict": strict_payload,
         "meaning_equivalent": meaning_payload,
@@ -364,12 +472,25 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--reference", required=True)
     parser.add_argument("--truth-metadata", required=True)
     args = parser.parse_args(argv)
-    result = score_all(
-        project_root=Path(args.project_root),
-        run_folder=Path(args.run_folder),
-        reference_path=Path(args.reference),
-        truth_path=Path(args.truth_metadata),
-    )
+    try:
+        result = score_all(
+            project_root=Path(args.project_root),
+            run_folder=Path(args.run_folder),
+            reference_path=Path(args.reference),
+            truth_path=Path(args.truth_metadata),
+        )
+    except ScoringNotPermittedError as exc:
+        print(
+            json.dumps(
+                {
+                    "scoring_permitted": False,
+                    "status": exc.status,
+                    "blocked_reasons": exc.blocked_reasons,
+                },
+                ensure_ascii=False,
+            )
+        )
+        return 4
     print(
         json.dumps(
             {

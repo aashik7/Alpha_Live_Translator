@@ -375,6 +375,42 @@ def write_deepgram_request_snapshot(snapshot: dict[str, Any], *, run_folder: Pat
         return None
 
 
+_REQUEST_SECRET_KEY_SUBSTRINGS = (
+    "api_key",
+    "apikey",
+    "authorization",
+    "access_token",
+    "auth_token",
+    "secret",
+    "password",
+    "bearer",
+)
+_REQUEST_SECRET_VALUE_RE = re.compile(
+    r"(?i)(?:token|bearer|authorization)\s*[=:]\s*[A-Za-z0-9_\-\.]{12,}"
+)
+
+
+def _request_payload_secret_findings(payload: Any, path: str = "$") -> list[str]:
+    """Detect secret-bearing keys or token-pattern string values in the payload."""
+    findings: list[str] = []
+    if isinstance(payload, dict):
+        for key, value in payload.items():
+            key_l = str(key).lower()
+            if any(sub in key_l for sub in _REQUEST_SECRET_KEY_SUBSTRINGS) and not key_l.startswith(
+                "forbidden_secret"
+            ):
+                if isinstance(value, str) and value.strip():
+                    findings.append(f"secret_bearing_key:{path}.{key}")
+            findings.extend(_request_payload_secret_findings(value, f"{path}.{key}"))
+    elif isinstance(payload, list):
+        for idx, value in enumerate(payload):
+            findings.extend(_request_payload_secret_findings(value, f"{path}[{idx}]"))
+    elif isinstance(payload, str):
+        if _REQUEST_SECRET_VALUE_RE.search(payload):
+            findings.append(f"secret_token_pattern:{path}")
+    return findings
+
+
 def write_deepgram_request_actual(payload: dict[str, Any], *, run_folder: Path | None = None) -> Path | None:
     """Write sanitized Deepgram request proof captured immediately before connect."""
     if not THREE_STAGE_ACCURACY_DIAGNOSTIC_ENABLED:
@@ -395,6 +431,49 @@ def write_deepgram_request_actual(payload: dict[str, Any], *, run_folder: Path |
             data["sanitized_query_string"] = sanitize_deepgram_query_string(query)
         except Exception:
             data["sanitized_query_string"] = query.split("Token", 1)[0]
+    # v3.3.5.5.8.5.26.4 evidence-metadata enrichment (spec G): derived fields
+    # only; the actual request parameters above are never altered here.
+    try:
+        import sys as _sys
+
+        caller = _sys._getframe(1)
+        caller_file = str(caller.f_code.co_filename)
+        caller_function = str(caller.f_code.co_name)
+    except Exception:
+        caller_file = ""
+        caller_function = ""
+    data.setdefault("schema_version", 1)
+    data.setdefault("harness_version", APP_VERSION)
+    data.setdefault(
+        "captured_at_utc",
+        time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    )
+    data.setdefault("capture_source_file", caller_file)
+    data.setdefault("capture_source_function", caller_function)
+    data.setdefault(
+        "captured_immediately_before_connection",
+        bool(data.get("captured_immediately_before_connect", False)),
+    )
+    data.setdefault("accuracy_profile", str(data.get("benchmark_profile") or data.get("profile") or ""))
+    data.setdefault(
+        "diarization_state",
+        "diarize_model=latest" if data.get("diarize_present") else "disabled",
+    )
+    data.setdefault("keyword_count", 0)
+    data.setdefault("reference_terms_loaded", 0)
+    secret_findings = _request_payload_secret_findings(data)
+    data["forbidden_secret_fields_present"] = bool(secret_findings)
+    data["sanitized"] = not secret_findings
+    material = {
+        k: v
+        for k, v in data.items()
+        if k not in ("request_parameter_sha256", "request_sha256")
+    }
+    data["request_parameter_sha256"] = hashlib.sha256(
+        json.dumps(material, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode(
+            "utf-8"
+        )
+    ).hexdigest()
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

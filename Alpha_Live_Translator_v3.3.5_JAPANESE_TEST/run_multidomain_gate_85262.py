@@ -23,9 +23,15 @@ from alpha.utils.multidomain_gate_evidence import (
     ACCURACY_PROFILE_DOMAIN_AGNOSTIC,
     FROZEN_INFRASTRUCTURE,
     MULTIDOMAIN_VERSION,
-    recalculate_audio_delivery_summary,
+    atomic_write_json,
+    build_audio_delivery_summary,
+    build_pre_score_evidence_gate,
+    build_stop_evidence_reconciliation,
+    build_stop_source_map,
     sha256_file,
+    snapshot_evidence_file,
     utc_now_iso,
+    write_scoring_decision,
 )
 
 DEFAULT_REFERENCE = Path(
@@ -67,6 +73,262 @@ def validate_frozen_infrastructure(project_root: Path) -> dict[str, Any]:
     if not readiness.exists():
         issues.append("frozen_readiness_delivery_missing")
     return {"ok": not issues, "issues": issues, "frozen_infrastructure_baseline": FROZEN_INFRASTRUCTURE}
+
+
+class ChildBindingError(RuntimeError):
+    """Fail-closed deterministic child-run binding failure."""
+
+    def __init__(self, status: str, detail: str = ""):
+        super().__init__(f"{status}:{detail}" if detail else status)
+        self.status = status
+        self.detail = detail
+
+
+def resolve_child_run_folder(
+    project_root: Path,
+    *,
+    gate_run_folder: Path,
+    binding_id: str,
+    parent_gate_run_id: str,
+    expected_app_version: str = MULTIDOMAIN_VERSION,
+    expected_process_id: int | None = None,
+    window_started_at_epoch: float | None = None,
+) -> Path:
+    """Resolve the child run folder via deterministic parent-child binding handshake.
+
+    Never falls back to newest-folder / mtime selection. Exactly one match required.
+    Zero or multiple matches fail closed.
+    """
+    from alpha.utils.multidomain_gate_evidence import (
+        BINDING_RECORD_NAME,
+        load_child_binding_record,
+    )
+
+    _ = window_started_at_epoch  # retained for call-site compatibility; unused
+    binding_id = str(binding_id or "").strip()
+    parent_gate_run_id = str(parent_gate_run_id or "").strip()
+    if not binding_id or not parent_gate_run_id:
+        raise ChildBindingError("BINDING_ENV_MISSING", "binding_id/parent_gate_run_id required")
+
+    runs_root = project_root / "troubleshooting" / "runs"
+    if not runs_root.exists():
+        raise ChildBindingError("BINDING_NO_MATCH", "runs_root_missing")
+
+    matches: list[Path] = []
+    for folder in runs_root.iterdir():
+        if not folder.is_dir():
+            continue
+        try:
+            if folder.resolve() == gate_run_folder.resolve():
+                continue
+        except Exception:
+            continue
+        record = load_child_binding_record(folder)
+        if not record:
+            continue
+        if str(record.get("binding_id") or "") != binding_id:
+            continue
+        if str(record.get("parent_gate_run_id") or "") != parent_gate_run_id:
+            continue
+        if str(record.get("app_version") or "") != expected_app_version:
+            continue
+        if expected_process_id is not None:
+            try:
+                if int(record.get("process_id") or -1) != int(expected_process_id):
+                    continue
+            except Exception:
+                continue
+        matches.append(folder)
+
+    if not matches:
+        raise ChildBindingError("BINDING_NO_MATCH", f"binding_id={binding_id}")
+    if len(matches) > 1:
+        raise ChildBindingError(
+            "BINDING_AMBIGUOUS",
+            ",".join(str(m) for m in matches),
+        )
+    return matches[0]
+
+
+# Runtime writer chains proven in SOURCE_DISCOVERY_MAP.json (v26.4).
+STAGE_WRITER_CHAINS: dict[str, dict[str, str]] = {
+    "raw": {
+        "runtime_writer_file": "alpha/utils/accuracy_stage_capture.py",
+        "runtime_writer_function": "record_raw_deepgram_final",
+        "runtime_finalizer_file": "alpha/utils/accuracy_stage_capture.py",
+        "runtime_finalizer_function": "finalize_accuracy_stage_artifacts",
+        "runtime_filename": "raw_deepgram.txt",
+    },
+    "stable": {
+        "runtime_writer_file": "alpha/utils/accuracy_stage_capture.py",
+        "runtime_writer_function": "write_stable_active_stage_artifacts",
+        "runtime_finalizer_file": "alpha/utils/accuracy_stage_capture.py",
+        "runtime_finalizer_function": "ensure_stage1_stable_transcript_alias",
+        "runtime_filename": "stable_transcript.txt",
+        "runtime_fallback_filename": "stable_assembler_only.txt",
+    },
+    "final": {
+        "runtime_writer_file": "alpha/utils/run_artifacts.py",
+        "runtime_writer_function": "write_final_alpha_output",
+        "runtime_finalizer_file": "alpha/utils/accuracy_stage_capture.py",
+        "runtime_finalizer_function": "finalize_accuracy_stage_artifacts",
+        "runtime_filename": "final_alpha_output.txt",
+    },
+}
+
+EVIDENCE_SNAPSHOT_FILES = [
+    "raw_deepgram.txt",
+    "stable_transcript.txt",
+    "stable_assembler_only.txt",
+    "final_alpha_output.txt",
+    "audio_delivery_events.jsonl",
+    "deepgram_request_actual.json",
+]
+
+
+def snapshot_child_evidence(
+    *,
+    child_run_folder: Path,
+    gate_run_folder: Path,
+    child_exited_at: str,
+) -> dict[str, Any]:
+    """Byte-preserving post-runtime snapshot of child evidence into the gate run folder."""
+    child_stage = child_run_folder / "accuracy_stage_compare"
+    gate_stage = gate_run_folder / "accuracy_stage_compare"
+    gate_stage.mkdir(parents=True, exist_ok=True)
+    snapshots: dict[str, dict[str, Any]] = {}
+    for name in EVIDENCE_SNAPSHOT_FILES:
+        src = child_stage / name
+        if not src.exists() and name == "stable_transcript.txt":
+            # Runtime may only have written stable_assembler_only.txt; the proven
+            # Stable-stage source is copied byte-for-byte under the required name.
+            src = child_stage / "stable_assembler_only.txt"
+        if not src.exists():
+            snapshots[name] = {"copied": False, "error": "source_missing", "source_path": str(src)}
+            continue
+        snapshots[name] = snapshot_evidence_file(src, gate_stage / name)
+    # Copy run-level Stop evidence for reconciliation (read-only inputs).
+    for rel in ("RUN_MANIFEST.json", "artifacts/LIVE_RUN_STATUS.json"):
+        src = child_run_folder / rel
+        if src.exists():
+            dest = gate_run_folder / rel
+            snapshots[rel] = snapshot_evidence_file(src, dest)
+    payload = {
+        "child_run_folder": str(child_run_folder),
+        "gate_run_folder": str(gate_run_folder),
+        "runtime_child_exited_at": child_exited_at,
+        "snapshot_created_at": utc_now_iso(),
+        "snapshots": snapshots,
+    }
+    atomic_write_json(gate_stage / "EVIDENCE_SNAPSHOT_REPORT.json", payload)
+    return payload
+
+
+def build_transcript_stage_lineage(
+    *,
+    gate_run_folder: Path,
+    child_run_folder: Path | None,
+    child_exited_at: str,
+) -> dict[str, Any]:
+    """Write TRANSCRIPT_STAGE_LINEAGE.json (spec E) for Raw/Stable/Final."""
+    from alpha.utils.multidomain_gate_evidence import derive_lineage_timing_flags
+
+    gate_stage = gate_run_folder / "accuracy_stage_compare"
+    # Prefer physical finalization timestamps from stage_manifest / RUN_MANIFEST.
+    runtime_finalized_at = ""
+    runtime_finalized_source_path = ""
+    for candidate_rel in (
+        "accuracy_stage_compare/stage_manifest.json",
+        "RUN_MANIFEST.json",
+    ):
+        base = child_run_folder if child_run_folder is not None else gate_run_folder
+        cand = Path(base) / candidate_rel
+        if not cand.exists():
+            continue
+        try:
+            doc = json.loads(cand.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        for key in ("completed_at", "finalized_at", "stage_capture_completed_at", "created_at"):
+            val = str(doc.get(key) or "").strip()
+            if val:
+                runtime_finalized_at = val
+                runtime_finalized_source_path = str(cand)
+                break
+        if runtime_finalized_at:
+            break
+
+    entries: dict[str, Any] = {}
+    for stage_name, chain in STAGE_WRITER_CHAINS.items():
+        snapshot_path = gate_stage / chain["runtime_filename"]
+        source_path: Path | None = None
+        capture_mode = "post_runtime_evidence_snapshot"
+        if child_run_folder is not None:
+            candidate = child_run_folder / "accuracy_stage_compare" / chain["runtime_filename"]
+            if not candidate.exists() and chain.get("runtime_fallback_filename"):
+                candidate = (
+                    child_run_folder
+                    / "accuracy_stage_compare"
+                    / chain["runtime_fallback_filename"]
+                )
+            if candidate.exists():
+                source_path = candidate
+        if source_path is None and snapshot_path.exists():
+            source_path = snapshot_path
+            capture_mode = "existing_current_run_artifact"
+
+        source_sha = sha256_file(source_path) if source_path and source_path.exists() else ""
+        source_size = source_path.stat().st_size if source_path and source_path.exists() else 0
+        snap_sha = sha256_file(snapshot_path) if snapshot_path.exists() else ""
+        snap_size = snapshot_path.stat().st_size if snapshot_path.exists() else 0
+        hash_match = bool(source_sha) and source_sha == snap_sha
+        evidence_captured_at = utc_now_iso()
+        timing = derive_lineage_timing_flags(
+            evidence_captured_at=evidence_captured_at,
+            runtime_child_exited_at=child_exited_at,
+            runtime_finalized_at=runtime_finalized_at,
+            runtime_finalized_source_path=runtime_finalized_source_path,
+        )
+
+        entries[stage_name] = {
+            "stage": stage_name,
+            "run_id": gate_run_folder.name,
+            "app_version": MULTIDOMAIN_VERSION,
+            "harness_version": MULTIDOMAIN_VERSION,
+            "runtime_writer_file": chain["runtime_writer_file"],
+            "runtime_writer_function": chain["runtime_writer_function"],
+            "runtime_finalizer_file": chain["runtime_finalizer_file"],
+            "runtime_finalizer_function": chain["runtime_finalizer_function"],
+            "runtime_source_path": str(source_path) if source_path else "",
+            "runtime_source_sha256": source_sha,
+            "runtime_source_byte_size": source_size,
+            "evidence_snapshot_path": f"accuracy_stage_compare/{chain['runtime_filename']}",
+            "evidence_snapshot_sha256": snap_sha,
+            "evidence_snapshot_byte_size": snap_size,
+            "capture_mode": capture_mode,
+            "captured_after_runtime_finalization": timing["captured_after_runtime_finalization"],
+            "captured_after_runtime_exit": timing["captured_after_runtime_exit"],
+            "runtime_child_exited_at": child_exited_at,
+            "runtime_finalized_at": runtime_finalized_at,
+            "runtime_finalized_source_path": runtime_finalized_source_path,
+            "timing_decision": timing,
+            "evidence_captured_at": evidence_captured_at,
+            "content_modified_during_copy": not hash_match if snap_sha else None,
+            "source_and_snapshot_hash_match": hash_match,
+            "scorer_input_path": f"accuracy_stage_compare/{chain['runtime_filename']}",
+        }
+    payload = {
+        "run_id": gate_run_folder.name,
+        "app_version": MULTIDOMAIN_VERSION,
+        "harness_version": MULTIDOMAIN_VERSION,
+        "created_at": utc_now_iso(),
+        "child_run_folder": str(child_run_folder) if child_run_folder else "",
+        "raw": entries["raw"],
+        "stable": entries["stable"],
+        "final": entries["final"],
+    }
+    atomic_write_json(gate_stage / "TRANSCRIPT_STAGE_LINEAGE.json", payload)
+    return payload
 
 
 def build_reference_isolation_actual(
@@ -132,7 +394,8 @@ def write_stage_manifest(
     asm = stage / "stable_assembler_only.txt"
     alias = stage / "stable_transcript.txt"
     if asm.exists() and (not alias.exists() or alias.stat().st_size <= 0):
-        alias.write_text(asm.read_text(encoding="utf-8"), encoding="utf-8")
+        # Byte-preserving copy (spec E): never re-encode transcript evidence.
+        snapshot_evidence_file(asm, alias)
 
     def _info(path: Path) -> tuple[str, str, int]:
         if not path.exists():
@@ -328,6 +591,9 @@ def build_acceptance(
     runtime: dict[str, Any],
     request: dict[str, Any],
     fixture_mode: bool = False,
+    stage_manifest_completed: bool = False,
+    scoring_permitted: bool = False,
+    evidence_gate_status: str = "",
 ) -> dict[str, Any]:
     strict = score.get("strict") if isinstance(score.get("strict"), dict) else {}
     stable = strict.get("stable") if isinstance(strict.get("stable"), dict) else {}
@@ -394,6 +660,13 @@ def build_acceptance(
     if fixture_mode:
         failures.append("fixture_mode_not_live_benchmark")
 
+    # v26.4 fail-closed enforcement (spec H): stage_manifest.completed=false or a
+    # failed evidence gate can never yield real_benchmark_completed=true.
+    if not stage_manifest_completed:
+        failures.append("stage_manifest_completed_false")
+    if not scoring_permitted:
+        failures.append("scoring_not_permitted")
+
     if not isolation.get("isolation_verified"):
         failures.append("reference_isolation_failed")
     if int(keyterm_count) != 0:
@@ -440,17 +713,30 @@ def build_acceptance(
         version = "ACCEPTED"
         status = "PASSED"
         ready_beta = True
+    elif not stage_manifest_completed or not scoring_permitted:
+        version = "NOT_ACCEPTED"
+        status = evidence_gate_status or "EVIDENCE_INCOMPLETE"
+        ready_beta = False
     else:
         version = "NOT_ACCEPTED"
         status = "GATE_NOT_REACHED"
         ready_beta = False
+
+    # real_benchmark_completed may only be true for a live run whose stage manifest
+    # is complete AND whose evidence gate permitted scoring. No later code may
+    # overwrite this to true (spec H).
+    real_benchmark_completed = (
+        (not fixture_mode) and bool(stage_manifest_completed) and bool(scoring_permitted)
+    )
 
     return {
         "VERSION": version,
         "STATUS": status,
         "benchmark": "multidomain_meeting_v1",
         "fixture_mode": bool(fixture_mode),
-        "real_benchmark_completed": not fixture_mode,
+        "real_benchmark_completed": real_benchmark_completed,
+        "stage_manifest_completed": bool(stage_manifest_completed),
+        "scoring_permitted": bool(scoring_permitted),
         "reference_isolation_verified": bool(isolation.get("isolation_verified")),
         "actual_deepgram_request_verified": bool(request),
         "keyterm_count": int(keyterm_count),
@@ -666,7 +952,7 @@ def main(argv: list[str] | None = None) -> int:
     if str(project_root) not in sys.path:
         sys.path.insert(0, str(project_root))
 
-    from score_multidomain_gate_85262 import score_all
+    from score_multidomain_gate_85262 import ScoringNotPermittedError, score_all
     from verify_multidomain_gate_85262 import verify_multidomain_gate
 
     fixture_mode = bool(args.fixture_run_folder)
@@ -700,6 +986,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     started_at = utc_now_iso()
+    started_at_epoch = time.time()
     child_started_at = started_at
     child_exited_at = started_at
     child_cmdline: list[str] = []
@@ -719,9 +1006,12 @@ def main(argv: list[str] | None = None) -> int:
         run_folder.mkdir(parents=True, exist_ok=True)
         print(f"run_id={run_id}")
 
+        binding_id = uuid.uuid4().hex
         env = {
             "ALPHA_MULTIDOMAIN_BENCHMARK_MODE": "1",
             "JAPANESE_ACCURACY_PROFILE": ACCURACY_PROFILE_DOMAIN_AGNOSTIC,
+            "ALPHA_MULTIDOMAIN_BINDING_ID": binding_id,
+            "ALPHA_MULTIDOMAIN_PARENT_GATE_RUN_ID": run_id,
         }
         child_env = {k: v for k, v in env.items()}
         child_env_keys = sorted(child_env.keys())
@@ -731,6 +1021,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"2) Play the complete recording: {args.recording_label}")
         print("3) Stop after the recording ends")
         print("4) Close the application")
+        print(f"binding_id={binding_id}")
         proc = launch_application(project_root, env)
         child_cmdline = [sys.executable, str(project_root / "main.py")]
         child_started_at = utc_now_iso()
@@ -764,33 +1055,100 @@ def main(argv: list[str] | None = None) -> int:
         child_env=child_env,
     )
 
+    # --- v26.4.1: deterministic parent-child binding (no mtime fallback) ---
+    child_run_folder: Path | None = None
+    binding_error: str = ""
+    if not fixture_mode:
+        try:
+            child_run_folder = resolve_child_run_folder(
+                project_root,
+                gate_run_folder=run_folder,
+                binding_id=str(child_env.get("ALPHA_MULTIDOMAIN_BINDING_ID") or ""),
+                parent_gate_run_id=str(child_env.get("ALPHA_MULTIDOMAIN_PARENT_GATE_RUN_ID") or run_folder.name),
+                expected_app_version=MULTIDOMAIN_VERSION,
+                expected_process_id=None,
+                window_started_at_epoch=started_at_epoch,
+            )
+            print(f"child_run_folder={child_run_folder}")
+            snapshot_child_evidence(
+                child_run_folder=child_run_folder,
+                gate_run_folder=run_folder,
+                child_exited_at=child_exited_at,
+            )
+        except ChildBindingError as exc:
+            binding_error = f"{exc.status}:{exc.detail}"
+            print(f"child_run_folder=BINDING_FAILED:{binding_error}")
+
+    # Required order (spec F): stage manifest BEFORE Stop reconciliation / pre-score gate.
     scoring_started_at = utc_now_iso()
-    write_stage_manifest(
+    manifest_path = write_stage_manifest(
         run_folder=run_folder,
         reference_path=reference_path,
         started_at=started_at,
         child_exited_at=child_exited_at,
         scoring_started_at=scoring_started_at,
     )
+    stage_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    stage_manifest_completed = bool(stage_manifest.get("completed"))
+
+    build_transcript_stage_lineage(
+        gate_run_folder=run_folder,
+        child_run_folder=child_run_folder,
+        child_exited_at=child_exited_at,
+    )
+    build_stop_source_map(run_folder)
+    build_stop_evidence_reconciliation(
+        run_folder,
+        run_started_at=started_at,
+        runtime_child_exited_at=child_exited_at,
+    )
 
     stage = run_folder / "accuracy_stage_compare"
     events_path = stage / "audio_delivery_events.jsonl"
-    audio_summary = recalculate_audio_delivery_summary(events_path)
-    summary_path = stage / "audio_delivery_summary.json"
-    summary_path.write_text(json.dumps(audio_summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-
-    score = score_all(
-        project_root=project_root,
-        run_folder=run_folder,
-        reference_path=reference_path,
-        truth_path=truth_path,
+    audio_summary = build_audio_delivery_summary(
+        events_path,
+        run_id=run_folder.name,
+        expected_run_id="",
     )
+    atomic_write_json(stage / "audio_delivery_summary.json", audio_summary)
+
+    # --- mandatory canonical pre-score evidence gate (spec H) ---
+    gate = build_pre_score_evidence_gate(run_folder)
+    scoring_permitted = bool(gate.get("scoring_permitted"))
+    evidence_gate_status = str(gate.get("status") or "")
+    print(f"evidence_gate_passed={'true' if scoring_permitted else 'false'}")
+    print(f"evidence_gate_status={evidence_gate_status}")
+
+    score: dict[str, Any] = {}
+    if scoring_permitted:
+        try:
+            score = score_all(
+                project_root=project_root,
+                run_folder=run_folder,
+                reference_path=reference_path,
+                truth_path=truth_path,
+            )
+        except ScoringNotPermittedError as exc:
+            scoring_permitted = False
+            evidence_gate_status = exc.status
+    if not scoring_permitted:
+        write_scoring_decision(
+            run_folder,
+            scoring_permitted=False,
+            real_benchmark_completed=False,
+            status=evidence_gate_status or "EVIDENCE_INCOMPLETE",
+            blocked_reasons=list(gate.get("blocked_reasons") or []),
+        )
+
     runtime = build_runtime_regression_report(run_folder=run_folder, project_root=project_root)
 
     req: dict[str, Any] = {}
     req_path = stage / "deepgram_request_actual.json"
     if req_path.exists():
-        req = json.loads(req_path.read_text(encoding="utf-8"))
+        try:
+            req = json.loads(req_path.read_text(encoding="utf-8"))
+        except Exception:
+            req = {}
 
     package_pre = None
     verification = verify_multidomain_gate(
@@ -803,13 +1161,16 @@ def main(argv: list[str] | None = None) -> int:
 
     acceptance = build_acceptance(
         score=score,
-        domain=score["domain_category"],
+        domain=score.get("domain_category") or {},
         verification=verification,
         isolation=isolation,
         audio_summary=audio_summary,
         runtime=runtime,
         request=req,
         fixture_mode=fixture_mode,
+        stage_manifest_completed=stage_manifest_completed,
+        scoring_permitted=scoring_permitted,
+        evidence_gate_status=evidence_gate_status,
     )
     acceptance_path = stage / "multidomain_gate_acceptance.json"
     acceptance_path.write_text(json.dumps(acceptance, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

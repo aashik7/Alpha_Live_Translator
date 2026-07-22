@@ -15,7 +15,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
-GATE_VERSION = "3.3.5.5.8.5.26.2"
+GATE_VERSION = "3.3.5.5.8.5.26.4.1"
 FROZEN_INFRASTRUCTURE = "3.3.5.5.8.5.25.3.3.2.8"
 
 REQUIRED_STAGE_FILES = [

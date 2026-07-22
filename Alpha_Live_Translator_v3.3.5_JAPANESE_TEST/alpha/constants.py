@@ -5,8 +5,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-APP_VERSION = "3.3.5.5.8.5.26.3"
-APP_CODENAME = "Hard Benchmark Isolation & Zero-Safe Acceptance Gate"
+APP_VERSION = "3.3.5.5.8.5.26.4.1"
+APP_CODENAME = "Evidence Closure Repair"
 FROZEN_INFRASTRUCTURE_BASELINE = "3.3.5.5.8.5.25.3.3.2.8"
 
 CANONICAL_TRANSCRIPT_LEDGER_ENABLED = True

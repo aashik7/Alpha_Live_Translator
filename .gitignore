@@ -27,6 +27,7 @@ env/
 troubleshooting/
 **/troubleshooting/
 **/troubleshooting/runs/
+**/troubleshooting/smoke_tests/
 **/troubleshooting/**/FINAL_UPLOAD/
 **/troubleshooting/**/staging*/
 **/quarantine/
@@ -34,6 +35,8 @@ troubleshooting/
 **/implementation_evidence/
 **/LATEST_LIVE_RUN_ARTIFACTS_INDEX.txt
 **/UPLOAD_PACKAGE_INDEX.txt
+**/orchestrator_stdout.txt
+**/orchestrator_stderr.txt
 
 # Archives / checksums / dumps
 **/*.zip
@@ -66,6 +69,10 @@ temp/
 *.tmp
 *.temp
 
+# Graphify generated knowledge graph (rebuild: graphify update .)
+graphify-out/
+**/graphify-out/
+
 # OS / editor
 .DS_Store
 Thumbs.db
@@ -73,3 +80,5 @@ desktop.ini
 .cursor/
 .vscode/
 *.swp
+# Keep Graphify Cursor rule trackable if .cursor/ is ever un-ignored:
+!.cursor/rules/graphify.mdc
