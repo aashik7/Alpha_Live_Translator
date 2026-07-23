@@ -6260,10 +6260,10 @@ class AlphaApp(
                 print("[Startup] Deepgram key mask: (configured)")
 
     def _set_starting_status(self):
-        """Show immediate feedback while audio/STT initializes in the background."""
+        """Show immediate Connecting feedback while Deepgram/audio initialize off-UI."""
         if self.status_text_label is not None:
             self.status_text_label.configure(
-                text="Starting…",
+                text="Connecting…",
                 text_color=COLORS["text_primary"],
             )
 
@@ -6393,6 +6393,37 @@ class AlphaApp(
         self._reset_meeting_segment_buffer_state()
         self._reset_segment_repair_state()
 
+        # V26.5.1: connect Deepgram sender BEFORE starting capture/mixer so audio
+        # is never queued (and never backpressure-dropped) while Connecting.
+        try:
+            from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+            jp_accuracy_log("START_DEEPGRAM_INIT_BEGIN")
+        except Exception:
+            pass
+        self._latency_sender_loop_alive = False
+        self._dg_thread = threading.Thread(
+            target=self._deepgram_worker, daemon=True
+        )
+        self._dg_thread.start()
+        print("Deepgram worker thread started")
+        sender_deadline = time.perf_counter() + 30.0
+        while time.perf_counter() < sender_deadline:
+            if bool(getattr(self, "_latency_sender_loop_alive", False)):
+                break
+            if self._stop_event.is_set():
+                raise RuntimeError("Deepgram connection aborted before sender ready")
+            time.sleep(0.05)
+        else:
+            raise RuntimeError("Deepgram sender not ready within 30s")
+        try:
+            from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+            jp_accuracy_log("START_DEEPGRAM_SENDER_READY")
+        except Exception:
+            pass
+        perf_checkpoint("deepgram_sender_ready")
+
         print("Starting dual audio capture (WASAPI loopback + microphone)...")
         try:
             self._start_wasapi_loopback()
@@ -6456,18 +6487,6 @@ class AlphaApp(
         )
         self._mix_thread.start()
         print("Audio mix worker thread started")
-
-        try:
-            from alpha.utils.japanese_accuracy_log import jp_accuracy_log
-
-            jp_accuracy_log("START_DEEPGRAM_INIT_BEGIN")
-        except Exception:
-            pass
-        self._dg_thread = threading.Thread(
-            target=self._deepgram_worker, daemon=True
-        )
-        self._dg_thread.start()
-        print("Deepgram worker thread started")
         try:
             from alpha.utils.japanese_accuracy_log import jp_accuracy_log
 

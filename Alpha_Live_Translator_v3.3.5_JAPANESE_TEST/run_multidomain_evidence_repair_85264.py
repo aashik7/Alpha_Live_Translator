@@ -1,4 +1,4 @@
-"""Offline pre-live orchestrator for v3.3.5.5.8.5.26.4.1 evidence repair (85264).
+"""Offline pre-live orchestrator for v3.3.5.5.8.5.26.4.1.1 evidence repair (85264).
 
 Interface (spec Q):
   python run_multidomain_evidence_repair_85264.py --project-root . --mode offline-pre-live
@@ -29,15 +29,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-REPAIR_VERSION = "3.3.5.5.8.5.26.4.1"
+REPAIR_VERSION = "3.3.5.5.8.5.26.4.1.1"
 STALE_VERSION = "3.3.5.5.8.5.26.2"
-EVIDENCE_REL = Path("troubleshooting/implementation_evidence/v3.3.5.5.8.5.26.4.1")
+EVIDENCE_REL = Path("troubleshooting/implementation_evidence/v3.3.5.5.8.5.26.4.1.1")
 
 AUTHORIZED_CHANGED_FILES = [
     "alpha/constants.py",
     "alpha/utils/multidomain_gate_evidence.py",
     "run_multidomain_gate_85262.py",
-    "score_multidomain_gate_85262.py",
     "verify_multidomain_gate_85262.py",
     "run_multidomain_evidence_repair_85264.py",
     "regression_multidomain_evidence_repair_85264.py",
@@ -48,7 +47,6 @@ BEFORE_SOURCE_NAMES = {
     "alpha/constants.py": "alpha_constants.py",
     "alpha/utils/multidomain_gate_evidence.py": "alpha_utils_multidomain_gate_evidence.py",
     "run_multidomain_gate_85262.py": "run_multidomain_gate_85262.py",
-    "score_multidomain_gate_85262.py": "score_multidomain_gate_85262.py",
     "verify_multidomain_gate_85262.py": "verify_multidomain_gate_85262.py",
     "run_multidomain_evidence_repair_85264.py": "run_multidomain_evidence_repair_85264.py",
     "regression_multidomain_evidence_repair_85264.py": "regression_multidomain_evidence_repair_85264.py",
@@ -58,7 +56,6 @@ DIFF_NAMES = {
     "alpha/constants.py": "alpha_constants.patch",
     "alpha/utils/multidomain_gate_evidence.py": "alpha_utils_multidomain_gate_evidence.patch",
     "run_multidomain_gate_85262.py": "run_multidomain_gate_85262.patch",
-    "score_multidomain_gate_85262.py": "score_multidomain_gate_85262.patch",
     "verify_multidomain_gate_85262.py": "verify_multidomain_gate_85262.patch",
     "run_multidomain_evidence_repair_85264.py": "run_multidomain_evidence_repair_85264.patch",
     "regression_multidomain_evidence_repair_85264.py": "regression_multidomain_evidence_repair_85264.patch",
@@ -856,7 +853,7 @@ def build_inner_zip(evidence_dir: Path, smoke_root: Path) -> Path:
         "RUNTIME_BINDING_PROOF.json",
         "VERSION_CONSISTENCY.json",
         "COMPILE_CHECK.json",
-        "TASK_SPEC_v3.3.5.5.8.5.26.4.1.txt",
+        f"TASK_SPEC_v{REPAIR_VERSION}.txt",
     ]
     with zipfile.ZipFile(inner, "w", zipfile.ZIP_DEFLATED) as zf:
         for name in top_files:
@@ -1112,10 +1109,16 @@ def run_offline_pre_live(project_root: Path) -> int:
         r.get("fixture_name") == "16_category_score_mismatch" and r.get("passed")
         for r in (regression_summary.get("results") or [])
     ), None)
-    record("lineage_timing_physically_derived", any(
-        r.get("name") == "lineage_missing_timestamps_fail_closed" and r.get("passed")
-        for r in (focused.get("results") or [])
-    ), None)
+    record("lineage_timing_physically_derived", all(
+        any(
+            r.get("name") == name and r.get("passed")
+            for r in (focused.get("results") or [])
+        )
+        for name in (
+            "lineage_missing_timestamps_fail_closed",
+            "lineage_naive_created_at_uses_mtime_utc",
+        )
+    ), focused.get("results"))
     record("stop_reconciliation_order_verified", any(
         r.get("name") == "stop_reconciliation_requires_stage_manifest" and r.get("passed")
         for r in (focused.get("results") or [])

@@ -28,16 +28,9 @@ if __name__ == "__main__":
         except Exception:
             jp_accuracy_log("START_CONTINUED_WITH_ASYNC_LOGGER_WARNING")
 
-        try:
-            from alpha.utils.audio_temp_capture import cleanup_old_audio_temp
-
-            cleanup_old_audio_temp(reason="startup")
-        except Exception:
-            pass
-
-        from alpha.utils.run_artifacts import recover_previous_incomplete_runs_on_startup
-
-        recover_previous_incomplete_runs_on_startup()
+        # V26.5.1: defer heavy disk recovery/cleanup until after the UI window
+        # is visible so benchmark command → Alpha window stays responsive.
+        _deferred_startup_recover = True
 
         from alpha.constants import APP_CODENAME, APP_VERSION, LONG_SESSION_STABILITY_MODE
 
@@ -228,56 +221,6 @@ if __name__ == "__main__":
         except Exception:
             pass
 
-        from alpha.transcription.japanese_accuracy_cleaner import (
-            run_business_cleanup_selftest_once,
-        )
-
-        run_business_cleanup_selftest_once()
-        try:
-            from alpha.transcription.japanese_business_accuracy import (
-                run_business_correction_guard_selftest,
-                run_minimal_correction_selftest,
-            )
-
-            guard_selftest = run_business_correction_guard_selftest()
-            if guard_selftest.get("ok"):
-                jp_accuracy_log("BUSINESS_CORRECTION_GUARD_SELFTEST_PASSED")
-            else:
-                jp_accuracy_log(
-                    "BUSINESS_CORRECTION_GUARD_SELFTEST_FAILED",
-                    failures=guard_selftest.get("failures", []),
-                )
-            minimal_selftest = run_minimal_correction_selftest()
-            if minimal_selftest.get("ok"):
-                jp_accuracy_log("MINIMAL_CORRECTION_85231_SELFTEST_PASSED")
-            else:
-                jp_accuracy_log(
-                    "MINIMAL_CORRECTION_85231_SELFTEST_FAILED",
-                    failures=minimal_selftest.get("failures", []),
-                )
-        except Exception:
-            pass
-
-        try:
-            benchmark_dir = Path("troubleshooting/accuracy_benchmark")
-            if (benchmark_dir / "CORRECTION_RULE_APPROVAL_POLICY.md").exists():
-                jp_accuracy_log("CORRECTION_RULE_POLICY_WRITTEN")
-                jp_accuracy_log("CORRECTION_RULE_DEFAULT_STATE_AUDIT_ONLY")
-            if (benchmark_dir / "CURRENT_ACCURACY_BASELINE.md").exists():
-                jp_accuracy_log("CURRENT_ACCURACY_BASELINE_WRITTEN")
-                jp_accuracy_log("ACCURACY_DIRECTION_DOCUMENTED")
-            if (benchmark_dir / "UNSEEN_AUDIO_TEST_PROTOCOL.md").exists():
-                jp_accuracy_log("UNSEEN_AUDIO_TEST_PROTOCOL_WRITTEN")
-            if (benchmark_dir / "BUSINESS_18MIN_CER_TEST_PROTOCOL.md").exists():
-                jp_accuracy_log("BUSINESS_18MIN_TEST_PROTOCOL_WRITTEN")
-            if Path("score_latest_accuracy.py").exists():
-                jp_accuracy_log("SCORE_LATEST_ACCURACY_SCRIPT_READY")
-                jp_accuracy_log("REFERENCE_TRANSCRIPT_SCORING_READY")
-            if Path("reference_transcript_quality_check.py").exists():
-                jp_accuracy_log("REFERENCE_TRANSCRIPT_QUALITY_CHECK_STARTED")
-        except Exception:
-            pass
-
         from alpha.utils.diagnostic_test_log import (
             DIAGNOSTIC_LOGGING,
             diag_init,
@@ -290,8 +233,6 @@ if __name__ == "__main__":
 
         diag_init()
         diag_log("startup", "before_ui_create")
-
-        from alpha.constants import APP_CODENAME, APP_VERSION
 
         print(f"Alpha V{APP_VERSION} ({APP_CODENAME})")
 
@@ -309,10 +250,9 @@ if __name__ == "__main__":
 
         install_japanese_stabilizer_hooks(AlphaApp)
 
-        from alpha.utils.tk_thread_guard import install_tk_thread_guard, scan_tk_call_sites
+        from alpha.utils.tk_thread_guard import install_tk_thread_guard
 
         install_tk_thread_guard(AlphaApp)
-        scan_tk_call_sites()
 
         jp_accuracy_log("ROOT_WINDOW_CREATE_DONE")
         jp_accuracy_log("MAIN_WINDOW_CREATE_BEGIN")
@@ -320,9 +260,52 @@ if __name__ == "__main__":
         jp_accuracy_log("MAIN_WINDOW_CREATE_DONE")
         diag_log("startup", "after_ui_create", {"ui_create_ms": None})
 
+        def _deferred_post_ui_startup():
+            try:
+                from alpha.utils.tk_thread_guard import scan_tk_call_sites
+
+                scan_tk_call_sites()
+            except Exception:
+                pass
+            try:
+                from alpha.utils.audio_temp_capture import cleanup_old_audio_temp
+
+                cleanup_old_audio_temp(reason="startup")
+            except Exception:
+                pass
+            try:
+                from alpha.utils.run_artifacts import recover_previous_incomplete_runs_on_startup
+
+                recover_previous_incomplete_runs_on_startup()
+            except Exception:
+                pass
+            try:
+                from alpha.transcription.japanese_accuracy_cleaner import (
+                    run_business_cleanup_selftest_once,
+                )
+
+                run_business_cleanup_selftest_once()
+            except Exception:
+                pass
+            try:
+                from alpha.transcription.japanese_business_accuracy import (
+                    run_business_correction_guard_selftest,
+                    run_minimal_correction_selftest,
+                )
+
+                run_business_correction_guard_selftest()
+                run_minimal_correction_selftest()
+            except Exception:
+                pass
+            jp_accuracy_log("DEFERRED_POST_UI_STARTUP_DONE")
+
         if DIAGNOSTIC_LOGGING:
             app.after(0, diag_mark_first_ui_render)
             app.after(0, diag_log_startup_safety_flags)
+        if _deferred_startup_recover:
+            app.after(50, lambda: __import__("threading").Thread(
+                target=_deferred_post_ui_startup, name="DeferredStartup", daemon=True
+            ).start())
 
         diag_log("startup", "before_mainloop")
         jp_accuracy_log("UI_FIRST_RENDER_BEGIN")

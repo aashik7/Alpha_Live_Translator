@@ -56,7 +56,9 @@ from alpha.constants import (
 )
 from alpha.utils.logging_utils import sanitize_log_data
 
-GRACEFUL_DRAIN_MAX_S = 1.5
+# V26.5.1: bounded Stop drain budget — long enough for a queued backlog
+# (e.g. 20+ chunks) without discarding pending audio to finish early.
+GRACEFUL_DRAIN_MAX_S = 25.0
 GRACEFUL_FINALIZE_WAIT_S = 4.0
 GRACEFUL_CLOSE_WAIT_S = 1.5
 GRACEFUL_STOP_DEFAULT_TIMEOUT_S = 12.0
@@ -2519,7 +2521,11 @@ class DeepgramClientMixin:
                 return 0
 
     def _drain_audio_queue_backpressure(self) -> int:
-            """Drop oldest audio frames when outgoing queue is near capacity."""
+            """Drop oldest audio frames when outgoing queue is near capacity.
+
+            When a pending delivery ID was assigned to a dropped frame, discard that
+            pending ID so evidence queued/sent counters stay aligned.
+            """
             from alpha.config import MAX_AUDIO_QUEUE_SIZE
 
             audio_q = getattr(self, "_audio_q", None)
@@ -2540,6 +2546,14 @@ class DeepgramClientMixin:
                         break
                     audio_q.get_nowait()
                     dropped += 1
+                    try:
+                        from alpha.utils.multidomain_gate_evidence import (
+                            note_queue_drop_discard_pending,
+                        )
+
+                        note_queue_drop_discard_pending()
+                    except Exception:
+                        pass
                 except queue.Empty:
                     break
                 except Exception:
@@ -2585,11 +2599,16 @@ class DeepgramClientMixin:
             Wait for mixer/capture pipeline queues to empty without clearing/dropping.
 
             Returns True when all pipeline queues reach size 0, else False on timeout.
+            After producers are stopped, orphaned sys/mic frames that never reach
+            `_audio_q` must not burn the full timeout once `_audio_q` is already empty.
             """
             print("[STOP] waiting for outgoing audio queue flush")
             deadline = time.perf_counter() + max(0.0, float(timeout_seconds))
+            stagnant_empty_audio = 0
+            last_total = -1
             while time.perf_counter() < deadline:
                 sizes = self._get_pipeline_queue_sizes()
+                total = sizes["audio_q"] + sizes["sys_q"] + sizes["mic_q"]
                 if sizes["audio_q"] == 0 and sizes["sys_q"] == 0 and sizes["mic_q"] == 0:
                     print("[STOP] outgoing audio queue flushed")
                     # region agent log
@@ -2602,6 +2621,19 @@ class DeepgramClientMixin:
                     )
                     # endregion
                     return True
+                if sizes["audio_q"] == 0 and total == last_total:
+                    stagnant_empty_audio += 1
+                    if stagnant_empty_audio >= 6:
+                        # Producers stopped; audio delivery queue empty; remaining
+                        # sys/mic frames are not deliverable — exit promptly.
+                        print(
+                            "[STOP] outgoing audio_q empty; ending flush with "
+                            f"orphan_pipeline={sizes}"
+                        )
+                        return True
+                else:
+                    stagnant_empty_audio = 0
+                last_total = total
                 time.sleep(0.05)
             remaining = self._get_pipeline_queue_sizes()
             print(
@@ -2672,14 +2704,9 @@ class DeepgramClientMixin:
             Does not set _stop_event or close the socket.
             """
             print("[STOP] draining outgoing audio")
-            deadline = time.perf_counter() + max(0.0, max_seconds)
-            while time.perf_counter() < deadline:
-                time.sleep(0.05)
-
+            # Drain first while the socket is still open; only then stop new sends.
+            self._drain_audio_queue_to_deepgram(max_seconds=max_seconds)
             self._dg_stop_sending_audio = True
-            remaining = max(0.0, deadline - time.perf_counter())
-            if remaining > 0:
-                self._drain_audio_queue_to_deepgram(max_seconds=remaining)
 
     def _drain_audio_queue_to_deepgram(self, max_seconds=GRACEFUL_DRAIN_MAX_S):
             """Send already-queued PCM chunks to Deepgram within a bounded window."""
@@ -2688,13 +2715,25 @@ class DeepgramClientMixin:
             if ws is None or audio_q is None:
                 return 0
 
+            try:
+                if int(audio_q.qsize()) <= 0:
+                    return 0
+            except Exception:
+                pass
+
             deadline = time.perf_counter() + max(0.0, max_seconds)
             sent = 0
+            consecutive_empty = 0
             while time.perf_counter() < deadline:
                 try:
                     chunk = audio_q.get_nowait()
+                    consecutive_empty = 0
                 except queue.Empty:
-                    time.sleep(0.05)
+                    consecutive_empty += 1
+                    # Queue is empty: exit promptly instead of burning the full budget.
+                    if consecutive_empty >= 2:
+                        break
+                    time.sleep(0.02)
                     continue
                 try:
                     nbytes = self._normalize_and_send_pcm(

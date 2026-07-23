@@ -20,9 +20,9 @@ from typing import Any, Optional
 
 ACCURACY_PROFILE_DOMAIN_AGNOSTIC = "domain_agnostic_no_hints"
 ACCURACY_PROFILE_TEST01_MEETING = "target_85_meeting_context"
-MULTIDOMAIN_VERSION = "3.3.5.5.8.5.26.4.1"
+MULTIDOMAIN_VERSION = "3.3.5.5.8.5.26.5.1"
 FROZEN_INFRASTRUCTURE = "3.3.5.5.8.5.25.3.3.2.8"
-NORMALIZATION_RULES_VERSION = "mdg_meaning_equiv_v1"
+NORMALIZATION_RULES_VERSION = "mdg_general_norm_v265"
 AUDIO_EVENT_SCHEMA_VERSION = 2
 FORBIDDEN_STALE_VERSION = "3.3.5.5.8.5.26.2"
 
@@ -259,8 +259,139 @@ def load_child_binding_record(run_folder: Path) -> dict[str, Any] | None:
         return None
 
 
+def find_bindings_for_parent(
+    project_root: Path,
+    parent_gate_run_id: str,
+    *,
+    gate_run_folder: Path | None = None,
+) -> list[tuple[Path, dict[str, Any]]]:
+    """Return all (child_folder, binding) pairs claiming the given parent gate run."""
+    parent_gate_run_id = str(parent_gate_run_id or "").strip()
+    if not parent_gate_run_id:
+        return []
+    runs_root = Path(project_root) / "troubleshooting" / "runs"
+    if not runs_root.exists():
+        return []
+    gate_resolved: Path | None = None
+    if gate_run_folder is not None:
+        try:
+            gate_resolved = Path(gate_run_folder).resolve()
+        except Exception:
+            gate_resolved = None
+    matches: list[tuple[Path, dict[str, Any]]] = []
+    for folder in runs_root.iterdir():
+        if not folder.is_dir():
+            continue
+        try:
+            if gate_resolved is not None and folder.resolve() == gate_resolved:
+                continue
+        except Exception:
+            pass
+        record = load_child_binding_record(folder)
+        if not record:
+            continue
+        if str(record.get("parent_gate_run_id") or "").strip() != parent_gate_run_id:
+            continue
+        matches.append((folder, record))
+    return matches
+
+
+def resolve_parent_child_binding(
+    project_root: Path,
+    *,
+    gate_run_folder: Path,
+    parent_gate_run_id: str = "",
+) -> dict[str, Any]:
+    """Deterministically resolve the bound child for a parent gate run.
+
+    Fail-closed outcomes (status != OK):
+      BINDING_ABSENT, BINDING_WRONG, BINDING_AMBIGUOUS
+    """
+    gate_run_folder = Path(gate_run_folder)
+    parent_id = str(parent_gate_run_id or gate_run_folder.name or "").strip()
+    result: dict[str, Any] = {
+        "status": "BINDING_ABSENT",
+        "parent_gate_run_id": parent_id,
+        "child_run_id": "",
+        "child_run_folder": "",
+        "binding": None,
+        "detail": "",
+    }
+    if not parent_id:
+        result["detail"] = "parent_gate_run_id_missing"
+        return result
+
+    matches = find_bindings_for_parent(
+        project_root, parent_id, gate_run_folder=gate_run_folder
+    )
+    lineage_child = ""
+    lineage_path = gate_run_folder / "accuracy_stage_compare" / "TRANSCRIPT_STAGE_LINEAGE.json"
+    if lineage_path.exists():
+        try:
+            lineage_doc = json.loads(lineage_path.read_text(encoding="utf-8"))
+            lineage_child = str(lineage_doc.get("child_run_folder") or "").strip()
+        except Exception:
+            lineage_child = ""
+
+    if not matches:
+        result["status"] = "BINDING_ABSENT"
+        result["detail"] = "no_binding_record_for_parent"
+        return result
+    if len(matches) > 1:
+        result["status"] = "BINDING_AMBIGUOUS"
+        result["detail"] = ",".join(str(m[0]) for m in matches)
+        return result
+
+    child_folder, binding = matches[0]
+    child_run_id = str(binding.get("child_run_id") or "").strip()
+    binding_parent = str(binding.get("parent_gate_run_id") or "").strip()
+    if not child_run_id:
+        result["status"] = "BINDING_WRONG"
+        result["detail"] = "child_run_id_missing"
+        result["binding"] = binding
+        result["child_run_folder"] = str(child_folder)
+        return result
+    if binding_parent != parent_id:
+        result["status"] = "BINDING_WRONG"
+        result["detail"] = "parent_gate_run_id_mismatch"
+        result["binding"] = binding
+        result["child_run_folder"] = str(child_folder)
+        result["child_run_id"] = child_run_id
+        return result
+    if lineage_child:
+        try:
+            if Path(lineage_child).resolve() != child_folder.resolve():
+                result["status"] = "BINDING_AMBIGUOUS"
+                result["detail"] = f"lineage_child_conflict:{lineage_child}"
+                result["binding"] = binding
+                result["child_run_folder"] = str(child_folder)
+                result["child_run_id"] = child_run_id
+                return result
+        except Exception:
+            result["status"] = "BINDING_WRONG"
+            result["detail"] = "lineage_child_unresolvable"
+            result["binding"] = binding
+            result["child_run_folder"] = str(child_folder)
+            result["child_run_id"] = child_run_id
+            return result
+
+    result.update(
+        {
+            "status": "OK",
+            "child_run_id": child_run_id,
+            "child_run_folder": str(child_folder.resolve()),
+            "binding": binding,
+            "detail": "",
+        }
+    )
+    return result
+
+
 def parse_evidence_timestamp(value: Any) -> datetime | None:
-    """Parse ISO-8601 / Z timestamps used by evidence artifacts."""
+    """Parse ISO-8601 / Z timestamps as timezone-aware UTC.
+
+    Naive values are treated as UTC. Never returns an offset-naive datetime.
+    """
     if value is None:
         return None
     text = str(value).strip()
@@ -269,7 +400,18 @@ def parse_evidence_timestamp(value: Any) -> datetime | None:
     try:
         if text.endswith("Z"):
             text = text[:-1] + "+00:00"
-        return datetime.fromisoformat(text)
+        dt = datetime.fromisoformat(text)
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc)
+    except Exception:
+        return None
+
+
+def _aware_utc_from_mtime(path: Path) -> datetime | None:
+    """Physical file mtime as timezone-aware UTC (fail-closed on error)."""
+    try:
+        return datetime.fromtimestamp(Path(path).stat().st_mtime, tz=timezone.utc)
     except Exception:
         return None
 
@@ -280,27 +422,90 @@ def derive_lineage_timing_flags(
     runtime_child_exited_at: str,
     runtime_finalized_at: str = "",
     runtime_finalized_source_path: str = "",
+    stage_manifest_path: str | Path = "",
 ) -> dict[str, Any]:
-    """Derive captured_after_* flags from physical timestamps (fail-closed)."""
+    """Derive captured_after_* flags from physical timestamps (fail-closed).
+
+    Stage-manifest finalization time must come from the physical file mtime
+    (UTC-aware), never from its timezone-less created_at string.
+    """
     captured_ts = parse_evidence_timestamp(evidence_captured_at)
     exit_ts = parse_evidence_timestamp(runtime_child_exited_at)
-    finalized_ts = parse_evidence_timestamp(runtime_finalized_at)
 
-    after_exit = bool(captured_ts and exit_ts and captured_ts >= exit_ts)
-    after_finalization = bool(
-        captured_ts and finalized_ts and captured_ts >= finalized_ts
-    )
+    finalized_ts: datetime | None = None
+    finalized_at_out = runtime_finalized_at
+    finalized_source_out = runtime_finalized_source_path
+    used_stage_manifest_mtime = False
+    stage_manifest_completed = False
+    stage_manifest_present = False
+
+    manifest_raw = str(stage_manifest_path or "").strip()
+    if manifest_raw:
+        manifest_path = Path(manifest_raw)
+        stage_manifest_present = manifest_path.exists()
+        if stage_manifest_present:
+            try:
+                doc = json.loads(manifest_path.read_text(encoding="utf-8"))
+            except Exception:
+                doc = None
+            stage_manifest_completed = bool(
+                isinstance(doc, dict) and doc.get("completed") is True
+            )
+            if stage_manifest_completed:
+                finalized_ts = _aware_utc_from_mtime(manifest_path)
+                if finalized_ts is not None:
+                    used_stage_manifest_mtime = True
+                    finalized_source_out = str(manifest_path.resolve())
+                    finalized_at_out = (
+                        finalized_ts.isoformat().replace("+00:00", "Z")
+                    )
+            # completed=false or unreadable → leave finalized_ts None (fail closed)
+    elif runtime_finalized_at:
+        # Non-manifest sources only; still normalize to aware UTC.
+        finalized_ts = parse_evidence_timestamp(runtime_finalized_at)
+
+    after_exit = False
+    after_finalization = False
+    try:
+        after_exit = bool(captured_ts and exit_ts and captured_ts >= exit_ts)
+    except TypeError:
+        after_exit = False
+    try:
+        if captured_ts and finalized_ts:
+            # Stage-manifest mtime is sub-second precise; utc_now_iso() truncates
+            # to whole seconds. Compare at second resolution when the finalization
+            # source is the stage manifest so same-second write→lineage is not a
+            # false not_after_finalization failure.
+            if used_stage_manifest_mtime:
+                after_finalization = (
+                    captured_ts.replace(microsecond=0)
+                    >= finalized_ts.replace(microsecond=0)
+                )
+            else:
+                after_finalization = captured_ts >= finalized_ts
+        else:
+            after_finalization = False
+    except TypeError:
+        after_finalization = False
+
     return {
         "captured_after_runtime_exit": after_exit,
         "captured_after_runtime_finalization": after_finalization,
         "evidence_captured_at": evidence_captured_at,
         "runtime_child_exited_at": runtime_child_exited_at,
-        "runtime_finalized_at": runtime_finalized_at,
-        "runtime_finalized_source_path": runtime_finalized_source_path,
+        "runtime_finalized_at": finalized_at_out,
+        "runtime_finalized_source_path": finalized_source_out,
         "exit_timestamp_present": exit_ts is not None,
         "finalization_timestamp_present": finalized_ts is not None,
         "evidence_timestamp_present": captured_ts is not None,
         "lineage_timing_verified": after_exit and after_finalization,
+        "used_stage_manifest_mtime": used_stage_manifest_mtime,
+        "stage_manifest_present": stage_manifest_present,
+        "stage_manifest_completed": stage_manifest_completed,
+        "compared_datetimes_utc_aware": all(
+            ts is None or (ts.tzinfo is not None and ts.utcoffset() is not None)
+            for ts in (captured_ts, exit_ts, finalized_ts)
+        ),
     }
 
 
@@ -626,39 +831,15 @@ def normalize_transcript_text(text: str) -> str:
     return re.sub(r"\s+", "", "".join(lines))
 
 
-# Meaning-equivalent pairs (analysis-only; never mutates transcript files)
-_MEANING_PAIRS: list[tuple[str, str]] = [
-    ("120万円", "百二十万円"),
-    ("3.2%", "三点二パーセント"),
-    ("午前10時", "午前十時"),
-    ("5,000件", "五千件"),
-    ("API", "エーピーアイ"),
-    ("CSV", "シーエスブイ"),
-    ("SSO", "エスエスオー"),
-    ("JSON", "ジェイソン"),
-    ("MFA", "エムエフエー"),
-]
+# V26.5: benchmark-specific meaning pairs removed. General normalization only.
+_MEANING_PAIRS: list[tuple[str, str]] = []
 
 
 def apply_meaning_equivalent(text: str) -> tuple[str, list[dict[str, str]]]:
-    """Canonicalize known equivalent spellings for supplementary scoring only."""
-    out = text
-    applied: list[dict[str, str]] = []
-    for a, b in _MEANING_PAIRS:
-        if a in out and b not in out:
-            out = out.replace(a, b)
-            applied.append({"from": a, "to": b})
-        elif b in out and a not in out:
-            # Normalize both directions to the same canonical (right side)
-            pass
-        # Also map left->right if both present as variants across hyp/ref separately
-    # Second pass: map either form to canonical right
-    for a, b in _MEANING_PAIRS:
-        if a in out:
-            out = out.replace(a, b)
-            if not any(p["from"] == a and p["to"] == b for p in applied):
-                applied.append({"from": a, "to": b})
-    return out, applied
+    """General meaning normalization for supplementary scoring only (analysis-time)."""
+    from alpha.utils.general_meaning_normalization import apply_general_meaning_normalization
+
+    return apply_general_meaning_normalization(text)
 
 
 # =====================================================================
@@ -775,16 +956,27 @@ def build_audio_delivery_summary(
     *,
     run_id: str = "",
     expected_run_id: str = "",
+    parent_gate_run_id: str = "",
+    child_run_id: str = "",
 ) -> dict[str, Any]:
-    """Spec-F summary derived solely from the physical JSONL (fail-closed)."""
+    """Spec-F summary derived solely from the physical JSONL (fail-closed).
+
+    Physical event run_id is validated against ``expected_run_id`` (the child
+    live-app ID when a binding exists). Both parent and child IDs are recorded.
+    """
     events_path = Path(events_path)
     base = recalculate_audio_delivery_summary(events_path)
     exists = events_path.exists()
     events_sha = sha256_file(events_path) if exists else ""
     events_size = events_path.stat().st_size if exists else 0
 
+    parent_id = str(parent_gate_run_id or "").strip()
+    child_id = str(child_run_id or "").strip()
+    # Prefer explicit child for foreign-ID checks; fall back to expected_run_id.
+    event_expected_id = child_id or str(expected_run_id or "").strip()
+
     foreign_run_ids: list[str] = []
-    if exists and expected_run_id:
+    if exists and event_expected_id:
         for line in events_path.read_text(encoding="utf-8", errors="replace").splitlines():
             line = line.strip()
             if not line:
@@ -794,7 +986,7 @@ def build_audio_delivery_summary(
             except Exception:
                 continue
             rid = str(row.get("run_id") or "")
-            if rid and rid != expected_run_id and rid not in foreign_run_ids:
+            if rid and rid != event_expected_id and rid not in foreign_run_ids:
                 foreign_run_ids.append(rid)
 
     verified = (
@@ -812,7 +1004,9 @@ def build_audio_delivery_summary(
     )
 
     return {
-        "run_id": run_id or expected_run_id,
+        "run_id": run_id or parent_id or expected_run_id,
+        "parent_gate_run_id": parent_id,
+        "child_run_id": child_id or event_expected_id,
         "app_version": MULTIDOMAIN_VERSION,
         "harness_version": MULTIDOMAIN_VERSION,
         "events_path": str(events_path),
@@ -941,28 +1135,140 @@ def build_pre_score_evidence_gate(
     accepted_run_ids: set[str] | None = None,
     harness_version: str = MULTIDOMAIN_VERSION,
     write: bool = True,
+    project_root: Path | None = None,
+    binding: dict[str, Any] | None = None,
+    require_binding: bool = False,
 ) -> dict[str, Any]:
-    """Canonical pre-score gate (spec H). The scorer must not bypass this."""
+    """Canonical pre-score gate (spec H). The scorer must not bypass this.
+
+    Parent benchmark ID and child live-app ID may differ. When a deterministic
+    binding record is present (or required), stage_manifest / lineage / stop /
+    summary validate against the parent ID; Deepgram request and physical audio
+    events validate against the child ID.
+    """
     run_folder = Path(run_folder)
     stage = run_folder / "accuracy_stage_compare"
     expected_run_id = expected_run_id or run_folder.name
-    run_id_set: set[str] = set(accepted_run_ids or set())
-    run_id_set.add(expected_run_id)
-    # Evidence snapshotted from the child app run legitimately carries the child
-    # run ID recorded in TRANSCRIPT_STAGE_LINEAGE.json.
-    lineage_path = stage / "TRANSCRIPT_STAGE_LINEAGE.json"
-    if lineage_path.exists():
+    parent_id = expected_run_id
+    child_id = ""
+    binding_status = ""
+    binding_detail = ""
+    binding_payload: dict[str, Any] | None = None
+
+    if project_root is not None:
+        root = Path(project_root)
+    else:
+        root = run_folder
         try:
-            lineage_doc = json.loads(lineage_path.read_text(encoding="utf-8"))
-            child = str(lineage_doc.get("child_run_folder") or "")
-            if child:
-                run_id_set.add(Path(child).name)
+            resolved = run_folder.resolve()
+            parts = resolved.parts
+            for i, part in enumerate(parts):
+                if (
+                    part == "troubleshooting"
+                    and i + 1 < len(parts)
+                    and parts[i + 1] == "runs"
+                ):
+                    root = Path(*parts[:i]) if i > 0 else resolved
+                    break
         except Exception:
-            pass
+            root = run_folder
+    # Prefer an explicit binding; otherwise resolve from disk.
+    if isinstance(binding, dict) and binding.get("status") == "OK":
+        binding_payload = binding
+        binding_status = "OK"
+        child_id = str(binding.get("child_run_id") or "").strip()
+        parent_from_binding = str(binding.get("parent_gate_run_id") or "").strip()
+        if parent_from_binding and parent_from_binding != parent_id:
+            binding_status = "BINDING_WRONG"
+            binding_detail = "parent_gate_run_id_mismatch"
+            child_id = ""
+    else:
+        try:
+            resolved = resolve_parent_child_binding(
+                root,
+                gate_run_folder=run_folder,
+                parent_gate_run_id=parent_id,
+            )
+        except Exception as exc:
+            resolved = {
+                "status": "BINDING_ABSENT",
+                "detail": f"resolve_error:{exc}",
+                "child_run_id": "",
+                "parent_gate_run_id": parent_id,
+                "binding": None,
+            }
+        binding_payload = resolved
+        binding_status = str(resolved.get("status") or "BINDING_ABSENT")
+        binding_detail = str(resolved.get("detail") or "")
+        if binding_status == "OK":
+            child_id = str(resolved.get("child_run_id") or "").strip()
+
+    parent_run_ids: set[str] = set(accepted_run_ids or set())
+    parent_run_ids.add(parent_id)
+    child_run_ids: set[str] = set()
+    if child_id:
+        child_run_ids.add(child_id)
+    elif not require_binding:
+        # Unbound / synthetic fixtures: all artifacts share the parent ID.
+        child_run_ids = set(parent_run_ids)
+
+    # Artifacts authored by the parent gate harness.
+    PARENT_ID_FILES = {
+        "stage_manifest.json",
+        "audio_delivery_summary.json",
+        "TRANSCRIPT_STAGE_LINEAGE.json",
+        "STOP_EVIDENCE_RECONCILIATION.json",
+    }
+    # Artifacts captured from the live child process.
+    CHILD_ID_FILES = {
+        "audio_delivery_events.jsonl",
+        "deepgram_request_actual.json",
+    }
 
     checks: dict[str, dict[str, Any]] = {}
     blocked_reasons: list[str] = []
     status = "EVIDENCE_VERIFIED"
+
+    if require_binding or binding_status not in ("", "OK", "BINDING_ABSENT"):
+        # Explicit requirement, or a wrong/ambiguous binding always fails closed.
+        if binding_status == "BINDING_ABSENT" and require_binding:
+            blocked_reasons.append("binding:absent")
+        elif binding_status == "BINDING_WRONG":
+            blocked_reasons.append(f"binding:wrong:{binding_detail or 'invalid'}")
+        elif binding_status == "BINDING_AMBIGUOUS":
+            blocked_reasons.append(f"binding:ambiguous:{binding_detail or 'multiple'}")
+    elif child_id == "" and binding_status == "BINDING_ABSENT":
+        # Detect child-tagged evidence without a binding → fail closed.
+        probe_paths = [
+            stage / "deepgram_request_actual.json",
+            stage / "audio_delivery_events.jsonl",
+        ]
+        childish = False
+        for probe in probe_paths:
+            if not probe.exists():
+                continue
+            try:
+                if probe.suffix == ".jsonl":
+                    for line in probe.read_text(encoding="utf-8", errors="replace").splitlines():
+                        if not line.strip():
+                            continue
+                        row = json.loads(line)
+                        rid = str(row.get("run_id") or "")
+                        if rid and rid != parent_id:
+                            childish = True
+                            break
+                else:
+                    doc = json.loads(probe.read_text(encoding="utf-8"))
+                    rid = str(doc.get("run_id") or "") if isinstance(doc, dict) else ""
+                    if rid and rid != parent_id:
+                        childish = True
+            except Exception:
+                continue
+            if childish:
+                break
+        if childish:
+            blocked_reasons.append("binding:absent")
+            binding_status = "BINDING_ABSENT"
 
     spec: list[tuple[str, str, bool]] = [
         ("raw_deepgram.txt", "", True),
@@ -977,10 +1283,16 @@ def build_pre_score_evidence_gate(
         ("reference_isolation_actual.json", "json", True),
     ]
     for name, kind, nonempty in spec:
+        if name in CHILD_ID_FILES:
+            ids_for_file = child_run_ids if child_run_ids else parent_run_ids
+        elif name in PARENT_ID_FILES:
+            ids_for_file = parent_run_ids
+        else:
+            ids_for_file = parent_run_ids | child_run_ids
         checks[name] = _file_check(
             stage / name,
             run_folder,
-            accepted_run_ids=run_id_set,
+            accepted_run_ids=ids_for_file,
             json_kind=kind,
             must_be_nonempty=nonempty,
         )
@@ -993,6 +1305,9 @@ def build_pre_score_evidence_gate(
     if isinstance(manifest, dict):
         if manifest.get("completed") is not True:
             blocked_reasons.append("stage_manifest.json:completed_false")
+        rid = str(manifest.get("run_id") or "")
+        if rid and rid != parent_id:
+            blocked_reasons.append("stage_manifest.json:run_id_mismatch")
     else:
         stage_manifest_completed = False
 
@@ -1004,6 +1319,13 @@ def build_pre_score_evidence_gate(
             blocked_reasons.append("audio_delivery_summary.json:not_derived_from_physical_jsonl")
         if int(summary.get("parse_error_count") or 0) != 0:
             blocked_reasons.append("audio_delivery_summary.json:parse_errors_nonzero")
+        if child_id:
+            if str(summary.get("parent_gate_run_id") or "") != parent_id:
+                blocked_reasons.append("audio_delivery_summary.json:parent_gate_run_id_mismatch")
+            if str(summary.get("child_run_id") or "") != child_id:
+                blocked_reasons.append("audio_delivery_summary.json:child_run_id_mismatch")
+            if summary.get("foreign_run_ids"):
+                blocked_reasons.append("audio_delivery_summary.json:foreign_run_ids_present")
 
     events = checks["audio_delivery_events.jsonl"].get("_parsed_payload")
     if isinstance(events, list) and events:
@@ -1029,6 +1351,10 @@ def build_pre_score_evidence_gate(
         for field in ("keyterm_count", "keyword_count", "reference_terms_loaded"):
             if int(request.get(field) or 0) != 0:
                 blocked_reasons.append(f"deepgram_request_actual.json:{field}_nonzero")
+        if child_id:
+            rid = str(request.get("run_id") or "")
+            if rid and rid != child_id:
+                blocked_reasons.append("deepgram_request_actual.json:run_id_mismatch")
 
     lineage = checks["TRANSCRIPT_STAGE_LINEAGE.json"].get("_parsed_payload")
     if isinstance(lineage, dict):
@@ -1078,7 +1404,13 @@ def build_pre_score_evidence_gate(
             blocked_reasons.append("reference_isolation_actual.json:isolation_not_verified")
 
     blocked_reasons = sorted(set(blocked_reasons))
-    if any(":secret_exposed" in b or "forbidden_secret_fields_present" in b for b in blocked_reasons):
+    if any(b.startswith("binding:absent") for b in blocked_reasons):
+        status = "BINDING_ABSENT"
+    elif any(b.startswith("binding:wrong") for b in blocked_reasons):
+        status = "BINDING_WRONG"
+    elif any(b.startswith("binding:ambiguous") for b in blocked_reasons):
+        status = "BINDING_AMBIGUOUS"
+    elif any(":secret_exposed" in b or "forbidden_secret_fields_present" in b for b in blocked_reasons):
         status = "SECRET_EXPOSED"
     elif any(b.endswith(":run_id_mismatch") for b in blocked_reasons):
         status = "RUN_ID_MISMATCH"
@@ -1093,6 +1425,10 @@ def build_pre_score_evidence_gate(
     payload = {
         "schema_version": GATE_SCHEMA_VERSION,
         "run_id": expected_run_id,
+        "parent_gate_run_id": parent_id,
+        "child_run_id": child_id,
+        "binding_status": binding_status,
+        "binding_detail": binding_detail,
         "app_version": MULTIDOMAIN_VERSION,
         "harness_version": harness_version,
         "created_at": utc_now_iso(),

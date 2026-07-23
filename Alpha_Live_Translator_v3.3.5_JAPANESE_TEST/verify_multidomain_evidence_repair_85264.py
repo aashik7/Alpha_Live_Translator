@@ -1,4 +1,4 @@
-"""Independent pre-live verifier for v3.3.5.5.8.5.26.4.1 evidence repair (85264).
+"""Independent pre-live verifier for v3.3.5.5.8.5.26.4.1.1 evidence repair (85264).
 
 Python standard library only. Does not import scorer or acceptance-builder
 functions; every metric is recomputed from physical files. Exit code 0 only
@@ -20,15 +20,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-REPAIR_VERSION = "3.3.5.5.8.5.26.4.1"
+REPAIR_VERSION = "3.3.5.5.8.5.26.4.1.1"
 STALE_VERSION = "3.3.5.5.8.5.26.2"
-EVIDENCE_REL = Path("troubleshooting/implementation_evidence/v3.3.5.5.8.5.26.4.1")
+EVIDENCE_REL = Path("troubleshooting/implementation_evidence/v3.3.5.5.8.5.26.4.1.1")
 
 AUTHORIZED_CHANGED_FILES = [
     "alpha/constants.py",
     "alpha/utils/multidomain_gate_evidence.py",
     "run_multidomain_gate_85262.py",
-    "score_multidomain_gate_85262.py",
     "verify_multidomain_gate_85262.py",
     "run_multidomain_evidence_repair_85264.py",
     "regression_multidomain_evidence_repair_85264.py",

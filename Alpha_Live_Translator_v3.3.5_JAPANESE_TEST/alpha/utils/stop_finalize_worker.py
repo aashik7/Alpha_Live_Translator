@@ -43,7 +43,7 @@ _stop_state: dict[str, Any] = {
 _STEP_TIMEOUTS_MS: dict[str, float] = {
     "stop_audio_capture": 500.0,
     "stop_audio_producers": 1000.0,
-    "drain_audio_queue": 2500.0,
+    "drain_audio_queue": 25000.0,
     "deepgram_graceful_stop": 5000.0,
     "close_transcript_gate": 500.0,
     "cancel_scheduled_tasks": 500.0,
@@ -564,7 +564,7 @@ def _stop_audio_producers(host: Any) -> None:
     freeze_guard_log("STOP_AUDIO_PRODUCERS_STOPPED")
 
 
-def _drain_outgoing_audio_queue(host: Any, *, timeout_seconds: float = 2.5) -> dict[str, Any]:
+def _drain_outgoing_audio_queue(host: Any, *, timeout_seconds: float = 25.0) -> dict[str, Any]:
     """Drain queued audio to Deepgram before stop-sending — never clear queues."""
     freeze_guard_log("STOP_AUDIO_QUEUE_DRAIN_STARTED")
     result: dict[str, Any] = {
@@ -581,7 +581,10 @@ def _drain_outgoing_audio_queue(host: Any, *, timeout_seconds: float = 2.5) -> d
             pipeline_sizes = {}
     result["pipeline_before"] = pipeline_sizes
 
-    flush_budget = min(5.0, float(timeout_seconds))
+    # Keep flush+drain inside the Stop step budget (default 25s).
+    total_budget = max(0.2, float(timeout_seconds))
+    flush_budget = min(5.0, total_budget * 0.25)
+    drain_budget = max(0.1, total_budget - flush_budget)
     if hasattr(host, "wait_for_outgoing_audio_flush"):
         try:
             result["pipeline_flush_ok"] = bool(
@@ -590,7 +593,6 @@ def _drain_outgoing_audio_queue(host: Any, *, timeout_seconds: float = 2.5) -> d
         except Exception:
             result["pipeline_flush_ok"] = False
 
-    drain_budget = max(0.1, float(timeout_seconds))
     if hasattr(host, "_drain_audio_queue_to_deepgram"):
         try:
             result["sent"] = int(
@@ -955,9 +957,8 @@ def _run_finalize_worker(host: Any) -> None:
 
         run_timed_step(host, "session_stop_logs", _session_side_logs)
 
-        if hasattr(host, "_stop_event"):
-            host._stop_event.set()
-
+        # V26.5.1 Stop order: stop accepting new audio → drain queued PCM while
+        # the Deepgram sender is still alive → then signal stop / finalize.
         run_timed_step(host, "stop_audio_capture", lambda: _block_audio_capture(host))
         run_timed_step(host, "stop_audio_producers", lambda: _stop_audio_producers(host))
 
@@ -965,8 +966,13 @@ def _run_finalize_worker(host: Any) -> None:
         run_timed_step(
             host,
             "drain_audio_queue",
-            lambda: audio_drain.update(_drain_outgoing_audio_queue(host)),
+            lambda: audio_drain.update(
+                _drain_outgoing_audio_queue(host, timeout_seconds=25.0)
+            ),
         )
+
+        if hasattr(host, "_stop_event"):
+            host._stop_event.set()
 
         dg_result = {}
         run_timed_step(

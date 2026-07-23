@@ -1,4 +1,4 @@
-"""Physical regression fixtures for the v3.3.5.5.8.5.26.4.1 evidence repair (85264).
+"""Physical regression fixtures for the v3.3.5.5.8.5.26.4.1.1 evidence repair (85264).
 
 Builds 20 persistent fixtures (spec N), runs each through the canonical
 pre-score evidence gate + scorer via a real subprocess, and records physical
@@ -23,7 +23,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-REPAIR_VERSION = "3.3.5.5.8.5.26.4.1"
+REPAIR_VERSION = "3.3.5.5.8.5.26.4.1.1"
 STALE_VERSION = "3.3.5.5.8.5.26.2"
 
 REFERENCE_TEXT = (

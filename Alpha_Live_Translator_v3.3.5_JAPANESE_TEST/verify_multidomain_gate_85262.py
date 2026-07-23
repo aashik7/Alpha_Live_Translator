@@ -15,7 +15,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
-GATE_VERSION = "3.3.5.5.8.5.26.4.1"
+GATE_VERSION = "3.3.5.5.8.5.26.5"
 FROZEN_INFRASTRUCTURE = "3.3.5.5.8.5.25.3.3.2.8"
 
 REQUIRED_STAGE_FILES = [
@@ -261,26 +261,48 @@ def _close(a: float, b: float, eps: float = 0.051) -> bool:
     return abs(float(a) - float(b)) <= eps
 
 
-def _category_from_truth(truth: dict[str, Any], hyp_norm: str) -> dict[str, float]:
-    def _acc(terms: list[str]) -> float:
-        if not terms:
-            return 100.0
-        found = sum(1 for t in terms if normalize_text(t) in hyp_norm)
-        return (found / len(terms)) * 100.0
+def _category_from_physical_inputs(
+    *,
+    reference_text: str,
+    truth: dict[str, Any],
+    hyp_text: str,
+) -> dict[str, float]:
+    """Independently recompute every category from physical inputs (no placeholders)."""
+    from score_multidomain_gate_85262 import score_domain_categories
+    from alpha.utils.scoring_window_v265 import filter_truth_entities_to_reference_window
 
-    participant = _acc(list(truth.get("participant_and_person_names") or []))
-    company = _acc(list(truth.get("company_names") or []))
-    combined_name = (
-        (participant + company) / 2.0
-        if (truth.get("participant_and_person_names") or truth.get("company_names"))
-        else 100.0
+    truth_keys = [
+        "participant_and_person_names",
+        "company_names",
+        "it_terms",
+        "sales_terms",
+        "marketing_terms",
+        "general_business_terms",
+    ]
+    tw = filter_truth_entities_to_reference_window(
+        truth=truth,
+        reference_text=reference_text,
+        category_keys=truth_keys,
+    )
+    domain = score_domain_categories(
+        reference_text=reference_text,
+        truth=truth,
+        stage_texts={"stable": hyp_text},
+        primary_stage="stable",
+        in_window_truth=tw["in_window_truth"],
+        out_of_window_truth=tw["out_of_window_truth"],
     )
     return {
-        "combined_name_accuracy_percent": combined_name,
-        "dates_times_accuracy_percent": 100.0,
-        "numbers_accuracy_percent": 100.0,
-        "money_percentage_accuracy_percent": 100.0,
-        "combined_critical_entity_accuracy_percent": combined_name,
+        "combined_name_accuracy_percent": float(domain["combined_name_accuracy_percent"]),
+        "dates_times_accuracy_percent": float(domain["dates_times_accuracy_percent"]),
+        "numbers_accuracy_percent": float(domain["numbers_accuracy_percent"]),
+        "money_percentage_accuracy_percent": float(domain["money_percentage_accuracy_percent"]),
+        "combined_business_term_accuracy_percent": float(
+            domain["combined_business_term_accuracy_percent"]
+        ),
+        "combined_critical_entity_accuracy_percent": float(
+            domain["combined_critical_entity_accuracy_percent"]
+        ),
     }
 
 
@@ -414,14 +436,27 @@ def verify_multidomain_gate(
         except Exception as exc:
             parse_errors.append(f"audio_summary:{exc}")
 
-    ref_norm = normalize_text(reference_path.read_text(encoding="utf-8")) if reference_path.exists() else ""
-    raw_m = stage_metrics(ref_norm, raw_path.read_text(encoding="utf-8")) if raw_path.exists() else {}
-    stable_m = (
-        stage_metrics(ref_norm, stable_path.read_text(encoding="utf-8")) if stable_path.exists() else {}
+    ref_text = reference_path.read_text(encoding="utf-8") if reference_path.exists() else ""
+    ref_norm = normalize_text(ref_text)
+    # Prefer windowed hypotheses when present (V26.5 scoring window isolation).
+    raw_hyp = (
+        (stage / "windowed_raw_deepgram.txt").read_text(encoding="utf-8")
+        if (stage / "windowed_raw_deepgram.txt").exists()
+        else (raw_path.read_text(encoding="utf-8") if raw_path.exists() else "")
     )
-    final_m = (
-        stage_metrics(ref_norm, final_path.read_text(encoding="utf-8")) if final_path.exists() else {}
+    stable_hyp = (
+        (stage / "windowed_stable_transcript.txt").read_text(encoding="utf-8")
+        if (stage / "windowed_stable_transcript.txt").exists()
+        else (stable_path.read_text(encoding="utf-8") if stable_path.exists() else "")
     )
+    final_hyp = (
+        (stage / "windowed_final_alpha_output.txt").read_text(encoding="utf-8")
+        if (stage / "windowed_final_alpha_output.txt").exists()
+        else (final_path.read_text(encoding="utf-8") if final_path.exists() else "")
+    )
+    raw_m = stage_metrics(ref_norm, raw_hyp) if raw_hyp else {}
+    stable_m = stage_metrics(ref_norm, stable_hyp) if stable_hyp else {}
+    final_m = stage_metrics(ref_norm, final_hyp) if final_hyp else {}
     loss = max(
         0.0,
         float(stable_m.get("accuracy_percent") or 0.0) - float(final_m.get("accuracy_percent") or 0.0),
@@ -433,19 +468,34 @@ def verify_multidomain_gate(
         try:
             domain_reported = json.loads(domain_path.read_text(encoding="utf-8"))
             truth = json.loads(truth_path.read_text(encoding="utf-8"))
-            hyp_norm = normalize_text(stable_path.read_text(encoding="utf-8")) if stable_path.exists() else ""
-            recalc_cat = _category_from_truth(truth, hyp_norm)
+            recalc_cat = _category_from_physical_inputs(
+                reference_text=ref_text,
+                truth=truth,
+                hyp_text=stable_hyp,
+            )
             for key in (
                 "combined_name_accuracy_percent",
                 "dates_times_accuracy_percent",
                 "numbers_accuracy_percent",
                 "money_percentage_accuracy_percent",
+                "combined_business_term_accuracy_percent",
                 "combined_critical_entity_accuracy_percent",
             ):
-                if key in domain_reported and not _close(domain_reported[key], recalc_cat.get(key, -1)):
-                    # Allow full domain scorer to be more precise; only flag large drift
-                    if abs(float(domain_reported[key]) - float(recalc_cat.get(key, 0))) > 5.0:
+                if key in domain_reported and key in recalc_cat:
+                    if not _close(domain_reported[key], recalc_cat[key]):
                         mismatches.append(f"reported_{key}_mismatch")
+            # Placeholder 100% detection for numeric categories when entities exist.
+            extracted = domain_reported.get("extracted_numeric_entities") or {}
+            for key, detail_key in (
+                ("numbers_accuracy_percent", "numeric_entities"),
+                ("dates_times_accuracy_percent", "dates_times"),
+                ("money_percentage_accuracy_percent", "money_percentages"),
+            ):
+                ents = list(extracted.get(detail_key) or [])
+                if ents and float(domain_reported.get(key) or -1) == 100.0:
+                    # Honest 100% is allowed only when recalc also says 100.
+                    if not _close(recalc_cat.get(key, -1), 100.0):
+                        mismatches.append(f"placeholder_100_{key}")
             category_scores_recalculated = True
         except Exception as exc:
             parse_errors.append(f"domain:{exc}")

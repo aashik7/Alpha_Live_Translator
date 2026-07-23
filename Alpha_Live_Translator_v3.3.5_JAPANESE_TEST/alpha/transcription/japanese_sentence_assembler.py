@@ -3620,8 +3620,18 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
                 "line_id": self._last_stable_line_id,
                 "text": str(self._last_final_output_text or self._last_stable_commit.get("text") or ""),
                 "source_raw_event_ids": list(self._last_stable_source_raw_event_ids or []),
+                "start_time": self._last_stable_commit.get("start_time"),
+                "end_time": self._last_stable_commit.get("end_time"),
+                "utterance_id": self._last_stable_commit.get("utterance_id"),
+                "segment_id": self._last_stable_commit.get("segment_id"),
             }
         candidate_raw_event_ids = _extract_lineage_from_metadata(metadata)
+        # Surface physical timing onto candidate metadata for same-segment proof.
+        md_timing = metadata.get("metadata") if isinstance(metadata.get("metadata"), dict) else {}
+        if "start_time" not in metadata and md_timing.get("start_time") is not None:
+            metadata = dict(metadata)
+            metadata["start_time"] = md_timing.get("start_time")
+            metadata["end_time"] = md_timing.get("end_time", metadata.get("end_time"))
         revision_decision: dict[str, Any] = {"action": "append", "reason": "default"}
         final_revision_action = "append"
         decision_reason = ""
@@ -4222,11 +4232,17 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
         self._recent_stable_lines.append(cleaned)
         if len(self._recent_stable_lines) > 5:
             self._recent_stable_lines = self._recent_stable_lines[-5:]
+        _commit_md = metadata if isinstance(metadata, dict) else {}
+        _nested_md = _commit_md.get("metadata") if isinstance(_commit_md.get("metadata"), dict) else {}
         self._last_stable_commit = {
             "text": cleaned,
             "speaker": speaker,
             "mono": time.monotonic(),
             "line_id": self._last_stable_line_id,
+            "start_time": _commit_md.get("start_time", _nested_md.get("start_time")),
+            "end_time": _commit_md.get("end_time", _nested_md.get("end_time")),
+            "utterance_id": _commit_md.get("utterance_id", _nested_md.get("utterance_id")),
+            "segment_id": _commit_md.get("segment_id", _nested_md.get("segment_id")),
         }
         canonical_record_id = str(
             metadata.get("canonical_record_id")

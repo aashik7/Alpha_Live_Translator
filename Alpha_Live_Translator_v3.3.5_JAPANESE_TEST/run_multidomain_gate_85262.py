@@ -28,6 +28,7 @@ from alpha.utils.multidomain_gate_evidence import (
     build_pre_score_evidence_gate,
     build_stop_evidence_reconciliation,
     build_stop_source_map,
+    resolve_parent_child_binding,
     sha256_file,
     snapshot_evidence_file,
     utc_now_iso,
@@ -234,29 +235,44 @@ def build_transcript_stage_lineage(
     from alpha.utils.multidomain_gate_evidence import derive_lineage_timing_flags
 
     gate_stage = gate_run_folder / "accuracy_stage_compare"
-    # Prefer physical finalization timestamps from stage_manifest / RUN_MANIFEST.
+    # Prefer stage_manifest physical mtime (UTC-aware). Never compare its
+    # timezone-less created_at string against Z-suffixed evidence timestamps.
+    stage_manifest_path = ""
     runtime_finalized_at = ""
     runtime_finalized_source_path = ""
-    for candidate_rel in (
-        "accuracy_stage_compare/stage_manifest.json",
-        "RUN_MANIFEST.json",
-    ):
-        base = child_run_folder if child_run_folder is not None else gate_run_folder
-        cand = Path(base) / candidate_rel
+    for base in (child_run_folder, gate_run_folder):
+        if base is None:
+            continue
+        cand = Path(base) / "accuracy_stage_compare" / "stage_manifest.json"
         if not cand.exists():
             continue
         try:
             doc = json.loads(cand.read_text(encoding="utf-8"))
         except Exception:
             continue
-        for key in ("completed_at", "finalized_at", "stage_capture_completed_at", "created_at"):
-            val = str(doc.get(key) or "").strip()
-            if val:
-                runtime_finalized_at = val
-                runtime_finalized_source_path = str(cand)
-                break
-        if runtime_finalized_at:
+        if isinstance(doc, dict) and doc.get("completed") is True:
+            stage_manifest_path = str(cand)
+            runtime_finalized_source_path = str(cand)
             break
+    if not stage_manifest_path:
+        # Fallback: non-manifest completion records (still parsed as aware UTC).
+        for candidate_rel in ("RUN_MANIFEST.json",):
+            base = child_run_folder if child_run_folder is not None else gate_run_folder
+            cand = Path(base) / candidate_rel
+            if not cand.exists():
+                continue
+            try:
+                doc = json.loads(cand.read_text(encoding="utf-8"))
+            except Exception:
+                continue
+            for key in ("completed_at", "finalized_at", "stage_capture_completed_at"):
+                val = str(doc.get(key) or "").strip()
+                if val:
+                    runtime_finalized_at = val
+                    runtime_finalized_source_path = str(cand)
+                    break
+            if runtime_finalized_at:
+                break
 
     entries: dict[str, Any] = {}
     for stage_name, chain in STAGE_WRITER_CHAINS.items():
@@ -288,6 +304,7 @@ def build_transcript_stage_lineage(
             runtime_child_exited_at=child_exited_at,
             runtime_finalized_at=runtime_finalized_at,
             runtime_finalized_source_path=runtime_finalized_source_path,
+            stage_manifest_path=stage_manifest_path,
         )
 
         entries[stage_name] = {
@@ -309,8 +326,9 @@ def build_transcript_stage_lineage(
             "captured_after_runtime_finalization": timing["captured_after_runtime_finalization"],
             "captured_after_runtime_exit": timing["captured_after_runtime_exit"],
             "runtime_child_exited_at": child_exited_at,
-            "runtime_finalized_at": runtime_finalized_at,
-            "runtime_finalized_source_path": runtime_finalized_source_path,
+            "runtime_finalized_at": timing.get("runtime_finalized_at") or runtime_finalized_at,
+            "runtime_finalized_source_path": timing.get("runtime_finalized_source_path")
+            or runtime_finalized_source_path,
             "timing_decision": timing,
             "evidence_captured_at": evidence_captured_at,
             "content_modified_during_copy": not hash_match if snap_sha else None,
@@ -448,12 +466,13 @@ def build_runtime_regression_report(*, run_folder: Path, project_root: Path) -> 
     warnings: list[str] = []
     evidence_paths: list[str] = []
 
-    log_dirs = [run_folder / "logs", run_folder, project_root / "troubleshooting" / "logs"]
+    # Exact log roots only — do not rglob the entire run tree (huge audio_temp).
+    log_dirs = [run_folder / "logs", project_root / "troubleshooting" / "logs"]
     blob_parts: list[str] = []
     for base in log_dirs:
         if not base.exists():
             continue
-        for path in list(base.rglob("*.log")) + list(base.glob("*.txt")):
+        for path in list(base.glob("*.log")) + list(base.glob("*.txt")):
             if "score" in path.name.lower():
                 continue
             try:
@@ -613,8 +632,8 @@ def build_acceptance(
             cer_failure = "stable_cer_invalid"
         else:
             stable_cer = cer_value
-            if stable_cer > 20.00:
-                cer_failure = "stable_cer_above_20"
+            if stable_cer > 15.00:
+                cer_failure = "stable_cer_above_15"
 
     loss_source = strict if "stable_to_final_loss_percent" in strict else score
     loss, _loss_err = _read_numeric_metric(loss_source, "stable_to_final_loss_percent", missing_default=0.0)
@@ -679,26 +698,28 @@ def build_acceptance(
         failures.append("audio_delivery_ratio_below_threshold")
     if missing_chunk_count > 0:
         failures.append("audio_delivery_missing_chunks")
-    if acc_err == "accuracy_percent_invalid" or stable_acc < 80.00:
-        failures.append("stable_accuracy_below_80")
+    if acc_err == "accuracy_percent_invalid" or stable_acc < 85.00:
+        failures.append("stable_accuracy_below_85")
     if cer_failure:
         failures.append(cer_failure)
-    if name_acc < 85.00:
-        failures.append("combined_name_below_85")
-    if dates_acc < 85.00:
-        failures.append("dates_times_below_85")
-    if numbers_acc < 85.00:
-        failures.append("numbers_below_85")
-    if money_acc < 85.00:
-        failures.append("money_percentage_below_85")
-    if critical_acc < 85.00:
-        failures.append("combined_critical_entity_below_85")
+    if name_acc < 90.00:
+        failures.append("combined_name_below_90")
+    if numbers_acc < 90.00:
+        failures.append("numbers_below_90")
+    business_acc, _ = _read_numeric_metric(
+        domain, "combined_business_term_accuracy_percent", missing_default=0.0
+    )
+    if business_acc < 90.00:
+        failures.append("combined_business_term_below_90")
     if loss > 0.0:
         failures.append("stable_to_final_loss_nonzero")
     if runtime.get("runtime_regressions"):
         failures.append("runtime_regressions_present")
     if not verification.get("verification_passed"):
         failures.append("independent_verification_failed")
+    if abs(float(delivery_ratio) - 1.0) > 0.0001 and "audio_delivery_ratio_below_threshold" not in failures:
+        if float(delivery_ratio) < 1.0:
+            failures.append("audio_delivery_ratio_not_1_0")
 
     # Retain audited zero-valid audio counters in local scope for fail-closed clarity.
     _ = (failed_chunk_count, dup_chunk_count, unexpected_chunk_count)
@@ -752,6 +773,7 @@ def build_acceptance(
         "dates_times_accuracy_percent": float(dates_acc),
         "numbers_accuracy_percent": float(numbers_acc),
         "money_percentage_accuracy_percent": float(money_acc),
+        "combined_business_term_accuracy_percent": float(business_acc),
         "combined_critical_entity_accuracy_percent": float(critical_acc),
         "stable_to_final_loss_percent": float(loss),
         "runtime_regressions": list(runtime.get("runtime_regressions") or []),
@@ -782,10 +804,11 @@ def create_analysis_package(
     ref_copy_dir.mkdir(parents=True, exist_ok=True)
     ref_copy = ref_copy_dir / "multidomain_meeting_v1.txt"
     truth_copy = ref_copy_dir / "multidomain_meeting_v1_truth.json"
+    # Byte-for-byte copy — never re-encode (preserves LF/CRLF exactly).
     if reference_path.exists():
-        ref_copy.write_text(reference_path.read_text(encoding="utf-8"), encoding="utf-8")
+        ref_copy.write_bytes(reference_path.read_bytes())
     if truth_path.exists():
-        truth_copy.write_text(truth_path.read_text(encoding="utf-8"), encoding="utf-8")
+        truth_copy.write_bytes(truth_path.read_bytes())
 
     manifest_src = (
         project_root
@@ -830,8 +853,15 @@ def create_analysis_package(
         project_root / "troubleshooting" / "logs" / f"v{MULTIDOMAIN_VERSION}_freeze_guard.log",
         project_root / "troubleshooting" / "logs" / f"v{MULTIDOMAIN_VERSION}_debug.log",
     ]
-    for p in project_root.glob(f"**/v{MULTIDOMAIN_VERSION}_*.log"):
-        log_candidates.append(p)
+    # Exact log roots only — never recursively scan all of troubleshooting/.
+    logs_root = project_root / "troubleshooting" / "logs"
+    if logs_root.is_dir():
+        for p in logs_root.glob(f"v{MULTIDOMAIN_VERSION}_*.log"):
+            log_candidates.append(p)
+    child_logs = run_folder / "logs"
+    if child_logs.is_dir():
+        for p in child_logs.glob(f"v{MULTIDOMAIN_VERSION}_*.log"):
+            log_candidates.append(p)
 
     seen: set[str] = set()
     for src in log_candidates:
@@ -956,6 +986,10 @@ def main(argv: list[str] | None = None) -> int:
     from verify_multidomain_gate_85262 import verify_multidomain_gate
 
     fixture_mode = bool(args.fixture_run_folder)
+    offline_existing = fixture_mode
+    # Bound offline rescoring of a completed live parent run is not a synthetic
+    # fixture: acceptance must reflect real scoring once the evidence gate passes.
+    bound_offline_rescore = False
     print("=== Multidomain Gate — Domain-Agnostic Japanese Accuracy & Audio Delivery ===")
     print(f"app_version={MULTIDOMAIN_VERSION}")
     print(f"frozen_infrastructure={FROZEN_INFRASTRUCTURE}")
@@ -968,6 +1002,14 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     infra = validate_frozen_infrastructure(project_root)
+    if offline_existing:
+        # Offline rescoring of a completed run must not require re-delivering the
+        # frozen readiness package (may be absent after evidence cleanup).
+        infra["issues"] = [
+            i for i in (infra.get("issues") or [])
+            if i != "frozen_readiness_delivery_missing"
+        ]
+        infra["ok"] = not infra["issues"]
     if not infra["ok"]:
         print(f"FROZEN_INFRASTRUCTURE_INVALID={infra['issues']}")
         return 2
@@ -993,18 +1035,59 @@ def main(argv: list[str] | None = None) -> int:
     child_env_keys: list[str] = []
     child_env: dict[str, str] = {}
 
-    if fixture_mode:
+    from alpha.utils.performance_timeline import PerformanceTimeline
+
+    timeline: PerformanceTimeline | None = None
+
+    if offline_existing:
         run_folder = Path(args.fixture_run_folder)
         if not run_folder.is_absolute():
             run_folder = project_root / run_folder
         print(f"FIXTURE_RUN_FOLDER={run_folder}")
-        child_exited_at = utc_now_iso()
+        timeline = PerformanceTimeline(
+            run_id=run_folder.name,
+            output_path=run_folder / "performance_timeline.json",
+        )
+        timeline.begin("runner_entry")
+        timeline.end("runner_entry")
+        timeline.begin("frozen_infrastructure_preflight")
+        timeline.end("frozen_infrastructure_preflight", status="ok")
+        # Prefer previously recorded child exit time when rescoring.
+        existing_manifest = run_folder / "accuracy_stage_compare" / "stage_manifest.json"
+        if existing_manifest.exists():
+            try:
+                prev = json.loads(existing_manifest.read_text(encoding="utf-8"))
+                prev_exit = str(prev.get("runtime_child_exited_at") or "").strip()
+                if prev_exit:
+                    child_exited_at = prev_exit
+                    child_started_at = str(prev.get("started_at") or prev_exit)
+            except Exception:
+                pass
+        if child_exited_at == started_at:
+            child_exited_at = utc_now_iso()
     else:
         ts = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
         run_id = f"multidomain-v{MULTIDOMAIN_VERSION}-{ts}-{uuid.uuid4().hex[:8]}"
         run_folder = project_root / "troubleshooting" / "runs" / run_id
         run_folder.mkdir(parents=True, exist_ok=True)
         print(f"run_id={run_id}")
+        timeline = PerformanceTimeline(
+            run_id=run_id,
+            output_path=run_folder / "performance_timeline.json",
+        )
+        timeline.start_heartbeat(10.0)
+        timeline.begin("runner_entry")
+        timeline.end("runner_entry")
+        timeline.begin("frozen_infrastructure_preflight")
+        timeline.end(
+            "frozen_infrastructure_preflight",
+            status="ok" if infra.get("ok") else "failed",
+        )
+        timeline.begin("readiness_validation")
+        timeline.end(
+            "readiness_validation",
+            status="ok" if infra.get("ok") else "failed",
+        )
 
         binding_id = uuid.uuid4().hex
         env = {
@@ -1022,25 +1105,43 @@ def main(argv: list[str] | None = None) -> int:
         print("3) Stop after the recording ends")
         print("4) Close the application")
         print(f"binding_id={binding_id}")
+        print("Waiting for Alpha child process to exit (no keyboard input required)...")
+        sys.stdout.flush()
+        timeline.begin("child_process_spawn")
         proc = launch_application(project_root, env)
+        timeline.end("child_process_spawn")
         child_cmdline = [sys.executable, str(project_root / "main.py")]
         child_started_at = utc_now_iso()
-        try:
-            input("Press Enter after the application has been closed...")
-        except EOFError:
-            proc.wait()
-        finally:
-            if proc.poll() is None:
-                try:
-                    proc.wait(timeout=30)
-                except Exception:
-                    pass
+        child_wait_t0 = time.perf_counter()
+        # V26.5.1: never block on Enter/Read-Host. Auto-continue after child exit.
+        timeline.begin("waiting_for_child_exit", blocking_operation="child_process")
+        last_progress = child_wait_t0
+        while True:
+            code = proc.poll()
+            if code is not None:
+                break
+            now = time.perf_counter()
+            if now - last_progress >= 10.0:
+                print(
+                    f"[progress] phase=waiting_for_child_exit elapsed_s={now - child_wait_t0:.1f}",
+                    flush=True,
+                )
+                last_progress = now
+            time.sleep(0.5)
         child_exited_at = utc_now_iso()
+        timeline.end("waiting_for_child_exit", status="ok")
+        timeline.begin("child_exit_detected")
+        timeline.end("child_exit_detected", extra={"returncode": proc.returncode})
+        print(
+            f"CHILD_EXIT_DETECTED code={proc.returncode} "
+            f"wait_elapsed_s={time.perf_counter() - child_wait_t0:.1f}",
+            flush=True,
+        )
 
     reference_first_opened_at = utc_now_iso()
     _ = sha256_file(reference_path)
     truth_first_opened_at = utc_now_iso()
-    _ = truth_path.read_text(encoding="utf-8")
+    _ = truth_path.read_bytes()
 
     isolation = build_reference_isolation_actual(
         run_folder=run_folder,
@@ -1058,7 +1159,28 @@ def main(argv: list[str] | None = None) -> int:
     # --- v26.4.1: deterministic parent-child binding (no mtime fallback) ---
     child_run_folder: Path | None = None
     binding_error: str = ""
-    if not fixture_mode:
+    binding_info: dict[str, Any] | None = None
+    if offline_existing:
+        binding_info = resolve_parent_child_binding(
+            project_root,
+            gate_run_folder=run_folder,
+            parent_gate_run_id=run_folder.name,
+        )
+        if binding_info.get("status") == "OK":
+            child_run_folder = Path(str(binding_info.get("child_run_folder") or ""))
+            bound_offline_rescore = True
+            fixture_mode = False
+            print(f"child_run_folder={child_run_folder}")
+            print(f"child_run_id={binding_info.get('child_run_id')}")
+            print("bound_offline_rescore=true")
+            # Do NOT re-snapshot / rewrite captured events — reuse existing evidence.
+        else:
+            binding_error = (
+                f"{binding_info.get('status')}:{binding_info.get('detail') or ''}"
+            )
+            print(f"child_run_folder=BINDING_FAILED:{binding_error}")
+            # Synthetic fixtures without a child binding keep fixture_mode=True.
+    else:
         try:
             child_run_folder = resolve_child_run_folder(
                 project_root,
@@ -1075,11 +1197,18 @@ def main(argv: list[str] | None = None) -> int:
                 gate_run_folder=run_folder,
                 child_exited_at=child_exited_at,
             )
+            binding_info = resolve_parent_child_binding(
+                project_root,
+                gate_run_folder=run_folder,
+                parent_gate_run_id=run_folder.name,
+            )
         except ChildBindingError as exc:
             binding_error = f"{exc.status}:{exc.detail}"
             print(f"child_run_folder=BINDING_FAILED:{binding_error}")
 
     # Required order (spec F): stage manifest BEFORE Stop reconciliation / pre-score gate.
+    if timeline is not None:
+        timeline.begin("scoring")
     scoring_started_at = utc_now_iso()
     manifest_path = write_stage_manifest(
         run_folder=run_folder,
@@ -1104,16 +1233,37 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     stage = run_folder / "accuracy_stage_compare"
-    events_path = stage / "audio_delivery_events.jsonl"
+    parent_id = run_folder.name
+    child_id = ""
+    if isinstance(binding_info, dict) and binding_info.get("status") == "OK":
+        child_id = str(binding_info.get("child_run_id") or "").strip()
+    # Regenerate summary from the child physical events when bound; never rewrite
+    # the captured JSONL itself.
+    if child_run_folder is not None and child_id:
+        events_path = (
+            Path(child_run_folder) / "accuracy_stage_compare" / "audio_delivery_events.jsonl"
+        )
+        if not events_path.exists():
+            events_path = stage / "audio_delivery_events.jsonl"
+    else:
+        events_path = stage / "audio_delivery_events.jsonl"
     audio_summary = build_audio_delivery_summary(
         events_path,
-        run_id=run_folder.name,
-        expected_run_id="",
+        run_id=parent_id,
+        expected_run_id=child_id or "",
+        parent_gate_run_id=parent_id if child_id else "",
+        child_run_id=child_id,
     )
     atomic_write_json(stage / "audio_delivery_summary.json", audio_summary)
 
     # --- mandatory canonical pre-score evidence gate (spec H) ---
-    gate = build_pre_score_evidence_gate(run_folder)
+    gate = build_pre_score_evidence_gate(
+        run_folder,
+        expected_run_id=parent_id,
+        project_root=project_root,
+        binding=binding_info,
+        require_binding=bool(bound_offline_rescore) or (not offline_existing),
+    )
     scoring_permitted = bool(gate.get("scoring_permitted"))
     evidence_gate_status = str(gate.get("status") or "")
     print(f"evidence_gate_passed={'true' if scoring_permitted else 'false'}")
@@ -1128,6 +1278,28 @@ def main(argv: list[str] | None = None) -> int:
                 reference_path=reference_path,
                 truth_path=truth_path,
             )
+            # Record explicit start/end scoring markers for future runs (post-runtime only).
+            window = score.get("scoring_window") if isinstance(score, dict) else None
+            if isinstance(window, dict) and window.get("window_resolved"):
+                markers = {
+                    "schema_version": 1,
+                    "app_version": MULTIDOMAIN_VERSION,
+                    "recorded_after_runtime_exit": True,
+                    "reference_exposed_to_runtime": False,
+                    "truth_exposed_to_runtime": False,
+                    "start_event_id": window.get("start_event_id"),
+                    "end_event_id": window.get("end_event_id"),
+                    "start_time": window.get("start_time_seconds"),
+                    "end_time": window.get("end_time_seconds"),
+                    "excluded_prefix_seconds": window.get("excluded_prefix_seconds"),
+                    "excluded_suffix_seconds": window.get("excluded_suffix_seconds"),
+                    "excluded_prefix_reason": window.get("excluded_prefix_reason"),
+                    "excluded_suffix_reason": window.get("excluded_suffix_reason"),
+                    "method": window.get("method"),
+                    "lowest_cer_window_search": False,
+                }
+                atomic_write_json(stage / "scoring_window_markers.json", markers)
+                atomic_write_json(stage / "scoring_window.json", window)
         except ScoringNotPermittedError as exc:
             scoring_permitted = False
             evidence_gate_status = exc.status
@@ -1150,6 +1322,9 @@ def main(argv: list[str] | None = None) -> int:
         except Exception:
             req = {}
 
+    if timeline is not None:
+        timeline.end("scoring", status="ok" if scoring_permitted else "blocked")
+        timeline.begin("independent_verification")
     package_pre = None
     verification = verify_multidomain_gate(
         project_root=project_root,
@@ -1158,6 +1333,8 @@ def main(argv: list[str] | None = None) -> int:
         truth_path=truth_path,
         package_path=package_pre,
     )
+    if timeline is not None:
+        timeline.end("independent_verification")
 
     acceptance = build_acceptance(
         score=score,
@@ -1185,6 +1362,8 @@ def main(argv: list[str] | None = None) -> int:
         f"ready_for_translation_beta={acceptance['ready_for_translation_beta']}",
         f"failures={acceptance.get('failures')}",
     ]
+    if timeline is not None:
+        timeline.begin("hashing_and_packaging", blocking_operation="zip_create")
     package = create_analysis_package(
         project_root=project_root,
         run_folder=run_folder,
@@ -1192,7 +1371,16 @@ def main(argv: list[str] | None = None) -> int:
         truth_path=truth_path,
         report_text="\n".join(report_lines) + "\n",
     )
+    if timeline is not None:
+        timeline.end("hashing_and_packaging")
+        timeline.begin("final_zip_ready")
+        timeline.end(
+            "final_zip_ready",
+            extra={"package_path": str(package) if package else None},
+        )
 
+    if timeline is not None:
+        timeline.begin("independent_verification_package")
     verification = verify_multidomain_gate(
         project_root=project_root,
         run_folder=run_folder,
@@ -1204,6 +1392,11 @@ def main(argv: list[str] | None = None) -> int:
         json.dumps(verification, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
+    if timeline is not None:
+        timeline.end("independent_verification_package")
+        timeline.stop_heartbeat()
+        timeline.flush()
+        print(f"performance_timeline={timeline.output_path}", flush=True)
 
     print_verdict(acceptance, package, fixture_mode=fixture_mode)
     return 0 if acceptance["STATUS"] == "PASSED" else 3
