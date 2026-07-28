@@ -1,2 +1,0 @@
-alpha.py -> UI Design
-alpha_V2.py -> DeepGram api installed
