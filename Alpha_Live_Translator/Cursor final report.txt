@@ -18,13 +18,15 @@ Exact branch name:
 Exact commit hash corresponding to the failed live test:
   6102c03f8fd40600d4bf9304d5199042100950f2
 
-  Note: Live run 20260728-170540 executed on the local tree that was later
-  committed/pushed as the above hash (first upload of Alpha_Live_Translator
-  production sources to this new repo). Working tree is clean and matches
-  origin/main at this hash.
+  Note: Live run 20260728-170540 executed on the local tree later committed as
+  the above hash (first upload of Alpha_Live_Translator production sources).
+  Report file itself was added in a follow-up commit on main:
+  0477bf538d627ceef4bccf2b12a35943af3359d2
 
 Cursor report:
   This file (Alpha_Live_Translator/Cursor final report.txt)
+  Raw on GitHub:
+  https://github.com/aashik7/Alpha_Live_Translator/blob/main/Alpha_Live_Translator/Cursor%20final%20report.txt
   Pre-live validator evidence also at:
   troubleshooting/utterance_revision_repair/20260728T075827Z/
   (local only; troubleshooting/ is gitignored)
