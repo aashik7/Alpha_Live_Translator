@@ -24,6 +24,7 @@ from alpha.constants import (
     SAFE_STABLE_REVISION_ENABLED,
     UNPROVEN_REVISION_DEFAULT_ACTION,
 )
+from alpha.transcription.speaker_boundary_guard import speakers_confirmed_same
 
 _TERMINAL_RE = re.compile(r"[。！？!?]\s*$")
 _PUNCT_SPACE_RE = re.compile(r"\s*([、。！？!?])\s*")
@@ -243,6 +244,7 @@ def decide_stable_revision_action(
     update_previous_requested: bool,
     candidate_raw_event_ids: Optional[list[str]] = None,
     candidate_metadata: Optional[dict[str, Any]] = None,
+    candidate_speaker: Any = None,
 ) -> dict[str, Any]:
     """Deterministic revision gate used by assembler and offline replay."""
     decision = _base_decision()
@@ -263,6 +265,19 @@ def decide_stable_revision_action(
 
     if not previous_record or not str(previous_record.get("text") or "").strip():
         decision.update(action="append", allowed=True, reason="no_active_previous_record")
+        return decision
+
+    # fixes TASK_2C_REPORT.md: speaker identity is checked BEFORE any
+    # text-adjacency/candidate-extends-previous rule below (Rules A-F all
+    # operate on text alone). A different, or unknown, speaker can never
+    # revise/extend the previous record -- always append a new line.
+    previous_speaker = previous_record.get("speaker")
+    if not speakers_confirmed_same(previous_speaker, candidate_speaker):
+        decision.update(
+            action="append",
+            allowed=True,
+            reason="speaker_boundary_forced_new_line",
+        )
         return decision
 
     previous_text = str(previous_record.get("text") or "")

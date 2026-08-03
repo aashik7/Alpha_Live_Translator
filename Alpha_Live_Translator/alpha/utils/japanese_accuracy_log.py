@@ -145,19 +145,30 @@ def _writer_loop() -> None:
         line = _log_queue.get()
         if line is None:
             break
-        target = _resolve_log_file()
-        if target != current_path:
+        # fixes TASK_6_REPORT.md P1 (ALPHA_ARCHITECTURE_DEBUG_REPORT.md
+        # "Evidence write failure alters canonical semantic decisions"):
+        # this is a diagnostic-only writer with no return value the
+        # caller inspects, so a file I/O failure here must stay contained
+        # to this thread/loop and never surface as an exception that
+        # could take down logging (or anything else) for the rest of the
+        # run -- it must not silently kill the writer thread either.
+        try:
+            target = _resolve_log_file()
+            if target != current_path:
+                if handle is not None:
+                    try:
+                        handle.close()
+                    except Exception:
+                        pass
+                    handle = None
+                target.parent.mkdir(parents=True, exist_ok=True)
+                handle = open(target, "a", encoding="utf-8")
+                current_path = target
             if handle is not None:
-                try:
-                    handle.close()
-                except Exception:
-                    pass
-            target.parent.mkdir(parents=True, exist_ok=True)
-            handle = open(target, "a", encoding="utf-8")
-            current_path = target
-        if handle is not None:
-            handle.write(line + "\n")
-            handle.flush()
+                handle.write(line + "\n")
+                handle.flush()
+        except Exception:
+            continue
 
 
 def _start_writer() -> None:

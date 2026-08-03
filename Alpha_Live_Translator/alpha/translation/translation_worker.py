@@ -162,7 +162,11 @@ class TranslationWorker:
         self._next_translation_sequence = 0
         self._next_translation_sequence_to_commit = 1
         self._seen_request_ids: Set[int] = set()
-        self._seen_source_hashes: Set[str] = set()
+        # fixes TASK_3A_FINDINGS.md Item 3: scoped by (canonical_utterance_id,
+        # source_version), not a bare global text hash -- two different
+        # utterances saying the same short phrase ("Thank you.") must both
+        # be translated, not have the second one rejected as a duplicate.
+        self._seen_text_hash_by_utterance_version: Dict[str, str] = {}
         self._accepted_sequences: Set[int] = set()
         self._provider_sent_sequences: Set[int] = set()
         self._committed_sequences: Set[int] = set()
@@ -286,8 +290,22 @@ class TranslationWorker:
         text_hash = _sha256_text(text)
         utterance_key = str(canonical_utterance_id or "").strip()
         version = max(1, int(source_version or 1))
+        # fixes TASK_3A_FINDINGS.md Item 3: dedup key is scoped to this exact
+        # (canonical_utterance_id, source_version); empty utterance_key means
+        # identity can't be confirmed, so no hash-based dedup is attempted
+        # for it (fail-closed -- only the per-submission segment_id guard
+        # below still applies).
+        utterance_version_key = f"{utterance_key}|{version}" if utterance_key else ""
         with self._lock:
-            if sid in self._seen_request_ids or text_hash in self._seen_source_hashes:
+            if sid in self._seen_request_ids:
+                self._counters["DUPLICATE_SUBMISSIONS_REJECTED"] += 1
+                self._counters["duplicate_requests"] += 1
+                return False
+            if (
+                utterance_version_key
+                and self._seen_text_hash_by_utterance_version.get(utterance_version_key)
+                == text_hash
+            ):
                 self._counters["DUPLICATE_SUBMISSIONS_REJECTED"] += 1
                 self._counters["duplicate_requests"] += 1
                 return False
@@ -324,7 +342,8 @@ class TranslationWorker:
             self._accepted_sequences.add(seq)
             self._sequence_to_source[seq] = sid
             self._seen_request_ids.add(sid)
-            self._seen_source_hashes.add(text_hash)
+            if utterance_version_key:
+                self._seen_text_hash_by_utterance_version[utterance_version_key] = text_hash
             self._highest_accepted_segment_id = max(self._highest_accepted_segment_id, sid)
             self._counters["STABLE_TRANSLATION_JOBS_ACCEPTED"] += 1
             self._counters["TRANSLATION_JOBS_QUEUED"] += 1
@@ -368,7 +387,12 @@ class TranslationWorker:
                 self._accepted_sequences.discard(seq)
                 self._sequence_to_source.pop(seq, None)
                 self._seen_request_ids.discard(sid)
-                self._seen_source_hashes.discard(text_hash)
+                if (
+                    utterance_version_key
+                    and self._seen_text_hash_by_utterance_version.get(utterance_version_key)
+                    == text_hash
+                ):
+                    self._seen_text_hash_by_utterance_version.pop(utterance_version_key, None)
                 self._counters["STABLE_TRANSLATION_JOBS_ACCEPTED"] = max(
                     0, self._counters["STABLE_TRANSLATION_JOBS_ACCEPTED"] - 1
                 )
@@ -1042,7 +1066,7 @@ class TranslationWorker:
         with self._lock:
             self.run_id = str(run_id or "")
             self._seen_request_ids.clear()
-            self._seen_source_hashes.clear()
+            self._seen_text_hash_by_utterance_version.clear()
             self._accepted_sequences.clear()
             self._provider_sent_sequences.clear()
             self._committed_sequences.clear()

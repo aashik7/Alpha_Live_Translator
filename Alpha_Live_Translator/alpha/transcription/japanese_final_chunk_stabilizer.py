@@ -102,6 +102,18 @@ class JapaneseFinalChunkStabilizer:
         if not raw:
             return True
 
+        # fixes TASK_2A_FINDINGS.md Item 3: synthetic assembler output must
+        # never re-enter this raw Deepgram ingress point as if it were fresh
+        # provider input.
+        meta_check = metadata or {}
+        if meta_check.get("synthetic_record") or meta_check.get("synthetic_lineage"):
+            jp_accuracy_log(
+                "SYNTHETIC_REENTRY_BLOCKED",
+                reason="synthetic_output_cannot_reenter_raw_ingress",
+                text_preview=raw[:80],
+            )
+            return True
+
         if not self.is_accepting():
             jp_accuracy_log(
                 "STALE_FINAL_DROPPED",

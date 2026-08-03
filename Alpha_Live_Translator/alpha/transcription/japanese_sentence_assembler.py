@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 import threading
 import time
+import uuid
 from typing import Any, Optional
 
 from alpha.constants import (
@@ -87,6 +88,16 @@ MAX_SENTENCE_RAW_LEN = 200
 SPEAKER_CONTINUATION_MAX_COMPACT = 3
 JAPANESE_SPEAKER_STICKY_MS = 5000
 SOFT_INCOMPLETE_MAX_COMPACT = 12
+
+# fixes TASK_3A_FINDINGS.md Item 5: the translation-unit builder's grouping
+# was confirmed to already be inert (its output feeds only a log summary,
+# never a real translation decision -- each canonical utterance is already
+# translated individually via duplicate_protection.py -> main_window.py,
+# independent of this builder). Per REPAIR_PLAN.md Phase 3's recommendation
+# ("disable grouping initially, translate one committed canonical utterance
+# at a time"), grouping is disabled here. Flip this back to True to restore
+# it -- no other code path depends on it being False.
+JAPANESE_TRANSLATION_UNIT_GROUPING_ENABLED = False
 
 _STRONG_SENTENCE_END_RE = re.compile(r"[。！？？!?]+\s*$")
 _STRONG_BOUNDARY_RE = re.compile(r"[。！？？!?]+")
@@ -619,25 +630,13 @@ def should_hold_speaker_continuation(
     buffer_text: str = "",
     buffer_updated_mono: float = 0.0,
 ) -> bool:
-    if buffer_speaker == new_speaker:
-        return False
-    now = time.monotonic()
-    if buffer_updated_mono > 0:
-        elapsed_ms = (now - buffer_updated_mono) * 1000.0
-        if elapsed_ms < JAPANESE_SPEAKER_STICKY_MS:
-            prefix, _tail, _bname, btype = find_commit_boundary(buffer_text)
-            if not prefix or btype == "none":
-                return True
-    compact_len = count_japanese_chars(fragment)
-    if compact_len <= SPEAKER_CONTINUATION_MAX_COMPACT:
-        return True
-    incomplete, _ = looks_incomplete_japanese_fragment(fragment)
-    if incomplete and compact_len <= 16:
-        return True
-    if buffer_text:
-        buf_incomplete, _ = looks_incomplete_japanese_fragment(buffer_text)
-        if buf_incomplete:
-            return True
+    # fixes TASK_2A_FINDINGS.md Item 2: speaker change is a hard boundary by
+    # default. Never hold (merge) a genuinely different speaker's fragment
+    # into the buffer merely because it is short, looks incomplete, or
+    # arrived within the old sticky-speaker window -- those were the exact
+    # "merge separate speaker turns merely because one fragment is short"
+    # cases REPAIR_PLAN.md Phase 2 requires removed. Same-speaker continuation
+    # is handled elsewhere; a genuine mismatch is never held.
     return False
 
 
@@ -777,6 +776,12 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
         self._last_stable_commit: Optional[dict[str, Any]] = None
         self._stable_line_counter: int = 0
         self._last_stable_line_id: str = ""
+        # fixes TASK_5_FINAL_CLEANUP_REPORT.md Fix 1: canonical_utterance_id
+        # persists across "revise_previous" commits of the same utterance
+        # and is regenerated on every "append" (a genuinely new committed
+        # line) -- Japanese had no such identity before this fix.
+        self._current_canonical_utterance_id: str = ""
+        self._current_source_version: int = 0
         self._last_stable_source_raw_event_ids: list[str] = []
         self._assembler_commit_gate_failed: bool = False
         self._stable_hold_pending: Optional[dict[str, Any]] = None
@@ -905,6 +910,8 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
             self._last_stable_commit = None
             self._stable_line_counter = 0
             self._last_stable_line_id = ""
+            self._current_canonical_utterance_id = ""
+            self._current_source_version = 0
             self._last_stable_source_raw_event_ids = []
             self._assembler_commit_gate_failed = False
             self._stable_hold_pending = None
@@ -965,13 +972,32 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
 
                     stab_flush = get_boundary_stabilizer().flush_pending(stop_flush=True)
                     if stab_flush and stab_flush.get("emit_now") and stab_flush.get("output_text"):
-                        speaker = int(
-                            (self._last_stable_commit or {}).get("speaker", 0) or 0
-                        )
+                        # fixes TASK_2C_REPORT.md: the flushed pending text
+                        # belongs to whichever speaker actually said it, not
+                        # necessarily the speaker of the last unrelated
+                        # commit -- using the latter mislabeled the pending
+                        # fragment and let it pass the speaker-boundary
+                        # guard as a false same-speaker match.
+                        pending_speaker = stab_flush.get("pending_speaker")
+                        pending_meta: dict[str, Any] = {"source": "boundary_stabilizer_stop_flush"}
+                        if pending_speaker is not None:
+                            speaker = int(pending_speaker)
+                            # fixes TASK_2C_REPORT.md: this speaker is a
+                            # definitive recorded value (the pending
+                            # fragment's own tracked speaker), not a guess --
+                            # mark it as strong evidence so the stop-flush
+                            # speaker-preservation heuristic in
+                            # _resolve_output_speaker does not override it
+                            # back to the previous commit's speaker.
+                            pending_meta["speaker_change_confirmed"] = True
+                        else:
+                            speaker = int(
+                                (self._last_stable_commit or {}).get("speaker", 0) or 0
+                            )
                         self._route_stable_publish(
                             speaker,
                             stab_flush["output_text"],
-                            {"source": "boundary_stabilizer_stop_flush"},
+                            pending_meta,
                             "stop_listening",
                             stop_incomplete=True,
                             force_release=True,
@@ -2265,6 +2291,12 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
                     segment,
                     commit_reason=reason,
                     previous_line=self._last_final_output_text,
+                    # fixes TASK_2C_REPORT.md: thread real speaker identity
+                    # through so the stabilizer's speaker-boundary guard has
+                    # something to compare against, instead of defaulting to
+                    # unknown (which would fail-closed on every call).
+                    previous_speaker=self._last_reliable_speaker,
+                    speaker=speaker,
                     stop_flush=is_stop_flush,
                 )
                 if not stab.get("emit_now", True):
@@ -2676,58 +2708,30 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
         self._record_raw_speaker_vote(speaker, fragment, metadata)
 
         if buf is not None and buf.get("speaker") != speaker:
+            # fixes TASK_2A_FINDINGS.md Item 2 & 5: speaker change is now a
+            # hard boundary by default. Previously, when no safe prefix and
+            # no strong sentence end were found, the code fell through to
+            # merging the new speaker's fragment into the old speaker's
+            # buffer under the old speaker's identity -- producing one
+            # committed record for two independent dialogue turns. The old
+            # buffer (or its safe prefix) is now always committed under its
+            # own speaker first; the new speaker always starts a fresh
+            # buffer, never merged into the old one.
             buf_text = buf.get("text", "")
-            buf_incomplete, buf_inc_reason = looks_incomplete_japanese_fragment(buf_text)
-            frag_incomplete, _ = looks_incomplete_japanese_fragment(fragment)
-            merged_probe = merge_japanese_fragments(buf_text, fragment)
-            overlap_merge = len(merged_probe) < len(buf_text) + len(fragment)
-            hold_speaker = (
-                should_hold_speaker_continuation(
-                    buf.get("speaker"),
-                    speaker,
-                    fragment,
-                    buffer_text=buf_text,
-                    buffer_updated_mono=float(buf.get("updated_mono") or 0),
+            prefix, tail, bname, btype = find_commit_boundary(buf_text)
+            if prefix and btype != "none":
+                self._commit_partial(
+                    buf, prefix, tail, bname, btype, "speaker_change_safe_prefix"
                 )
-                or buf_incomplete
-                or frag_incomplete
-                or overlap_merge
-            )
-            if not hold_speaker:
-                prefix, tail, bname, btype = find_commit_boundary(buf_text)
-                if prefix and btype != "none":
-                    self._commit_partial(
-                        buf,
-                        prefix,
-                        tail,
-                        bname,
-                        btype,
-                        "speaker_change_safe_prefix",
-                    )
-                    hold_speaker = True
-                    speaker = buf.get("speaker", speaker)
-                elif has_strong_sentence_end(buf_text):
-                    body = buf_text.rstrip("。！？!?")
-                    inc, _ = looks_incomplete_japanese_fragment(body)
-                    if not inc:
-                        self._flush_locked("speaker_changed", force=True)
-                        buf = None
-                    else:
-                        hold_speaker = True
-                else:
-                    hold_speaker = True
-            if hold_speaker and buf is not None:
+            if buf.get("text"):
                 jp_accuracy_log(
-                    "SPEAKER_CHANGE_HELD",
+                    "SPEAKER_CHANGE_HARD_BOUNDARY",
                     speaker_before=speaker_before,
                     speaker_after=speaker,
-                    fragment=fragment,
-                    buffer_incomplete=buf_incomplete,
-                    buffer_incomplete_reason=buf_inc_reason,
-                    fragment_incomplete=frag_incomplete,
-                    overlap_merge=overlap_merge,
+                    held_text=buf.get("text"),
                 )
-                speaker = buf.get("speaker", speaker)
+                self._flush_locked("speaker_changed", force=True)
+            buf = None
 
         if buf is None:
             incoming_ids = _extract_lineage_from_metadata(metadata)
@@ -3641,7 +3645,6 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
             from alpha.transcription.stable_revision_decision import decide_stable_revision_action
             from alpha.utils.accuracy_stage_capture import (
                 get_accuracy_stage_active_char_count,
-                record_assembler_only_event,
                 record_revision_decision_stats,
             )
             from alpha.utils.run_identity import get_run_id
@@ -3650,17 +3653,33 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
             revision_decision = decide_stable_revision_action(
                 previous_record=previous_record,
                 candidate_text=cleaned,
+                # fixes TASK_2C_REPORT.md: thread the resolved speaker
+                # through so the speaker-boundary guard (checked before any
+                # extends-previous rule) has a real value to compare.
+                candidate_speaker=speaker,
                 update_previous_requested=update_previous_requested,
                 candidate_raw_event_ids=candidate_raw_event_ids,
                 candidate_metadata=metadata,
             )
             final_revision_action = str(revision_decision.get("action") or "append")
             decision_reason = str(revision_decision.get("reason") or "")
+            # fixes TASK_6_REPORT.md P1 (ALPHA_ARCHITECTURE_DEBUG_REPORT.md
+            # "Evidence write failure alters canonical semantic decisions"):
+            # this used to force final_revision_action from
+            # "revise_previous" to "append" whenever lineage/evidence
+            # metadata was missing, i.e. a diagnostic/evidence gap was
+            # allowed to change the committed boundary decision. Evidence
+            # completeness is now surfaced as a non-semantic observability
+            # flag only; decide_stable_revision_action already received
+            # candidate_raw_event_ids above and is the sole authority over
+            # final_revision_action.
             if metadata.get("force_append_only") or metadata.get("lineage_assignment_failed"):
-                if final_revision_action == "revise_previous":
-                    final_revision_action = "append"
-                    update_previous_requested = False
-                    decision_reason = decision_reason or "lineage_assignment_failed"
+                jp_accuracy_log(
+                    "LINEAGE_EVIDENCE_INCOMPLETE_OBSERVED",
+                    final_revision_action=final_revision_action,
+                    decision_reason=decision_reason,
+                    note="observability_only_no_semantic_override",
+                )
             rejected_to_append = update_previous_requested and final_revision_action == "append"
             record_revision_decision_stats(
                 update_previous_requested=update_previous_requested,
@@ -3695,24 +3714,17 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
                     active_transcript_chars_before=active_chars_before,
                     active_transcript_chars_after=active_chars_before,
                 )
-                record_assembler_only_event(
-                    run_id=get_run_id(),
-                    speaker=speaker,
-                    assembler_text=cleaned,
-                    reason=reason,
-                    commit_reason=reason,
-                    action="no_op",
-                    update_previous=update_previous_requested,
-                    stop_incomplete=is_stop_incomplete,
-                    incomplete_reason=incomplete_reason,
-                    held_tail=held_tail,
-                    boundary_type=boundary_type,
-                    safe_boundary_used=safe_boundary_used,
-                    raw_fragments=raw_fragments,
-                    source_raw_event_ids=candidate_raw_event_ids,
-                    decision_reason=decision_reason,
-                    revision_decision=revision_decision,
-                )
+                # fixes TASK_6_REPORT.md P1 (ALPHA_ARCHITECTURE_DEBUG_REPORT.md
+                # "Multiple stable-event writers"): this used to call
+                # record_assembler_only_event(action="no_op"), a second
+                # writer into the canonical stable_assembler_events.jsonl
+                # stream from an assembler path. pipeline_commit_transaction.py
+                # is now the sole canonical writer; this no-op case never
+                # reaches a real ledger commit anyway (returns right below),
+                # and equivalent diagnostic detail is already captured by the
+                # EXACT_DUPLICATE_NO_OP / STABLE_REVISION_DECISION
+                # jp_accuracy_log calls just above -- no replacement call
+                # needed, just the removal of the canonical-stream write.
                 return
             if final_revision_action == "append":
                 stable_layer_update_previous = False
@@ -3778,71 +3790,138 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
                 metadata["suppression_reason"] = incomplete_reason or "incomplete_stop_tail"
                 metadata["synthetic_record"] = False
                 metadata["source_raw_event_ids"] = list(candidate_raw_event_ids)
-            from alpha.transcription.pipeline_commit_transaction import execute_pipeline_commit
+            if suppress_early:
+                # fixes TASK_5_FINAL_CLEANUP_REPORT.md Fix 1: the stop-tail
+                # suppression path discards the candidate outright (nothing
+                # is ever published -- see the suppress_candidate branch
+                # below) and carries no committed identity to register, so
+                # it is left calling execute_pipeline_commit directly,
+                # unchanged from before this fix.
+                from alpha.transcription.pipeline_commit_transaction import (
+                    execute_pipeline_commit,
+                )
 
-            pipeline_txn = execute_pipeline_commit(
-                speaker=speaker,
-                assembler_text=stable_text_original,
-                final_text=cleaned,
-                metadata=metadata,
-                requested_action="revise" if update_previous_requested else "append",
-                applied_action=ledger_applied,
-                revision_target_id=""
-                if suppress_early
-                else str(
-                    revision_decision.get("target_line_id") or self._last_stable_line_id or ""
-                ),
-                revision_reason=decision_reason,
-                source_raw_event_ids=candidate_raw_event_ids,
-                commit_reason=reason,
-                stop_flush=is_stop_incomplete,
-                incomplete_tail=is_stop_incomplete,
-                suppression_reason=incomplete_reason if suppress_early else "",
-                update_previous_requested=False if suppress_early else update_previous_requested,
-                rejected_to_append=rejected_to_append,
-                decision_reason=decision_reason,
-                revision_decision=revision_decision,
-                stage_reason=reason,
-                stage_commit_reason=reason,
-                stage_action=asm_action,
-                stop_incomplete=is_stop_incomplete,
-                incomplete_reason=incomplete_reason,
-                held_tail=held_tail,
-                boundary_type=boundary_type,
-                safe_boundary_used=safe_boundary_used,
-                raw_fragments=raw_fragments,
-            )
-            if not pipeline_txn.success:
-                self._assembler_commit_gate_failed = True
-                jp_accuracy_log(
-                    "ASSEMBLER_COMMIT_GATE_FAILED",
-                    failure_reason=pipeline_txn.failure_reason,
-                    transaction_id=pipeline_txn.transaction_id,
-                    text_preview=cleaned[:120],
+                pipeline_txn = execute_pipeline_commit(
+                    speaker=speaker,
+                    assembler_text=stable_text_original,
+                    final_text=cleaned,
+                    metadata=metadata,
+                    requested_action="revise" if update_previous_requested else "append",
+                    applied_action=ledger_applied,
+                    revision_target_id="",
+                    revision_reason=decision_reason,
+                    source_raw_event_ids=candidate_raw_event_ids,
+                    commit_reason=reason,
+                    stop_flush=is_stop_incomplete,
+                    incomplete_tail=is_stop_incomplete,
+                    suppression_reason=incomplete_reason,
+                    update_previous_requested=False,
+                    rejected_to_append=rejected_to_append,
+                    decision_reason=decision_reason,
+                    revision_decision=revision_decision,
+                    stage_reason=reason,
+                    stage_commit_reason=reason,
+                    stage_action=asm_action,
+                    stop_incomplete=is_stop_incomplete,
+                    incomplete_reason=incomplete_reason,
+                    held_tail=held_tail,
+                    boundary_type=boundary_type,
+                    safe_boundary_used=safe_boundary_used,
+                    raw_fragments=raw_fragments,
                 )
-                return
-            metadata = dict(pipeline_txn.metadata)
-            final_revision_action = pipeline_txn.applied_action
-            if final_revision_action == "revise":
-                final_revision_action = "revise_previous"
-            if final_revision_action == "suppress_candidate":
-                # Do not publish candidate; previous active record stays unchanged.
-                jp_accuracy_log(
-                    "STOP_TAIL_CANDIDATE_SUPPRESSED",
-                    candidate_text=cleaned[:120],
-                    previous_active_record_preserved=True,
+                if not pipeline_txn.success:
+                    self._assembler_commit_gate_failed = True
+                    jp_accuracy_log(
+                        "ASSEMBLER_COMMIT_GATE_FAILED",
+                        failure_reason=pipeline_txn.failure_reason,
+                        transaction_id=pipeline_txn.transaction_id,
+                        text_preview=cleaned[:120],
+                    )
+                    return
+                # suppress_candidate never reaches the record-id/publish
+                # logic below -- this branch already returns at the
+                # "STOP_TAIL_CANDIDATE_SUPPRESSED" check further down via
+                # final_revision_action, so fall through unchanged.
+                metadata = dict(pipeline_txn.metadata)
+                final_revision_action = pipeline_txn.applied_action
+                if final_revision_action == "suppress_candidate":
+                    jp_accuracy_log(
+                        "STOP_TAIL_CANDIDATE_SUPPRESSED",
+                        candidate_text=cleaned[:120],
+                        previous_active_record_preserved=True,
+                    )
+                    jp_accuracy_log(
+                        "STOP_TAIL_PREVIOUS_RECORD_PRESERVED",
+                        last_stable_line_id=self._last_stable_line_id,
+                    )
+                    return
+                if pipeline_txn.record_id:
+                    self._last_stable_line_id = str(pipeline_txn.record_id)
+                    metadata["revision_target_id"] = self._last_stable_line_id
+                    metadata["canonical_record_id"] = self._last_stable_line_id
+                stable_layer_update_previous = bool(metadata.get("stable_layer_update_previous"))
+                post_update_previous = stable_layer_update_previous
+            else:
+                # fixes TASK_5_FINAL_CLEANUP_REPORT.md Fix 1 / REPAIR_PLAN.md
+                # Phase 2 "Japanese path": propose this already-decided
+                # HOLD/EXTEND/COMMIT-shaped action to the canonical
+                # controller (utterance_lifecycle.py) instead of calling
+                # execute_pipeline_commit and the identity registry
+                # independently. The boundary/revision DECISION itself
+                # (revision_decision, above) is unchanged -- only who
+                # performs identity registration + the actual ledger commit
+                # changes.
+                proposed_action = "revise_previous" if update_previous_requested else "commit_new"
+                if proposed_action == "revise_previous" and self._current_canonical_utterance_id:
+                    self._current_source_version += 1
+                else:
+                    proposed_action = "commit_new"
+                    self._current_canonical_utterance_id = f"jp-utt-{uuid.uuid4().hex[:12]}"
+                    self._current_source_version = 1
+                metadata["canonical_utterance_id"] = self._current_canonical_utterance_id
+                metadata["source_version"] = self._current_source_version
+
+                from alpha.transcription.utterance_lifecycle import get_utterance_lifecycle
+
+                controller = get_utterance_lifecycle(host)
+                proposal_result = controller.accept_boundary_proposal(
+                    action=proposed_action,
+                    text=cleaned,
+                    speaker=speaker,
+                    channel=metadata.get("channel_index", metadata.get("channel")),
+                    canonical_utterance_id=self._current_canonical_utterance_id,
+                    source_version=self._current_source_version,
+                    revision_target_id=str(
+                        revision_decision.get("target_line_id") or self._last_stable_line_id or ""
+                    ),
+                    provider_utterance_id=str(
+                        metadata.get("provider_utterance_id") or metadata.get("event_id") or ""
+                    ),
+                    source_raw_event_ids=candidate_raw_event_ids,
+                    commit_reason=reason,
+                    lifecycle_state="COMMITTED" if not is_stop_incomplete else "ACTIVE_FINAL_CHUNK",
+                    translation_eligible=bool(metadata.get("translation_eligible", True)),
                 )
-                jp_accuracy_log(
-                    "STOP_TAIL_PREVIOUS_RECORD_PRESERVED",
-                    last_stable_line_id=self._last_stable_line_id,
-                )
-                return
-            if pipeline_txn.record_id:
-                self._last_stable_line_id = str(pipeline_txn.record_id)
-                metadata["revision_target_id"] = self._last_stable_line_id
-                metadata["canonical_record_id"] = self._last_stable_line_id
-            stable_layer_update_previous = bool(metadata.get("stable_layer_update_previous"))
-            post_update_previous = stable_layer_update_previous
+                if not proposal_result.get("success"):
+                    self._assembler_commit_gate_failed = True
+                    jp_accuracy_log(
+                        "ASSEMBLER_COMMIT_GATE_FAILED",
+                        failure_reason=proposal_result.get("reason"),
+                        transaction_id=proposal_result.get("transaction_id", ""),
+                        text_preview=cleaned[:120],
+                    )
+                    return
+                metadata = dict(proposal_result.get("metadata") or metadata)
+                metadata["canonical_utterance_id"] = self._current_canonical_utterance_id
+                metadata["source_version"] = self._current_source_version
+                final_revision_action = "revise_previous" if proposed_action == "revise_previous" else "append"
+                record_id = proposal_result.get("record_id")
+                if record_id:
+                    self._last_stable_line_id = str(record_id)
+                    metadata["revision_target_id"] = self._last_stable_line_id
+                    metadata["canonical_record_id"] = self._last_stable_line_id
+                stable_layer_update_previous = bool(metadata.get("stable_layer_update_previous"))
+                post_update_previous = stable_layer_update_previous
         except Exception as exc:
             self._assembler_commit_gate_failed = True
             jp_accuracy_log(
@@ -4183,26 +4262,30 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
                 speaker=speaker,
                 ready_for_translation=ready_for_translation,
             )
-        self._translation_unit_builder.ingest_stable_commit(
-            text=cleaned,
-            speaker=speaker,
-            commit_reason=commit_reason,
-            translation_ready_score=translation_ready_score,
-            ready_for_translation=ready_for_translation,
-            cleanup_applied=bool(cleanup_candidate.get("applied_to_ui")),
-            risky_flags=[
-                reason
-                for reason in readiness_reasons
-                if reason
-                not in (
-                    "ready_for_translation",
-                    "complete_sentence",
-                    "meaningful_clause",
-                    "high_confidence_cleanup_applied",
-                )
-            ],
-            stable_text_original=stable_text_original,
-        )
+        # fixes TASK_3A_FINDINGS.md Item 5: grouping call disabled -- see
+        # JAPANESE_TRANSLATION_UNIT_GROUPING_ENABLED above. Flip that
+        # constant to re-enable; nothing else needs to change.
+        if JAPANESE_TRANSLATION_UNIT_GROUPING_ENABLED:
+            self._translation_unit_builder.ingest_stable_commit(
+                text=cleaned,
+                speaker=speaker,
+                commit_reason=commit_reason,
+                translation_ready_score=translation_ready_score,
+                ready_for_translation=ready_for_translation,
+                cleanup_applied=bool(cleanup_candidate.get("applied_to_ui")),
+                risky_flags=[
+                    reason
+                    for reason in readiness_reasons
+                    if reason
+                    not in (
+                        "ready_for_translation",
+                        "complete_sentence",
+                        "meaningful_clause",
+                        "high_confidence_cleanup_applied",
+                    )
+                ],
+                stable_text_original=stable_text_original,
+            )
 
         jp_accuracy_log(
             "commit_decision",
@@ -4223,7 +4306,9 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
             try:
                 from alpha.transcription.japanese_boundary_stabilizer import get_boundary_stabilizer
 
-                get_boundary_stabilizer().note_emitted(cleaned)
+                # fixes TASK_2C_REPORT.md: record which speaker this
+                # emitted line belongs to, for the next call's boundary check.
+                get_boundary_stabilizer().note_emitted(cleaned, speaker=speaker)
                 jp_accuracy_log("STABLE_COMMIT_BOUNDARY_METADATA_WRITTEN", action=metadata.get("boundary_action", ""))
             except Exception:
                 pass

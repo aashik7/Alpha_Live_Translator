@@ -56,14 +56,31 @@ def finalize_evidence_pointers_completed(
         except Exception:
             pass
 
-        final_status = "completed"
-        if stop_summary.get("stop_finalize_timed_out"):
-            final_status = "completed_with_warnings"
+        # fixes TASK_4A_FINDINGS.md items 1/3: this background pass IS the
+        # tenth REPAIR_PLAN.md required step ("evidence package") -- its own
+        # success can only be known here, not synchronously during Stop.
+        # final_status can become "completed" only when BOTH the nine
+        # synchronous required steps already tracked in stop_summary
+        # succeeded (compute_core_final_status(), threaded through
+        # build_stop_finalize_summary) AND this pass's own artifact writes
+        # succeed below. A missing stop_summary (no host) is fail-closed,
+        # not treated as success.
+        core_failed = bool(stop_summary.get("stop_finalize_failed", True))
+        core_reason = str(stop_summary.get("failure_reason") or "")
+        evidence_package_ok = True
+        evidence_failure_reason = ""
+
+        # Provisional value for the writes below, upgraded once this pass's
+        # own outcome is known (see the final computation further down) --
+        # a write cannot describe its own success inside its own content,
+        # the same bootstrapping limit stop_finalize_worker.py's run_manifest
+        # step accepts.
+        provisional_status = "failed" if core_failed else "completed"
 
         evidence_flags = {
-            "alpha_output_written": True,
-            "run_artifacts_index_written": True,
-            "live_run_status_written": True,
+            "alpha_output_written": bool(stop_summary.get("alpha_output_written", False)),
+            "run_artifacts_index_written": False,
+            "live_run_status_written": False,
         }
         if upload_zip_path:
             evidence_flags["upload_package_zip_created"] = True
@@ -73,15 +90,42 @@ def finalize_evidence_pointers_completed(
             try:
                 from alpha.utils.run_artifacts import finalize_live_run_status_completed
 
-                finalize_live_run_status_completed(
+                written = finalize_live_run_status_completed(
                     host,
                     stop_summary=stop_summary,
                     evidence_flags=evidence_flags,
                 )
-                _log("LIVE_RUN_STATUS_FINALIZED_COMPLETED", status=final_status)
-            except Exception:
-                pass
+                evidence_flags["live_run_status_written"] = written is not None
+                if written is None:
+                    evidence_package_ok = False
+                    evidence_failure_reason = "live_run_status_write_failed"
+                _log("LIVE_RUN_STATUS_FINALIZED_COMPLETED", status=provisional_status)
+            except Exception as exc:
+                evidence_package_ok = False
+                evidence_failure_reason = f"live_run_status_write_exception:{exc}"
 
+            index_written = _finalize_run_artifacts_index_status(folder, status=provisional_status)
+            evidence_flags["run_artifacts_index_written"] = bool(index_written)
+            if not index_written:
+                evidence_package_ok = False
+                evidence_failure_reason = evidence_failure_reason or "run_artifacts_index_write_failed"
+
+        # fixes TASK_4A_FINDINGS.md items 1/3: the true final status, now
+        # that this pass's own writes so far are known, combined with the
+        # synchronous required-step result.
+        if core_failed or not evidence_package_ok:
+            final_status = "failed"
+            failure_reason = core_reason or evidence_failure_reason
+        else:
+            final_status = "completed"
+            failure_reason = ""
+        final_stop_summary = {
+            **stop_summary,
+            "stop_finalize_failed": core_failed or not evidence_package_ok,
+            "failure_reason": failure_reason,
+        }
+
+        if LATEST_POINTER_COMPLETED_STATUS_FIX_ENABLED:
             try:
                 from alpha.utils.troubleshooting_paths import finalize_run_manifest
 
@@ -89,13 +133,12 @@ def finalize_evidence_pointers_completed(
                     folder,
                     status=final_status,
                     artifact_flags=evidence_flags,
-                    stop_summary=stop_summary,
+                    stop_summary=final_stop_summary,
                 )
                 _log("RUN_MANIFEST_FINALIZED_COMPLETED", status=final_status)
-            except Exception:
-                pass
-
-            _finalize_run_artifacts_index_status(folder, status=final_status)
+            except Exception as exc:
+                evidence_package_ok = False
+                evidence_failure_reason = evidence_failure_reason or f"run_manifest_write_exception:{exc}"
 
         if LATEST_UPLOAD_ZIP_POINTER_FIX_ENABLED or LATEST_POINTER_COMPLETED_STATUS_FIX_ENABLED:
             from alpha.utils.troubleshooting_paths import finalize_latest_pointers
@@ -132,11 +175,17 @@ def finalize_evidence_pointers_completed(
     return result
 
 
-def _finalize_run_artifacts_index_status(run_folder: Path, *, status: str) -> None:
+def _finalize_run_artifacts_index_status(run_folder: Path, *, status: str) -> bool:
+    """fixes TASK_4A_FINDINGS.md item 1 (evidence package): report real
+    write success instead of always implicitly succeeding (the previous
+    -> None return meant a caller could never tell this failed)."""
+    ok = True
+    found_any = False
     for name in ("RUN_ARTIFACTS_INDEX.txt", "RUN_ARTIFACTS_INDEX.partial.txt"):
         path = run_folder / "artifacts" / name
         if not path.exists():
             continue
+        found_any = True
         try:
             text = path.read_text(encoding="utf-8")
             lines = []
@@ -152,8 +201,12 @@ def _finalize_run_artifacts_index_status(run_folder: Path, *, status: str) -> No
             lines.append(f"finalized_at={datetime.now().isoformat(timespec='seconds')}")
             path.write_text("\n".join(lines) + "\n", encoding="utf-8")
         except Exception:
-            pass
-    _log("RUN_ARTIFACTS_INDEX_FINALIZED_COMPLETED", status=status)
+            ok = False
+    _log("RUN_ARTIFACTS_INDEX_FINALIZED_COMPLETED", status=status, ok=ok, found_any=found_any)
+    # RUN_ARTIFACTS_INDEX.txt is written synchronously earlier in Stop
+    # (stop_finalize_worker._write_minimal_runtime_artifacts); if neither
+    # file exists here, that earlier write never happened -- fail closed.
+    return ok and found_any
 
 
 def _update_accuracy_evidence_index_pointer_fields(

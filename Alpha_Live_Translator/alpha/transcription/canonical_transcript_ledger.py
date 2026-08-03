@@ -24,6 +24,7 @@ _ledger_generation = 0
 _mutation_sequence = 0
 _records: list[dict[str, Any]] = []
 _history: list[dict[str, Any]] = []
+_idempotency_index: dict[str, dict[str, Any]] = {}
 _frozen_snapshot: Optional[dict[str, Any]] = None
 _frozen = False
 
@@ -46,7 +47,7 @@ def _jp_log(event: str, **fields: Any) -> None:
 
 
 def reset_for_run(run_id: str) -> None:
-    global _run_id, _sequence, _ledger_generation, _mutation_sequence, _records, _history, _frozen_snapshot, _frozen
+    global _run_id, _sequence, _ledger_generation, _mutation_sequence, _records, _history, _idempotency_index, _frozen_snapshot, _frozen
     with _lock:
         _run_id = run_id or ""
         _sequence = 0
@@ -54,6 +55,7 @@ def reset_for_run(run_id: str) -> None:
         _mutation_sequence = 0
         _records = []
         _history = []
+        _idempotency_index = {}
         _frozen_snapshot = None
         _frozen = False
     _jp_log("CANONICAL_LEDGER_RESET", run_id=run_id, ledger_generation=_ledger_generation)
@@ -155,6 +157,47 @@ def _merge_lineage_unlocked(existing: list[str], incoming: list[str]) -> list[st
     return merged
 
 
+def _build_idempotency_key(metadata: dict[str, Any], applied_action: str) -> str:
+    meta = dict(metadata or {})
+    session_id = str(meta.get("session_id") or "").strip()
+    channel_index = str(meta.get("channel_index", meta.get("channel")) or "").strip()
+    canonical_utterance_id = str(meta.get("canonical_utterance_id") or "").strip()
+    decision = str(
+        meta.get("idempotency_decision")
+        or meta.get("canonical_decision")
+        or applied_action
+        or ""
+    ).strip()
+    source_version = str(meta.get("source_version") or "").strip()
+    if not session_id or not canonical_utterance_id or not source_version or not decision:
+        return ""
+    return "|".join(
+        (
+            session_id,
+            channel_index,
+            canonical_utterance_id,
+            source_version,
+            decision,
+        )
+    )
+
+
+def _remember_idempotency_unlocked(
+    *,
+    key: str,
+    applied_action: str,
+    record_id: str,
+    revision_target_id: str,
+) -> None:
+    if not key:
+        return
+    _idempotency_index[key] = {
+        "applied_action": str(applied_action or ""),
+        "record_id": str(record_id or ""),
+        "revision_target_id": str(revision_target_id or ""),
+    }
+
+
 def apply_decision(
     *,
     speaker: int,
@@ -188,13 +231,33 @@ def apply_decision(
         ids = _merge_lineage_unlocked([], list(source_raw_event_ids or []))
         final = (final_text or assembler_text or "").strip()
         asm = (assembler_text or final).strip()
+        idempotency_key = _build_idempotency_key(meta, applied)
+
+        if idempotency_key and idempotency_key in _idempotency_index:
+            remembered = dict(_idempotency_index[idempotency_key])
+            _jp_log(
+                "DUPLICATE_IGNORE",
+                reason="ledger_idempotent_replay",
+                idempotency_key=idempotency_key,
+                record_id=remembered.get("record_id"),
+                applied_action=remembered.get("applied_action"),
+            )
+            return {
+                "ok": True,
+                "applied_action": remembered.get("applied_action") or applied,
+                "record_id": remembered.get("record_id") or "",
+                "revision_target_id": remembered.get("revision_target_id") or "",
+                "transaction_id": txn_id,
+                "idempotent": True,
+            }
 
         if RAW_EVENT_LINEAGE_REQUIRED and applied in ("append", "revise") and not stop_flush and not synthetic:
             if not ids:
                 _jp_log("RAW_EVENT_LINEAGE_MISSING", applied_action=applied, transaction_id=txn_id)
-                if SINGLE_REVISION_AUTHORITY_ENABLED and applied == "revise":
-                    applied = "append"
-                    revision_target_id = ""
+                # fixes TASK_1A_FINDINGS.md Pattern 5: "append" silently bypassed
+                # RAW_EVENT_LINEAGE_REQUIRED (only "revise" was ever blocked here).
+                if SINGLE_REVISION_AUTHORITY_ENABLED and applied in ("append", "revise"):
+                    return {"ok": False, "reason": f"missing_{applied}_lineage"}
 
         if applied == "no_op":
             _append_history_unlocked(
@@ -247,26 +310,55 @@ def apply_decision(
         if applied == "revise":
             target_id = str(revision_target_id or "").strip()
             if not target_id:
-                active = _active_records_unlocked()
-                target_id = str(active[-1].get("record_id")) if active else ""
-            if not target_id:
-                applied = "append"
-            else:
-                return _revise_record_unlocked(
-                    target_record_id=target_id,
-                    speaker=speaker,
-                    assembler_text=asm,
-                    final_text=final,
-                    source_raw_event_ids=ids,
-                    revision_reason=revision_reason,
-                    commit_reason=commit_reason,
-                    stop_flush=stop_flush,
-                    incomplete_tail=incomplete_tail,
-                    requested_action=requested,
+                _jp_log(
+                    "IDENTITY_REJECTION",
+                    reason="revision_target_required",
                     transaction_id=txn_id,
                 )
+                return {"ok": False, "reason": "revision_target_required"}
+            existing_record_id = str(meta.get("canonical_record_id") or "").strip()
+            if existing_record_id and existing_record_id != target_id:
+                _jp_log(
+                    "IDENTITY_REJECTION",
+                    reason="canonical_record_id_immutable",
+                    transaction_id=txn_id,
+                    canonical_record_id=existing_record_id,
+                    revision_target_id=target_id,
+                )
+                return {"ok": False, "reason": "canonical_record_id_immutable"}
+            result = _revise_record_unlocked(
+                target_record_id=target_id,
+                speaker=speaker,
+                assembler_text=asm,
+                final_text=final,
+                source_raw_event_ids=ids,
+                revision_reason=revision_reason,
+                commit_reason=commit_reason,
+                stop_flush=stop_flush,
+                incomplete_tail=incomplete_tail,
+                requested_action=requested,
+                transaction_id=txn_id,
+            )
+            if result.get("ok"):
+                _remember_idempotency_unlocked(
+                    key=idempotency_key,
+                    applied_action="revise",
+                    record_id=str(result.get("record_id") or ""),
+                    revision_target_id=str(result.get("revision_target_id") or target_id),
+                )
+            return result
 
-        return _append_record_unlocked(
+        existing_record_id = str(meta.get("canonical_record_id") or "").strip()
+        if existing_record_id:
+            _jp_log(
+                "IDENTITY_REJECTION",
+                reason="append_with_existing_canonical_record_id",
+                transaction_id=txn_id,
+                canonical_record_id=existing_record_id,
+            )
+            return {"ok": False, "reason": "append_with_existing_canonical_record_id"}
+
+        result = _append_record_unlocked(
             speaker=speaker,
             assembler_text=asm,
             final_text=final,
@@ -281,6 +373,14 @@ def apply_decision(
             transaction_id=txn_id,
             synthetic_record=synthetic,
         )
+        if result.get("ok"):
+            _remember_idempotency_unlocked(
+                key=idempotency_key,
+                applied_action="append",
+                record_id=str(result.get("record_id") or ""),
+                revision_target_id="",
+            )
+        return result
 
 
 def _append_record_unlocked(
@@ -531,12 +631,21 @@ def _suppress_record_unlocked(
     if not reason:
         return {"ok": False, "reason": "suppression_reason_required"}
 
-    if record_id:
-        target = _find_record_unlocked(record_id)
-    else:
-        active = _active_records_unlocked()
-        target = active[-1] if active else None
+    # fixes TASK_1A_FINDINGS.md Pattern 1: positional "last active record" was
+    # previously used as an implicit suppression target with no identity
+    # verification. An explicit record_id is now required; no exact match ->
+    # reject + log identity mismatch instead of guessing.
+    if not record_id:
+        _jp_log("IDENTITY_REJECTION", reason="suppress_missing_exact_target", transaction_id=transaction_id)
+        return {"ok": False, "reason": "suppress_record_id_required"}
+    target = _find_record_unlocked(record_id)
     if target is None:
+        _jp_log(
+            "IDENTITY_REJECTION",
+            reason="suppress_target_not_found",
+            transaction_id=transaction_id,
+            record_id=record_id,
+        )
         return {"ok": False, "reason": "no_target"}
 
     target["suppressed"] = True

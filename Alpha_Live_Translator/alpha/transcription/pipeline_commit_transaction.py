@@ -19,6 +19,9 @@ class PipelineCommitResult:
     record_id: str
     revision_target_id: str
     source_raw_event_ids: tuple[str, ...]
+    canonical_commit_applied: bool
+    evidence_write_failed: bool
+    metrics_write_failed: bool
     ledger_applied: bool
     stage_event_written: bool
     runtime_counter_updated: bool
@@ -66,6 +69,9 @@ def _failure_result(
         record_id="",
         revision_target_id=revision_target_id,
         source_raw_event_ids=tuple(source_raw_event_ids),
+        canonical_commit_applied=False,
+        evidence_write_failed=False,
+        metrics_write_failed=False,
         ledger_applied=False,
         stage_event_written=False,
         runtime_counter_updated=False,
@@ -214,12 +220,19 @@ def execute_pipeline_commit(
     if meta.get("lineage_assignment_failed") or meta.get("force_append_only"):
         if applied in ("revise", "revise_previous"):
             _jp_log(
-                "PIPELINE_COMMIT_REVISION_DOWNGRADED_TO_APPEND",
+                "FALLBACK_BLOCKED",
                 transaction_id=txn_id,
                 reason="lineage_assignment_failed",
             )
-            applied = "append"
-            target_id = ""
+            return _failure_result(
+                transaction_id=txn_id,
+                requested_action=requested,
+                applied_action=applied,
+                revision_target_id=target_id,
+                source_raw_event_ids=lineage_ids,
+                metadata=meta,
+                failure_reason="lineage_assignment_failed",
+            )
 
     if (
         SINGLE_REVISION_AUTHORITY_ENABLED
@@ -228,19 +241,34 @@ def execute_pipeline_commit(
     ):
         if not lineage_ids and not stop_flush and not meta.get("synthetic_record"):
             _jp_log(
-                "PIPELINE_COMMIT_REVISION_DOWNGRADED_TO_APPEND",
+                "FALLBACK_BLOCKED",
                 transaction_id=txn_id,
                 reason="missing_lineage",
             )
-            applied = "append"
-            target_id = ""
+            return _failure_result(
+                transaction_id=txn_id,
+                requested_action=requested,
+                applied_action=applied,
+                revision_target_id=target_id,
+                source_raw_event_ids=lineage_ids,
+                metadata=meta,
+                failure_reason="missing_lineage",
+            )
         elif not target_id:
             _jp_log(
-                "PIPELINE_COMMIT_REVISION_DOWNGRADED_TO_APPEND",
+                "FALLBACK_BLOCKED",
                 transaction_id=txn_id,
                 reason="missing_revision_target",
             )
-            applied = "append"
+            return _failure_result(
+                transaction_id=txn_id,
+                requested_action=requested,
+                applied_action=applied,
+                revision_target_id=target_id,
+                source_raw_event_ids=lineage_ids,
+                metadata=meta,
+                failure_reason="missing_revision_target",
+            )
 
     try:
         from alpha.transcription.revision_metadata import normalize_applied_metadata
@@ -272,6 +300,8 @@ def execute_pipeline_commit(
     ledger_applied = False
     record_id = ""
     ledger_applied_action = applied
+    evidence_write_failed = False
+    metrics_write_failed = False
     try:
         from alpha.transcription.canonical_transcript_ledger import apply_decision
 
@@ -375,12 +405,27 @@ def execute_pipeline_commit(
         from alpha.utils.run_identity import get_run_id
 
         asm_action = stage_action or ledger_applied_action
+        # fixes TASK_6_REPORT.md P1 (ALPHA_ARCHITECTURE_DEBUG_REPORT.md
+        # "Multiple stable-event writers"): this call site is now the SOLE
+        # writer of canonical stable_assembler_events -- deepgram_client.py
+        # and japanese_sentence_assembler.py's former call sites were
+        # removed/redirected to a distinct diagnostic-only log (see those
+        # files). record_assembler_only_event's signature lives in
+        # accuracy_stage_capture.py, which is outside this fix's file
+        # scope, so canonical record ID / transaction ID are threaded
+        # through the existing commit_reason string field (structured,
+        # parseable suffix) rather than adding a new parameter; raw-event
+        # lineage was already included via source_raw_event_ids.
+        enriched_commit_reason = (
+            f"{stage_commit_reason}|canonical_record_id={record_id}"
+            f"|transaction_id={txn_id}"
+        )
         record_assembler_only_event(
             run_id=get_run_id(),
             speaker=speaker,
             assembler_text=final_text,
             reason=stage_reason,
-            commit_reason=stage_commit_reason,
+            commit_reason=enriched_commit_reason,
             action=asm_action,
             update_previous=update_previous_requested,
             stop_incomplete=stop_incomplete,
@@ -396,22 +441,13 @@ def execute_pipeline_commit(
         )
         stage_event_written = True
     except Exception as exc:
-        result = _failure_result(
-            transaction_id=txn_id,
-            requested_action=requested,
-            applied_action=ledger_applied_action,
-            revision_target_id=str(meta.get("revision_target_id") or target_id),
-            source_raw_event_ids=lineage_ids,
-            metadata=meta,
-            failure_reason=f"stage_event_failed:{type(exc).__name__}:{exc}",
-        )
+        evidence_write_failed = True
         _jp_log(
-            "PIPELINE_COMMIT_TRANSACTION_FAILED",
+            "PIPELINE_COMMIT_EVIDENCE_WRITE_FAILED",
             transaction_id=txn_id,
-            failure_reason=result.failure_reason,
-            ledger_applied=True,
+            failure_reason=f"stage_event_failed:{type(exc).__name__}:{exc}",
+            canonical_commit_applied=True,
         )
-        return result
 
     runtime_counter_updated = False
     try:
@@ -424,38 +460,14 @@ def execute_pipeline_commit(
         )
         runtime_counter_updated = True
     except Exception as exc:
-        result = _failure_result(
-            transaction_id=txn_id,
-            requested_action=requested,
-            applied_action=ledger_applied_action,
-            revision_target_id=str(meta.get("revision_target_id") or target_id),
-            source_raw_event_ids=lineage_ids,
-            metadata=meta,
-            failure_reason=f"runtime_counter_failed:{type(exc).__name__}:{exc}",
-        )
-        result = PipelineCommitResult(
-            transaction_id=txn_id,
-            requested_action=requested,
-            applied_action=ledger_applied_action,
-            record_id=record_id,
-            revision_target_id=str(meta.get("revision_target_id") or target_id),
-            source_raw_event_ids=tuple(lineage_ids),
-            ledger_applied=True,
-            stage_event_written=stage_event_written,
-            runtime_counter_updated=False,
-            metadata_consistent=True,
-            success=False,
-            failure_reason=result.failure_reason,
-            metadata=meta,
-        )
+        metrics_write_failed = True
         _jp_log(
-            "PIPELINE_COMMIT_TRANSACTION_FAILED",
+            "PIPELINE_COMMIT_METRICS_WRITE_FAILED",
             transaction_id=txn_id,
-            failure_reason=result.failure_reason,
-            ledger_applied=True,
+            failure_reason=f"runtime_counter_failed:{type(exc).__name__}:{exc}",
+            canonical_commit_applied=True,
             stage_event_written=stage_event_written,
         )
-        return result
 
     result = PipelineCommitResult(
         transaction_id=txn_id,
@@ -466,11 +478,14 @@ def execute_pipeline_commit(
         if ledger_applied_action == "suppress_candidate"
         else str(meta.get("revision_target_id") or target_id or ""),
         source_raw_event_ids=tuple(lineage_ids),
+        canonical_commit_applied=ledger_applied,
+        evidence_write_failed=evidence_write_failed,
+        metrics_write_failed=metrics_write_failed,
         ledger_applied=ledger_applied,
         stage_event_written=stage_event_written,
         runtime_counter_updated=runtime_counter_updated,
         metadata_consistent=True,
-        success=True,
+        success=ledger_applied,
         failure_reason="",
         metadata=meta,
     )

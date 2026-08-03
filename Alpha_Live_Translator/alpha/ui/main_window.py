@@ -11,6 +11,7 @@ import queue
 import re
 import threading
 import time
+import uuid
 
 import customtkinter as ctk
 import tkinter as tk
@@ -404,7 +405,11 @@ class AlphaApp(
         self.translation_error_shown = False
         self.last_translation_speaker = None
         self._translation_segment_seq = 0
-        self._translation_display_lines: list[str] = []
+        # fixes TASK_3A_FINDINGS.md Item 1/2: identity-keyed translation state
+        # replaces the flat positional list and single global pending payload.
+        self._translation_items_by_utterance: dict[str, dict] = {}
+        self._pending_translations_by_utterance: dict[tuple, dict] = {}
+        self._translation_debounce_after_ids: dict[tuple, object] = {}
         self._translation_status_message = ""
         self._recent_displayed_texts = []
         self.transcript_store = TranscriptStore()
@@ -1362,20 +1367,16 @@ class AlphaApp(
         box.configure(state="disabled")
         self._maybe_scroll_transcript_box(box)
         self._refresh_transcript_scrollbar(box)
-        # Same utterance revised: drop the obsolete translated line (if any) so
-        # only the terminal accepted translation for this utterance remains.
+        # fixes TASK_3A_FINDINGS.md Item 1: same utterance revised -- drop the
+        # obsolete translated line by canonical_utterance_id lookup, never by
+        # position. Fail-closed: if identity is missing or unmatched, or the
+        # tracked item is already a newer source_version, skip and log --
+        # never guess-apply to "whatever is currently last".
         try:
-            lines = getattr(self, "_translation_display_lines", None)
-            if isinstance(lines, list) and lines:
-                lines.pop()
-            tbox = getattr(self, "translated_verse_box", None)
-            if tbox is not None:
-                tbox.configure(state="normal")
-                try:
-                    tbox.delete("end-2l linestart", "end")
-                except Exception:
-                    pass
-                tbox.configure(state="disabled")
+            self._remove_translation_item_for_utterance(
+                canonical_utterance_id=canonical_utterance_id,
+                source_version=source_version,
+            )
         except Exception:
             pass
         # Same utterance revised: debounce-replace pending translation (do not
@@ -1389,6 +1390,69 @@ class AlphaApp(
                 source_version=source_version,
                 source_record_id=source_record_id,
             )
+        except Exception:
+            pass
+
+    def _remove_translation_item_for_utterance(
+        self, *, canonical_utterance_id: str, source_version: int
+    ) -> bool:
+        """Remove the displayed translation line for one canonical utterance.
+
+        fixes TASK_3A_FINDINGS.md Item 1: identity-keyed removal, never
+        positional. Fail-closed (Item 4 default applied here too): if the
+        utterance id is empty, untracked, or the tracked item is already a
+        newer source_version than the revision that triggered this call, do
+        nothing and log -- never guess by deleting "whatever is last".
+        """
+        utterance_key = str(canonical_utterance_id or "")
+        registry = getattr(self, "_translation_items_by_utterance", None)
+        if not utterance_key or not isinstance(registry, dict):
+            self._log_translation_display_skip(
+                reason="missing_canonical_utterance_id", canonical_utterance_id=utterance_key
+            )
+            return False
+        item = registry.get(utterance_key)
+        if item is None:
+            self._log_translation_display_skip(
+                reason="no_tracked_translation_item", canonical_utterance_id=utterance_key
+            )
+            return False
+        tracked_version = int(item.get("source_version") or 1)
+        incoming_version = int(source_version or 1)
+        if incoming_version < tracked_version:
+            # A newer version's translation is already displayed; a stale
+            # revision must never remove it.
+            self._log_translation_display_skip(
+                reason="stale_revision_ignored",
+                canonical_utterance_id=utterance_key,
+                tracked_version=tracked_version,
+                incoming_version=incoming_version,
+            )
+            return False
+        mark_name = item.get("mark")
+        tbox = getattr(self, "translated_verse_box", None)
+        if tbox is not None and mark_name:
+            tbox.configure(state="normal")
+            try:
+                if tbox.compare(mark_name, ">=", "1.0"):
+                    tbox.delete(mark_name, f"{mark_name} lineend + 1 chars")
+                tbox.mark_unset(mark_name)
+            except Exception:
+                pass
+            tbox.configure(state="disabled")
+        registry.pop(utterance_key, None)
+        loading = getattr(self, "_translation_loading_items", None)
+        if isinstance(loading, dict):
+            seg_id = item.get("segment_id")
+            if seg_id is not None:
+                loading.pop(int(seg_id), None)
+        return True
+
+    def _log_translation_display_skip(self, *, reason: str, **fields) -> None:
+        try:
+            from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+            jp_accuracy_log("TRANSLATION_DISPLAY_UPDATE_SKIPPED", reason=reason, **fields)
         except Exception:
             pass
 
@@ -3716,10 +3780,26 @@ class AlphaApp(
         store = getattr(self, "transcript_store", None)
         if store is None:
             return False
-        updated = store.update_last_segment(speaker, merged_text)
+        # fixes TASK_2E_FINDINGS.md item 3 (positional last-line write): only
+        # this store's true last row, confirmed same speaker, may be
+        # overwritten -- fail-closed instead of scanning backward for a
+        # stale match from before an intervening speaker turn.
+        updated = store.update_last_segment_if_active(speaker, merged_text)
         if not updated:
             return False
-        self._on_store_segment_updated(speaker, merged_text)
+        # fixes TASK_5_FINAL_CLEANUP_REPORT.md Fix 3: canonical_utterance_id/
+        # source_version are now assigned by the caller
+        # (_commit_transcript_item_to_store) before this function runs --
+        # thread them through instead of the fail-closed skip
+        # TASK_3B_CHANGES.md documented as the best available fix at the time
+        # ("no canonical_utterance_id available at all in scope").
+        self._on_store_segment_updated(
+            speaker,
+            merged_text,
+            canonical_utterance_id=str(item.get("canonical_utterance_id") or ""),
+            source_version=int(item.get("source_version") or 1),
+            source_record_id=str(item.get("canonical_record_id") or ""),
+        )
         store_count_after = self._diag_store_segment_count()
         preview = _diag_text_preview(merged_text)
         self._teams_log_commit_decision(
@@ -4282,7 +4362,33 @@ class AlphaApp(
             ) or 1
             if store is not None and merged_text:
                 store.update_last_segment(speaker, merged_text)
-                self._on_store_segment_updated(speaker, merged_text)
+                # fixes TASK_5_FINAL_CLEANUP_REPORT.md Fix 3 (the second of
+                # TASK_3B_CHANGES.md's two flagged call sites): this appends
+                # a missing suffix onto the already-committed line, i.e. a
+                # revision of that same utterance -- reuse its tracked
+                # canonical_utterance_id when this is the Japanese
+                # manual-mode path (English's interim recovery is untouched,
+                # matching Task 2F's cross-language scope decision).
+                stop_tail_utterance_id = ""
+                stop_tail_source_version = 1
+                if self._is_japanese_manual_mode():
+                    stop_tail_utterance_id = str(
+                        getattr(self, "_jp_manual_mode_current_utterance_id", "") or ""
+                    )
+                    if not stop_tail_utterance_id:
+                        stop_tail_utterance_id = f"jpm-utt-{uuid.uuid4().hex[:12]}"
+                        self._jp_manual_mode_current_utterance_id = stop_tail_utterance_id
+                        self._jp_manual_mode_current_source_version = 0
+                    stop_tail_source_version = int(
+                        getattr(self, "_jp_manual_mode_current_source_version", 0) or 0
+                    ) + 1
+                    self._jp_manual_mode_current_source_version = stop_tail_source_version
+                self._on_store_segment_updated(
+                    speaker,
+                    merged_text,
+                    canonical_utterance_id=stop_tail_utterance_id,
+                    source_version=stop_tail_source_version,
+                )
                 self._track_committed_segment_meta(
                     {"speaker": speaker, "text": merged_text}, merged_text
                 )
@@ -5510,11 +5616,42 @@ class AlphaApp(
             preview = _diag_text_preview(text)
             if previous_text:
                 previous_text = self._normalize_japanese_display_text(previous_text)
-        if self._is_japanese_manual_mode() and previous_text and text:
+        # fixes TASK_2E_FINDINGS.md item 3 (speaker-blind merge): only attempt
+        # a cross-segment merge when the store's true last row is confirmed to
+        # belong to this same speaker -- refuses to reach back across an
+        # intervening different-speaker turn. previous_text itself (used below
+        # by decide_transcript_action for both languages) is left untouched.
+        speaker_confirmed_active = bool(
+            self._is_japanese_manual_mode()
+            and previous_text
+            and text
+            and self.transcript_store is not None
+            and self.transcript_store.get_last_segment_if_active(speaker) is not None
+        )
+        if speaker_confirmed_active:
             cross_segment = self._evaluate_japanese_cross_segment_merge(
                 previous_text, text
             )
             if cross_segment:
+                # fixes TASK_5_FINAL_CLEANUP_REPORT.md Fix 3: this merge
+                # continues the SAME utterance -- reuse its tracked
+                # canonical_utterance_id (minted below the first time this
+                # speaker's chain started) and bump source_version, instead
+                # of the fail-closed skip Task 3B left in place because no
+                # id was ever available here before this fix.
+                continuation_id = str(
+                    getattr(self, "_jp_manual_mode_current_utterance_id", "") or ""
+                )
+                if not continuation_id:
+                    continuation_id = f"jpm-utt-{uuid.uuid4().hex[:12]}"
+                    self._jp_manual_mode_current_utterance_id = continuation_id
+                    self._jp_manual_mode_current_source_version = 0
+                next_version = int(
+                    getattr(self, "_jp_manual_mode_current_source_version", 0) or 0
+                ) + 1
+                self._jp_manual_mode_current_source_version = next_version
+                item["canonical_utterance_id"] = continuation_id
+                item["source_version"] = next_version
                 if self._commit_japanese_update_previous_segment(
                     speaker,
                     cross_segment["merged_text"],
@@ -5528,6 +5665,21 @@ class AlphaApp(
                     is_finalizing,
                 ):
                     return
+        if self._is_japanese_manual_mode() and not item.get("canonical_utterance_id"):
+            # fixes TASK_5_FINAL_CLEANUP_REPORT.md Fix 3: no merge applied --
+            # this is a genuinely new committed segment (new speaker turn,
+            # or text didn't match a continuation heuristic). Start a fresh
+            # utterance identity rather than leaving canonical_utterance_id
+            # unset, per TASK_2F_CHANGES.md's original recommendation
+            # ("route through the canonical controller") -- item now carries
+            # real identity for _display_transcript_item's already-fixed
+            # (Fix 2) already_committed verification and for
+            # _on_store_segment_added's translation-display keying.
+            new_id = f"jpm-utt-{uuid.uuid4().hex[:12]}"
+            self._jp_manual_mode_current_utterance_id = new_id
+            self._jp_manual_mode_current_source_version = 1
+            item["canonical_utterance_id"] = new_id
+            item["source_version"] = 1
         dup_action, _result_text = decide_transcript_action(previous_text, text)
         predicted_decision, predicted_reason = teams_commit_decision_from_dup_action(
             dup_action, previous_text, text
@@ -6215,7 +6367,10 @@ class AlphaApp(
         self.translation_enabled = bool(TRANSLATION_ENABLED) and has_deepl_api_key()
         self.translation_worker = None
         self._translation_segment_seq = 0
-        self._translation_display_lines = []
+        # fixes TASK_3A_FINDINGS.md Item 1/2: identity-keyed state, not a flat list.
+        self._translation_items_by_utterance = {}
+        self._pending_translations_by_utterance = {}
+        self._translation_debounce_after_ids = {}
         if self.translated_verse_box is None:
             return
         if not TRANSLATION_ENABLED:
@@ -6252,7 +6407,10 @@ class AlphaApp(
                 pass
             self.translation_worker = None
         self._translation_segment_seq = 0
-        self._translation_display_lines = []
+        # fixes TASK_3A_FINDINGS.md Item 1/2: identity-keyed state, not a flat list.
+        self._translation_items_by_utterance = {}
+        self._pending_translations_by_utterance = {}
+        self._translation_debounce_after_ids = {}
         if not TRANSLATION_ENABLED:
             self.translation_enabled = False
             self._set_translation_status("Translation disabled.")
@@ -6310,6 +6468,13 @@ class AlphaApp(
         Debounces rapid Stable *updates* of the same utterance so only the
         latest accepted text creates one provider request. A new sentence
         (force_flush_previous) flushes any pending job first.
+
+        fixes TASK_3A_FINDINGS.md Item 2: pending payload and debounce timer
+        are keyed by (session_id, canonical_utterance_id) instead of one
+        shared slot, so one utterance's submission can never overwrite
+        another's. When canonical_utterance_id is unknown, a unique
+        per-call key is used instead of a shared "" key, so unidentified
+        submissions never collide with each other either (fail-closed).
         """
         worker = self.translation_worker
         if worker is None or not self.translation_enabled:
@@ -6318,53 +6483,65 @@ class AlphaApp(
         if not cleaned:
             return
 
-        if force_flush_previous:
-            self._flush_pending_translation_submit()
+        session_id = str(getattr(self, "_live_session_id", "") or "")
+        utterance_key = str(canonical_utterance_id or "")
+        if utterance_key:
+            key = (session_id, utterance_key)
+        else:
+            import uuid as _uuid
 
-        self._pending_translation_payload = {
+            key = (session_id, f"__unkeyed_{_uuid.uuid4().hex}")
+
+        pending_map = self._pending_translations_by_utterance
+        timer_map = self._translation_debounce_after_ids
+
+        if force_flush_previous:
+            self._flush_pending_translation_submit(key)
+
+        pending_map[key] = {
             "text": cleaned,
             "speaker": speaker,
             "timestamp": timestamp,
             "replace_pending": bool(replace_pending),
-            "session_id": str(getattr(self, "_live_session_id", "") or ""),
-            "canonical_utterance_id": str(canonical_utterance_id or ""),
+            "session_id": session_id,
+            "canonical_utterance_id": utterance_key,
             "source_version": int(source_version or 1),
             "source_record_id": str(source_record_id or ""),
         }
-        after_id = getattr(self, "_translation_debounce_after_id", None)
+        after_id = timer_map.pop(key, None)
         if after_id is not None:
             try:
                 self.after_cancel(after_id)
             except Exception:
                 pass
-            self._translation_debounce_after_id = None
 
         # Updates coalesce; first add of a sentence also uses a short debounce
         # so an immediate follow-up update can supersede before DeepL starts.
         delay_ms = 120 if force_flush_previous else 350
+
+        def _arm() -> None:
+            timer_map[key] = self.after(
+                delay_ms, lambda: self._flush_pending_translation_submit(key)
+            )
+
         try:
             from alpha.utils.ui_thread_guard import is_ui_main_thread
 
             if is_ui_main_thread():
-                self._translation_debounce_after_id = self.after(
-                    delay_ms, self._flush_pending_translation_submit
-                )
+                _arm()
             else:
-                self._run_on_ui_thread(
-                    lambda: setattr(
-                        self,
-                        "_translation_debounce_after_id",
-                        self.after(delay_ms, self._flush_pending_translation_submit),
-                    )
-                )
+                self._run_on_ui_thread(_arm)
         except Exception:
-            self._flush_pending_translation_submit()
+            self._flush_pending_translation_submit(key)
 
-    def _flush_pending_translation_submit(self):
-        """Actually enqueue the debounced Stable translation job (UI thread)."""
-        self._translation_debounce_after_id = None
-        payload = getattr(self, "_pending_translation_payload", None)
-        self._pending_translation_payload = None
+    def _flush_pending_translation_submit(self, key) -> None:
+        """Actually enqueue the debounced Stable translation job (UI thread).
+
+        fixes TASK_3A_FINDINGS.md Item 2: operates on the one payload
+        identified by `key` -- never a single shared payload.
+        """
+        self._translation_debounce_after_ids.pop(key, None)
+        payload = self._pending_translations_by_utterance.pop(key, None)
         if not payload:
             return
         worker = self.translation_worker
@@ -6395,10 +6572,14 @@ class AlphaApp(
             )
         except Exception:
             pass
+        canonical_utterance_id = str(payload.get("canonical_utterance_id") or "")
+        source_version = int(payload.get("source_version") or 1)
         # Show queued loading line immediately (cleared on terminal UI result).
         self._show_translation_loading_item(
             segment_id=segment_id,
             session_id=session_id or str(getattr(self, "_live_session_id", "") or ""),
+            canonical_utterance_id=canonical_utterance_id,
+            source_version=source_version,
         )
         accepted = worker.enqueue_stable_segment(
             segment_id=segment_id,
@@ -6407,8 +6588,8 @@ class AlphaApp(
             stable_commit_timestamp=time.time(),
             is_interim=False,
             run_id=run_id,
-            canonical_utterance_id=str(payload.get("canonical_utterance_id") or ""),
-            source_version=int(payload.get("source_version") or 1),
+            canonical_utterance_id=canonical_utterance_id,
+            source_version=source_version,
             source_record_id=str(payload.get("source_record_id") or ""),
             session_id=session_id,
         )
@@ -6428,9 +6609,18 @@ class AlphaApp(
                 segment_id=segment_id,
                 terminal_state="rejected",
                 session_id=session_id,
+                canonical_utterance_id=canonical_utterance_id,
+                source_version=source_version,
             )
 
-    def _show_translation_loading_item(self, *, segment_id: int, session_id: str):
+    def _show_translation_loading_item(
+        self,
+        *,
+        segment_id: int,
+        session_id: str,
+        canonical_utterance_id: str = "",
+        source_version: int = 1,
+    ):
         """Insert a temporary loading line for one translation job."""
         box = self.translated_verse_box
         if box is None:
@@ -6457,7 +6647,20 @@ class AlphaApp(
             "session_id": session_id,
             "state": "queued",
             "created_at": time.perf_counter(),
+            "canonical_utterance_id": str(canonical_utterance_id or ""),
+            "source_version": int(source_version or 1),
         }
+        # fixes TASK_3A_FINDINGS.md Item 1: track the loading item by
+        # canonical_utterance_id too, so a later revision can find and
+        # remove exactly this item instead of guessing by position.
+        utterance_key = str(canonical_utterance_id or "")
+        if utterance_key:
+            self._translation_items_by_utterance[utterance_key] = {
+                "segment_id": int(segment_id),
+                "mark": mark_name,
+                "source_version": int(source_version or 1),
+                "state": "loading",
+            }
         try:
             box.see(tk.END)
         except Exception:
@@ -6470,6 +6673,8 @@ class AlphaApp(
         terminal_state: str,
         session_id: str = "",
         replace_with_text: str | None = None,
+        canonical_utterance_id: str = "",
+        source_version: int = 1,
     ):
         """Remove loading glyph for one job; optionally write the final line."""
         box = self.translated_verse_box
@@ -6478,6 +6683,22 @@ class AlphaApp(
         if box is None:
             return
         mark_name = (item or {}).get("mark") or f"tr_load_{int(segment_id)}"
+        utterance_key = str(canonical_utterance_id or (item or {}).get("canonical_utterance_id") or "")
+        # fixes TASK_3A_FINDINGS.md Item 4: a stale (superseded) provider
+        # result must never overwrite a newer version already displayed for
+        # this utterance -- checked before any text is written.
+        if replace_with_text and utterance_key:
+            existing = self._translation_items_by_utterance.get(utterance_key)
+            if existing is not None and int(source_version or 1) < int(
+                existing.get("source_version") or 1
+            ):
+                self._log_translation_display_skip(
+                    reason="stale_provider_result_ignored",
+                    canonical_utterance_id=utterance_key,
+                    tracked_version=existing.get("source_version"),
+                    incoming_version=source_version,
+                )
+                return
         box.configure(state="normal")
         try:
             if box.compare(mark_name, ">=", "1.0"):
@@ -6502,7 +6723,36 @@ class AlphaApp(
             box.tag_add(tag_name, start_idx, end_idx)
             box.insert(tk.END, cleaned + "\n", "body")
             line = f"{label}{cleaned}"
-            self._translation_display_lines.append(line)
+            # fixes TASK_3A_FINDINGS.md Item 1: track this completed line by
+            # canonical_utterance_id (with its own text mark) instead of a
+            # flat positional list, so a later revision can remove exactly
+            # this line -- never "whatever is currently last".
+            if utterance_key:
+                completed_mark = f"tr_done_{utterance_key}_{int(source_version or 1)}"
+                try:
+                    box.mark_set(completed_mark, start_idx)
+                except Exception:
+                    completed_mark = None
+                self._translation_items_by_utterance[utterance_key] = {
+                    "segment_id": int(segment_id),
+                    "mark": completed_mark,
+                    "source_version": int(source_version or 1),
+                    "state": "completed",
+                    "line_text": line,
+                }
+            else:
+                self._log_translation_display_skip(
+                    reason="completed_translation_missing_canonical_utterance_id",
+                    segment_id=int(segment_id),
+                )
+        elif utterance_key:
+            # Job failed/rejected/superseded with no text written -- drop the
+            # stale "loading" tracking entry so it can't be mistaken for a
+            # live item by a later revision, but only if nothing newer has
+            # already replaced it.
+            tracked = self._translation_items_by_utterance.get(utterance_key)
+            if tracked is not None and tracked.get("segment_id") == int(segment_id):
+                self._translation_items_by_utterance.pop(utterance_key, None)
         box.configure(state="disabled")
         try:
             from alpha.utils import live_pipeline_profile as lpp
@@ -6563,6 +6813,10 @@ class AlphaApp(
             getattr(result, "terminal_state", None) or status or ""
         ).strip().lower()
         segment_id = int(getattr(result, "segment_id", 0) or 0)
+        # fixes TASK_3A_FINDINGS.md Item 1/4: carry canonical identity through
+        # to every display-clearing/writing call below.
+        canonical_utterance_id = str(getattr(result, "canonical_utterance_id", "") or "")
+        source_version = int(getattr(result, "source_version", 1) or 1)
         try:
             from alpha.utils import live_pipeline_profile as lpp
 
@@ -6589,6 +6843,8 @@ class AlphaApp(
                 segment_id=segment_id,
                 terminal_state=terminal or "superseded",
                 session_id=current or session_id,
+                canonical_utterance_id=canonical_utterance_id,
+                source_version=source_version,
             )
             if isinstance(stats, dict):
                 stats["loading_cleared"] = int(stats.get("loading_cleared", 0) or 0) + 1
@@ -6624,6 +6880,8 @@ class AlphaApp(
                     segment_id=segment_id,
                     terminal_state=terminal or status or "failed",
                     session_id=current or session_id,
+                    canonical_utterance_id=canonical_utterance_id,
+                    source_version=source_version,
                 )
                 if isinstance(stats, dict):
                     stats["loading_cleared"] = int(stats.get("loading_cleared", 0) or 0) + 1
@@ -6645,6 +6903,8 @@ class AlphaApp(
             or getattr(result, "provider_completed_at", None),
             segment_id=segment_id,
             session_id=current or session_id,
+            canonical_utterance_id=canonical_utterance_id,
+            source_version=source_version,
         )
         if isinstance(stats, dict):
             stats["widget_updated"] = int(stats.get("widget_updated", 0) or 0) + 1
@@ -6725,6 +6985,8 @@ class AlphaApp(
         *,
         segment_id: int | None = None,
         session_id: str = "",
+        canonical_utterance_id: str = "",
+        source_version: int = 1,
     ):
         """Insert translated text into the translation panel (UI thread only)."""
         try:
@@ -6748,8 +7010,25 @@ class AlphaApp(
                 terminal_state="completed",
                 session_id=current or session_id,
                 replace_with_text=cleaned,
+                canonical_utterance_id=canonical_utterance_id,
+                source_version=source_version,
             )
         else:
+            # fixes TASK_3A_FINDINGS.md Item 4: check for a newer version
+            # already displayed before writing a result with no segment_id.
+            utterance_key = str(canonical_utterance_id or "")
+            if utterance_key:
+                existing = self._translation_items_by_utterance.get(utterance_key)
+                if existing is not None and int(source_version or 1) < int(
+                    existing.get("source_version") or 1
+                ):
+                    self._log_translation_display_skip(
+                        reason="stale_provider_result_ignored",
+                        canonical_utterance_id=utterance_key,
+                        tracked_version=existing.get("source_version"),
+                        incoming_version=source_version,
+                    )
+                    return
             self._clear_text_placeholder(box)
             box.configure(state="normal")
             label = self._ui_speaker_label_text()
@@ -6767,7 +7046,26 @@ class AlphaApp(
             box.insert(tk.END, cleaned + "\n", "body")
             box.configure(state="disabled")
             line = f"{label}{cleaned}"
-            self._translation_display_lines.append(line)
+            # fixes TASK_3A_FINDINGS.md Item 1: identity-keyed tracking
+            # instead of appending to a flat positional list.
+            if utterance_key:
+                completed_mark = f"tr_done_{utterance_key}_{int(source_version or 1)}"
+                try:
+                    box.mark_set(completed_mark, start_idx)
+                except Exception:
+                    completed_mark = None
+                self._translation_items_by_utterance[utterance_key] = {
+                    "segment_id": segment_id,
+                    "mark": completed_mark,
+                    "source_version": int(source_version or 1),
+                    "state": "completed",
+                    "line_text": line,
+                }
+            else:
+                self._log_translation_display_skip(
+                    reason="completed_translation_missing_canonical_utterance_id",
+                    segment_id=segment_id,
+                )
 
         self.last_translation_speaker = "Speaker"
         try:
@@ -6867,28 +7165,6 @@ class AlphaApp(
             is_final=is_final,
         )
         self.event_bus.publish(EventType.TRANSCRIPT_RECEIVED, payload)
-
-    def publish_translation_event(
-        self,
-        original_text,
-        translated_text,
-        source_language=None,
-        target_language=None,
-        speaker=None,
-        timestamp=None,
-        error_message=None,
-    ):
-        """Publish translation result event."""
-        payload = TranslationEvent(
-            original_text=original_text,
-            translated_text=translated_text,
-            source_language=source_language or self.source_language.get(),
-            target_language=target_language or self.target_language.get(),
-            speaker=str(speaker) if speaker is not None else None,
-            timestamp=timestamp,
-            error_message=error_message,
-        )
-        self.event_bus.publish(EventType.TRANSLATION_RECEIVED, payload)
 
     def publish_status_event(self, status, message=None):
         """Publish application/session status change."""
@@ -8092,7 +8368,15 @@ class AlphaApp(
             messagebox.showerror("Copy Transcript", f"Could not copy transcript:\n{exc}")
 
     def _get_translated_transcript_for_copy_export(self) -> str:
-        lines = list(getattr(self, "_translation_display_lines", None) or [])
+        # fixes TASK_3A_FINDINGS.md Item 1: derive export lines from the
+        # identity-keyed registry (insertion order) instead of the removed
+        # flat positional list.
+        registry = getattr(self, "_translation_items_by_utterance", None) or {}
+        lines = [
+            item.get("line_text")
+            for item in registry.values()
+            if item.get("state") == "completed" and item.get("line_text")
+        ]
         if lines:
             return "\n".join(lines)
         box = self.translated_verse_box
@@ -8215,7 +8499,10 @@ class AlphaApp(
             self.last_translation_speaker = None
             self.translation_error_shown = False
             self._translation_segment_seq = 0
-            self._translation_display_lines = []
+            # fixes TASK_3A_FINDINGS.md Item 1/2: reset identity-keyed state.
+            self._translation_items_by_utterance = {}
+            self._pending_translations_by_utterance = {}
+            self._translation_debounce_after_ids = {}
             self._recent_displayed_texts = []
             self.last_speech_time = 0.0
             self.fallback_speaker = 1

@@ -24,6 +24,7 @@ from alpha.constants import (
     STOP_FINALIZE_TWO_PHASE_MODE,
 )
 from alpha.utils.freeze_guard_log import freeze_guard_log
+from alpha.utils.path_types import ensure_path
 
 # Per-stop session state (watchdog reads without UI thread).
 _state_lock = threading.Lock()
@@ -81,6 +82,77 @@ _evidence_worker_state: dict[str, Any] = {
     "thread": None,
 }
 
+# fixes TASK_4A_FINDINGS.md items 1/2/3: explicit, fail-closed tracking for
+# every REPAIR_PLAN.md Phase 4 required step this worker controls
+# synchronously. Unlike _step_completed (set True merely because
+# run_timed_step caught no exception), an entry here is only ever set True
+# by the step's own call site, using that step's own real result -- a
+# missing key is treated as failure, not success. "Evidence package" (the
+# 10th required item) is intentionally excluded: it completes on a
+# background thread (see _run_finalize_worker's scheduling of
+# evidence_pointer_finalize.py, kept async per STOP_CORE_NEVER_BLOCKS_ON_EVIDENCE)
+# and is resolved there, not here.
+_REQUIRED_SYNC_STEPS = (
+    "audio_summary",
+    "raw_event_persistence",
+    "utterance_reconstruction",
+    "canonical_ledger_validation",
+    "stable_export",
+    "final_export",
+    "translation_drain",
+    "loading_state_drain",
+    "run_manifest",
+)
+_required_step_ok: dict[str, bool] = {}
+
+
+def _mark_required_step(name: str, ok: bool, *, reason: str = "") -> None:
+    """fixes TASK_4A_FINDINGS.md items 1/2: record a required step's REAL
+    success/failure so it can gate final_status -- logging alone is not
+    enough (that was the bug)."""
+    _required_step_ok[name] = bool(ok)
+    if not ok:
+        freeze_guard_log("REQUIRED_STEP_FAILED", step_name=name, reason=reason)
+
+
+def _reset_required_steps() -> None:
+    _required_step_ok.clear()
+
+
+def compute_core_final_status(*, exclude: tuple[str, ...] = ()) -> dict[str, Any]:
+    """fixes TASK_4A_FINDINGS.md items 1/3: single authoritative decision —
+    final_status can only be a completed-shaped value when every required
+    synchronous step explicitly reported success. A step that never ran or
+    was never marked is treated as failed (fail-closed), not as success.
+    Evidence package (async, item 10) is layered on afterward by whichever
+    caller learns its outcome — see evidence_pointer_finalize.py.
+
+    `exclude` lets a step's own write function compute "everything else so
+    far" before that step's own outcome is knowable (e.g. the run-manifest
+    write can't describe its own success inside its own content) — the
+    excluded step is never treated as satisfied, only left out of this one
+    query; compute_core_final_status() with no exclusion (the version every
+    downstream reader uses) still requires it like any other required step.
+    """
+    missing_or_failed = [
+        name
+        for name in _REQUIRED_SYNC_STEPS
+        if name not in exclude and not _required_step_ok.get(name, False)
+    ]
+    if missing_or_failed:
+        return {
+            "final_status": "failed",
+            "stop_finalize_failed": True,
+            "failure_reason": missing_or_failed[0],
+            "failed_required_steps": missing_or_failed,
+        }
+    return {
+        "final_status": "completed_pending_evidence_package",
+        "stop_finalize_failed": False,
+        "failure_reason": "",
+        "failed_required_steps": [],
+    }
+
 
 def _resolve_step_timeout_ms(host: Any, step_name: str) -> float:
     base = _STEP_TIMEOUTS_MS.get(step_name, 500.0)
@@ -100,6 +172,7 @@ def _reset_evidence_flags() -> None:
 
 def _reset_stop_state() -> None:
     _reset_evidence_flags()
+    _reset_required_steps()
     with _state_lock:
         _stop_state.update(
             {
@@ -345,23 +418,28 @@ def _write_minimal_run_artifacts_index(host: Any, *, reason: str) -> None:
         pass
 
 
-def _write_core_live_status(host: Any) -> None:
+def _write_core_live_status(host: Any, *, core_status: Optional[dict[str, Any]] = None) -> None:
     try:
         from alpha.utils.run_identity import get_current_run_identity
         from alpha.utils.troubleshooting_paths import get_artifact_path
 
         ident = get_current_run_identity()
         p = get_artifact_path("live_run_status")
+        # fixes TASK_4A_FINDINGS.md items 1/3: stop_finalize_failed/status are
+        # no longer hardcoded -- they reflect compute_core_final_status()'s
+        # fail-closed result for every required synchronous step.
+        cs = core_status if core_status is not None else compute_core_final_status()
         payload = {
-            "status": "stopped_core_completed",
+            "status": cs["final_status"],
             "run_id": getattr(ident, "run_id", ""),
             "run_timestamp": getattr(ident, "run_timestamp", ""),
             "app_version": getattr(ident, "app_version", ""),
             "stop_core_completed": True,
-            "stop_core_failed": False,
+            "stop_core_failed": bool(cs["stop_finalize_failed"]),
             "evidence_package_status": "deferred",
             "stop_finalize_completed": True,
-            "stop_finalize_failed": False,
+            "stop_finalize_failed": bool(cs["stop_finalize_failed"]),
+            "failure_reason": cs["failure_reason"],
             "completed_with_warnings": False,
         }
         p.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -382,23 +460,31 @@ def _write_minimal_runtime_artifacts(host: Any, *, dg_result: Optional[dict[str,
     run_id = getattr(ident, "run_id", "")
     run_ts = getattr(ident, "run_timestamp", "")
     app_version = getattr(ident, "app_version", "")
+    # fixes TASK_4A_FINDINGS.md items 1/2/3: compute the real, fail-closed
+    # status for the 8 required steps already known at this point in Stop
+    # (everything except run_manifest itself, which this function is in the
+    # middle of writing) instead of hardcoding "completed_with_warnings".
+    core_status = compute_core_final_status(exclude=("run_manifest",))
     # RUN_ARTIFACTS_INDEX minimal
     idx = get_artifact_path("run_artifacts_index")
     idx_lines = [
-        "status=stopped_runtime_minimal",
+        f"status={core_status['final_status']}",
         f"run_id={run_id}",
         f"run_timestamp={run_ts}",
         f"app_version={app_version}",
         "stop_core_completed=true",
         "stop_finalize_completed=true",
+        f"stop_finalize_failed={'true' if core_status['stop_finalize_failed'] else 'false'}",
+        f"failure_reason={core_status['failure_reason']}",
         "evidence_package_status=disabled_during_runtime",
     ]
     idx.write_text("\n".join(idx_lines) + "\n", encoding="utf-8")
     _evidence_flags["run_artifacts_index_written"] = True
     # LIVE_RUN_STATUS minimal
-    _write_core_live_status(host)
+    _write_core_live_status(host, core_status=core_status)
     # RUN_MANIFEST minimal update
     manifest_path = get_run_manifest_path()
+    manifest_write_ok = True
     if manifest_path.exists():
         try:
             data = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -411,14 +497,23 @@ def _write_minimal_runtime_artifacts(host: Any, *, dg_result: Optional[dict[str,
             "run_id": run_id,
             "run_timestamp": run_ts,
             "app_version": app_version,
-            "final_status": "completed_with_warnings",
+            "final_status": core_status["final_status"],
+            "stop_finalize_failed": core_status["stop_finalize_failed"],
+            "failure_reason": core_status["failure_reason"],
             "stop_core_completed": True,
             "stop_finalize_completed": True,
             "evidence_package_status": "disabled_during_runtime",
             "deepgram_close_status": (dg_result or {}).get("status", ""),
         }
     )
-    manifest_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    try:
+        manifest_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception:
+        manifest_write_ok = False
+    # fixes TASK_4A_FINDINGS.md item 1 (run manifest): mark this step's own
+    # real outcome for the async evidence-pointer pass to fold into the
+    # final authoritative status (see evidence_pointer_finalize.py).
+    _mark_required_step("run_manifest", manifest_write_ok, reason="manifest_write_exception")
 
 def get_stop_finalize_snapshot() -> dict[str, Any]:
     with _state_lock:
@@ -481,13 +576,23 @@ def build_stop_finalize_summary(
     except Exception:
         pass
 
+    # fixes TASK_4A_FINDINGS.md items 1/2/3: stop_finalize_failed/final_status
+    # are no longer derived from the generic (non-required-step-aware)
+    # failed_steps list or from "did we reach the end of Stop" -- they come
+    # from compute_core_final_status(), which is fail-closed on every
+    # REPAIR_PLAN.md Phase 4 required step this worker tracks explicitly.
+    core_status = compute_core_final_status()
+
     summary = {
         "stop_finalize_completed": bool(
             snap.get("finalize_completed", False)
             or _evidence_flags.get("alpha_output_written")
             or identity_finalize
         ),
-        "stop_finalize_failed": len(failed_steps) > 0,
+        "stop_finalize_failed": core_status["stop_finalize_failed"],
+        "final_status": core_status["final_status"],
+        "failure_reason": core_status["failure_reason"],
+        "failed_required_steps": core_status["failed_required_steps"],
         "stop_finalize_timed_out": len(timed_out_steps) > 0,
         "timed_out": len(timed_out_steps) > 0,
         "failed": len(failed_steps) > 0,
@@ -689,6 +794,99 @@ def _confirm_transcript_commits(host: Any) -> None:
     )
 
 
+def _write_translation_and_ui_evidence_streams(
+    host: Any,
+    *,
+    translation_summary: Optional[dict[str, Any]],
+    ui_drain: dict[str, Any],
+    worker: Any = None,
+) -> None:
+    """fixes TASK_4A_FINDINGS.md items 3/4: materialize
+    translation_jobs.jsonl and ui_events.jsonl, the remaining two of
+    REPAIR_PLAN.md Phase 4's five required evidence streams — finalize-time
+    snapshots from data already collected during Stop (translation worker's
+    own shutdown summary, the UI drain barrier's own result), same
+    finalize-time-materialization approach and same file-scope reasoning as
+    write_separated_evidence_streams in canonical_finalize.py.
+    """
+    try:
+        from alpha.utils.run_identity import get_current_run_identity
+
+        ident = get_current_run_identity()
+        folder = ensure_path(getattr(ident, "run_folder", None) if ident else None)
+        if folder is None:
+            return
+        stream_dir = folder / "evidence_streams"
+        stream_dir.mkdir(parents=True, exist_ok=True)
+
+        summary = dict(translation_summary or {})
+        # fixes TASK_4C_REPORT.md (test 5 regression found): the acceptance
+        # gate requires every translation to reference an existing canonical
+        # record/version -- an aggregate worker-shutdown summary alone
+        # cannot show that. TranslationWorker already tracks this per job in
+        # its own _revision_events list (canonical_utterance_id/source_version/
+        # source_record_id, appended on every accepted enqueue_stable_segment
+        # call) -- read it directly (public API not needed, this is a
+        # read-only finalize-time snapshot, not a modification to
+        # translation_worker.py) instead of only summarizing counts.
+        tw = worker if worker is not None else getattr(host, "translation_worker", None)
+        job_rows: list[dict[str, Any]] = []
+        revision_events = list(getattr(tw, "_revision_events", None) or []) if tw is not None else []
+        for ev in revision_events:
+            job_rows.append(
+                {
+                    "run_id": getattr(ident, "run_id", ""),
+                    "canonical_utterance_id": ev.get("canonical_utterance_id", ""),
+                    "source_record_id": ev.get("source_record_id", ""),
+                    "source_version": ev.get("source_version"),
+                    "translation_sequence": ev.get("translation_sequence"),
+                    "accepted": bool(ev.get("accepted")),
+                    "session_id": ev.get("session_id", ""),
+                    "recorded_at": time.time(),
+                }
+            )
+        if not job_rows:
+            # No per-job identity available (no worker this session, or no
+            # jobs accepted) -- still record the aggregate outcome rather
+            # than writing nothing, but never claim a canonical reference
+            # that doesn't exist.
+            job_rows.append(
+                {
+                    "run_id": getattr(ident, "run_id", ""),
+                    "canonical_utterance_id": "",
+                    "translation_worker_stopped": bool(summary.get("TRANSLATION_WORKER_STOPPED")),
+                    "translation_queue_pending_at_exit": int(
+                        summary.get("TRANSLATION_QUEUE_PENDING_AT_EXIT", 0) or 0
+                    ),
+                    "unfinished_segment_ids": list(summary.get("unfinished_segment_ids") or []),
+                    "recorded_at": time.time(),
+                }
+            )
+        with open(stream_dir / "translation_jobs.jsonl", "a", encoding="utf-8") as fh:
+            for row in job_rows:
+                fh.write(json.dumps(row, ensure_ascii=False, default=str) + "\n")
+
+        ui_row = {
+            "run_id": getattr(ident, "run_id", ""),
+            "ui_events_posted_after_final_drain": int(
+                ui_drain.get("ui_events_posted_after_final_drain")
+                or ui_drain.get("events_posted_after_drain")
+                or 0
+            ),
+            "ui_drain": {k: v for k, v in ui_drain.items() if isinstance(v, (str, int, float, bool))},
+            "recorded_at": time.time(),
+        }
+        with open(stream_dir / "ui_events.jsonl", "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(ui_row, ensure_ascii=False, default=str) + "\n")
+    except Exception as exc:
+        freeze_guard_log(
+            "EVIDENCE_STREAM_WRITE_FAILED",
+            stream="translation_jobs_or_ui_events",
+            exception_type=type(exc).__name__,
+            exception_message=str(exc),
+        )
+
+
 def _invoke_three_stage_finalize_once(host: Any) -> None:
     global _three_stage_finalize_call_count
     _three_stage_finalize_call_count += 1
@@ -805,108 +1003,10 @@ def _run_deepgram_finalize_sequence(host: Any, dg_result: dict[str, Any]) -> Non
     )
 
 
-def _run_evidence_package_worker(host: Any, dg_result: dict[str, Any], readiness: dict[str, Any]) -> None:
-    if RUNTIME_EVIDENCE_PACKAGE_DISABLED:
-        freeze_guard_log("EVIDENCE_PACKAGE_WORKER_DISABLED_DURING_RUNTIME")
-        return
-    freeze_guard_log("EVIDENCE_PACKAGE_WORKER_STARTED")
-    freeze_guard_log("EVIDENCE_WORKER_NO_TK_CALL_CONFIRMED")
-    _evidence_worker_state["running"] = True
-    _evidence_worker_state["cancel_requested"] = False
-    try:
-        consistency_result: dict[str, Any] = {}
-        freeze_guard_log("RUN_CONSISTENCY_CHECK_DEFERRED_TO_EVIDENCE_WORKER")
-        freeze_guard_log("EVIDENCE_PACKAGE_STEP_BEGIN", step_name="run_consistency_check")
-        run_timed_step(
-            host,
-            "run_consistency_check",
-            lambda: consistency_result.update(__import__("alpha.utils.run_consistency", fromlist=["validate_run_consistency"]).validate_run_consistency(host=host)),
-        )
-        freeze_guard_log("EVIDENCE_PACKAGE_STEP_END", step_name="run_consistency_check")
-        if consistency_result.get("warning_reasons"):
-            freeze_guard_log("RUN_CONSISTENCY_CHECK_WARNING", warnings=consistency_result.get("warning_reasons"))
-
-        if _evidence_worker_state.get("cancel_requested"):
-            freeze_guard_log("APP_CLOSE_DURING_EVIDENCE_PACKAGE")
-            return
-
-        def _run_artifacts_phase() -> None:
-            from alpha.transcription.japanese_sentence_assembler import get_japanese_continuity_assembler
-            from alpha.utils.run_artifacts import create_upload_evidence_package, finalize_live_run_status_completed, write_final_alpha_output
-            from alpha.utils.runtime_evidence import build_artifact_index_extra, write_run_artifacts_index_safe
-            from alpha.utils.run_identity import get_current_run_identity, validate_all_artifacts_use_same_run_id
-            from alpha.utils.segment_count_reconciliation import reconcile_final_segment_counts
-            from alpha.utils.troubleshooting_paths import (
-                finalize_latest_pointers,
-                finalize_run_manifest,
-                get_active_run_folder,
-                migrate_pending_files_to_run_folder,
-                preflight_upload_evidence,
-                write_writer_registry_snapshot,
-            )
-
-            folder = get_active_run_folder()
-            if folder is not None:
-                migrate_pending_files_to_run_folder(folder)
-                preflight_upload_evidence(folder)
-                write_writer_registry_snapshot(folder)
-
-            write_final_alpha_output(host)
-            _evidence_flags["alpha_output_written"] = True
-            assembler = get_japanese_continuity_assembler(host)
-            identity = get_current_run_identity()
-            segment_counts = reconcile_final_segment_counts(host)
-            stop_summary = build_stop_finalize_summary(host, dg_result=dg_result)
-            extra = build_artifact_index_extra(host, assembler=assembler, readiness=readiness, stop_state={**get_stop_finalize_snapshot(), **stop_summary})
-            extra.update(segment_counts)
-            extra.update(stop_summary)
-            freeze_guard_log("RUN_ARTIFACTS_INDEX_STEP_STARTED")
-            idx = write_run_artifacts_index_safe(host, extra=extra)
-            if idx is not None:
-                _evidence_flags["run_artifacts_index_written"] = True
-                freeze_guard_log("RUN_ARTIFACTS_INDEX_STEP_COMPLETED", path=str(idx))
-            else:
-                freeze_guard_log("RUN_ARTIFACTS_INDEX_STEP_TIMEOUT")
-                _write_minimal_run_artifacts_index(host, reason="write_failed_or_timeout")
-                freeze_guard_log("RUN_ARTIFACTS_INDEX_DEFERRED_AFTER_TIMEOUT")
-
-            status_check = validate_all_artifacts_use_same_run_id() if identity is not None else {"ok": True}
-            if not bool(status_check.get("ok", True)):
-                freeze_guard_log("RUN_ID_MISMATCH_NON_BLOCKING_WARNING", mismatches=status_check.get("mismatches", []))
-
-            pkg = create_upload_evidence_package(host, status="completed")
-            upload_zip_path = ""
-            if pkg is not None:
-                if str(pkg).endswith(".zip"):
-                    _evidence_flags["upload_package_zip_created"] = True
-                    upload_zip_path = str(pkg)
-                _evidence_flags["upload_package_index_written"] = True
-            else:
-                _evidence_flags["upload_package_zip_failed_non_blocking"] = True
-
-            stop_summary = build_stop_finalize_summary(host, dg_result=dg_result)
-            stop_summary.update(_evidence_flags)
-            finalize_live_run_status_completed(host, segment_counts=segment_counts, stop_summary=stop_summary, evidence_flags=_evidence_flags)
-            _evidence_flags["live_run_status_written"] = True
-            if folder is not None and identity is not None:
-                final_status = "completed_with_warnings" if _evidence_flags.get("upload_package_zip_failed_non_blocking") else "completed"
-                finalize_latest_pointers(folder, run_id=identity.run_id, status=final_status, upload_zip_path=upload_zip_path)
-                finalize_run_manifest(folder, status=final_status, artifact_flags=_evidence_flags, stop_summary=stop_summary)
-
-        freeze_guard_log("EVIDENCE_PACKAGE_STEP_BEGIN", step_name="run_artifacts_index")
-        ok = run_timed_step(host, "run_artifacts_index", _run_artifacts_phase)
-        freeze_guard_log("EVIDENCE_PACKAGE_STEP_END", step_name="run_artifacts_index", ok=ok)
-        if not ok and RUN_ARTIFACTS_INDEX_NON_BLOCKING:
-            freeze_guard_log("RUN_ARTIFACTS_INDEX_STEP_TIMEOUT")
-            _write_minimal_run_artifacts_index(host, reason="timed_out")
-            freeze_guard_log("RUN_ARTIFACTS_INDEX_DEFERRED_AFTER_TIMEOUT")
-            freeze_guard_log("EVIDENCE_PACKAGE_STEP_TIMEOUT_DEFERRED", step_name="run_artifacts_index")
-
-        freeze_guard_log("EVIDENCE_PACKAGE_COMPLETED_WITH_WARNINGS" if _evidence_flags.get("upload_package_zip_failed_non_blocking") else "EVIDENCE_PACKAGE_COMPLETED")
-    except Exception as exc:
-        freeze_guard_log("EVIDENCE_PACKAGE_FAILED_NON_BLOCKING", exception_type=type(exc).__name__, exception_message=str(exc))
-    finally:
-        _evidence_worker_state["running"] = False
+# fixes TASK_5_FINAL_CLEANUP_REPORT.md Fix 4: _run_evidence_package_worker
+# (confirmed zero callers in TASK_4A_FINDINGS.md/TASK_4B_CHANGES.md, and
+# re-confirmed here) has been removed. Its responsibility is fully covered
+# by the live evidence_pointer_finalize.py background pass.
 
 
 def _run_finalize_worker(host: Any) -> None:
@@ -964,24 +1064,41 @@ def _run_finalize_worker(host: Any) -> None:
         run_timed_step(host, "stop_audio_producers", lambda: _stop_audio_producers(host))
 
         audio_drain: dict[str, Any] = {}
-        run_timed_step(
+        audio_drain_step_ok = run_timed_step(
             host,
             "drain_audio_queue",
             lambda: audio_drain.update(
                 _drain_outgoing_audio_queue(host, timeout_seconds=25.0)
             ),
         )
+        # fixes TASK_4A_FINDINGS.md item 1 (audio summary): real success is
+        # "queue actually drained", not merely "the step ran without raising".
+        _mark_required_step(
+            "audio_summary",
+            bool(audio_drain_step_ok) and not bool(audio_drain.get("timed_out")),
+            reason="audio_queue_not_drained" if audio_drain.get("timed_out") else "step_timeout_or_exception",
+        )
 
         if hasattr(host, "_stop_event"):
             host._stop_event.set()
 
         dg_result = {}
-        run_timed_step(
+        dg_step_ok = run_timed_step(
             host,
             "deepgram_graceful_stop",
             lambda: _run_deepgram_finalize_sequence(host, dg_result),
         )
         host._last_graceful_stop_result = dict(dg_result)
+        # fixes TASK_4A_FINDINGS.md item 1 (raw event persistence): raw
+        # Deepgram finals are captured during this sequence
+        # (japanese_final_chunk_stabilizer.py -> record_raw_deepgram_final);
+        # a timed-out/failed graceful stop means that capture cannot be
+        # confirmed complete.
+        _mark_required_step(
+            "raw_event_persistence",
+            bool(dg_step_ok) and not bool(dg_result.get("timed_out")),
+            reason="deepgram_graceful_stop_timed_out_or_failed",
+        )
 
         if hasattr(host, "request_interim_stop_tail_recovery"):
             try:
@@ -1002,7 +1119,7 @@ def _run_finalize_worker(host: Any) -> None:
             pass
         freeze_guard_log("TRANSCRIPT_GATE_CLOSED_AFTER_DEEPGRAM")
 
-        run_timed_step(
+        assembler_flush_ok = run_timed_step(
             host,
             "japanese_assembler_flush",
             lambda: flush_japanese_assembler_on_stop(host, "stop_listening"),
@@ -1045,7 +1162,18 @@ def _run_finalize_worker(host: Any) -> None:
         except Exception:
             pass
 
-        run_timed_step(host, "transcript_commit_confirm", lambda: _confirm_transcript_commits(host))
+        commit_confirm_ok = run_timed_step(
+            host, "transcript_commit_confirm", lambda: _confirm_transcript_commits(host)
+        )
+        # fixes TASK_4A_FINDINGS.md item 1 (utterance reconstruction): the
+        # assembler flush + transcript-commit confirmation are the two steps
+        # that finish reconstructing pending utterances into committed
+        # segments at Stop; both must have actually completed.
+        _mark_required_step(
+            "utterance_reconstruction",
+            bool(assembler_flush_ok) and bool(commit_confirm_ok),
+            reason="assembler_flush_or_commit_confirm_failed",
+        )
 
         def _translation_unit_flush() -> None:
             from alpha.transcription.japanese_sentence_assembler import (
@@ -1074,6 +1202,12 @@ def _run_finalize_worker(host: Any) -> None:
             """Drain async DeepL worker after transcription finalize; bounded wait."""
             worker = getattr(host, "translation_worker", None)
             if worker is None:
+                # fixes TASK_4A_FINDINGS.md item 1 (translation/loading-state
+                # drain): no worker means no translation was active this
+                # session -- a definite, confirmed no-op, not an unconfirmed
+                # gap, so both are trivially satisfied.
+                _mark_required_step("translation_drain", True)
+                _mark_required_step("loading_state_drain", True)
                 return
             try:
                 worker.stop_accepting()
@@ -1098,12 +1232,35 @@ def _run_finalize_worker(host: Any) -> None:
                     ),
                     unfinished=len(summary.get("unfinished_segment_ids") or []),
                 )
+                # fixes TASK_4A_FINDINGS.md item 1: real success signals
+                # already computed by TranslationWorker.shutdown(), just
+                # never threaded into final_status before now.
+                _mark_required_step(
+                    "translation_drain",
+                    bool(summary.get("TRANSLATION_WORKER_STOPPED")),
+                    reason="translation_worker_not_stopped",
+                )
+                pending_at_exit = int(summary.get("TRANSLATION_QUEUE_PENDING_AT_EXIT", 0) or 0)
+                loading_pending = 0
+                try:
+                    getter = getattr(host, "loading_indicators_pending", None)
+                    if callable(getter):
+                        loading_pending = int(getter() or 0)
+                except Exception:
+                    loading_pending = pending_at_exit
+                _mark_required_step(
+                    "loading_state_drain",
+                    pending_at_exit == 0 and loading_pending == 0,
+                    reason="translation_queue_or_loading_indicators_not_drained",
+                )
             except Exception as exc:
                 freeze_guard_log(
                     "TRANSLATION_WORKER_SHUTDOWN_FAILED",
                     exception_type=type(exc).__name__,
                     exception_message=str(exc),
                 )
+                _mark_required_step("translation_drain", False, reason="shutdown_exception")
+                _mark_required_step("loading_state_drain", False, reason="shutdown_exception")
 
         run_timed_step(host, "translation_worker_shutdown", _translation_worker_shutdown)
 
@@ -1111,12 +1268,35 @@ def _run_finalize_worker(host: Any) -> None:
             from alpha.utils.canonical_finalize import finalize_canonical_pipeline
 
             result = finalize_canonical_pipeline(host)
+            # fixes TASK_4A_FINDINGS.md items 1/2: finalize_canonical_pipeline
+            # already swallows its own exceptions into result["ok"]=False --
+            # that value was previously only logged, never gating
+            # final_status. Canonical ledger validation and Stable export
+            # both happen inside this one call (canonical_finalize.py writes
+            # the Stable-stage artifacts as part of the same result).
+            _mark_required_step(
+                "canonical_ledger_validation",
+                bool(result.get("ok")),
+                reason=str(result.get("error") or "canonical_finalize_not_ok"),
+            )
+            _mark_required_step(
+                "stable_export",
+                bool(result.get("ok")),
+                reason=str(result.get("error") or "canonical_finalize_not_ok"),
+            )
             if result.get("ok"):
                 freeze_guard_log("CANONICAL_LEDGER_FROZEN", snapshot_id=result.get("snapshot_id"))
             else:
                 freeze_guard_log("CANONICAL_LEDGER_FREEZE_FAILED", result=result)
 
-        run_timed_step(host, "canonical_pipeline_finalize", _canonical_finalize)
+        canonical_finalize_ok = run_timed_step(host, "canonical_pipeline_finalize", _canonical_finalize)
+        if not canonical_finalize_ok:
+            # Step itself timed out/raised past finalize_canonical_pipeline's
+            # own try/except (e.g. the run_timed_step wrapper thread timeout)
+            # -- _mark_required_step may never have run; fail closed instead
+            # of leaving the two keys unset-but-implicitly-failing silently.
+            _mark_required_step("canonical_ledger_validation", False, reason="step_timeout_or_exception")
+            _mark_required_step("stable_export", False, reason="step_timeout_or_exception")
 
         def _write_final_export() -> None:
             from alpha.utils.run_artifacts import write_final_alpha_output
@@ -1129,6 +1309,10 @@ def _run_finalize_worker(host: Any) -> None:
             path = write_final_alpha_output(host)
             if path is not None:
                 _evidence_flags["alpha_output_written"] = True
+                # fixes TASK_4A_FINDINGS.md item 1 (final export): reuse the
+                # already-computed real success signal (path is not None)
+                # instead of only setting a flag nothing reads for status.
+                _mark_required_step("final_export", True)
                 freeze_guard_log("FINAL_ALPHA_ATOMIC_WRITE_COMPLETED", path=str(path))
                 ident = get_current_run_identity()
                 folder = getattr(ident, "run_folder", None) if ident else None
@@ -1142,9 +1326,12 @@ def _run_finalize_worker(host: Any) -> None:
                     )
             else:
                 _evidence_flags["alpha_output_written"] = False
+                _mark_required_step("final_export", False, reason="write_final_alpha_output_returned_none")
                 freeze_guard_log("FINAL_ALPHA_ATOMIC_WRITE_FAILED")
 
-        run_timed_step(host, "write_final_alpha", _write_final_export)
+        write_final_ok = run_timed_step(host, "write_final_alpha", _write_final_export)
+        if not write_final_ok:
+            _mark_required_step("final_export", False, reason="step_timeout_or_exception")
 
         run_timed_step(host, "three_stage_finalize", lambda: _invoke_three_stage_finalize_once(host))
 
@@ -1207,6 +1394,13 @@ def _run_finalize_worker(host: Any) -> None:
         except Exception:
             pass
 
+        # fixes TASK_4A_FINDINGS.md items 3/4: materialize the remaining two
+        # evidence streams before the required-steps status is written.
+        _write_translation_and_ui_evidence_streams(
+            host,
+            translation_summary=getattr(host, "_translation_shutdown_summary", None),
+            ui_drain=ui_drain,
+        )
         _write_minimal_runtime_artifacts(host, dg_result=dg_result)
         with _state_lock:
             _stop_state["finalize_completed"] = True
@@ -1257,248 +1451,17 @@ def _run_finalize_worker(host: Any) -> None:
         freeze_guard_log("NO_UI_EVENT_AFTER_FINAL_DRAIN_CONFIRMED")
         return
 
-        consistency_result: dict[str, Any] = {}
-
-        def _consistency() -> None:
-            nonlocal consistency_result
-            from alpha.utils.run_consistency import validate_run_consistency
-
-            consistency_result = validate_run_consistency(host=host)
-
-        run_timed_step(host, "run_consistency_check", _consistency)
-
-        readiness: dict[str, Any] = {}
-
-        def _readiness() -> None:
-            nonlocal readiness
-            from alpha.transcription.japanese_sentence_assembler import (
-                get_japanese_continuity_assembler,
-            )
-            from alpha.utils.japanese_accuracy_log import get_japanese_accuracy_event_counts
-            from alpha.utils.runtime_evidence import emit_long_test_readiness
-
-            assembler = get_japanese_continuity_assembler(host)
-            emergency = int(
-                get_japanese_accuracy_event_counts().get("EMERGENCY_COMMIT", 0) or 0
-            )
-            stop_snap = get_stop_finalize_snapshot()
-            stop_snap["finalize_completed"] = True
-            try:
-                from alpha.utils.run_identity import get_current_run_identity
-
-                ident = get_current_run_identity()
-                if ident is not None:
-                    stop_snap["deepgram_close_status"] = ident.deepgram_close_status
-            except Exception:
-                pass
-            readiness = emit_long_test_readiness(
-                host=host,
-                assembler=assembler,
-                emergency_commit_count=emergency,
-                consistency_result=consistency_result,
-                stop_state=stop_snap,
-            )
-
-        run_timed_step(host, "long_test_readiness", _readiness)
-
-        def _run_artifacts() -> None:
-            from alpha.transcription.japanese_sentence_assembler import (
-                get_japanese_continuity_assembler,
-            )
-            from alpha.utils.run_artifacts import (
-                create_upload_evidence_package,
-                finalize_live_run_status_completed,
-                write_final_alpha_output,
-            )
-            from alpha.utils.runtime_evidence import (
-                build_artifact_index_extra,
-                write_run_artifacts_index_safe,
-            )
-            from alpha.utils.run_identity import get_current_run_identity
-            from alpha.utils.segment_count_reconciliation import (
-                reconcile_final_segment_counts,
-            )
-            from alpha.utils.troubleshooting_paths import (
-                assert_no_pending_writers_active,
-                finalize_latest_pointers,
-                finalize_run_manifest,
-                get_active_run_folder,
-                migrate_pending_files_to_run_folder,
-                preflight_upload_evidence,
-                write_writer_registry_snapshot,
-            )
-
-            folder = get_active_run_folder()
-            if folder is not None:
-                migrate_pending_files_to_run_folder(folder)
-                preflight_upload_evidence(folder)
-
-            write_final_alpha_output(host)
-            _evidence_flags["alpha_output_written"] = True
-
-            assembler = get_japanese_continuity_assembler(host)
-            identity = get_current_run_identity()
-            if identity is not None:
-                identity.stop_finalize_completed = True
-            segment_counts = reconcile_final_segment_counts(host)
-            stop_summary = build_stop_finalize_summary(host, dg_result=dg_result)
-            extra = build_artifact_index_extra(
-                host,
-                assembler=assembler,
-                readiness=readiness,
-                stop_state={**get_stop_finalize_snapshot(), **stop_summary},
-            )
-            extra.update(segment_counts)
-            extra.update(stop_summary)
-            index_path = write_run_artifacts_index_safe(host, extra=extra)
-            if index_path is not None:
-                _evidence_flags["run_artifacts_index_written"] = True
-                freeze_guard_log("RUN_ARTIFACTS_INDEX_WRITTEN", path=str(index_path))
-                freeze_guard_log("RUN_ARTIFACTS_INDEX_INITIAL_WRITTEN", path=str(index_path))
-
-            try:
-                from alpha.utils.process_health_telemetry import (
-                    write_memory_trend_summary,
-                    write_process_health_timeline,
-                    collect_process_metrics,
-                )
-
-                proc_path = write_process_health_timeline(collect_process_metrics())
-                _evidence_flags["process_health_timeline_written"] = proc_path is not None
-                mem_path = write_memory_trend_summary()
-                _evidence_flags["memory_trend_summary_written"] = mem_path is not None
-                if proc_path:
-                    freeze_guard_log("PROCESS_HEALTH_TIMELINE_CREATED", path=str(proc_path))
-                if mem_path:
-                    freeze_guard_log("MEMORY_TREND_SUMMARY_WRITTEN", path=str(mem_path))
-                    freeze_guard_log("MEMORY_TELEMETRY_RUN_FOLDER_CONFIRMED")
-            except Exception:
-                pass
-
-            try:
-                from alpha.utils.troubleshooting_paths import get_audio_temp_path
-
-                manifest = get_audio_temp_path("audio_manifest")
-                _evidence_flags["audio_temp_manifest_written"] = manifest.exists()
-            except Exception:
-                pass
-
-            validation_path = None
-            if folder is not None:
-                validation_path = folder / "validation" / "validate_8520_2_output.txt"
-                _evidence_flags["validation_output_written"] = bool(
-                    validation_path and validation_path.exists()
-                )
-                freeze_guard_log("VALIDATION_DEFERRED_UNTIL_AFTER_STOP")
-
-                pending_writers = assert_no_pending_writers_active()
-                if pending_writers:
-                    freeze_guard_log(
-                        "PENDING_WRITE_AFTER_REBIND_BLOCKED",
-                        pending_writers=pending_writers,
-                    )
-                else:
-                    freeze_guard_log("NO_ACTIVE_WRITERS_LEFT_IN_PENDING_CONFIRMED")
-                write_writer_registry_snapshot(folder)
-
-            freeze_guard_log("UPLOAD_PACKAGE_DEFERRED_UNTIL_AFTER_STOP")
-            pkg = create_upload_evidence_package(host, status="completed")
-            upload_zip_path = ""
-            if pkg is not None:
-                if str(pkg).endswith(".zip"):
-                    _evidence_flags["upload_package_zip_created"] = True
-                    upload_zip_path = str(pkg)
-                _evidence_flags["upload_package_index_written"] = True
-                freeze_guard_log("UPLOAD_PACKAGE_ZIP_CREATED_AFTER_VALIDATION")
-            else:
-                _evidence_flags["upload_package_zip_failed_non_blocking"] = True
-
-            # Final rewrite after validation + upload package are complete.
-            final_extra = build_artifact_index_extra(
-                host,
-                assembler=assembler,
-                readiness=readiness,
-                stop_state={**get_stop_finalize_snapshot(), **build_stop_finalize_summary(host, dg_result=dg_result)},
-            )
-            final_extra.update(segment_counts)
-            final_extra.update(_evidence_flags)
-            final_index = write_run_artifacts_index_safe(host, extra=final_extra)
-            if final_index is not None:
-                freeze_guard_log("RUN_ARTIFACTS_INDEX_FINAL_REWRITTEN", path=str(final_index))
-                freeze_guard_log("RUN_ARTIFACTS_INDEX_FINAL_FLAGS_CONFIRMED")
-                freeze_guard_log("RUN_ARTIFACTS_INDEX_STALE_FLAGS_FIXED")
-
-            stop_summary = build_stop_finalize_summary(host, dg_result=dg_result)
-            stop_summary.update(_evidence_flags)
-            finalize_live_run_status_completed(
-                host,
-                segment_counts=segment_counts,
-                stop_summary=stop_summary,
-                evidence_flags=_evidence_flags,
-            )
-            _evidence_flags["live_run_status_written"] = True
-
-            if folder is not None and identity is not None:
-                final_status = "completed"
-                if stop_summary.get("stop_finalize_timed_out"):
-                    final_status = "completed_with_warnings"
-                finalize_latest_pointers(
-                    folder,
-                    run_id=identity.run_id,
-                    status=final_status,
-                    upload_zip_path=upload_zip_path,
-                )
-                finalize_run_manifest(
-                    folder,
-                    status=final_status,
-                    artifact_flags=_evidence_flags,
-                    stop_summary=stop_summary,
-                )
-
-            try:
-                from alpha.utils.audio_temp_capture import cleanup_old_audio_temp
-
-                cleanup_old_audio_temp(reason="stop_finalize")
-            except Exception:
-                pass
-
-        run_timed_step(host, "run_artifacts_index", _run_artifacts)
-
-        def _async_flush() -> None:
-            from alpha.utils.async_debug_log import flush_async_debug_logging_safe
-
-            flush_async_debug_logging_safe(timeout_ms=500.0)
-
-        run_timed_step(host, "async_debug_flush", _async_flush)
-
-        with _state_lock:
-            _stop_state["finalize_completed"] = True
-
-        stop_summary = build_stop_finalize_summary(host, dg_result=dg_result)
-        timed_out = bool(stop_summary.get("stop_finalize_timed_out", False))
-
-        freeze_guard_log("STOP_FINALIZE_COMPLETED", **stop_summary)
-        freeze_guard_log("STOP_FINALIZE_WORKER_DONE", **stop_summary)
-        try:
-            from alpha.utils.flight_recorder import record_flight_event
-
-            record_flight_event(
-                "stop_finalize_completed",
-                host=host,
-                force=True,
-                **stop_summary,
-            )
-        except Exception:
-            pass
-
-        try:
-            from alpha.utils.async_debug_log import log_runtime_debug_event
-
-            log_runtime_debug_event("STOP_LISTENING_DONE")
-        except Exception:
-            pass
-
-        _queue_final_ui_update(host, timed_out=timed_out)
+    # fixes TASK_4A_FINDINGS.md item 5: this entire block (run_consistency_check
+    # through the final _queue_final_ui_update call) was unreachable dead code
+    # -- it sat after the unconditional `return` above and could never execute.
+    # It independently re-implemented the same "write final export, reconcile
+    # segment counts, write artifacts index, create upload package, finalize
+    # live status/manifest/pointers" sequence that evidence_pointer_finalize.py
+    # now performs live in the background (see schedule_evidence_pointer_finalization_background
+    # above), including its own final_status derivation. Removed rather than
+    # left as silently-unreachable code, per the decision recorded in
+    # TASK_4B_CHANGES.md; nothing here ever ran, so removing it changes no
+    # runtime behavior.
 
     except Exception as exc:
         freeze_guard_log(

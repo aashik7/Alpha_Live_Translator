@@ -194,9 +194,43 @@ class DuplicateProtectionMixin:
         if not text:
             return
 
+        # fixes TASK_5_FINAL_CLEANUP_REPORT.md Fix 2: TranscriptStore itself
+        # has no channel/canonical_utterance_id concept (would require
+        # modifying transcript_store.py, outside this fix's file scope —
+        # see TASK_2E_FINDINGS.md item 3). Verify with what IS available:
+        # only trust a positionally-found "last segment for this speaker"
+        # as this item's previous_text when the identity registry confirms
+        # this canonical_utterance_id has been observed before (a genuine
+        # revision) — never for a first-time utterance, and always via the
+        # hard-speaker-boundary-safe lookup (get_last_segment_if_active,
+        # Task 2F) instead of the plain positional one.
+        session_id = str(item.get("session_id") or getattr(self, "_live_session_id", "") or "")
+        channel_index = item.get("channel_index", item.get("channel"))
+        canonical_utterance_id = str(item.get("canonical_utterance_id") or "")
+        allow_previous_lookup = True
+        if canonical_utterance_id:
+            try:
+                from alpha.transcription.canonical_identity_registry import (
+                    resolve_canonical_record_id,
+                )
+
+                allow_previous_lookup = bool(
+                    resolve_canonical_record_id(
+                        session_id=session_id,
+                        channel_index=channel_index,
+                        canonical_utterance_id=canonical_utterance_id,
+                    )
+                )
+            except Exception:
+                allow_previous_lookup = False
+
         previous_text = None
-        if hasattr(self, "transcript_store") and self.transcript_store is not None:
-            segment = self.transcript_store.get_last_segment(speaker_num)
+        if (
+            allow_previous_lookup
+            and hasattr(self, "transcript_store")
+            and self.transcript_store is not None
+        ):
+            segment = self.transcript_store.get_last_segment_if_active(speaker_num)
             if segment is not None:
                 previous_text = segment.text
 
@@ -219,17 +253,129 @@ class DuplicateProtectionMixin:
         # Canonical Stable commit is the translation authority.
         # Japanese assembler commits before publish (canonical_record_id set).
         # English / generic finals must commit here before UI + DeepL.
-        already_committed = bool(
+        # fixes TASK_5_FINAL_CLEANUP_REPORT.md Fix 2 / REPAIR_PLAN.md Phase 1
+        # rule ("no operation may select a target because it is merely the
+        # latest active record" — applied here to a claim of "already
+        # committed"): verify the claim against the identity registry
+        # instead of trusting caller-supplied flags outright. This is now
+        # safe for Japanese too — Fix 1 made the Japanese assembler register
+        # identity via the same accept_boundary_proposal path English's
+        # fallback below already used, so the registry has a real entry to
+        # verify against instead of always being empty for Japanese items.
+        raw_committed_claim = bool(
             item.get("canonical_record_id")
             or item.get("_jp_continuity_assembler")
             or item.get("canonical_ledger_committed")
         )
+        already_committed = False
+        if raw_committed_claim:
+            if canonical_utterance_id:
+                try:
+                    from alpha.transcription.canonical_identity_registry import (
+                        resolve_canonical_record_id as _resolve_for_trust_gate,
+                    )
+
+                    exact_record_id = str(
+                        _resolve_for_trust_gate(
+                            session_id=session_id,
+                            channel_index=channel_index,
+                            canonical_utterance_id=canonical_utterance_id,
+                        )
+                        or ""
+                    )
+                except Exception:
+                    exact_record_id = ""
+                claimed_record_id = str(item.get("canonical_record_id") or "")
+                if exact_record_id and (
+                    not claimed_record_id or claimed_record_id == exact_record_id
+                ):
+                    already_committed = True
+                else:
+                    try:
+                        from alpha.utils.japanese_accuracy_log import jp_accuracy_log as _jal
+
+                        _jal(
+                            "ALREADY_COMMITTED_CLAIM_UNVERIFIED",
+                            session_id=session_id,
+                            channel_index=channel_index,
+                            canonical_utterance_id=canonical_utterance_id,
+                            claimed_record_id=claimed_record_id,
+                            registry_record_id=exact_record_id,
+                        )
+                    except Exception:
+                        pass
+            # No canonical_utterance_id at all: the claim is unverifiable —
+            # fail closed (already_committed stays False), same rule Task 1
+            # applied to canonical record targeting.
         if not already_committed:
             try:
+                from alpha.transcription.canonical_identity_registry import (
+                    assign_canonical_record_id,
+                    observe_identity,
+                    resolve_canonical_record_id,
+                )
                 from alpha.transcription.pipeline_commit_transaction import (
                     execute_pipeline_commit,
                 )
                 from alpha.utils.pipeline_integrity import PipelineIntegrityError
+                from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+                session_id = str(
+                    item.get("session_id")
+                    or getattr(self, "_live_session_id", "")
+                    or ""
+                )
+                channel_index = item.get("channel_index", item.get("channel"))
+                canonical_utterance_id = str(item.get("canonical_utterance_id") or "")
+                provider_utterance_id = str(
+                    item.get("provider_utterance_id")
+                    or item.get("request_id")
+                    or item.get("event_id")
+                    or ""
+                )
+                source_version = int(item.get("source_version") or 1)
+                canonical_decision = str(
+                    item.get("canonical_decision")
+                    or item.get("lifecycle_decision")
+                    or ("SUPERSEDE" if action == "update" else "CREATE_NEW")
+                ).upper()
+                identity = observe_identity(
+                    session_id=session_id,
+                    channel_index=channel_index,
+                    canonical_utterance_id=canonical_utterance_id,
+                    provider_utterance_id=provider_utterance_id,
+                    source_version=source_version,
+                    decision=canonical_decision,
+                    text=result_text,
+                    lifecycle_state=str(
+                        item.get("lifecycle_state")
+                        or ("COMMITTED" if item.get("speech_final") else "ACTIVE_FINAL_CHUNK")
+                    ),
+                    translation_eligible=bool(item.get("translation_eligible", True)),
+                )
+                if not identity.accepted:
+                    self._transcript_stability_counters.skipped += 1
+                    jp_accuracy_log(
+                        "IDENTITY_REJECTION",
+                        reason=identity.reason,
+                        session_id=session_id,
+                        channel_index=channel_index,
+                        canonical_utterance_id=canonical_utterance_id,
+                        source_version=source_version,
+                    )
+                    return
+                if identity.duplicate:
+                    self._transcript_stability_counters.skipped += 1
+                    jp_accuracy_log(
+                        "DUPLICATE_IGNORE",
+                        reason=identity.reason,
+                        session_id=session_id,
+                        channel_index=channel_index,
+                        canonical_utterance_id=canonical_utterance_id,
+                        source_version=source_version,
+                        canonical_record_id=(identity.entry or {}).get("canonical_record_id", ""),
+                    )
+                    return
 
                 applied = "append"
                 if action == "update":
@@ -241,20 +387,40 @@ class DuplicateProtectionMixin:
                     or item.get("superseded_record_id")
                     or ""
                 )
-                # Prefer concrete ledger record id over utterance id (U-N).
-                if revision_target.startswith("U-"):
-                    try:
-                        from alpha.transcription.utterance_lifecycle import (
-                            get_utterance_lifecycle,
+                if applied == "revise":
+                    exact_target = str(
+                        resolve_canonical_record_id(
+                            session_id=session_id,
+                            channel_index=channel_index,
+                            canonical_utterance_id=canonical_utterance_id,
                         )
-
-                        last = getattr(
-                            get_utterance_lifecycle(self), "_last_committed", None
+                        or ""
+                    )
+                    if revision_target and exact_target and revision_target != exact_target:
+                        self._transcript_stability_counters.skipped += 1
+                        jp_accuracy_log(
+                            "IDENTITY_REJECTION",
+                            reason="ambiguous_revision_target",
+                            session_id=session_id,
+                            channel_index=channel_index,
+                            canonical_utterance_id=canonical_utterance_id,
+                            source_version=source_version,
+                            revision_target_id=revision_target,
+                            exact_target_id=exact_target,
                         )
-                        if last is not None and str(last.committed_record_id or "").strip():
-                            revision_target = str(last.committed_record_id)
-                    except Exception:
-                        pass
+                        return
+                    revision_target = exact_target or revision_target
+                    if not revision_target:
+                        self._transcript_stability_counters.skipped += 1
+                        jp_accuracy_log(
+                            "FALLBACK_BLOCKED",
+                            reason="missing_exact_revision_target",
+                            session_id=session_id,
+                            channel_index=channel_index,
+                            canonical_utterance_id=canonical_utterance_id,
+                            source_version=source_version,
+                        )
+                        return
                 txn = execute_pipeline_commit(
                     speaker=int(speaker_num or 1),
                     assembler_text=result_text,
@@ -270,54 +436,20 @@ class DuplicateProtectionMixin:
                     ),
                     metadata={
                         "source": "duplicate_protection_display",
-                        "session_id": str(getattr(self, "_live_session_id", "") or ""),
-                        "canonical_utterance_id": str(
-                            item.get("canonical_utterance_id") or ""
-                        ),
-                        "source_version": item.get("source_version"),
+                        "session_id": session_id,
+                        "channel_index": channel_index,
+                        "canonical_utterance_id": canonical_utterance_id,
+                        "provider_utterance_id": provider_utterance_id,
+                        "source_version": source_version,
+                        "canonical_decision": canonical_decision,
+                        "idempotency_decision": canonical_decision,
+                        "translation_eligible": bool(item.get("translation_eligible", True)),
                         "synthetic_record": not bool(item.get("source_raw_event_ids")),
                     },
                 )
-                if (
-                    not txn.success
-                    and action == "update"
-                    and applied == "revise"
-                ):
-                    # Fallback: commit replacement as append is wrong; force
-                    # store/UI update path with a synthetic append only when
-                    # the ledger cannot revise (missing target). Prefer update
-                    # of the visible record and accept a new ledger row only
-                    # when revise is impossible — then still replace UI.
-                    txn = execute_pipeline_commit(
-                        speaker=int(speaker_num or 1),
-                        assembler_text=result_text,
-                        final_text=result_text,
-                        requested_action="append",
-                        applied_action="append",
-                        revision_target_id="",
-                        source_raw_event_ids=list(item.get("source_raw_event_ids") or []),
-                        commit_reason=str(
-                            item.get("lifecycle_commit_reason")
-                            or "utterance_supersede_fallback_append"
-                        ),
-                        metadata={
-                            "source": "duplicate_protection_supersede_fallback",
-                            "session_id": str(
-                                getattr(self, "_live_session_id", "") or ""
-                            ),
-                            "canonical_utterance_id": str(
-                                item.get("canonical_utterance_id") or ""
-                            ),
-                            "source_version": item.get("source_version"),
-                            "superseded_record_id": revision_target,
-                            "synthetic_record": True,
-                        },
-                    )
                 if not txn.success:
                     self._transcript_stability_counters.skipped += 1
                     try:
-                        from alpha.utils.japanese_accuracy_log import jp_accuracy_log
-
                         jp_accuracy_log(
                             "STABLE_COMMIT_BEFORE_TRANSLATION_REJECTED",
                             failure_reason=txn.failure_reason,
@@ -333,20 +465,33 @@ class DuplicateProtectionMixin:
                     return
                 item["canonical_record_id"] = txn.record_id
                 item["canonical_ledger_committed"] = True
-                try:
-                    from alpha.transcription.utterance_lifecycle import (
-                        get_utterance_lifecycle,
+                assign_result = assign_canonical_record_id(
+                    session_id=session_id,
+                    channel_index=channel_index,
+                    canonical_utterance_id=canonical_utterance_id,
+                    canonical_record_id=str(txn.record_id or ""),
+                )
+                if not assign_result.accepted:
+                    self._transcript_stability_counters.skipped += 1
+                    jp_accuracy_log(
+                        "IDENTITY_REJECTION",
+                        reason=assign_result.reason,
+                        session_id=session_id,
+                        channel_index=channel_index,
+                        canonical_utterance_id=canonical_utterance_id,
+                        canonical_record_id=str(txn.record_id or ""),
                     )
-
-                    life = get_utterance_lifecycle(self)
-                    uid = str(item.get("canonical_utterance_id") or "")
-                    last = getattr(life, "_last_committed", None)
-                    if last is not None and (
-                        not uid or str(last.utterance_id) == uid
-                    ):
-                        last.committed_record_id = str(txn.record_id or "")
-                except Exception:
-                    pass
+                    return
+                if txn.evidence_write_failed or txn.metrics_write_failed:
+                    jp_accuracy_log(
+                        "COMMIT_APPLIED",
+                        session_id=session_id,
+                        channel_index=channel_index,
+                        canonical_utterance_id=canonical_utterance_id,
+                        canonical_record_id=str(txn.record_id or ""),
+                        evidence_write_failed=txn.evidence_write_failed,
+                        metrics_write_failed=txn.metrics_write_failed,
+                    )
             except PipelineIntegrityError as exc:
                 self._transcript_stability_counters.skipped += 1
                 if "frozen" in str(exc).lower():
@@ -389,6 +534,10 @@ class DuplicateProtectionMixin:
         # and only after a successful canonical Stable commit above.
         canonical_utterance_id = str(item.get("canonical_utterance_id") or "")
         source_version = int(item.get("source_version") or 1)
+        translation_eligible = bool(item.get("translation_eligible", True))
+        if not translation_eligible:
+            self._render_transcript_from_store()
+            return
         if action == "update" and hasattr(self, "_on_store_segment_updated"):
             self._on_store_segment_updated(
                 speaker_num,

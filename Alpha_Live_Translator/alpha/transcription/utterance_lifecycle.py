@@ -5,8 +5,16 @@ English / non-Japanese path: buffer incomplete finals (is_final=true,
 speech_final=false), replace one active UI record, and commit once on
 speech_final / UtteranceEnd / bounded inactivity timeout.
 
-Japanese finals continue through japanese_final_chunk_stabilizer and are
-not owned by this module.
+Japanese finals still use their own boundary/timing strategy in
+japanese_final_chunk_stabilizer.py / japanese_sentence_assembler.py (this
+is explicitly allowed by REPAIR_PLAN.md Phase 2: "Japanese and English may
+use different boundary strategies"). What is no longer separate: identity
+registration and the actual canonical-ledger commit. Per
+TASK_5_FINAL_CLEANUP_REPORT.md Fix 1, the Japanese assembler proposes its
+already-decided HOLD/EXTEND/COMMIT-shaped action to this module via
+`accept_boundary_proposal` instead of calling execute_pipeline_commit and
+canonical_identity_registry independently -- this is now the single place
+identity is observed/assigned and commits happen, for both languages.
 """
 
 from __future__ import annotations
@@ -38,6 +46,11 @@ CREATE_NEW_UTTERANCE = "CREATE_NEW_UTTERANCE"
 SUPERSEDE_PREVIOUS = "SUPERSEDE_PREVIOUS"
 IGNORE_DUPLICATE = "IGNORE_DUPLICATE"
 CANCEL_ACTIVE = "CANCEL_ACTIVE"
+
+REPLACE_PROVISIONAL = "REPLACE_PROVISIONAL"
+SUPERSEDE = "SUPERSEDE"
+TERMINAL_COMMIT = "TERMINAL_COMMIT"
+CREATE_NEW = "CREATE_NEW"
 
 # Timing proximity for same-utterance merge (seconds). Short — not a minute wait.
 _TIMING_GAP_MAX_S = 2.5
@@ -90,13 +103,13 @@ def _merge_lexical(previous: str, current: str) -> str:
     return f"{prev}, {curr}"
 
 
-def _channels_compatible(a: Any, b: Any) -> bool:
-    if a is None or b is None:
-        return True
+def _channel_matches_exactly(expected: Any, observed: Any) -> bool:
+    if expected is None or observed is None:
+        return expected is None and observed is None
     try:
-        return int(a) == int(b)
+        return int(expected) == int(observed)
     except (TypeError, ValueError):
-        return str(a) == str(b)
+        return str(expected) == str(observed)
 
 
 def _timing_compatible(
@@ -141,6 +154,37 @@ def _text_related(previous: str, current: str) -> bool:
     if prefix >= 8 and prev_n[:prefix] == curr_n[:prefix]:
         return True
     return False
+
+
+def _provider_utterance_id(
+    metadata: dict[str, Any],
+    *,
+    event_id: str = "",
+    deepgram_request_id: str = "",
+) -> str:
+    return str(
+        metadata.get("provider_utterance_id")
+        or metadata.get("request_id")
+        or metadata.get("event_id")
+        or deepgram_request_id
+        or event_id
+        or ""
+    )
+
+
+def _canonical_decision_name(decision: str) -> str:
+    normalized = str(decision or "").upper()
+    if normalized in (IGNORE_DUPLICATE, "IGNORE"):
+        return "IGNORE"
+    if normalized in (REPLACE_ACTIVE, EXTEND_ACTIVE, HOLD_FINAL_CHUNK, REPLACE_PROVISIONAL):
+        return REPLACE_PROVISIONAL
+    if normalized in (SUPERSEDE_PREVIOUS, SUPERSEDE):
+        return SUPERSEDE
+    if normalized in (COMMIT_ACTIVE, TERMINAL_COMMIT):
+        return TERMINAL_COMMIT
+    if normalized in (CREATE_ACTIVE, CREATE_NEW_UTTERANCE, CREATE_NEW):
+        return CREATE_NEW
+    return normalized or CREATE_NEW
 
 
 @dataclass
@@ -238,6 +282,12 @@ class UtteranceLifecycleOwner:
                     "session_id": self._session_id,
                 }
             )
+        try:
+            from alpha.transcription.canonical_identity_registry import reset_for_session
+
+            reset_for_session(self._session_id)
+        except Exception:
+            pass
 
     def bind_host(self, host: Any) -> None:
         self._host = host
@@ -260,6 +310,316 @@ class UtteranceLifecycleOwner:
     def events(self) -> list[dict[str, Any]]:
         with self._lock:
             return list(self._events)
+
+    def _observe_identity(
+        self,
+        *,
+        utterance_id: str,
+        channel: Any,
+        version: int,
+        decision: str,
+        text: str,
+        lifecycle_state: str,
+        translation_eligible: bool,
+        metadata: dict[str, Any],
+        deepgram_request_id: str = "",
+        event_id: str = "",
+    ) -> tuple[bool, str, dict[str, Any]]:
+        try:
+            from alpha.transcription.canonical_identity_registry import observe_identity
+
+            result = observe_identity(
+                session_id=self._session_id,
+                channel_index=channel,
+                canonical_utterance_id=utterance_id,
+                provider_utterance_id=_provider_utterance_id(
+                    metadata,
+                    event_id=event_id,
+                    deepgram_request_id=deepgram_request_id,
+                ),
+                source_version=version,
+                decision=_canonical_decision_name(decision),
+                text=text,
+                lifecycle_state=lifecycle_state,
+                translation_eligible=translation_eligible,
+            )
+            return bool(result.accepted), str(result.reason or ""), dict(result.entry or {})
+        except Exception:
+            return True, "unavailable", {}
+
+    def _resolve_correction_target_locked(
+        self,
+        *,
+        channel: Any,
+        metadata: dict[str, Any],
+    ) -> tuple[str, str]:
+        target_record_id = str(metadata.get("revision_target_id") or "").strip()
+        target_utterance_id = str(metadata.get("canonical_utterance_id") or "").strip()
+        if not target_record_id and not target_utterance_id:
+            return "", ""
+        try:
+            from alpha.transcription.canonical_identity_registry import resolve_canonical_record_id
+
+            if target_utterance_id:
+                exact_record_id = str(
+                    resolve_canonical_record_id(
+                        session_id=self._session_id,
+                        channel_index=channel,
+                        canonical_utterance_id=target_utterance_id,
+                    )
+                    or ""
+                )
+                if not exact_record_id:
+                    return "", target_utterance_id
+                if target_record_id and target_record_id != exact_record_id:
+                    return "", target_utterance_id
+                return exact_record_id, target_utterance_id
+        except Exception:
+            pass
+        return target_record_id, target_utterance_id
+
+    # ------------------------------------------------------------------
+    # fixes TASK_5_FINAL_CLEANUP_REPORT.md Fix 1 / REPAIR_PLAN.md Phase 2
+    # ("only the canonical utterance controller may decide create/extend/
+    # replace/commit/supersede/ignore; other modules may only recommend"):
+    # a single entry point for a caller that has already decided its own
+    # HOLD/EXTEND/COMMIT-shaped boundary action (the Japanese assembler's
+    # existing, already-correct boundary/revision-decision chain from Tasks
+    # 2B-2D) to PROPOSE that action here instead of calling
+    # execute_pipeline_commit and the identity registry independently.
+    # This does not re-decide the boundary/timing strategy itself --
+    # REPAIR_PLAN.md explicitly allows Japanese and English to use
+    # different boundary strategies, only requiring one shared commit/
+    # identity system, which this method now is (mirroring exactly what
+    # duplicate_protection.py already does for the English/manual-mode
+    # path, so there is one identity-registration + commit implementation,
+    # not two).
+    # ------------------------------------------------------------------
+    def accept_boundary_proposal(
+        self,
+        *,
+        action: str,
+        text: str,
+        speaker: int = 1,
+        channel: Any = None,
+        canonical_utterance_id: str = "",
+        source_version: int = 1,
+        revision_target_id: str = "",
+        provider_utterance_id: str = "",
+        source_raw_event_ids: Optional[list[str]] = None,
+        commit_reason: str = "",
+        lifecycle_state: str = "",
+        translation_eligible: bool = True,
+        extra_commit_kwargs: Optional[dict[str, Any]] = None,
+    ) -> dict[str, Any]:
+        """Accept a HOLD/EXTEND/COMMIT-shaped proposal from a boundary
+        strategy (e.g. the Japanese assembler). `action` is one of
+        "hold" (no commit), "commit_new" (append), "revise_previous".
+        Returns {"accepted", "success", "record_id", "reason", ...} --
+        never raises; the caller must not commit on any falsy `success`.
+        """
+        result: dict[str, Any] = {
+            "accepted": False,
+            "success": False,
+            "record_id": "",
+            "reason": "",
+            "applied_action": "",
+            "transaction_id": "",
+            "metadata": {},
+            "canonical_utterance_id": str(canonical_utterance_id or ""),
+            "source_version": int(source_version or 1),
+        }
+        if action == "hold":
+            result["reason"] = "hold_no_commit_requested"
+            return result
+
+        cleaned = (text or "").strip()
+        if not cleaned:
+            result["reason"] = "empty_text"
+            return result
+
+        utterance_id = str(canonical_utterance_id or "").strip()
+        if not utterance_id:
+            # fixes TASK_1A_FINDINGS.md Pattern 1 lineage: no canonical
+            # identity to register against -- fail closed, never guess.
+            result["reason"] = "missing_canonical_utterance_id"
+            return result
+
+        with self._lock:
+            session_id = self._session_id
+
+        decision_name = "SUPERSEDE" if action == "revise_previous" else "CREATE_NEW"
+
+        try:
+            from alpha.transcription.canonical_identity_registry import (
+                assign_canonical_record_id,
+                observe_identity,
+            )
+            from alpha.transcription.pipeline_commit_transaction import (
+                execute_pipeline_commit,
+            )
+        except Exception as exc:
+            result["reason"] = f"import_failed:{type(exc).__name__}:{exc}"
+            return result
+
+        try:
+            identity = observe_identity(
+                session_id=session_id,
+                channel_index=channel,
+                canonical_utterance_id=utterance_id,
+                provider_utterance_id=str(provider_utterance_id or ""),
+                source_version=int(source_version or 1),
+                decision=decision_name,
+                text=cleaned,
+                lifecycle_state=lifecycle_state or "COMMITTED",
+                translation_eligible=bool(translation_eligible),
+            )
+        except Exception as exc:
+            result["reason"] = f"observe_identity_failed:{type(exc).__name__}:{exc}"
+            return result
+
+        if not identity.accepted:
+            result["reason"] = identity.reason or "identity_rejected"
+            return result
+        if identity.duplicate:
+            result.update(
+                {
+                    "accepted": True,
+                    "success": False,
+                    "reason": identity.reason or "duplicate",
+                    "record_id": str((identity.entry or {}).get("canonical_record_id", "")),
+                }
+            )
+            return result
+
+        applied = "revise" if action == "revise_previous" else "append"
+        resolved_target = str(revision_target_id or "")
+        if applied == "revise":
+            with self._lock:
+                exact_target, _ = self._resolve_correction_target_locked(
+                    channel=channel,
+                    metadata={
+                        "revision_target_id": resolved_target,
+                        "canonical_utterance_id": utterance_id,
+                    },
+                )
+            if not exact_target:
+                # fixes TASK_1A_FINDINGS.md Pattern 1: no exact target found
+                # -- reject the revision rather than guess/fall back.
+                result["reason"] = "missing_exact_revision_target"
+                return result
+            resolved_target = exact_target
+
+        try:
+            kwargs = dict(extra_commit_kwargs or {})
+            txn = execute_pipeline_commit(
+                speaker=int(speaker or 1),
+                assembler_text=cleaned,
+                final_text=cleaned,
+                requested_action=applied,
+                applied_action=applied,
+                revision_target_id=resolved_target,
+                source_raw_event_ids=list(source_raw_event_ids or []),
+                commit_reason=commit_reason or "japanese_boundary_proposal",
+                metadata={
+                    "source": "utterance_lifecycle_accept_boundary_proposal",
+                    "session_id": session_id,
+                    "channel_index": channel,
+                    "canonical_utterance_id": utterance_id,
+                    "source_version": int(source_version or 1),
+                    "canonical_decision": decision_name,
+                    "idempotency_decision": decision_name,
+                    "translation_eligible": bool(translation_eligible),
+                    "synthetic_record": not bool(source_raw_event_ids),
+                },
+                **kwargs,
+            )
+        except Exception as exc:
+            result["reason"] = f"commit_failed:{type(exc).__name__}:{exc}"
+            return result
+
+        if not txn.success:
+            result.update(
+                {"accepted": True, "success": False, "reason": txn.failure_reason or "commit_not_successful"}
+            )
+            return result
+
+        try:
+            assign_result = assign_canonical_record_id(
+                session_id=session_id,
+                channel_index=channel,
+                canonical_utterance_id=utterance_id,
+                canonical_record_id=str(txn.record_id or ""),
+            )
+        except Exception as exc:
+            assign_result = None
+            result["reason"] = f"assign_canonical_record_id_failed:{type(exc).__name__}:{exc}"
+
+        identity_assigned = bool(assign_result.accepted) if assign_result is not None else False
+
+        # fixes TASK_6_REPORT.md P0 (ALPHA_ARCHITECTURE_DEBUG_REPORT.md
+        # "Canonical commit reports success when identity assignment
+        # fails"): identity binding and ledger commit must be atomic. The
+        # ledger transaction above already applied a real mutation
+        # (txn.success is True at this point) -- if identity binding fails
+        # or rejects afterward, success must NOT be True, and the ledger
+        # record must be explicitly quarantined (suppressed, not left as a
+        # silent orphan a later revision/translation could address wrongly)
+        # rather than just returning success=False with no downstream
+        # signal.
+        if not identity_assigned:
+            quarantine_reason = str(result.get("reason") or "identity_assignment_failed")
+            try:
+                from alpha.transcription.canonical_transcript_ledger import (
+                    suppress_record,
+                )
+
+                suppress_record(
+                    record_id=str(txn.record_id or ""),
+                    suppression_reason=f"identity_incomplete:{quarantine_reason}",
+                    commit_reason=commit_reason or "japanese_boundary_proposal",
+                    transaction_id=str(txn.transaction_id or ""),
+                )
+            except Exception as exc:
+                # Quarantine itself failing must not be swallowed into a
+                # false success either -- record it and still fail closed.
+                quarantine_reason = f"{quarantine_reason};quarantine_failed:{type(exc).__name__}:{exc}"
+            result.update(
+                {
+                    "accepted": True,
+                    "success": False,
+                    "reason": quarantine_reason,
+                    "record_id": str(txn.record_id or ""),
+                    "identity_assigned": False,
+                    "quarantined": True,
+                    "evidence_write_failed": bool(txn.evidence_write_failed),
+                    "metrics_write_failed": bool(txn.metrics_write_failed),
+                    "applied_action": applied,
+                    "transaction_id": txn.transaction_id,
+                    "metadata": dict(txn.metadata or {}),
+                    "canonical_utterance_id": utterance_id,
+                    "source_version": int(source_version or 1),
+                }
+            )
+            return result
+
+        result.update(
+            {
+                "accepted": True,
+                "success": True,
+                "record_id": str(txn.record_id or ""),
+                "identity_assigned": True,
+                "quarantined": False,
+                "evidence_write_failed": bool(txn.evidence_write_failed),
+                "metrics_write_failed": bool(txn.metrics_write_failed),
+                "applied_action": applied,
+                "transaction_id": txn.transaction_id,
+                "metadata": dict(txn.metadata or {}),
+                "canonical_utterance_id": utterance_id,
+                "source_version": int(source_version or 1),
+            }
+        )
+        return result
 
     # ------------------------------------------------------------------
     # Event handlers
@@ -346,6 +706,37 @@ class UtteranceLifecycleOwner:
                     version=active.version,
                 )
                 self._record_decision(d, is_final=True, speech_final=True, channel=channel)
+                return d
+            if not _channel_matches_exactly(active.channel, channel):
+                try:
+                    from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+                    jp_accuracy_log(
+                        "CROSS_CHANNEL_END_IGNORED",
+                        session_id=self._session_id,
+                        active_channel=active.channel,
+                        observed_channel=channel,
+                        canonical_utterance_id=active.utterance_id,
+                    )
+                except Exception:
+                    pass
+                d = LifecycleDecision(
+                    decision=IGNORE_DUPLICATE,
+                    reason="cross_channel_utterance_end_ignored",
+                    utterance_id=active.utterance_id,
+                    text=active.text,
+                    session_id=self._session_id,
+                    event_id=event_id or f"ue-{time.time_ns()}",
+                    version=active.version,
+                    metadata={
+                        "channel": active.channel,
+                        "canonical_utterance_id": active.utterance_id,
+                        "source_version": active.version,
+                        "canonical_decision": "IGNORE",
+                        "translation_eligible": False,
+                    },
+                )
+                self._record_decision(d, is_final=True, speech_final=None, channel=channel)
                 return d
             return self._commit_locked(
                 reason="utterance_end",
@@ -455,6 +846,37 @@ class UtteranceLifecycleOwner:
 
             # Case A — interim only
             if not is_final:
+                if (
+                    active is not None
+                    and not active.committed
+                    and not self._compatible_with_active_locked(
+                        speaker=speaker,
+                        channel=channel,
+                        cand_start=cand_start,
+                        cand_end=cand_end,
+                        lexical=lexical,
+                    )
+                ):
+                    # fixes: interim updates previously bypassed all
+                    # speaker/channel/timing compatibility checks and could
+                    # silently merge into (and corrupt) an unrelated held
+                    # utterance. An incompatible interim is now ignored so
+                    # the held utterance is left untouched, instead of being
+                    # merged or discarded.
+                    d = LifecycleDecision(
+                        decision=IGNORE_DUPLICATE,
+                        reason="interim_incompatible_with_active_utterance",
+                        utterance_id=active.utterance_id,
+                        text=active.text,
+                        previous_text=active.text,
+                        session_id=self._session_id,
+                        event_id=event_id,
+                        version=active.version,
+                    )
+                    self._record_decision(
+                        d, is_final=False, speech_final=False, channel=channel
+                    )
+                    return d
                 return self._apply_active_update_locked(
                     lexical=lexical,
                     speaker=speaker,
@@ -646,7 +1068,11 @@ class UtteranceLifecycleOwner:
             return False
         if int(active.speaker or 1) != int(speaker or 1):
             return False
-        if not _channels_compatible(active.channel, channel):
+        if not _channel_matches_exactly(active.channel, channel):
+            # fixes TASK_1A_FINDINGS.md Pattern 2: _channels_compatible() treated
+            # a None channel on either side as an automatic match, which allowed
+            # a candidate on a known channel to merge into an active utterance
+            # whose channel was unset (or vice versa). Exact match only.
             return False
         timing_ok = _timing_compatible(
             active.start_time, active.end_time, cand_start, cand_end
@@ -658,16 +1084,31 @@ class UtteranceLifecycleOwner:
         if text_ok and active.state in (ACTIVE_INTERIM, ACTIVE_FINAL_CHUNK, READY_TO_COMMIT):
             # Fallback requires non-terminal + session already matched + channel ok.
             return True
-        # Adjacent non-overlapping chunks while holding final: allow extend when
-        # previous was ACTIVE_FINAL_CHUNK and gap is small / unknown.
-        if active.state == ACTIVE_FINAL_CHUNK:
-            if cand_start < 0 or active.end_time < 0:
-                return True
-            if _timing_compatible(
-                active.start_time, active.end_time, cand_start, cand_end
-            ):
-                return True
+        # fixes TASK_2A_FINDINGS.md Item 4/5: a held final chunk with no
+        # timing data on the candidate was previously treated as compatible
+        # unconditionally, letting an unrelated utterance merge into the
+        # held one. Missing timing data is no longer an automatic match --
+        # timing_ok/text_ok above already cover every case that should merge.
         return False
+
+    def _log_identity_mismatch(self, reason: str, *, prev: "ActiveUtterance", channel: Any) -> None:
+        # fixes TASK_1A_FINDINGS.md Pattern 1: "no exact match -> reject revision,
+        # log identity mismatch" was previously silent for correction-target
+        # rejections in _is_correction_of_committed_locked.
+        try:
+            from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+            jp_accuracy_log(
+                "IDENTITY_REJECTION",
+                reason=reason,
+                session_id=self._session_id,
+                active_channel=prev.channel,
+                observed_channel=channel,
+                canonical_utterance_id=prev.utterance_id,
+                committed_record_id=prev.committed_record_id,
+            )
+        except Exception:
+            pass
 
     def _is_correction_of_committed_locked(
         self,
@@ -681,20 +1122,24 @@ class UtteranceLifecycleOwner:
         prev = self._last_committed
         if prev is None or not prev.committed:
             return False
-        if not _channels_compatible(prev.channel, channel):
+        if not _channel_matches_exactly(prev.channel, channel):
+            self._log_identity_mismatch("channel_mismatch", prev=prev, channel=channel)
             return False
-        # Explicit lineage / revision target
-        target = str(
-            metadata.get("revision_target_id")
-            or metadata.get("revision_target_line_id")
-            or metadata.get("canonical_utterance_id")
-            or ""
+        target_record_id, target_utterance_id = self._resolve_correction_target_locked(
+            channel=channel,
+            metadata=metadata,
         )
-        if target and target in (prev.utterance_id, prev.committed_record_id):
-            return _text_related(prev.text, lexical) or True
+        if not target_record_id:
+            self._log_identity_mismatch("no_exact_revision_target", prev=prev, channel=channel)
+            return False
+        if target_record_id != str(prev.committed_record_id or ""):
+            self._log_identity_mismatch("revision_target_record_mismatch", prev=prev, channel=channel)
+            return False
+        if target_utterance_id and target_utterance_id != str(prev.utterance_id or ""):
+            self._log_identity_mismatch("revision_target_utterance_mismatch", prev=prev, channel=channel)
+            return False
         if not _timing_compatible(prev.start_time, prev.end_time, cand_start, cand_end):
             return False
-        # Same start window + related text → authoritative same-utterance correction
         return _text_related(prev.text, lexical)
 
     def _apply_active_update_locked(
@@ -757,6 +1202,24 @@ class UtteranceLifecycleOwner:
                     version=active.version,
                     should_update_interim=False,
                 )
+                d.metadata = {
+                    "source": source,
+                    "start_time": active.start_time,
+                    "end_time": active.end_time,
+                    "channel": active.channel,
+                    "channel_index": active.channel,
+                    "speaker": active.speaker,
+                    "canonical_utterance_id": active.utterance_id,
+                    "provider_utterance_id": _provider_utterance_id(
+                        metadata,
+                        event_id=event_id,
+                        deepgram_request_id=deepgram_request_id,
+                    ),
+                    "source_version": active.version,
+                    "canonical_decision": "IGNORE",
+                    "translation_eligible": False,
+                    "lifecycle_state": active.state,
+                }
                 self._record_decision(
                     d, is_final=source == "final", speech_final=speech_final, channel=channel
                 )
@@ -799,6 +1262,45 @@ class UtteranceLifecycleOwner:
                 active.deepgram_request_id = str(deepgram_request_id)
             active.last_event_mono = self._clock()
 
+        accepted, identity_reason, identity_meta = self._observe_identity(
+            utterance_id=active.utterance_id,
+            channel=active.channel,
+            version=active.version,
+            decision=decision,
+            text=active.text,
+            lifecycle_state=active.state,
+            translation_eligible=False,
+            metadata=metadata,
+            deepgram_request_id=deepgram_request_id,
+            event_id=event_id,
+        )
+        if not accepted:
+            d = LifecycleDecision(
+                decision=IGNORE_DUPLICATE,
+                reason=f"identity_rejected:{identity_reason}",
+                utterance_id=active.utterance_id,
+                text=active.text,
+                previous_text=previous_text,
+                should_update_interim=False,
+                should_commit=False,
+                version=active.version,
+                session_id=self._session_id,
+                event_id=event_id,
+                metadata={
+                    "channel": active.channel,
+                    "channel_index": active.channel,
+                    "canonical_utterance_id": active.utterance_id,
+                    "source_version": active.version,
+                    "canonical_decision": "IGNORE",
+                    "translation_eligible": False,
+                    "lifecycle_state": active.state,
+                },
+            )
+            self._record_decision(
+                d, is_final=source == "final", speech_final=speech_final, channel=channel
+            )
+            return d
+
         d = LifecycleDecision(
             decision=decision,
             reason=reason,
@@ -815,10 +1317,20 @@ class UtteranceLifecycleOwner:
                 "start_time": active.start_time,
                 "end_time": active.end_time,
                 "channel": active.channel,
+                "channel_index": active.channel,
                 "speaker": active.speaker,
                 "canonical_utterance_id": active.utterance_id,
+                "provider_utterance_id": _provider_utterance_id(
+                    metadata,
+                    event_id=event_id,
+                    deepgram_request_id=deepgram_request_id,
+                ),
                 "source_version": active.version,
                 "lineage_ids": list(active.lineage_ids),
+                "canonical_decision": _canonical_decision_name(decision),
+                "translation_eligible": False,
+                "lifecycle_state": active.state,
+                **identity_meta,
                 **{k: v for k, v in metadata.items() if k not in ("text",)},
             },
         )
@@ -860,6 +1372,40 @@ class UtteranceLifecycleOwner:
             self._record_decision(d, is_final=True, speech_final=True, channel=active.channel)
             return d
 
+        accepted, identity_reason, identity_meta = self._observe_identity(
+            utterance_id=active.utterance_id,
+            channel=active.channel,
+            version=active.version,
+            decision=decision_name,
+            text=active.text,
+            lifecycle_state=COMMITTED,
+            translation_eligible=True,
+            metadata=metadata,
+            deepgram_request_id=active.deepgram_request_id,
+            event_id=event_id,
+        )
+        if not accepted:
+            d = LifecycleDecision(
+                decision=IGNORE_DUPLICATE,
+                reason=f"identity_rejected:{identity_reason}",
+                utterance_id=active.utterance_id,
+                text=active.text,
+                session_id=self._session_id,
+                event_id=event_id,
+                version=active.version,
+                metadata={
+                    "channel": active.channel,
+                    "channel_index": active.channel,
+                    "canonical_utterance_id": active.utterance_id,
+                    "source_version": active.version,
+                    "canonical_decision": "IGNORE",
+                    "translation_eligible": False,
+                    "lifecycle_state": active.state,
+                },
+            )
+            self._record_decision(d, is_final=True, speech_final=True, channel=active.channel)
+            return d
+
         self._cancel_timeout_locked()
         active.state = COMMITTED
         active.committed = True
@@ -885,12 +1431,22 @@ class UtteranceLifecycleOwner:
                 "start_time": active.start_time,
                 "end_time": active.end_time,
                 "channel": active.channel,
+                "channel_index": active.channel,
                 "speaker": active.speaker,
                 "canonical_utterance_id": active.utterance_id,
+                "provider_utterance_id": _provider_utterance_id(
+                    metadata,
+                    event_id=event_id,
+                    deepgram_request_id=active.deepgram_request_id,
+                ),
                 "source_version": active.version,
                 "source_raw_event_ids": list(active.lineage_ids),
                 "deepgram_request_id": active.deepgram_request_id,
                 "lifecycle_commit_reason": reason,
+                "canonical_decision": _canonical_decision_name(decision_name),
+                "translation_eligible": True,
+                "lifecycle_state": active.state,
+                **identity_meta,
                 **{k: v for k, v in metadata.items() if k not in ("text",)},
             },
         )
@@ -915,9 +1471,46 @@ class UtteranceLifecycleOwner:
     ) -> LifecycleDecision:
         prev = self._last_committed
         assert prev is not None
-        original_id = prev.committed_record_id or prev.utterance_id
+        original_id, target_utterance_id = self._resolve_correction_target_locked(
+            channel=channel,
+            metadata=metadata,
+        )
+        if not original_id:
+            try:
+                from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+                jp_accuracy_log(
+                    "IDENTITY_REJECTION",
+                    reason="missing_exact_supersede_target",
+                    session_id=self._session_id,
+                    channel_index=channel,
+                    canonical_utterance_id=str(
+                        metadata.get("canonical_utterance_id") or prev.utterance_id or ""
+                    ),
+                )
+            except Exception:
+                pass
+            return LifecycleDecision(
+                decision=IGNORE_DUPLICATE,
+                reason="missing_exact_supersede_target",
+                utterance_id=str(target_utterance_id or prev.utterance_id or ""),
+                text=lexical,
+                previous_text=prev.text,
+                version=int(prev.version or 0),
+                session_id=self._session_id,
+                event_id=event_id,
+                metadata={
+                    "channel": channel,
+                    "canonical_utterance_id": str(
+                        target_utterance_id or prev.utterance_id or ""
+                    ),
+                    "source_version": int(prev.version or 0),
+                    "canonical_decision": "IGNORE",
+                    "translation_eligible": False,
+                },
+            )
         self._seq += 1
-        uid = prev.utterance_id  # keep same canonical utterance identity
+        uid = str(target_utterance_id or prev.utterance_id)  # keep same canonical identity
         active = ActiveUtterance(
             utterance_id=uid,
             session_id=self._session_id,
@@ -950,8 +1543,21 @@ class UtteranceLifecycleOwner:
             event_id=event_id,
             metadata={
                 "original_record_id": original_id,
+                "revision_target_id": original_id,
                 "replacement_utterance_id": uid,
                 "session_id": self._session_id,
+                "channel": active.channel,
+                "channel_index": active.channel,
+                "canonical_utterance_id": uid,
+                "provider_utterance_id": _provider_utterance_id(
+                    metadata,
+                    event_id=event_id,
+                    deepgram_request_id=deepgram_request_id,
+                ),
+                "source_version": active.version,
+                "canonical_decision": SUPERSEDE,
+                "translation_eligible": speech_final is not False,
+                "lifecycle_state": active.state,
                 "start_time": active.start_time,
                 "end_time": active.end_time,
             },
@@ -965,6 +1571,9 @@ class UtteranceLifecycleOwner:
             self._arm_timeout_locked()
             d_super.should_update_interim = True
             d_super.decision = HOLD_FINAL_CHUNK
+            d_super.metadata["canonical_decision"] = REPLACE_PROVISIONAL
+            d_super.metadata["translation_eligible"] = False
+            d_super.metadata["lifecycle_state"] = active.state
             self._emit_interim(d_super)
             return d_super
 

@@ -923,9 +923,24 @@ def finalize_live_run_status_completed(
         from alpha.utils.session_progress import build_progress_payload, set_run_status
 
         completed_at = datetime.datetime.now().isoformat(timespec="seconds")
-        final_status = "completed"
-        if stop_summary and stop_summary.get("stop_finalize_timed_out"):
-            final_status = "completed_with_warnings"
+        # fixes TASK_4A_FINDINGS.md items 1/3: prefer the authoritative,
+        # fail-closed value computed by
+        # stop_finalize_worker.compute_core_final_status() (threaded through
+        # via stop_summary["final_status"]/["stop_finalize_failed"]) instead
+        # of deriving status from stop_finalize_timed_out alone. Falls back
+        # to the old timeout-only rule only if a caller passes a stop_summary
+        # that predates this field (defensive, not the expected live path).
+        summary = stop_summary or {}
+        if "final_status" in summary:
+            final_status = str(summary.get("final_status") or "failed")
+            stop_finalize_failed = bool(summary.get("stop_finalize_failed", True))
+            failure_reason = str(summary.get("failure_reason") or "")
+        else:
+            final_status = "completed"
+            if summary.get("stop_finalize_timed_out"):
+                final_status = "completed_with_warnings"
+            stop_finalize_failed = bool(summary.get("stop_finalize_failed", False))
+            failure_reason = ""
 
         # Clear stop flags before writing completed status.
         if host is not None:
@@ -945,7 +960,9 @@ def finalize_live_run_status_completed(
             "app_version": APP_VERSION,
             "completed_at": completed_at,
             "stop_finalize_completed": True,
-            "stop_finalize_failed": False,
+            # fixes TASK_4A_FINDINGS.md items 1/3: real value, not hardcoded.
+            "stop_finalize_failed": stop_finalize_failed,
+            "failure_reason": failure_reason,
             "stop_finalize_timed_out": bool(
                 (stop_summary or {}).get("stop_finalize_timed_out", False)
             ),

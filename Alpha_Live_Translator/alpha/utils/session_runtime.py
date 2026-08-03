@@ -57,12 +57,29 @@ def begin_live_session(host: Any) -> SessionRuntime:
         getattr(host, "_frozen_ledger_error_count", 0) or 0
     )
 
+    # fixes TASK_3A_FINDINGS.md Item 1/2: necessary wiring -- these reset the
+    # identity-keyed structures that replaced the single global pending
+    # payload / flat positional list in main_window.py. Cancel every
+    # outstanding per-utterance debounce timer from the *old* dict before
+    # replacing it -- resetting the attribute first would orphan them
+    # (unreachable via host, but never cancelled).
+    try:
+        old_timers = getattr(host, "_translation_debounce_after_ids", None) or {}
+        if hasattr(host, "after_cancel"):
+            for after_id in list(old_timers.values()):
+                try:
+                    host.after_cancel(after_id)
+                except Exception:
+                    pass
+    except Exception:
+        pass
+
     # UI / translation session-scoped registries
     host._translation_loading_items = {}
-    host._pending_translation_payload = None
-    host._translation_debounce_after_id = None
+    host._pending_translations_by_utterance = {}
+    host._translation_debounce_after_ids = {}
+    host._translation_items_by_utterance = {}
     host._translation_segment_seq = 0
-    host._translation_display_lines = []
     host._latest_interim_text = ""
     host._ui_callback_stats = {
         "scheduled": 0,
@@ -72,13 +89,6 @@ def begin_live_session(host: Any) -> SessionRuntime:
         "completed": 0,
         "cancelled": 0,
     }
-
-    try:
-        after_id = getattr(host, "_translation_debounce_after_id", None)
-        if after_id is not None and hasattr(host, "after_cancel"):
-            host.after_cancel(after_id)
-    except Exception:
-        pass
 
     try:
         if hasattr(host, "_clear_interim_tail"):
@@ -98,6 +108,13 @@ def begin_live_session(host: Any) -> SessionRuntime:
         from alpha.transcription.utterance_lifecycle import reset_utterance_lifecycle
 
         reset_utterance_lifecycle(host, session_id=session_id)
+    except Exception:
+        pass
+
+    try:
+        from alpha.transcription.canonical_identity_registry import reset_for_session
+
+        reset_for_session(session_id)
     except Exception:
         pass
 

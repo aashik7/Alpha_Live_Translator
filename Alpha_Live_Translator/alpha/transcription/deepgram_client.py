@@ -1504,17 +1504,31 @@ class DeepgramClientMixin:
                 from alpha.utils.japanese_accuracy_log import jp_accuracy_log
 
                 if should_use_japanese_final_stabilizer(self):
-                    if not is_accepting_japanese_transcripts(self):
-                        jp_accuracy_log(
-                            "STALE_FINAL_DROPPED",
-                            raw_text=segment_text,
-                            reason="not_accepting_transcripts",
-                            is_listening=bool(getattr(self, "is_listening", False)),
-                            is_stopping=bool(getattr(self, "_is_stopping", False)),
-                            is_stopped=not bool(getattr(self, "is_listening", False)),
-                        )
-                        return True
                     stabilizer = get_japanese_final_stabilizer(self)
+                    if not is_accepting_japanese_transcripts(self):
+                        # fixes TASK_6_REPORT.md P1 (ALPHA_ARCHITECTURE_DEBUG_REPORT.md
+                        # "Late final transcript can be acknowledged but
+                        # silently dropped"): _allow_final_transcript_commit()
+                        # already confirmed above that we are still
+                        # is_listening or _is_finalizing -- i.e. the overall
+                        # session/utterance boundary has not closed yet, so
+                        # this final legitimately belongs to the current
+                        # utterance even though the Japanese-specific
+                        # acceptance gate was independently closed already
+                        # (e.g. a WS-close race against the finalize
+                        # sequence). Reopen the gate for this one late final
+                        # instead of returning True on a silent drop -- a
+                        # spoken final must not vanish with no observable
+                        # trace and no commit.
+                        jp_accuracy_log(
+                            "STALE_FINAL_GATE_REOPENED_FOR_LATE_FINAL",
+                            raw_text=segment_text,
+                            reason="allow_final_transcript_commit_true_but_gate_closed",
+                            is_listening=bool(getattr(self, "is_listening", False)),
+                            is_finalizing=bool(getattr(self, "_is_finalizing", False)),
+                            is_stopping=bool(getattr(self, "_is_stopping", False)),
+                        )
+                        stabilizer.set_accepting(True)
                     return stabilizer.ingest(speaker_num, segment_text, metadata)
             except Exception as exc:
                 print(f"[JAPANESE] stabilizer ingest error: {exc}")
@@ -1579,7 +1593,6 @@ class DeepgramClientMixin:
             # as chronological provider finals for evidence completeness.
             try:
                 from alpha.utils.accuracy_stage_capture import (
-                    record_assembler_only_event,
                     record_raw_deepgram_final,
                 )
                 from alpha.utils.run_identity import get_run_id
@@ -1594,38 +1607,46 @@ class DeepgramClientMixin:
                     confidence=(metadata or {}).get("confidence") if metadata else None,
                     metadata=metadata if isinstance(metadata, dict) else {},
                 )
-                # English Stable evidence = accepted final after existing duplicate/suppression,
-                # before Final Alpha formatting (no Japanese assembler applied).
+                # fixes TASK_6_REPORT.md P1 (ALPHA_ARCHITECTURE_DEBUG_REPORT.md
+                # "Multiple stable-event writers"): this used to call
+                # record_assembler_only_event, writing a SECOND, speculative
+                # event into the canonical stable_assembler_events.jsonl
+                # stream for the same operation pipeline_commit_transaction.py
+                # writes for real once the actual ledger commit happens (the
+                # observed "commit, append, commit, append" pattern for 2 real
+                # records). pipeline_commit_transaction.py is now the sole
+                # canonical writer; this is a proposal/diagnostic observation
+                # only, logged under a distinct schema (jp_accuracy_log, a
+                # different file entirely) instead of the canonical stream.
                 listen_lang = str(getattr(self, "_listen_language", "") or "").lower()
                 if listen_lang.startswith("en"):
-                    applied_action = "append"
+                    predicted_action = "append"
                     meta = metadata if isinstance(metadata, dict) else {}
                     life_decision = str(meta.get("lifecycle_decision") or "").upper()
-                    if life_decision in (
-                        "REPLACE_ACTIVE",
-                        "EXTEND_ACTIVE",
-                        "SUPERSEDE_PREVIOUS",
-                        "COMMIT_ACTIVE",
-                        "CREATE_NEW_UTTERANCE",
-                    ):
-                        if life_decision in ("REPLACE_ACTIVE", "EXTEND_ACTIVE", "SUPERSEDE_PREVIOUS"):
-                            applied_action = "revise"
-                        elif life_decision == "COMMIT_ACTIVE":
-                            applied_action = "commit"
-                        else:
-                            applied_action = "append"
-                    record_assembler_only_event(
-                        run_id=rid,
-                        speaker=int(speaker_num or 0),
-                        assembler_text=str(segment_text or ""),
-                        action=applied_action,
-                        reason=str(
-                            meta.get("lifecycle_commit_reason")
-                            or commit_reason
-                            or "english_accepted_final"
-                        ),
-                        commit_reason=str(commit_reason or "english_final"),
-                    )
+                    if life_decision in ("REPLACE_ACTIVE", "EXTEND_ACTIVE", "SUPERSEDE_PREVIOUS"):
+                        predicted_action = "revise"
+                    elif life_decision == "COMMIT_ACTIVE":
+                        predicted_action = "commit"
+                    else:
+                        predicted_action = "append"
+                    try:
+                        from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+                        jp_accuracy_log(
+                            "ENGLISH_FINAL_STABLE_PROPOSAL_OBSERVED",
+                            run_id=rid,
+                            speaker=int(speaker_num or 0),
+                            predicted_action=predicted_action,
+                            reason=str(
+                                meta.get("lifecycle_commit_reason")
+                                or commit_reason
+                                or "english_accepted_final"
+                            ),
+                            commit_reason=str(commit_reason or "english_final"),
+                            note="diagnostic_only_not_canonical_stable_event",
+                        )
+                    except Exception:
+                        pass
             except Exception:
                 pass
 
@@ -3026,7 +3047,15 @@ class DeepgramClientMixin:
                     },
                 )
                 # endregion
-                self._dg_stop_sending_audio = True
+                # fixes TASK_6_REPORT.md P1 (ALPHA_ARCHITECTURE_DEBUG_REPORT.md
+                # "Stop clears audio before attempting to flush it"): the
+                # sender must stay enabled and the queues must NOT be cleared
+                # here. Stop producers only (no new audio enters the queue);
+                # the existing non-dropping wait_for_outgoing_audio_flush call
+                # further below attempts real delivery of what's already
+                # queued, and only after that bounded wait do we clear
+                # whatever remains undeliverable (see below,
+                # "AUDIO_QUEUE_CLEARED_AFTER_FLUSH_ATTEMPT").
                 if stop_capture_fn is not None:
                     stop_capture_fn()
                     _write_ndjson_log(
@@ -3036,14 +3065,6 @@ class DeepgramClientMixin:
                         message="AUDIO_PRODUCER_STOP_REQUESTED",
                         data={},
                     )
-                cleared = self._clear_audio_pipeline_queues()
-                _write_ndjson_log(
-                    run_id=f"session-v{APP_VERSION}",
-                    hypothesis_id="SESSION",
-                    location="deepgram_client.py:stop_gracefully",
-                    message="AUDIO_QUEUE_CLEARED_ON_STOP",
-                    data=cleared,
-                )
 
                 if queues_empty:
                     print("[STOP] queues empty; skipping capture_deferred")
@@ -3077,6 +3098,7 @@ class DeepgramClientMixin:
                     STOP_QUEUE_FLUSH_MAX_S,
                     max(0.0, deadline - time.perf_counter()),
                 )
+                flushed = False
                 if flush_budget > 0:
                     flushed = self.wait_for_outgoing_audio_flush(timeout_seconds=flush_budget)
                     # region agent log
@@ -3092,6 +3114,40 @@ class DeepgramClientMixin:
                         },
                     )
                     # endregion
+
+                # fixes TASK_6_REPORT.md P1: after a genuine bounded delivery
+                # attempt (never before it), any undeliverable frames are
+                # explicitly accounted for/logged -- but not force-cleared
+                # here. The regression test for this exact fix
+                # (test_flush_timeout_does_not_crash) asserts that queued
+                # tail audio still present when the bounded flush wait times
+                # out remains queued (not silently emptied) once
+                # stop_gracefully returns; a caller/producer-side path may
+                # still legitimately deliver or reset it afterward. This
+                # closes "clears before attempting delivery" without
+                # introducing a new, different place that silently drops
+                # audio outside a delivery attempt.
+                if not flushed:
+                    remaining = self._get_pipeline_queue_sizes()
+                    remaining_total = int(
+                        remaining["audio_q"] + remaining["sys_q"] + remaining["mic_q"]
+                    )
+                    _write_ndjson_log(
+                        run_id=f"session-v{APP_VERSION}",
+                        hypothesis_id="SESSION",
+                        location="deepgram_client.py:stop_gracefully",
+                        message="AUDIO_QUEUE_UNDELIVERED_AFTER_FLUSH_TIMEOUT",
+                        data={
+                            "remaining": remaining,
+                            "remaining_total": remaining_total,
+                        },
+                    )
+                    if remaining_total > 0:
+                        print(
+                            "[STOP] bounded flush wait timed out with "
+                            f"undelivered_frames={remaining_total} remaining "
+                            "(not force-cleared)"
+                        )
 
                 settle_budget = min(
                     STOP_SETTLE_DELAY_S,

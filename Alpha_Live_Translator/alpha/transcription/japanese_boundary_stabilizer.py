@@ -27,6 +27,7 @@ from alpha.constants import (
     JAPANESE_STOP_FLUSH_BOUNDARY_SAFE,
 )
 from alpha.transcription.japanese_stable_accuracy import count_japanese_chars, is_clear_sentence
+from alpha.transcription.speaker_boundary_guard import speakers_confirmed_same
 from alpha.utils.cjk_text import compact_cjk_for_compare
 
 _LEADING_PARTICLES: tuple[str, ...] = (
@@ -256,7 +257,9 @@ class JapaneseBoundaryStabilizer:
     def reset(self) -> None:
         self._pending = ""
         self._pending_since = 0.0
+        self._pending_speaker: Any = None
         self._previous_line = ""
+        self._previous_speaker: Any = None
         self._input_count = 0
         self._output_count = 0
         self._held_count = 0
@@ -277,8 +280,9 @@ class JapaneseBoundaryStabilizer:
         self._translation_ready_after = 0
         self._shadow_before_lines: list[str] = []
 
-    def set_previous_line(self, text: str) -> None:
+    def set_previous_line(self, text: str, speaker: Any = None) -> None:
         self._previous_line = (text or "").strip()
+        self._previous_speaker = speaker
 
     def _estimate_translation_ready(self, text: str) -> bool:
         segment = (text or "").strip()
@@ -434,6 +438,8 @@ class JapaneseBoundaryStabilizer:
         *,
         commit_reason: str = "",
         previous_line: str | None = None,
+        previous_speaker: Any = None,
+        speaker: Any = None,
         stop_flush: bool = False,
         timestamp: float | None = None,
     ) -> dict[str, Any]:
@@ -453,6 +459,9 @@ class JapaneseBoundaryStabilizer:
         if previous_line is not None:
             prev_body = re.sub(r"^\[Speaker\s+\d+\]\s*", "", (previous_line or "").strip())
             self._previous_line = prev_body
+            # fixes TASK_2C_REPORT.md: previous-line speaker must be tracked
+            # alongside the text so later merge decisions can be gated on it.
+            self._previous_speaker = previous_speaker
 
         text = (input_text or "").strip()
         speaker_prefix = ""
@@ -477,9 +486,42 @@ class JapaneseBoundaryStabilizer:
 
         if self._pending:
             pending_age_ms = (now - self._pending_since) * 1000.0 if self._pending_since else 0
+            # fixes TASK_2C_REPORT.md: speaker identity checked BEFORE any
+            # pending-merge text logic. A pending fragment can never be
+            # merged with a different (or unknown) speaker's incoming
+            # fragment -- emit the pending fragment on its own first.
+            if not speakers_confirmed_same(self._pending_speaker, speaker):
+                emit_pending = self._pending
+                emit_pending_speaker = self._pending_speaker
+                self._pending = text
+                self._pending_speaker = speaker
+                self._pending_since = now
+                cleaned, _ = cleanup_midline_punctuation(emit_pending)
+                self._output_count += 1
+                self._record_output_metrics(cleaned)
+                _jp_log(
+                    "SPEAKER_BOUNDARY_PENDING_FLUSHED",
+                    pending_speaker=emit_pending_speaker,
+                    candidate_speaker=speaker,
+                    text_preview=cleaned[:80],
+                )
+                result = self._build_result(
+                    emit_now=True,
+                    output_text=cleaned,
+                    pending_text=text,
+                    action="hold_leading_fragment",
+                    reason="speaker_change_pending_flush",
+                    before_text=emit_pending,
+                    confidence="low",
+                    commit_reason=commit_reason,
+                    speaker_prefix=speaker_prefix,
+                )
+                self._log_decision(result, emitted_to_ui=True)
+                return result
             merged, merge_reason, ok = safe_merge_text(self._pending, text)
             if ok and count_japanese_chars(merged) <= BOUNDARY_STABILIZER_PENDING_MERGE_MAX_CHARS:
                 self._pending = ""
+                self._pending_speaker = None
                 self._pending_since = 0.0
                 self._merge_pending_count += 1
                 cleaned, punct_changed = cleanup_midline_punctuation(merged)
@@ -504,6 +546,7 @@ class JapaneseBoundaryStabilizer:
             if pending_age_ms >= BOUNDARY_STABILIZER_HOLD_MS_MAX:
                 emit_pending = self._pending
                 self._pending = text
+                self._pending_speaker = speaker
                 self._pending_since = now
                 self._timeout_emit_count += 1
                 cleaned, _ = cleanup_midline_punctuation(emit_pending)
@@ -530,7 +573,18 @@ class JapaneseBoundaryStabilizer:
             _jp_log("MIDLINE_PUNCTUATION_ARTIFACT_DETECTED", text_preview=text[:80])
         text = cleaned
 
-        if JAPANESE_DUPLICATE_CONTINUATION_GUARD_ENABLED and self._previous_line:
+        # fixes TASK_2C_REPORT.md: duplicate-continuation suppression and
+        # merge-with-previous both compare against self._previous_line: gate
+        # both on confirmed same speaker BEFORE the text-similarity checks
+        # run, so a different (or unknown) speaker's text is never silently
+        # suppressed or merged as if it were the previous speaker's line.
+        previous_speaker_confirmed = speakers_confirmed_same(self._previous_speaker, speaker)
+
+        if (
+            JAPANESE_DUPLICATE_CONTINUATION_GUARD_ENABLED
+            and self._previous_line
+            and previous_speaker_confirmed
+        ):
             ratio = duplicate_continuation_ratio(self._previous_line, text)
             if ratio >= 0.95:
                 self._duplicate_suppressed_count += 1
@@ -568,6 +622,7 @@ class JapaneseBoundaryStabilizer:
 
         if (
             JAPANESE_SAFE_MERGE_ENABLED
+            and previous_speaker_confirmed
             and self._previous_line
             and (is_leading or prev_incomplete or not has_strong_terminal_boundary(self._previous_line))
         ):
@@ -615,6 +670,7 @@ class JapaneseBoundaryStabilizer:
                     break
             else:
                 self._pending = text
+                self._pending_speaker = speaker
                 self._pending_since = now
                 self._held_count += 1
                 _jp_log("LEADING_FRAGMENT_DETECTED", particle=particle)
@@ -637,6 +693,7 @@ class JapaneseBoundaryStabilizer:
         incomplete, inc_suffix = has_incomplete_ending(text)
         if incomplete and not stop_flush and not is_clear_sentence(text):
             self._pending = text
+            self._pending_speaker = speaker
             self._pending_since = now
             self._held_count += 1
             _jp_log("INCOMPLETE_ENDING_DETECTED", suffix=inc_suffix)
@@ -677,7 +734,9 @@ class JapaneseBoundaryStabilizer:
             return None
         _jp_log("BOUNDARY_STABILIZER_STOP_FLUSH_STARTED")
         pending = (self._pending or "").strip()
+        pending_speaker = self._pending_speaker
         self._pending = ""
+        self._pending_speaker = None
         self._pending_since = 0.0
         if not pending:
             _jp_log("BOUNDARY_STABILIZER_PENDING_CLEARED_ON_STOP")
@@ -702,12 +761,17 @@ class JapaneseBoundaryStabilizer:
             confidence="low",
             commit_reason="stop_listening",
         )
+        # fixes TASK_2C_REPORT.md: expose the pending fragment's own speaker
+        # so a stop-flush caller can attribute it correctly instead of
+        # defaulting to whatever speaker last committed elsewhere.
+        result["pending_speaker"] = pending_speaker
         self._log_decision(result, emitted_to_ui=True)
         return result
 
-    def note_emitted(self, text: str) -> None:
+    def note_emitted(self, text: str, speaker: Any = None) -> None:
         body = re.sub(r"^\[Speaker\s+\d+\]\s*", "", (text or "").strip())
         self._previous_line = body
+        self._previous_speaker = speaker
 
     def _log_decision(self, result: dict[str, Any], *, emitted_to_ui: bool) -> None:
         if not JAPANESE_BOUNDARY_DECISION_LOG_ENABLED:

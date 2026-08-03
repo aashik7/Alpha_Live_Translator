@@ -6,6 +6,8 @@ import threading
 from dataclasses import dataclass
 from typing import List, Optional
 
+from alpha.transcription.speaker_boundary_guard import speakers_confirmed_same
+
 
 @dataclass
 class TranscriptSegment:
@@ -109,6 +111,49 @@ class TranscriptStore:
     def get_last_segment_for_speaker(self, speaker) -> Optional[TranscriptSegment]:
         """Backward-compatible alias for get_last_segment(speaker=...)."""
         return self.get_last_segment(speaker=speaker)
+
+    def get_last_segment_if_active(self, speaker) -> Optional[TranscriptSegment]:
+        """Return the store's true last segment, only if it belongs to `speaker`.
+
+        fixes TASK_2E_FINDINGS.md item 3 (positional "last line" lookup):
+        unlike get_last_segment(speaker), this never reaches backward past
+        an intervening different-speaker turn to find some earlier row that
+        happens to match -- a speaker change since is a hard boundary, and
+        callers must treat that as "no valid previous segment" rather than
+        merge into a stale one. Uses speakers_confirmed_same (fail-closed on
+        unknown/None speakers) instead of a raw equality check.
+        """
+        speaker_num = int(speaker) if speaker is not None else None
+        with self._lock:
+            if not self._segments:
+                return None
+            last = self._segments[-1]
+            if not speakers_confirmed_same(last.speaker, speaker_num):
+                return None
+            return self._copy_segment(last)
+
+    def update_last_segment_if_active(self, speaker, text, timestamp=None) -> bool:
+        """Update the store's true last segment, only if it belongs to `speaker`.
+
+        fixes TASK_2E_FINDINGS.md item 3 (positional "last line" update):
+        the write-side counterpart to get_last_segment_if_active -- refuses
+        to overwrite any row except the store's actual last one, and only
+        when that row is confirmed (fail-closed) to belong to this speaker.
+        """
+        cleaned = (text or "").strip()
+        if not cleaned:
+            return False
+        speaker_num = int(speaker) if speaker is not None else None
+        with self._lock:
+            if not self._segments:
+                return False
+            last = self._segments[-1]
+            if not speakers_confirmed_same(last.speaker, speaker_num):
+                return False
+            last.text = cleaned
+            if timestamp and not last.timestamp:
+                last.timestamp = timestamp
+            return True
 
     def add_translation(
         self,

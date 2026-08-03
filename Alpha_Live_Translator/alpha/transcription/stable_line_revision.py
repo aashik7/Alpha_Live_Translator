@@ -18,6 +18,7 @@ from alpha.constants import (
     STABLE_REVISION_HISTORY_PERSISTENCE_ENABLED,
 )
 from alpha.utils.cjk_text import compact_cjk_for_compare
+from alpha.transcription.speaker_boundary_guard import speakers_confirmed_same
 
 _manager: Optional["StableLineRevisionManager"] = None
 
@@ -312,6 +313,26 @@ class StableLineRevisionManager:
             "merge_pending_and_current",
             "punctuation_cleanup_revision",
         ):
+            # fixes TASK_2C_REPORT.md: speaker identity is checked BEFORE any
+            # text-adjacency/revision logic is allowed to run. A different
+            # speaker (or an unknown speaker on either side) can never
+            # revise/extend the active line -- always create a new separate
+            # canonical line instead. Fail-closed, not a downstream filter.
+            active = self._active_line()
+            active_speaker = active.get("speaker") if active else None
+            if not speakers_confirmed_same(active_speaker, speaker):
+                row = self.create_line(
+                    text,
+                    speaker=speaker,
+                    boundary_action="append_new_line",
+                    boundary_reason="speaker_boundary_forced_new_line",
+                )
+                _jp_log(
+                    "SPEAKER_BOUNDARY_REVISION_BLOCKED",
+                    active_speaker=active_speaker,
+                    candidate_speaker=speaker,
+                )
+                return {"applied": "append", "export": True, "stable_line_id": row["stable_line_id"]}
             row = self.revise_active_line(
                 text,
                 reason=stab.get("revision_reason") or stab.get("reason", ""),

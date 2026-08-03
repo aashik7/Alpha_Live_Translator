@@ -1,0 +1,68 @@
+{
+  "english_progressive": [
+    {
+      "event_id": "eng-001",
+      "text": "My",
+      "channel": 0,
+      "speech_final": false,
+      "start": 0.0,
+      "end": 0.3
+    },
+    {
+      "event_id": "eng-002",
+      "text": "My name",
+      "channel": 0,
+      "speech_final": false,
+      "start": 0.0,
+      "end": 0.7
+    },
+    {
+      "event_id": "eng-003",
+      "text": "My name is Tariqul",
+      "channel": 0,
+      "speech_final": true,
+      "start": 0.0,
+      "end": 1.2
+    }
+  ],
+  "english_two_sentences": [
+    {
+      "event_id": "eng-101",
+      "text": "This is sentence one.",
+      "channel": 0,
+      "speech_final": true,
+      "start": 0.0,
+      "end": 0.9
+    },
+    {
+      "event_id": "eng-102",
+      "text": "This is sentence two.",
+      "channel": 0,
+      "speech_final": true,
+      "start": 3.5,
+      "end": 4.4
+    }
+  ],
+  "english_wrong_revision": {
+    "base_records": [
+      {
+        "canonical_utterance_id": "U-1",
+        "text": "Alpha sentence.",
+        "source_version": 1,
+        "source_raw_event_ids": ["raw-alpha-1"]
+      },
+      {
+        "canonical_utterance_id": "U-2",
+        "text": "Bravo sentence.",
+        "source_version": 1,
+        "source_raw_event_ids": ["raw-bravo-1"]
+      }
+    ],
+    "bad_revision": {
+      "canonical_utterance_id": "U-2",
+      "text": "Bravo sentence revised illegally.",
+      "source_version": 2,
+      "source_raw_event_ids": ["raw-bravo-2"]
+    }
+  }
+}
