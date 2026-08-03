@@ -84,6 +84,7 @@ _STEP_TIMEOUTS_MS: dict[str, float] = {
     "language_worker_stop": 2000.0,
     "ui_transcript_drain": 2500.0,
     "transcript_commit_confirm": 500.0,
+    "utterance_reconstruction_check": 500.0,
     "japanese_assembler_flush": 500.0,
     "translation_unit_final_flush": 500.0,
     "flush_pending_translation_debounce": 2500.0,
@@ -98,6 +99,7 @@ _STEP_TIMEOUTS_MS: dict[str, float] = {
     "final_summaries": 500.0,
     "run_artifacts_index": 2000.0,
     "async_debug_flush": 500.0,
+    "write_minimal_runtime_artifacts": 2000.0,
 }
 
 _three_stage_finalize_call_count = 0
@@ -1494,18 +1496,43 @@ def _run_finalize_worker(host: Any) -> None:
         commit_confirm_ok = run_timed_step(
             host, "transcript_commit_confirm", lambda: _confirm_transcript_commits(host)
         )
-        utterance_reconstruction_ok, utterance_reconstruction_reason = (
-            compute_utterance_reconstruction_ok(
+        # fixes TASK_12_REPORT.md: this used to call
+        # compute_utterance_reconstruction_ok(...) directly, unwrapped by
+        # run_timed_step or any try/except at this call site -- the only
+        # required-step computation in this whole sequence with no
+        # containment at all. Any exception here (unlike every other block,
+        # which is either inside run_timed_step or has its own internal
+        # try/except) would propagate straight out of _run_finalize_worker
+        # to the outer exception handler, silently skipping every
+        # subsequent _mark_required_step call for the rest of the function
+        # -- exactly the reported "utterance_reconstruction onward, all
+        # failing, with no timed_out/failed_steps entries" cascade.
+        # Wrapping it in run_timed_step (like every other computed step)
+        # gives it the same exception containment, a bounded timeout, and
+        # its own STOP_FINALIZE_STEP_BEGIN/END observability pair.
+        utterance_reconstruction_result: dict[str, Any] = {}
+
+        def _compute_utterance_reconstruction() -> None:
+            ok, reason = compute_utterance_reconstruction_ok(
                 host,
                 assembler_flush_ok=assembler_flush_ok,
                 commit_confirm_ok=commit_confirm_ok,
                 is_japanese_session_fn=should_use_japanese_final_stabilizer,
             )
+            utterance_reconstruction_result["ok"] = ok
+            utterance_reconstruction_result["reason"] = reason
+
+        utterance_reconstruction_step_ok = run_timed_step(
+            host, "utterance_reconstruction_check", _compute_utterance_reconstruction
         )
         _mark_required_step(
             "utterance_reconstruction",
-            utterance_reconstruction_ok,
-            reason=utterance_reconstruction_reason,
+            bool(utterance_reconstruction_step_ok)
+            and bool(utterance_reconstruction_result.get("ok")),
+            reason=str(
+                utterance_reconstruction_result.get("reason")
+                or "step_timeout_or_exception"
+            ),
         )
 
         def _translation_unit_flush() -> None:
@@ -1785,7 +1812,31 @@ def _run_finalize_worker(host: Any) -> None:
             translation_summary=getattr(host, "_translation_shutdown_summary", None),
             ui_drain=ui_drain,
         )
-        _write_minimal_runtime_artifacts(host, dg_result=dg_result)
+        # fixes TASK_12_REPORT.md: _write_minimal_runtime_artifacts marks
+        # "run_manifest" internally (its own last line), but was called
+        # here completely unwrapped -- no run_timed_step, no try/except.
+        # Any exception anywhere in its body (writing RUN_ARTIFACTS_INDEX,
+        # LIVE_RUN_STATUS, or RUN_MANIFEST.json, or in
+        # get_current_run_identity()/get_artifact_path() before any of
+        # those writes) would propagate out of _run_finalize_worker
+        # entirely, before ever reaching its own run_manifest marking --
+        # the same silent-cascade class as the utterance_reconstruction
+        # fix above, just one step later in the sequence and with
+        # run_manifest itself (rather than something after it) as the
+        # first casualty. run_timed_step gives it the same containment,
+        # bounded timeout, and observability pair every other step has;
+        # the explicit fallback mirrors the established
+        # canonical_ledger_validation/stable_export and final_export
+        # pattern used elsewhere in this same function.
+        write_minimal_artifacts_ok = run_timed_step(
+            host,
+            "write_minimal_runtime_artifacts",
+            lambda: _write_minimal_runtime_artifacts(host, dg_result=dg_result),
+        )
+        if not write_minimal_artifacts_ok:
+            _mark_required_step(
+                "run_manifest", False, reason="step_timeout_or_exception"
+            )
         with _state_lock:
             _stop_state["finalize_completed"] = True
         if hasattr(host, "stop_core_completed_event"):

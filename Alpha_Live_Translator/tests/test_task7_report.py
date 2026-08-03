@@ -116,9 +116,25 @@ class Fix2PendingTranslationFlushTests(unittest.TestCase):
     """VALIDATE item 2: a segment sitting in the debounce window (armed
     timer, not yet fired) at the moment Stop wants to flush it must reach
     translation_worker.enqueue_stable_segment() exactly once, with its real
-    canonical_utterance_id, instead of being silently abandoned."""
+    canonical_utterance_id, instead of being silently abandoned.
+
+    fixes TASK_12_REPORT.md test-stability note: flush_pending_translation_submissions'
+    off-UI-thread branch now posts through the real ui_event_bus (a
+    separate, later fix to the cross-thread Tk .after() call this same
+    method used to make -- see main_window.py's own history) instead of
+    calling self.after() directly. That branch requires something to
+    actually drain the event bus, which this lightweight non-Tk host never
+    ran. register_ui_main_thread() makes is_ui_main_thread() report True
+    for the test's own thread, so flush_pending_translation_submissions
+    takes its synchronous same-thread branch instead -- the event-bus
+    routing itself is exercised for real by the Task 9/10/12 real-Tk
+    integration tests, which do run a genuine drain loop.
+    """
 
     def setUp(self) -> None:
+        from alpha.utils.ui_thread_guard import register_ui_main_thread
+
+        register_ui_main_thread()
         self.host = _TranslationFlushHost()
 
     def test_1_pending_debounced_job_is_flushed_exactly_once(self) -> None:
