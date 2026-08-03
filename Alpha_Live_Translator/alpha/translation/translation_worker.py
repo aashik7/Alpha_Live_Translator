@@ -268,8 +268,27 @@ class TranslationWorker:
         source_version: int = 1,
         source_record_id: str = "",
         session_id: str = "",
+        force: bool = False,
     ) -> bool:
-        """Accept a newly committed Stable segment, or reject with explicit counters."""
+        """Accept a newly committed Stable segment, or reject with explicit counters.
+
+        fixes TASK_9_REPORT.md Issue 1: main_window.py::_begin_graceful_stop
+        calls stop_accepting() synchronously on the UI thread the instant
+        Stop is clicked -- before stop_finalize_worker.py's background
+        finalize sequence (including its translation_reconciliation step)
+        has even started. That makes the ordinary `not self._accepting`
+        gate below unconditionally reject every reconciliation forced
+        submission, 100% of the time, regardless of whether the record was
+        genuinely missed. `force=True` is a deliberate, narrow bypass of
+        only that specific gate -- reconciliation already re-confirmed the
+        record is a genuine committed, translation-eligible gap, and the
+        job still lands in the same queue TranslationWorker.shutdown()
+        already bounded-drains, so it is delivered through the normal
+        pipeline, not a side channel. _quota_disabled/_enabled are left
+        gating even forced submissions -- those reflect the provider
+        genuinely being unable to accept work, not merely that Stop was
+        clicked.
+        """
         with self._lock:
             self._counters["stable_segments_received"] += 1
         if is_interim:
@@ -279,7 +298,17 @@ class TranslationWorker:
             return False
         if not TRANSLATE_STABLE_ONLY:
             return False
-        if not self._accepting or self._quota_disabled or not self._enabled:
+        if not force and not self._accepting:
+            with self._lock:
+                self._counters["NOT_ACCEPTING_SUBMISSIONS_REJECTED"] = int(
+                    self._counters.get("NOT_ACCEPTING_SUBMISSIONS_REJECTED", 0) or 0
+                ) + 1
+            return False
+        if self._quota_disabled or not self._enabled:
+            with self._lock:
+                self._counters["QUOTA_OR_DISABLED_SUBMISSIONS_REJECTED"] = int(
+                    self._counters.get("QUOTA_OR_DISABLED_SUBMISSIONS_REJECTED", 0) or 0
+                ) + 1
             return False
         text = (source_text or "").strip()
         if not text:

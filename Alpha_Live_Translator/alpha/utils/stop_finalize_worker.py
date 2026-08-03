@@ -24,7 +24,10 @@ from alpha.constants import (
     STOP_FINALIZE_TWO_PHASE_MODE,
 )
 from alpha.utils.freeze_guard_log import freeze_guard_log
+from alpha.utils.logging_utils import get_logger
 from alpha.utils.path_types import ensure_path
+
+logger = get_logger(__name__)
 
 # Per-stop session state (watchdog reads without UI thread).
 _state_lock = threading.Lock()
@@ -41,6 +44,36 @@ _stop_state: dict[str, Any] = {
     "finalize_thread": None,
 }
 
+# fixes TASK_9_REPORT.md Issue 2: build_stop_finalize_summary() is called
+# twice per Stop -- once synchronously right after _run_finalize_worker's
+# real sequence completes (while _required_step_ok/_stop_state genuinely
+# reflect that run), and again later from evidence_pointer_finalize.py's
+# background thread (schedule_evidence_pointer_finalization_background),
+# which reads the SAME module-level globals fresh. Those globals are
+# process-wide and unscoped to a run id; _reset_stop_state() (called once
+# per Stop click) can legitimately fire again for a NEW run before the
+# delayed background thread from the OLD run gets around to reading them,
+# so the second read can see a state genuinely belonging to a different
+# (often still-in-progress) run -- explaining a failure_reason like
+# "utterance_reconstruction" (marked early in the sequence) even though
+# the run this thread was scheduled for had every step succeed. This cache
+# lets a later call for the SAME run reuse the one authoritative
+# computation instead of recomputing against whatever the globals
+# currently hold.
+_last_completed_run_id = ""
+_last_completed_summary: dict[str, Any] = {}
+
+
+def _current_run_id_for_cache() -> str:
+    try:
+        from alpha.utils.run_identity import get_current_run_identity
+
+        ident = get_current_run_identity()
+        return str(getattr(ident, "run_id", "") or "") if ident is not None else ""
+    except Exception:
+        return ""
+
+
 _STEP_TIMEOUTS_MS: dict[str, float] = {
     "stop_audio_capture": 500.0,
     "stop_audio_producers": 1000.0,
@@ -53,6 +86,8 @@ _STEP_TIMEOUTS_MS: dict[str, float] = {
     "transcript_commit_confirm": 500.0,
     "japanese_assembler_flush": 500.0,
     "translation_unit_final_flush": 500.0,
+    "flush_pending_translation_debounce": 2500.0,
+    "translation_reconciliation": 4000.0,
     "translation_worker_shutdown": 16000.0,
     "canonical_pipeline_finalize": 2000.0,
     "write_final_alpha": 2000.0,
@@ -102,6 +137,7 @@ _REQUIRED_SYNC_STEPS = (
     "translation_drain",
     "loading_state_drain",
     "run_manifest",
+    "translation_reconciliation",
 )
 _required_step_ok: dict[str, bool] = {}
 
@@ -291,6 +327,248 @@ def run_timed_step(host: Any, step_name: str, func: Callable[[], None]) -> bool:
         if step_name in _stop_state["timed_out_steps"]:
             _stop_state["timed_out_steps"].remove(step_name)
     return True
+
+
+def compute_utterance_reconstruction_ok(
+    host: Any,
+    *,
+    assembler_flush_ok: bool,
+    commit_confirm_ok: bool,
+    is_japanese_session_fn: Callable[[Any], bool],
+) -> tuple[bool, str]:
+    """fixes TASK_4A_FINDINGS.md item 1 (utterance reconstruction): the
+    assembler flush + transcript-commit confirmation are the two steps
+    that finish reconstructing pending utterances into committed segments
+    at Stop.
+
+    fixes TASK_10_REPORT.md: japanese_assembler_flush
+    (flush_japanese_assembler_on_stop) runs unconditionally regardless of
+    session language, and its outcome used to gate utterance_reconstruction
+    for EVERY session, English included. For a non-Japanese session the
+    Japanese continuity assembler has nothing real to reconstruct -- a
+    timeout/failure flushing an already-idle Japanese assembler is a false
+    negative about that session's own (English) transcript reconstruction,
+    not a genuine content-loss problem. Only require assembler_flush_ok
+    when this session actually used the Japanese path; every other
+    session's utterance_reconstruction depends only on the real,
+    language-agnostic check (commit_confirm_ok).
+
+    A module-level function (not inlined in _run_finalize_worker) so the
+    decision is independently testable without running the full finalize
+    sequence.
+    """
+    japanese_session = False
+    try:
+        japanese_session = bool(is_japanese_session_fn(host))
+    except Exception:
+        pass
+    ok = bool(commit_confirm_ok) and (
+        bool(assembler_flush_ok) if japanese_session else True
+    )
+    reason = (
+        "assembler_flush_or_commit_confirm_failed"
+        if japanese_session
+        else "commit_confirm_failed"
+    )
+    return ok, reason
+
+
+class TranslationReconciliationError(Exception):
+    """fixes TASK_9_REPORT.md Issue 1: raised when reconcile_translation_gaps
+    could not actually deliver every detected gap. run_timed_step catches
+    this like any other exception and reports the step as failed -- the
+    point of raising instead of just logging is that a failed forced
+    submission must count as a real reconciliation failure, not a silent
+    no-op that still reports DONE."""
+
+
+def reconcile_translation_gaps(host: Any) -> dict[str, int]:
+    """fixes TASK_8_REPORT.md Part B: structural safety net for the WHOLE
+    failure class ("committed, translation-eligible record never reaches
+    translation_worker"), not just the specific gaps Task 7 and Part A
+    closed. Compares every active, translation-eligible canonical-ledger
+    record's canonical_utterance_id against every canonical_utterance_id
+    that has actually reached translation_worker.enqueue_stable_segment()
+    and been accepted (translation_worker._revision_events, accepted=True
+    -- the same source Task 7's evidence writer already trusts). Any
+    committed record with no matching accepted job is force-submitted
+    directly, so any future, still-undiscovered path that skips normal
+    submission is caught and self-healed instead of silently dropping the
+    translation.
+
+    fixes TASK_9_REPORT.md Issue 1: live testing showed
+    TRANSLATION_RECONCILIATION_FORCED_SUBMIT logged with gap_count=1 but
+    forced_count=0 and STABLE_TRANSLATION_JOBS_ACCEPTED=0 -- the WARNING
+    used to log BEFORE calling enqueue_stable_segment(), so neither an
+    exception nor a plain rejection from that call was ever visible. Root
+    cause: main_window.py::_begin_graceful_stop calls
+    translation_worker.stop_accepting() synchronously on the UI thread the
+    instant Stop is clicked, before this background finalize sequence (and
+    this step) even starts -- so the ordinary accept-gate unconditionally
+    rejected every forced submission. enqueue_stable_segment() now accepts
+    force=True (translation_worker.py), which this function uses so a
+    genuinely-confirmed gap is not blocked by Stop's own early
+    stop_accepting() call. Every attempt's true outcome (accepted /
+    rejected / raised) is now logged only AFTER it is known, and any gap
+    left unresolved raises TranslationReconciliationError so the step
+    itself is reported failed, not silently "done".
+
+    A module-level function (not a nested closure in _run_finalize_worker)
+    so it is independently testable against the exact production logic,
+    not a test-side reimplementation of it.
+    """
+    from alpha.transcription import canonical_transcript_ledger as ctl
+
+    worker = getattr(host, "translation_worker", None)
+    active_records = ctl.get_active_records()
+    revision_events = (
+        list(getattr(worker, "_revision_events", None) or [])
+        if worker is not None
+        else []
+    )
+    already_submitted = {
+        str(ev.get("canonical_utterance_id") or "").strip()
+        for ev in revision_events
+        if ev.get("accepted") and str(ev.get("canonical_utterance_id") or "").strip()
+    }
+
+    forced_count = 0
+    gap_count = 0
+    unresolved: list[str] = []
+    for rec in active_records:
+        metadata = dict(rec.get("metadata") or {})
+        utterance_id = str(metadata.get("canonical_utterance_id") or "").strip()
+        if not utterance_id or utterance_id in already_submitted:
+            continue
+        if not bool(metadata.get("translation_eligible", True)):
+            continue
+        source_text = str(rec.get("final_text") or rec.get("assembler_text") or "").strip()
+        if not source_text:
+            continue
+        gap_count += 1
+        record_id = str(rec.get("record_id") or "")
+        commit_reason = str(rec.get("commit_reason") or "")
+
+        if worker is None:
+            unresolved.append(utterance_id)
+            logger.error(
+                "TRANSLATION_RECONCILIATION_FORCED_SUBMIT_FAILED record_id=%s "
+                "canonical_utterance_id=%s commit_reason=%s reason=no_translation_worker",
+                record_id,
+                utterance_id,
+                commit_reason,
+            )
+            freeze_guard_log(
+                "TRANSLATION_RECONCILIATION_GAP_UNRESOLVABLE",
+                record_id=record_id,
+                canonical_utterance_id=utterance_id,
+                commit_reason=commit_reason,
+                reason="no_translation_worker",
+            )
+            continue
+
+        try:
+            from alpha.utils.run_identity import get_run_id
+
+            run_id = str(get_run_id() or "")
+        except Exception:
+            run_id = ""
+        source_lang = str(
+            getattr(host, "_listen_language", None)
+            or metadata.get("source_language")
+            or ""
+        )
+        try:
+            accepted = worker.enqueue_stable_segment(
+                segment_id=int(rec.get("sequence_number") or 0),
+                source_language=source_lang,
+                source_text=source_text,
+                stable_commit_timestamp=float(rec.get("created_at") or time.time()),
+                is_interim=False,
+                run_id=run_id,
+                canonical_utterance_id=utterance_id,
+                source_version=int(metadata.get("source_version") or 1),
+                source_record_id=record_id,
+                session_id=str(metadata.get("session_id") or ""),
+                force=True,
+            )
+        except Exception as exc:
+            unresolved.append(utterance_id)
+            logger.error(
+                "TRANSLATION_RECONCILIATION_FORCED_SUBMIT_EXCEPTION record_id=%s "
+                "canonical_utterance_id=%s commit_reason=%s exception_type=%s "
+                "exception_message=%s",
+                record_id,
+                utterance_id,
+                commit_reason,
+                type(exc).__name__,
+                exc,
+                exc_info=True,
+            )
+            freeze_guard_log(
+                "TRANSLATION_RECONCILIATION_FORCED_SUBMIT_EXCEPTION",
+                record_id=record_id,
+                canonical_utterance_id=utterance_id,
+                commit_reason=commit_reason,
+                exception_type=type(exc).__name__,
+                exception_message=str(exc),
+                short_traceback="".join(
+                    traceback.format_exception(type(exc), exc, exc.__traceback__)
+                )[-1500:],
+            )
+            continue
+
+        if accepted:
+            forced_count += 1
+            logger.warning(
+                "TRANSLATION_RECONCILIATION_FORCED_SUBMIT record_id=%s "
+                "canonical_utterance_id=%s commit_reason=%s",
+                record_id,
+                utterance_id,
+                commit_reason,
+            )
+            freeze_guard_log(
+                "TRANSLATION_RECONCILIATION_FORCED_SUBMIT",
+                record_id=record_id,
+                canonical_utterance_id=utterance_id,
+                commit_reason=commit_reason,
+                source_version=metadata.get("source_version"),
+            )
+        else:
+            unresolved.append(utterance_id)
+            logger.error(
+                "TRANSLATION_RECONCILIATION_FORCED_SUBMIT_REJECTED record_id=%s "
+                "canonical_utterance_id=%s commit_reason=%s",
+                record_id,
+                utterance_id,
+                commit_reason,
+            )
+            freeze_guard_log(
+                "TRANSLATION_RECONCILIATION_FORCED_SUBMIT_REJECTED",
+                record_id=record_id,
+                canonical_utterance_id=utterance_id,
+                commit_reason=commit_reason,
+            )
+
+    freeze_guard_log(
+        "TRANSLATION_RECONCILIATION_DONE",
+        active_record_count=len(active_records),
+        already_submitted_count=len(already_submitted),
+        gap_count=gap_count,
+        forced_count=forced_count,
+        unresolved_count=len(unresolved),
+    )
+    if unresolved:
+        raise TranslationReconciliationError(
+            f"reconciliation could not deliver {len(unresolved)}/{gap_count} "
+            f"gap(s): {unresolved}"
+        )
+    return {
+        "active_record_count": len(active_records),
+        "already_submitted_count": len(already_submitted),
+        "gap_count": gap_count,
+        "forced_count": forced_count,
+    }
 
 
 def _watchdog_loop(host: Any) -> None:
@@ -541,7 +819,29 @@ def build_stop_finalize_summary(
     *,
     dg_result: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
-    """Normalized stop finalize evidence — timed_out only when steps actually timed out."""
+    """Normalized stop finalize evidence — timed_out only when steps actually timed out.
+
+    fixes TASK_9_REPORT.md Issue 2: this is called a second time later, from
+    evidence_pointer_finalize.py's background thread, well after the
+    synchronous finalize sequence already computed and logged the real
+    result (STOP_FINALIZE_COMPLETED). If that second call is still for the
+    SAME run this cache was populated for, reuse the one authoritative
+    computation instead of recomputing against the shared, unscoped
+    _required_step_ok/_stop_state globals, which may by then belong to a
+    different (often still in-progress) run's Stop sequence. A different
+    run id (or no cache yet -- e.g. the very first, real computation, or a
+    run whose finalize sequence crashed before reaching the cache-write
+    point) falls through to a fresh computation as before.
+    """
+    global _last_completed_run_id, _last_completed_summary
+    current_run_id = _current_run_id_for_cache()
+    if current_run_id:
+        with _state_lock:
+            cached_run_id = _last_completed_run_id
+            cached_summary = dict(_last_completed_summary) if _last_completed_summary else None
+        if cached_summary is not None and cached_run_id == current_run_id:
+            return cached_summary
+
     snap = get_stop_finalize_snapshot()
     failed_steps = list(snap.get("failed_steps") or [])
     timed_out_steps = list(snap.get("timed_out_steps") or [])
@@ -644,6 +944,18 @@ def build_stop_finalize_summary(
             jp_accuracy_log("STOP_FINALIZE_TIMEOUT_FLAG_CORRECTED", **summary)
         except Exception:
             pass
+
+    # fixes TASK_9_REPORT.md Issue 2: only cache once the synchronous
+    # finalize sequence for THIS run has genuinely reached its end
+    # (get_stop_finalize_snapshot()'s own "finalize_completed" flag,
+    # set once near the end of _run_finalize_worker, before this
+    # function's real/authoritative call) -- never a partial/in-progress
+    # snapshot, which a hypothetical future mid-sequence caller could
+    # otherwise freeze in as if it were final.
+    if snap.get("finalize_completed") and current_run_id:
+        with _state_lock:
+            _last_completed_run_id = current_run_id
+            _last_completed_summary = dict(summary)
 
     return summary
 
@@ -1036,6 +1348,7 @@ def _run_finalize_worker(host: Any) -> None:
         from alpha.transcription.japanese_final_chunk_stabilizer import (
             close_japanese_transcript_gate,
             flush_japanese_assembler_on_stop,
+            should_use_japanese_final_stabilizer,
         )
 
         def _session_side_logs() -> None:
@@ -1132,8 +1445,24 @@ def _run_finalize_worker(host: Any) -> None:
         )
 
         # V25.3.3.1: final UI update BEFORE drain barrier so post-drain UI posts = 0
-        stop_summary_pre = build_stop_finalize_summary(host, dg_result=dg_result)
-        timed_out_pre = bool(stop_summary_pre.get("stop_finalize_timed_out", False))
+        #
+        # fixes TASK_10_REPORT.md: this used to call the full
+        # build_stop_finalize_summary(host, dg_result=dg_result) here, purely
+        # to read its "stop_finalize_timed_out" field -- but at this point in
+        # the sequence, utterance_reconstruction/canonical_ledger_validation/
+        # stable_export/final_export/translation_reconciliation/run_manifest
+        # have not been marked yet, so compute_core_final_status() (called
+        # inside build_stop_finalize_summary) always reported a spurious
+        # "failed"/"utterance_reconstruction" result here and logged a
+        # confusingly "final"-sounding STOP_FINALIZE_SUMMARY_NORMALIZED event
+        # with it, regardless of the run's real outcome. The only value
+        # actually used below (timed_out_pre, itself only a fallback default
+        # _queue_final_ui_update's own internal computation always
+        # overrides) is available directly from the lightweight, non-logging
+        # get_stop_finalize_snapshot() -- the exact same underlying
+        # timed_out_steps data build_stop_finalize_summary derives that one
+        # field from.
+        timed_out_pre = bool(get_stop_finalize_snapshot().get("stop_finalize_timed_out", False))
         _queue_final_ui_update(host, timed_out=timed_out_pre)
         freeze_guard_log("FINAL_UI_UPDATE_QUEUED_BEFORE_DRAIN")
 
@@ -1165,14 +1494,18 @@ def _run_finalize_worker(host: Any) -> None:
         commit_confirm_ok = run_timed_step(
             host, "transcript_commit_confirm", lambda: _confirm_transcript_commits(host)
         )
-        # fixes TASK_4A_FINDINGS.md item 1 (utterance reconstruction): the
-        # assembler flush + transcript-commit confirmation are the two steps
-        # that finish reconstructing pending utterances into committed
-        # segments at Stop; both must have actually completed.
+        utterance_reconstruction_ok, utterance_reconstruction_reason = (
+            compute_utterance_reconstruction_ok(
+                host,
+                assembler_flush_ok=assembler_flush_ok,
+                commit_confirm_ok=commit_confirm_ok,
+                is_japanese_session_fn=should_use_japanese_final_stabilizer,
+            )
+        )
         _mark_required_step(
             "utterance_reconstruction",
-            bool(assembler_flush_ok) and bool(commit_confirm_ok),
-            reason="assembler_flush_or_commit_confirm_failed",
+            utterance_reconstruction_ok,
+            reason=utterance_reconstruction_reason,
         )
 
         def _translation_unit_flush() -> None:
@@ -1197,6 +1530,57 @@ def _run_finalize_worker(host: Any) -> None:
                 )
 
         run_timed_step(host, "translation_unit_final_flush", _translation_unit_flush)
+
+        def _flush_pending_translation_debounce() -> None:
+            """fixes TASK_7_REPORT.md: main_window.py's
+            submit_text_for_translation() coalesces a newly committed
+            segment behind a 120-350ms Tk .after() debounce timer before
+            actually calling translation_worker.enqueue_stable_segment().
+            A segment committed right before Stop -- e.g. via
+            utterance_lifecycle.py's inactivity_timeout_fallback, which by
+            definition tends to fire close to Stop -- can still have that
+            timer armed but unfired when translation_worker_shutdown below
+            calls stop_accepting()/shutdown(), silently abandoning the job:
+            never enqueued, never counted in translation_jobs.jsonl, even
+            though its canonical ledger commit already succeeded. Flush any
+            pending debounced submission synchronously first.
+            """
+            freeze_guard_log("PENDING_TRANSLATION_DEBOUNCE_FLUSH_BEGIN")
+            flusher = getattr(host, "flush_pending_translation_submissions", None)
+            if not callable(flusher):
+                freeze_guard_log(
+                    "PENDING_TRANSLATION_DEBOUNCE_FLUSH_DONE", skipped="no_flusher"
+                )
+                return
+            try:
+                flushed = flusher(timeout_seconds=2.0)
+                freeze_guard_log(
+                    "PENDING_TRANSLATION_DEBOUNCE_FLUSH_DONE",
+                    flushed_count=int(flushed or 0),
+                )
+            except Exception as exc:
+                freeze_guard_log(
+                    "PENDING_TRANSLATION_DEBOUNCE_FLUSH_FAILED",
+                    exception_type=type(exc).__name__,
+                    exception_message=str(exc),
+                )
+
+        run_timed_step(
+            host,
+            "flush_pending_translation_debounce",
+            _flush_pending_translation_debounce,
+        )
+
+        reconciliation_ok = run_timed_step(
+            host,
+            "translation_reconciliation",
+            lambda: reconcile_translation_gaps(host),
+        )
+        _mark_required_step(
+            "translation_reconciliation",
+            bool(reconciliation_ok),
+            reason="translation_reconciliation_exception_or_timeout",
+        )
 
         def _translation_worker_shutdown() -> None:
             """Drain async DeepL worker after transcription finalize; bounded wait."""
@@ -1410,6 +1794,15 @@ def _run_finalize_worker(host: Any) -> None:
             except Exception:
                 pass
 
+        # fixes TASK_9_REPORT.md Issue 2: build_stop_finalize_summary() now
+        # caches this call's result itself (run-id scoped, gated on
+        # get_stop_finalize_snapshot()'s finalize_completed flag, which is
+        # already True by this point -- see the "_stop_state[finalize_completed]
+        # = True" line just above) so a later call for the SAME run
+        # (evidence_pointer_finalize.py's delayed background thread) reuses
+        # this one authoritative computation instead of recomputing against
+        # globals that may have already moved on to a different run's Stop
+        # sequence.
         stop_summary = build_stop_finalize_summary(host, dg_result=dg_result)
         timed_out = bool(stop_summary.get("stop_finalize_timed_out", False))
         stop_summary["three_stage_finalize_call_count"] = _three_stage_finalize_call_count

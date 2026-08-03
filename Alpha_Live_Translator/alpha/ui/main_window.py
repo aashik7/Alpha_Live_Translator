@@ -1270,16 +1270,21 @@ class AlphaApp(
     ):
         self._last_operation_hint = "append_segment"
         t0 = time.perf_counter()
-        self._remove_interim_line_from_display()
-        box = self._transcript_box()
-        if box is None:
-            return
-        box.configure(state="normal")
-        if hasattr(self, "_clear_text_placeholder"):
-            self._clear_text_placeholder(box)
-        self._insert_speaker_segment_line(box, speaker, text)
-        # Enqueue Stable-only translation off the critical path (worker thread).
-        # New sentence: flush any pending debounced job for the previous line first.
+        try:
+            self._remove_interim_line_from_display()
+        except Exception:
+            pass
+        # fixes TASK_8_REPORT.md: translation submission used to run AFTER
+        # all transcript-box rendering below, and after an unconditional
+        # `if box is None: return`. Any commit reason funnels through this
+        # one shared hook (English _commit_locked's 6 reasons, the Japanese
+        # continuity assembler's commits, and Japanese manual-mode's direct
+        # callers alike) -- so a torn-down/unavailable transcript box, or
+        # any exception raised by the rendering code that used to run
+        # first, silently dropped translation for an already-successfully-
+        # committed, translation-eligible record with zero trace. Submit
+        # first, render second, so translation delivery never depends on
+        # UI-widget state.
         try:
             self.submit_text_for_translation(
                 text,
@@ -1291,6 +1296,13 @@ class AlphaApp(
             )
         except Exception:
             pass
+        box = self._transcript_box()
+        if box is None:
+            return
+        box.configure(state="normal")
+        if hasattr(self, "_clear_text_placeholder"):
+            self._clear_text_placeholder(box)
+        self._insert_speaker_segment_line(box, speaker, text)
         # Bound rendered UI history; canonical TranscriptStore remains complete.
         try:
             limit = int(MAX_RENDERED_UI_SEGMENTS)
@@ -1351,27 +1363,24 @@ class AlphaApp(
         source_record_id: str = "",
     ):
         self._last_operation_hint = "update_segment"
-        self._remove_interim_line_from_display()
-        box = self._transcript_box()
-        if box is None:
-            return
-        box.configure(state="normal")
         try:
-            if box.compare("segment_anchor", ">=", "1.0"):
-                box.delete("segment_anchor", "end")
-            else:
-                box.delete("end-2l linestart", "end")
+            self._remove_interim_line_from_display()
         except Exception:
-            box.delete("end-2l linestart", "end")
-        self._insert_speaker_segment_line(box, speaker, text)
-        box.configure(state="disabled")
-        self._maybe_scroll_transcript_box(box)
-        self._refresh_transcript_scrollbar(box)
-        # fixes TASK_3A_FINDINGS.md Item 1: same utterance revised -- drop the
-        # obsolete translated line by canonical_utterance_id lookup, never by
-        # position. Fail-closed: if identity is missing or unmatched, or the
-        # tracked item is already a newer source_version, skip and log --
-        # never guess-apply to "whatever is currently last".
+            pass
+        # fixes TASK_8_REPORT.md: same rationale as _on_store_segment_added
+        # -- translation submission (and the stale-translation-line removal
+        # it depends on) used to run AFTER all transcript-box rendering
+        # below, gated behind the same unconditional `if box is None:
+        # return`. Neither depends on the transcript box at all (the
+        # translated-verse widget is a separate box entirely), so both are
+        # moved ahead of rendering and are never skipped by a rendering
+        # failure or an unavailable transcript widget.
+        #
+        # fixes TASK_3A_FINDINGS.md Item 1: same utterance revised -- drop
+        # the obsolete translated line by canonical_utterance_id lookup,
+        # never by position. Fail-closed: if identity is missing or
+        # unmatched, or the tracked item is already a newer source_version,
+        # skip and log -- never guess-apply to "whatever is currently last".
         try:
             self._remove_translation_item_for_utterance(
                 canonical_utterance_id=canonical_utterance_id,
@@ -1392,6 +1401,21 @@ class AlphaApp(
             )
         except Exception:
             pass
+        box = self._transcript_box()
+        if box is None:
+            return
+        box.configure(state="normal")
+        try:
+            if box.compare("segment_anchor", ">=", "1.0"):
+                box.delete("segment_anchor", "end")
+            else:
+                box.delete("end-2l linestart", "end")
+        except Exception:
+            box.delete("end-2l linestart", "end")
+        self._insert_speaker_segment_line(box, speaker, text)
+        box.configure(state="disabled")
+        self._maybe_scroll_transcript_box(box)
+        self._refresh_transcript_scrollbar(box)
 
     def _remove_translation_item_for_utterance(
         self, *, canonical_utterance_id: str, source_version: int
@@ -6612,6 +6636,63 @@ class AlphaApp(
                 canonical_utterance_id=canonical_utterance_id,
                 source_version=source_version,
             )
+
+    def flush_pending_translation_submissions(self, timeout_seconds: float = 2.0) -> int:
+        """fixes TASK_7_REPORT.md: submit_text_for_translation() debounces a
+        newly committed segment behind a 120-350ms Tk .after() timer before
+        actually calling worker.enqueue_stable_segment(). Stop's finalize
+        sequence (stop_finalize_worker.py) previously called
+        translation_worker.stop_accepting()/shutdown() with no knowledge of
+        this pending-but-unfired timer, so a segment committed right before
+        Stop (e.g. via utterance_lifecycle.py's inactivity_timeout_fallback,
+        which by definition tends to land close to Stop) could have its
+        debounce timer abandoned -- never enqueued, never counted, never
+        logged, even though its canonical ledger commit had already
+        succeeded. This flushes every still-pending debounced submission
+        synchronously before Stop stops accepting new translation jobs.
+
+        Must run on the Tk thread (the flush touches translation-loading UI
+        widgets), but is expected to be called from stop_finalize_worker.py's
+        background finalize-step thread -- so unlike _run_on_ui_thread (which
+        only schedules and returns), this blocks the calling thread until the
+        Tk-thread flush actually completes or the bounded timeout elapses.
+        """
+        pending_map = getattr(self, "_pending_translations_by_utterance", None)
+        if not pending_map:
+            return 0
+        keys = list(pending_map.keys())
+        if not keys:
+            return 0
+
+        flushed_count = {"n": 0}
+
+        def _do_flush(done=None) -> None:
+            try:
+                for key in keys:
+                    if key in pending_map:
+                        flushed_count["n"] += 1
+                    self._flush_pending_translation_submit(key)
+            finally:
+                if done is not None:
+                    done.set()
+
+        try:
+            from alpha.utils.ui_thread_guard import is_ui_main_thread
+
+            if is_ui_main_thread():
+                _do_flush()
+            else:
+                from alpha.utils.ui_event_bus import get_ui_event_bus
+
+                done = threading.Event()
+                get_ui_event_bus().post_schedule_after(0, lambda: _do_flush(done))
+                done.wait(timeout=timeout_seconds)
+        except Exception:
+            try:
+                _do_flush()
+            except Exception:
+                pass
+        return int(flushed_count["n"])
 
     def _show_translation_loading_item(
         self,

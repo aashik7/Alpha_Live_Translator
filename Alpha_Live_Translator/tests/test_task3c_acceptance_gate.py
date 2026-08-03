@@ -67,9 +67,44 @@ class TranslationUIHost(tk.Tk):
     loading_indicators_pending = AlphaApp.loading_indicators_pending
 
     def __init__(self, session_id: str = "sess-3c", listen_language: str = "en") -> None:
+        # fixes TASK_10_REPORT.md test-stability finding (same fragility as
+        # test_task9_report.py's RealIntegrationHost): tkinter/Tcl does not
+        # reliably tolerate many independent tk.Tk() root creations/
+        # destructions within a single process -- observed as a fatal,
+        # uncatchable process-level crash (exit code 3, Tcl_AsyncDelete:
+        # async handler deleted by the wrong thread) when this file's
+        # former per-test create+destroy pattern ran alongside the rest of
+        # the suite under `unittest discover`. The Tk root and its Text
+        # widget are now created exactly ONCE per process (see
+        # get_shared_translation_ui_host()); __init__ only runs the first
+        # time. All per-test state is (re)established by reset_for_session().
         super().__init__()
         self.withdraw()
         self.translated_verse_box = tk.Text(self)
+        self.reset_for_session(session_id=session_id, listen_language=listen_language)
+
+    def reset_for_session(self, *, session_id: str = "sess-3c", listen_language: str = "en") -> None:
+        """Re-establish all per-test state on the SAME persistent Tk root."""
+        old_worker = getattr(self, "translation_worker", None)
+        if old_worker is not None:
+            try:
+                if old_worker._thread is not None:
+                    old_worker.shutdown(timeout_seconds=1.0)
+            except Exception:
+                pass
+        self.translated_verse_box.configure(state="normal")
+        self.translated_verse_box.delete("1.0", "end")
+        for tag in self.translated_verse_box.tag_names():
+            try:
+                self.translated_verse_box.tag_delete(tag)
+            except Exception:
+                pass
+        for mark in self.translated_verse_box.mark_names():
+            if mark not in ("insert", "current"):
+                try:
+                    self.translated_verse_box.mark_unset(mark)
+                except Exception:
+                    pass
         self.translated_verse_box._placeholder_text = ""
         self.translated_verse_box._placeholder_active = False
         self.translation_worker = None
@@ -116,6 +151,21 @@ class TranslationUIHost(tk.Tk):
         return (self._live_session_id, canonical_utterance_id)
 
 
+_shared_translation_ui_host: "TranslationUIHost | None" = None
+
+
+def get_shared_translation_ui_host(**kwargs) -> "TranslationUIHost":
+    """One Tk root/interpreter for the whole test process (see the
+    stability note on TranslationUIHost.__init__); each call resets it
+    for a fresh test on the same persistent root."""
+    global _shared_translation_ui_host
+    if _shared_translation_ui_host is None:
+        _shared_translation_ui_host = TranslationUIHost(**kwargs)
+    else:
+        _shared_translation_ui_host.reset_for_session(**kwargs)
+    return _shared_translation_ui_host
+
+
 class Task3CAcceptanceGateTests(unittest.TestCase):
     maxDiff = None
 
@@ -130,16 +180,16 @@ class Task3CAcceptanceGateTests(unittest.TestCase):
                     worker.shutdown(timeout_seconds=1.0)
             except Exception:
                 pass
-            try:
-                host.destroy()
-            except Exception:
-                pass
+            # The Tk root itself is intentionally never destroyed mid-process
+            # (see the stability note in TranslationUIHost.__init__); it is
+            # a persistent, shared, process-wide root reset by the next
+            # test's get_shared_translation_ui_host() call instead.
 
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
     def _make_host(self, **kwargs) -> TranslationUIHost:
-        host = TranslationUIHost(**kwargs)
+        host = get_shared_translation_ui_host(**kwargs)
         self._hosts.append(host)
         return host
 
