@@ -1,3 +1,12 @@
+STATUS: Repair complete as of Task 14 (2026-08-04). All 5 REPAIR_PLAN.md
+phases plus follow-up Tasks 6-14 resolved. Verified via 3-scenario
+multi-session live test (English, Japanese, short-Stop English) — all
+three completed cleanly with final_status='completed', zero
+failed_required_steps. See TASK_1 through TASK_14 report files for full
+history.
+
+---
+
 # Alpha Live Translator — Task 1 Root Cause Audit
 
 ## Scope
@@ -187,3 +196,80 @@ Current verdict: PASSED WITH EXCEPTIONS
 ```
 
 Task 1 may be marked `READY_FOR_TASK_2` only after the two upstream findings are classified and confirmed not to violate Task 1 acceptance criteria.
+
+---
+
+## Known non-blocking debt
+
+Items flagged during Tasks 1-14 that were deliberately **not** fixed —
+none block the "repair complete" verdict above (none reproduce as a live
+failure), but are recorded here so a future task can pick them up instead
+of rediscovering them.
+
+**Deferred architectural items:**
+
+* The Japanese path still lacks a single canonical controller — the
+  assembler commits independently (`execute_pipeline_commit`) rather than
+  proposing HOLD/EXTEND/COMMIT to one controller, as REPAIR_PLAN.md Phase
+  2 originally specified. Deliberately deferred as too large for a
+  surgical fix (Tasks 2B/2D patched the dangerous symptoms — cross-speaker
+  merging, speaker-blind revision — instead). Re-flagged in TASK_2E_FINDINGS.md,
+  TASK_3B_CHANGES.md, and TASK_4C_REPORT.md; still open.
+* `duplicate_protection.py::_display_transcript_item`'s
+  `self.transcript_store.get_last_segment(speaker_num)` — keyed by speaker
+  only, no channel/session key — and the same function's
+  `already_committed` trust-gate (`canonical_record_id`/
+  `_jp_continuity_assembler`/`canonical_ledger_committed` flags, which
+  trust an upstream producer without independent verification). Flagged
+  in `TASK_1A_FINDINGS.md`, classified as Task 2 scope, never revisited by
+  any of Tasks 2A-2D (all four focused on the Japanese assembler/boundary-
+  stabilizer chain instead) — re-confirmed still open in
+  `TASK_4C_REPORT.md`.
+* `transcript_snapshot_store.py` — a third transcript-storage module
+  (alongside `canonical_transcript_ledger.py` and `transcript_store.py`)
+  with overlapping "hold the transcript" responsibility and its own
+  independent positional-revision bug. Flagged `NEEDS_REVIEW` in
+  `TASK_3A_FINDINGS.md`; never resolved.
+* `_commit_japanese_update_previous_segment`'s non-atomic commit path —
+  one `store.update_last_segment` call followed by several side-effect
+  calls with no rollback path if a later one raises. Flagged
+  `NEEDS_REVIEW` in `TASK_2E_FINDINGS.md`, pending a full read of
+  `_on_store_segment_updated`; never revisited.
+
+**Dead code candidates never removed** (confirmed still present, still
+unused, via repo-wide grep as of this task):
+
+* `japanese_sentence_assembler.py`'s `_translation_unit_builder`
+  (`JapaneseTranslationUnitBuilder`) — confirmed in `TASK_3A_FINDINGS.md`
+  to compute a metric no live decision consumes (vestigial, not a second
+  authority causing active harm). Recommended for removal or leaving as
+  documented dead code; left in place either way.
+* `japanese_sentence_assembler.py::should_hold_speaker_continuation` —
+  unused since its only call site was replaced in Task 2B; flagged in
+  `TASK_2B_CHANGES.md`/`TASK_2D_REPORT.md`.
+* `japanese_sentence_assembler.py`'s `JAPANESE_SPEAKER_STICKY_MS` and
+  `SPEAKER_CONTINUATION_MAX_COMPACT` constants — unused since Task 2B;
+  flagged in `TASK_2D_REPORT.md`.
+* `japanese_boundary_stabilizer.py::set_previous_line` — confirmed unused;
+  flagged in `TASK_2D_REPORT.md`.
+
+**Already resolved, no longer debt** (verified via grep before writing
+this section, in case earlier reports are stale): `_channels_compatible()`
+(`utterance_lifecycle.py`) and `_run_evidence_package_worker`
+(`stop_finalize_worker.py`) were both flagged as dead code in early tasks
+but were in fact removed in Task 5's/Task 4B's cleanup passes — only
+comments referencing their removal remain. `main_window.py`'s
+`publish_translation_event` (flagged dead in `TASK_3A_FINDINGS.md`) is
+also gone from the current tree.
+
+**Pre-existing test failures** (unrelated to this engagement's scope,
+present at baseline and carried through every task's regression run
+without change): `test_final_transcript_commit_v3_2_5.py::test_commit_allowed_while_finalizing`
+and `::test_commit_allowed_while_listening` — root cause identified in
+`TASK_6_REPORT.md` (the test's own `CommitHost` fixture never calls
+`_deepgram_on_open`, so the Japanese gate is never opened before the test
+exercises it) but explicitly out of that task's named fix scope. Plus 2
+`test_package_glossary_flags_85253.py` failures, 2 matching errors, and 1
+`test_stop_finalize_v3_2_3.py::test_phase_constants_match_spec` failure —
+none newly introduced by this engagement; see each task's own regression
+table for confirmation they predate that task's changes.

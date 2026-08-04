@@ -1,3 +1,12 @@
+STATUS: Repair complete as of Task 14 (2026-08-04). All 5 REPAIR_PLAN.md
+phases plus follow-up Tasks 6-14 resolved. Verified via 3-scenario
+multi-session live test (English, Japanese, short-Stop English) — all
+three completed cleanly with final_status='completed', zero
+failed_required_steps. See TASK_1 through TASK_14 report files for full
+history.
+
+---
+
 # Repair and Code-Optimisation Plan
 
 We should **not continue with isolated patches**. We should perform a controlled refactor in stages, keeping the working audio, providers, session lifecycle, and ordering systems frozen.
