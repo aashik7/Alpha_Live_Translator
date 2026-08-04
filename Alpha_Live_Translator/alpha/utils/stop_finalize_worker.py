@@ -627,7 +627,9 @@ def _start_watchdog(host: Any) -> None:
         t.start()
 
 
-def _queue_final_ui_update(host: Any, *, timed_out: bool) -> None:
+def _queue_final_ui_update(
+    host: Any, *, timed_out: bool, use_lightweight_snapshot: bool = False
+) -> None:
     """Schedule lightweight UI finish on main thread — never call Tk from worker."""
     runner = getattr(host, "_run_on_ui_thread", None)
     finish = getattr(host, "_finish_graceful_stop", None)
@@ -638,8 +640,30 @@ def _queue_final_ui_update(host: Any, *, timed_out: bool) -> None:
         freeze_guard_log("FINAL_UI_UPDATE_SKIPPED_DURING_STOP", reason="no_ui_runner")
         return
 
-    summary = build_stop_finalize_summary(host)
-    ui_timed_out = bool(summary.get("stop_finalize_timed_out", timed_out))
+    # fixes TASK_14_REPORT.md: ground truth (TASK_13_DEBUG_REPORT.md's
+    # diagnostic) confirmed the call from _run_finalize_worker's normal
+    # sequence (line ~1485, before the drain barrier) is ALWAYS premature —
+    # most required steps have not been marked yet at that point, so the
+    # full build_stop_finalize_summary(host) used to compute (and log via
+    # FINAL_UI_UPDATE_QUEUED) a spurious "failed" result on every single
+    # run, regardless of true outcome. That call site only ever needed
+    # stop_finalize_timed_out, already available from the lightweight,
+    # non-authoritative get_stop_finalize_snapshot() — the same value
+    # TASK_10_REPORT.md already switched the immediate caller to read
+    # directly instead of the full summary. The genuine-failure call from
+    # the outer exception handler still needs the full, authoritative
+    # summary (the run really did fail there), so it keeps the default.
+    if use_lightweight_snapshot:
+        snap = get_stop_finalize_snapshot()
+        ui_timed_out = bool(snap.get("stop_finalize_timed_out", timed_out))
+        summary: dict[str, Any] = {
+            "stop_finalize_timed_out": ui_timed_out,
+            "worker_done": snap.get("worker_done", False),
+            "note": "lightweight_pre_drain_snapshot_not_final_status",
+        }
+    else:
+        summary = build_stop_finalize_summary(host)
+        ui_timed_out = bool(summary.get("stop_finalize_timed_out", timed_out))
 
     def _ui_finish() -> None:
         try:
@@ -1465,7 +1489,7 @@ def _run_finalize_worker(host: Any) -> None:
         # timed_out_steps data build_stop_finalize_summary derives that one
         # field from.
         timed_out_pre = bool(get_stop_finalize_snapshot().get("stop_finalize_timed_out", False))
-        _queue_final_ui_update(host, timed_out=timed_out_pre)
+        _queue_final_ui_update(host, timed_out=timed_out_pre, use_lightweight_snapshot=True)
         freeze_guard_log("FINAL_UI_UPDATE_QUEUED_BEFORE_DRAIN")
 
         from alpha.utils.ui_stop_drain_barrier import request_stop_ui_drain
@@ -1883,9 +1907,24 @@ def _run_finalize_worker(host: Any) -> None:
             from alpha.utils.evidence_pointer_finalize import (
                 schedule_evidence_pointer_finalization_background,
             )
+            from alpha.utils.run_identity import get_current_run_identity
 
+            # fixes TASK_14_REPORT.md: capture THIS run's identity now,
+            # while it is still guaranteed current, and hand it to the
+            # background pass explicitly. get_current_run_identity() is a
+            # single, unscoped module-level global — ground-truth
+            # reproduction confirmed that if a real Start happens before
+            # this background thread gets OS-scheduled, that global has
+            # already moved on to the NEW run by the time the background
+            # pass re-reads it, pairing the OLD run's host with the NEW
+            # run's identity/folder and overwriting the NEW run's
+            # RUN_MANIFEST.json with a bogus status.
+            _this_run_identity = get_current_run_identity()
             schedule_evidence_pointer_finalization_background(
-                host, reason="after_minimal_stop"
+                host,
+                reason="after_minimal_stop",
+                run_id=str(getattr(_this_run_identity, "run_id", "") or ""),
+                run_folder=str(getattr(_this_run_identity, "run_folder", "") or ""),
             )
         except Exception:
             pass

@@ -31,8 +31,33 @@ def finalize_evidence_pointers_completed(
     upload_zip_path: str = "",
     reason: str = "after_stop",
     app_close_status: str = "normal",
+    run_id: str = "",
+    run_folder: str = "",
 ) -> dict[str, Any]:
-    """Update latest pointers and per-run status to completed — non-blocking safe."""
+    """Update latest pointers and per-run status to completed — non-blocking safe.
+
+    fixes TASK_14_REPORT.md: this runs later, on an independent daemon
+    thread, with no guaranteed timing relative to the run it was scheduled
+    for (stop_finalize_worker.py's schedule_evidence_pointer_finalization_
+    background call, right after that run's own Stop sequence finished).
+    get_current_run_identity() is a single, unscoped module-level global —
+    ground-truth reproduction confirmed that if a new Start happens before
+    this thread actually runs, that global already reports the NEW run's
+    identity while `host` here is still the OLD run's host object. Acting
+    on that mismatched pairing wrote a bogus status into the NEW run's
+    RUN_MANIFEST.json. When `run_id` is given (the normal live-Stop path),
+    this pass only proceeds if the current global identity still agrees
+    it's the same run; otherwise the module-level tracking state this
+    function and build_stop_finalize_summary() both read
+    (_stop_state/_required_step_ok, and potentially the run folder) may
+    already belong to a different run, and there is nothing safe left to
+    finalize here — the synchronous write from
+    stop_finalize_worker.py::_write_minimal_runtime_artifacts already
+    persisted the correct result for this run; this pass just never gets
+    to upgrade it to "completed". A caller with no run_id (e.g. the
+    offline-package path, where nothing else is racing) keeps the old
+    behavior of trusting whatever is currently current.
+    """
     result: dict[str, Any] = {"ok": False}
     if not EVIDENCE_POINTER_FINALIZATION_FIX_ENABLED:
         return result
@@ -42,13 +67,27 @@ def finalize_evidence_pointers_completed(
         from alpha.utils.stop_finalize_worker import build_stop_finalize_summary
 
         identity = get_current_run_identity()
-        if identity is None:
+        current_run_id = str(getattr(identity, "run_id", "") or "") if identity else ""
+        if run_id and current_run_id != run_id:
+            _log(
+                "EVIDENCE_POINTER_FINALIZE_SKIPPED_STALE_RUN",
+                scheduled_run_id=run_id,
+                current_run_id=current_run_id,
+                reason=reason,
+            )
+            result["error"] = "stale_run_superseded"
             return result
-        folder = Path(identity.run_folder) if identity.run_folder else None
+
+        effective_run_id = run_id or current_run_id
+        folder = (
+            Path(run_folder)
+            if run_folder
+            else (Path(identity.run_folder) if identity and identity.run_folder else None)
+        )
         if folder is None or not folder.exists():
             return result
 
-        _log("LATEST_RUN_POINTER_FINALIZATION_BEGIN", reason=reason, run_id=identity.run_id)
+        _log("LATEST_RUN_POINTER_FINALIZATION_BEGIN", reason=reason, run_id=effective_run_id)
 
         stop_summary = {}
         try:
@@ -145,7 +184,7 @@ def finalize_evidence_pointers_completed(
 
             finalize_latest_pointers(
                 folder,
-                run_id=identity.run_id,
+                run_id=effective_run_id,
                 status=final_status,
                 upload_zip_path=upload_zip_path,
                 app_close_status=app_close_status,
@@ -232,11 +271,17 @@ def _update_accuracy_evidence_index_pointer_fields(
 
 
 def schedule_evidence_pointer_finalization_background(
-    host: Any = None, *, reason: str = "after_stop"
+    host: Any = None,
+    *,
+    reason: str = "after_stop",
+    run_id: str = "",
+    run_folder: str = "",
 ) -> None:
     def _worker() -> None:
         try:
-            finalize_evidence_pointers_completed(host, reason=reason)
+            finalize_evidence_pointers_completed(
+                host, reason=reason, run_id=run_id, run_folder=run_folder
+            )
         except Exception:
             pass
 
