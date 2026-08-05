@@ -1794,11 +1794,17 @@ class DeepgramClientMixin:
                             self
                         ):
                             get_utterance_lifecycle(self).on_utterance_end(
-                                channel=data.get("channel_index"),
+                                # Deepgram's UtteranceEnd message uses the key
+                                # "channel", NOT "channel_index" (that key only
+                                # exists on Results messages). Reading the wrong
+                                # key made this always None, so the cross-channel
+                                # guard in on_utterance_end() rejected every
+                                # UtteranceEnd-triggered commit unconditionally.
+                                channel=data.get("channel"),
                                 event_id=f"utterance-end-{time.time_ns()}",
                                 metadata={
                                     "type": "UtteranceEnd",
-                                    "channel_index": data.get("channel_index"),
+                                    "channel_index": data.get("channel"),
                                 },
                             )
                     except Exception as exc:

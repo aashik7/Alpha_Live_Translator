@@ -352,9 +352,19 @@ class UtteranceLifecycleOwner:
         *,
         channel: Any,
         metadata: dict[str, Any],
+        fallback_utterance_id: str = "",
     ) -> tuple[str, str]:
         target_record_id = str(metadata.get("revision_target_id") or "").strip()
         target_utterance_id = str(metadata.get("canonical_utterance_id") or "").strip()
+        if not target_utterance_id:
+            # No upstream system supplied an explicit identity link — this is
+            # the normal case for raw Deepgram English/generic finals, which
+            # have no such concept. Fall back to the id we already track
+            # internally for the previously committed utterance and let the
+            # canonical identity registry (already populated by
+            # duplicate_protection.py's commit path) resolve it, instead of
+            # giving up before even trying.
+            target_utterance_id = str(fallback_utterance_id or "").strip()
         if not target_record_id and not target_utterance_id:
             return "", ""
         try:
@@ -877,7 +887,7 @@ class UtteranceLifecycleOwner:
                         d, is_final=False, speech_final=False, channel=channel
                     )
                     return d
-                return self._apply_active_update_locked(
+                d = self._apply_active_update_locked(
                     lexical=lexical,
                     speaker=speaker,
                     channel=channel,
@@ -891,6 +901,15 @@ class UtteranceLifecycleOwner:
                     speech_final=False,
                     source=source,
                 )
+                # Pure-interim-only utterances previously never armed a
+                # fallback timer, so if Deepgram never promotes this
+                # utterance to is_final=True (e.g. the stream simply stops
+                # producing further results), it could never commit and the
+                # interim marker would stay on screen indefinitely.
+                # on_timeout() already explicitly supports committing from
+                # ACTIVE_INTERIM state — arming here just makes that reachable.
+                self._arm_timeout_locked()
+                return d
 
             # Duplicate of already-committed active
             if (
@@ -1128,11 +1147,18 @@ class UtteranceLifecycleOwner:
         target_record_id, target_utterance_id = self._resolve_correction_target_locked(
             channel=channel,
             metadata=metadata,
+            fallback_utterance_id=prev.utterance_id,
         )
         if not target_record_id:
             self._log_identity_mismatch("no_exact_revision_target", prev=prev, channel=channel)
             return False
-        if target_record_id != str(prev.committed_record_id or ""):
+        # NOTE: prev.committed_record_id is not currently populated anywhere
+        # in this class (it stays at its "" default for the lifetime of the
+        # process) — only enforce this cross-check when it actually holds a
+        # value, so a genuinely resolved registry hit above isn't rejected
+        # against an always-empty field. If a future change starts populating
+        # committed_record_id, this check becomes fully active again as-is.
+        if prev.committed_record_id and target_record_id != str(prev.committed_record_id):
             self._log_identity_mismatch("revision_target_record_mismatch", prev=prev, channel=channel)
             return False
         if target_utterance_id and target_utterance_id != str(prev.utterance_id or ""):
@@ -1474,6 +1500,7 @@ class UtteranceLifecycleOwner:
         original_id, target_utterance_id = self._resolve_correction_target_locked(
             channel=channel,
             metadata=metadata,
+            fallback_utterance_id=prev.utterance_id,
         )
         if not original_id:
             try:

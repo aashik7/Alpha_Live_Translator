@@ -4293,11 +4293,16 @@ class AlphaApp(
         norm_final = self._normalize_compare(final_text)
         norm_interim = self._normalize_compare(interim_text)
         action = "keep_interim"
-        if norm_interim and norm_final and norm_final in norm_interim:
-            action = "keep_interim"
-        elif norm_interim and norm_final and norm_interim in norm_final:
+        # Order matters: check "interim is fully covered by final" FIRST.
+        # This also correctly covers the equal-strings case (the most common
+        # case — final == interim after a clean commit), which Python's
+        # `in` operator matches on both sides. Checking the other direction
+        # first previously caused equal/caught-up text to be wrongly kept.
+        if norm_interim and norm_final and norm_interim in norm_final:
             action = "clear_interim"
             self._clear_interim_tail()
+        elif norm_interim and norm_final and norm_final in norm_interim:
+            action = "keep_interim"
         elif not norm_interim:
             action = "no_interim"
         self._last_final_text = final_text

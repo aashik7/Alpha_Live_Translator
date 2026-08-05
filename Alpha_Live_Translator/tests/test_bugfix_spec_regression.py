@@ -1,0 +1,242 @@
+"""Regression tests for ALPHA_BUGFIX_SPEC_FOR_CLAUDE_CODE.md (BUG-A/B/C/D).
+
+BUG-A (deepgram_client.py) and BUG-B (main_window.py) are trivial,
+localized fixes verified via the existing full suite (no regressions) and
+by direct source inspection matching the spec's before/after diff; they
+are not re-tested in isolation here.
+
+BUG-C and BUG-D get dedicated tests below, since both have behavior that
+is meaningfully different before vs. after the fix and is cheap to
+exercise without a live Deepgram session.
+"""
+
+from __future__ import annotations
+
+import sys
+import unittest
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from alpha.transcription import canonical_identity_registry as cir  # noqa: E402
+from alpha.transcription.utterance_lifecycle import (  # noqa: E402
+    UtteranceLifecycleOwner,
+    _text_related,
+)
+
+
+class BugCPureInterimArmsFallbackTimeoutTests(unittest.TestCase):
+    """BUG-C: a pure-interim (is_final=False) chunk must arm the
+    inactivity-fallback timer, so an utterance that never receives an
+    is_final=True chunk can still eventually commit instead of staying
+    stuck on screen forever."""
+
+    def setUp(self) -> None:
+        self.owner = UtteranceLifecycleOwner(host=None, commit_fallback_ms=250)
+        self.owner.reset_for_session("sess-bugc")
+
+    def test_interim_only_chunk_arms_timeout(self) -> None:
+        token_before = self.owner._timeout_token
+        d = self.owner.on_final_chunk(
+            text="This is a pure interim fragment",
+            speaker=1,
+            channel=0,
+            start=0.0,
+            end=1.0,
+            is_final=False,
+            speech_final=False,
+            event_id="ev-interim-1",
+            metadata={},
+        )
+        self.assertIsNotNone(d)
+        self.assertNotEqual(
+            self.owner._timeout_token,
+            token_before,
+            "a pure-interim chunk must arm (increment) the fallback timeout "
+            "token (BUG-C) -- before the fix, Case A never called "
+            "_arm_timeout_locked() so this token never moved",
+        )
+
+    def test_incompatible_interim_against_held_active_does_not_arm(self) -> None:
+        # First interim establishes an active utterance.
+        self.owner.on_final_chunk(
+            text="Speaker one talking",
+            speaker=1,
+            channel=0,
+            start=0.0,
+            end=1.0,
+            is_final=False,
+            speech_final=False,
+            event_id="ev-1",
+            metadata={},
+        )
+        token_after_first = self.owner._timeout_token
+        # A wildly incompatible interim (different channel) must be
+        # ignored, not merged and not (re)arming on this rejected path --
+        # this exercises the untouched IGNORE_DUPLICATE branch right above
+        # the fix, confirming it still short-circuits before reaching the
+        # new self._arm_timeout_locked() call.
+        d = self.owner.on_final_chunk(
+            text="Completely unrelated speaker two talking now",
+            speaker=2,
+            channel=1,
+            start=50.0,
+            end=51.0,
+            is_final=False,
+            speech_final=False,
+            event_id="ev-2",
+            metadata={},
+        )
+        self.assertEqual(d.reason, "interim_incompatible_with_active_utterance")
+        # Token identity is allowed to be the same object (rejected path
+        # never re-arms); just confirm the held utterance's own timer
+        # wasn't clobbered by the rejected update.
+        self.assertIs(self.owner._timeout_token, token_after_first)
+
+
+class BugDPostCommitCorrectionSupersedesTests(unittest.TestCase):
+    """BUG-D (primary): once the previously-committed utterance's identity
+    is registered in canonical_identity_registry (the real production
+    path — normally done by duplicate_protection.py's commit handler,
+    simulated directly here), a same-channel, timing/text-related
+    follow-up final must now resolve via the owner's own tracked
+    prev.utterance_id fallback and produce SUPERSEDE_PREVIOUS with the
+    SAME utterance_id and a populated superseded_record_id — instead of
+    silently starting an unrelated second utterance (CREATE_NEW/
+    COMMIT_ACTIVE with a fresh id), which is what happened before the fix
+    for every real English/generic session (118/119 utterance-boundary
+    transitions in the largest recorded live test).
+    """
+
+    def setUp(self) -> None:
+        self.session_id = "sess-bugd"
+        cir.reset_for_session(self.session_id)
+        self.owner = UtteranceLifecycleOwner(host=None, commit_fallback_ms=250)
+        self.owner.reset_for_session(self.session_id)
+
+    def _register_commit_identity(self, decision) -> str:
+        """Simulates duplicate_protection.py's commit path: the ONLY
+        current place canonical_identity_registry actually gets populated
+        for a real commit."""
+        record_id = f"rec-{decision.utterance_id}"
+        cir.observe_identity(
+            session_id=self.session_id,
+            channel_index=0,
+            canonical_utterance_id=decision.utterance_id,
+            provider_utterance_id="",
+            source_version=1,
+            decision="CREATE_NEW",
+            text=decision.text,
+            lifecycle_state="COMMITTED",
+            translation_eligible=True,
+        )
+        cir.assign_canonical_record_id(
+            session_id=self.session_id,
+            channel_index=0,
+            canonical_utterance_id=decision.utterance_id,
+            canonical_record_id=record_id,
+        )
+        return record_id
+
+    def test_no_metadata_identity_hints_reproduces_real_pipeline_shape(self) -> None:
+        # No revision_target_id / canonical_utterance_id in metadata --
+        # exactly what raw Deepgram English/generic finals actually carry
+        # (Part 1 of the root-cause chain: Deepgram has no such concept).
+        d1 = self.owner.on_final_chunk(
+            text="Tariqul is joining the call.",
+            speaker=1,
+            channel=0,
+            start=0.0,
+            end=1.0,
+            is_final=True,
+            speech_final=True,
+            event_id="ev-1",
+            metadata={},
+        )
+        self.assertEqual(d1.decision, "COMMIT_ACTIVE")
+        first_utterance_id = d1.utterance_id
+        self._register_commit_identity(d1)
+
+        d2 = self.owner.on_final_chunk(
+            text="Tariqul is joining the call for the demo.",
+            speaker=1,
+            channel=0,
+            start=1.2,
+            end=2.2,
+            is_final=True,
+            speech_final=True,
+            event_id="ev-2",
+            metadata={},
+        )
+        self.assertEqual(
+            d2.decision,
+            "SUPERSEDE_PREVIOUS",
+            f"expected the identity-linked fallback to supersede, got "
+            f"{d2.decision!r} reason={d2.reason!r}",
+        )
+        self.assertEqual(
+            d2.utterance_id,
+            first_utterance_id,
+            "a superseding correction must keep the SAME canonical utterance id",
+        )
+        self.assertTrue(
+            d2.superseded_record_id,
+            "superseded_record_id must be populated, not left empty",
+        )
+
+    def test_unrelated_new_utterance_still_creates_new_not_forced_supersede(self) -> None:
+        """Safety check: the fallback must not make everything a
+        correction. A genuinely new, textually- and timing-unrelated
+        utterance must still create a new canonical id."""
+        d1 = self.owner.on_final_chunk(
+            text="Tariqul is joining the call.",
+            speaker=1,
+            channel=0,
+            start=0.0,
+            end=1.0,
+            is_final=True,
+            speech_final=True,
+            event_id="ev-1",
+            metadata={},
+        )
+        self._register_commit_identity(d1)
+
+        d2 = self.owner.on_final_chunk(
+            text="Let's move on to discuss the quarterly budget numbers now.",
+            speaker=1,
+            channel=0,
+            start=45.0,
+            end=48.0,
+            is_final=True,
+            speech_final=True,
+            event_id="ev-2",
+            metadata={},
+        )
+        self.assertNotEqual(d2.decision, "SUPERSEDE_PREVIOUS")
+        self.assertNotEqual(d2.utterance_id, d1.utterance_id)
+
+    def test_spec_example_text_pair_is_a_known_text_related_gap_not_this_fix(self) -> None:
+        """Documents a real gap found while validating BUG-D: the spec's
+        own suggested example pair ("Tarikur is joining the call." ->
+        "Tariqul is joining the call.") does NOT satisfy the pre-existing,
+        untouched _text_related() heuristic (the divergent "kur"/"qul"
+        syllable falls inside its fixed prefix-comparison window), so it
+        would still fall through to CREATE_NEW even with BUG-D's identity
+        fallback correctly resolving. This is unrelated to BUG-D's fix
+        (which only supplies the identity link — _text_related is
+        untouched, per the spec's own explicit scope restriction) and is
+        flagged here rather than silently adjusted away.
+        """
+        self.assertFalse(
+            _text_related(
+                "Tarikur is joining the call.", "Tariqul is joining the call."
+            ),
+            "if this ever becomes True, the note above is stale and the "
+            "other tests in this class should be revisited for realism",
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()
