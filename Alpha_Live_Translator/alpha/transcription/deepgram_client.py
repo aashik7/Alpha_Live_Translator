@@ -1698,6 +1698,25 @@ class DeepgramClientMixin:
                 "received_at": time.time(),
                 "channel_index": data.get("channel_index"),
             }
+            try:
+                from alpha.constants import UTTERANCE_LIFECYCLE_ENABLED
+                from alpha.transcription.utterance_lifecycle import (
+                    get_utterance_lifecycle,
+                    should_use_utterance_lifecycle,
+                )
+
+                if UTTERANCE_LIFECYCLE_ENABLED and should_use_utterance_lifecycle(self):
+                    words = alternatives[0].get("words", []) or []
+                    get_utterance_lifecycle(self).on_interim(
+                        text=transcript,
+                        speaker=int(speaker_num or 1),
+                        channel=data.get("channel_index"),
+                        start=words[0].get("start") if words else None,
+                        end=words[-1].get("end") if words else None,
+                        metadata=metadata,
+                    )
+            except Exception as exc:
+                print(f"[LIFECYCLE] interim forward error: {exc}")
             self._teams_maybe_log_interim_sample(
                 speaker_num, transcript, data.get("speech_final")
             )

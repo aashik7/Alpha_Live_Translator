@@ -1,13 +1,25 @@
-"""Regression tests for ALPHA_BUGFIX_SPEC_FOR_CLAUDE_CODE.md (BUG-A..E).
+"""Regression tests for ALPHA_BUGFIX_SPEC_FOR_CLAUDE_CODE.md (BUG-A..G1).
 
 BUG-A (deepgram_client.py) and BUG-B (main_window.py) are trivial,
 localized fixes verified via the existing full suite (no regressions) and
 by direct source inspection matching the spec's before/after diff; they
 are not re-tested in isolation here.
 
-BUG-C, BUG-D, and BUG-E get dedicated tests below, since each has
-behavior that is meaningfully different before vs. after the fix and is
-cheap to exercise without a live Deepgram session.
+BUG-C, BUG-D, BUG-E, BUG-F, and BUG-G1 get dedicated tests below, since
+each has behavior that is meaningfully different before vs. after the fix
+and is cheap to exercise without a live Deepgram session.
+
+BUG-G2 and DIAGNOSTIC-H are not covered by automated tests here: the
+spec's own regression checklist only requests unit tests for D/E/F, and
+G2/H's own "Verification" sections are explicitly live-session-log-based
+(applied_action counts in japanese_accuracy.log, new gate-mismatch
+events) rather than asking for a new unit test. G2 lives in
+duplicate_protection.py's DuplicateProtectionMixin, which needs a fuller
+host (transcript_store, canonical ledger, execute_pipeline_commit) to
+exercise meaningfully -- out of proportion for what the spec asked for
+here. DIAGNOSTIC-H is log-only instrumentation with no behavior to assert
+on beyond "still returns the same bool", already covered by BUG-D/E's
+existing tests continuing to pass unchanged.
 """
 
 from __future__ import annotations
@@ -375,6 +387,185 @@ class BugEPrematureContinuationExtendTests(unittest.TestCase):
         )
         self.assertNotEqual(next_utterance.decision, "SUPERSEDE_PREVIOUS")
         self.assertNotEqual(next_utterance.utterance_id, confident.utterance_id)
+
+
+class BugFLockFreeDuringPublishCallbackTests(unittest.TestCase):
+    """BUG-F (critical): commit/interim publish callbacks must run with
+    self._lock genuinely free, for every public entry point that can
+    produce one -- confirmed via a real thread dump that a background
+    thread calling into Tkinter while holding this lock could deadlock
+    against the main thread's own lock-needing work. The callback itself
+    attempts a non-blocking acquire of the SAME lock object the owner
+    uses internally; if it succeeds, the lock was genuinely free at the
+    moment the callback ran (the strongest possible proof short of an
+    actual concurrent repro).
+    """
+
+    def setUp(self) -> None:
+        self.session_id = "sess-bugf"
+        self.owner = UtteranceLifecycleOwner(
+            host=None,
+            commit_fallback_ms=250,
+            on_commit=self._on_commit,
+            on_interim_update=self._on_interim,
+        )
+        self.owner.reset_for_session(self.session_id)
+        self.lock_was_free_on_commit: list[bool] = []
+        self.lock_was_free_on_interim: list[bool] = []
+
+    def _on_commit(self, decision) -> None:
+        acquired = self.owner._lock.acquire(blocking=False)
+        self.lock_was_free_on_commit.append(bool(acquired))
+        if acquired:
+            self.owner._lock.release()
+
+    def _on_interim(self, decision) -> None:
+        acquired = self.owner._lock.acquire(blocking=False)
+        self.lock_was_free_on_interim.append(bool(acquired))
+        if acquired:
+            self.owner._lock.release()
+
+    def test_on_final_chunk_commit_path_runs_with_lock_free(self) -> None:
+        decision = self.owner.on_final_chunk(
+            text="hello world testing the lock",
+            speaker=1,
+            channel=0,
+            start=0.0,
+            end=1.0,
+            is_final=True,
+            speech_final=True,
+            event_id="ev-1",
+            metadata={},
+        )
+        self.assertEqual(decision.decision, "COMMIT_ACTIVE")
+        self.assertTrue(
+            self.lock_was_free_on_commit,
+            "on_commit callback was never invoked",
+        )
+        self.assertTrue(
+            all(self.lock_was_free_on_commit),
+            "self._lock must be free (acquirable) during every on_commit "
+            "callback -- BUG-F's confirmed deadlock happened because a "
+            "publish callback ran while the lock was still held",
+        )
+
+    def test_on_timeout_commit_path_runs_with_lock_free(self) -> None:
+        # This is the exact call site from the confirmed thread dump: the
+        # main thread's .after()-scheduled callback re-entering on_timeout.
+        held = self.owner.on_final_chunk(
+            text="a held utterance awaiting fallback commit",
+            speaker=1,
+            channel=0,
+            start=0.0,
+            end=1.0,
+            is_final=True,
+            speech_final=False,
+            event_id="ev-1",
+            metadata={},
+        )
+        self.assertEqual(held.decision, "HOLD_FINAL_CHUNK")
+        fired = self.owner.on_timeout(token=self.owner._timeout_token)
+        self.assertIsNotNone(fired)
+        self.assertEqual(fired.decision, "COMMIT_ACTIVE")
+        self.assertTrue(
+            self.lock_was_free_on_commit,
+            "on_commit callback was never invoked from on_timeout",
+        )
+        self.assertTrue(
+            all(self.lock_was_free_on_commit),
+            "self._lock must be free during the on_timeout-triggered "
+            "commit callback -- this is the exact deadlocking call site "
+            "confirmed in the real thread dump",
+        )
+
+    def test_held_final_chunk_interim_callback_runs_with_lock_free(self) -> None:
+        held = self.owner.on_final_chunk(
+            text="a held utterance triggers an interim update",
+            speaker=1,
+            channel=0,
+            start=0.0,
+            end=1.0,
+            is_final=True,
+            speech_final=False,
+            event_id="ev-1",
+            metadata={},
+        )
+        self.assertEqual(held.decision, "HOLD_FINAL_CHUNK")
+        self.assertTrue(
+            self.lock_was_free_on_interim,
+            "on_interim_update callback was never invoked",
+        )
+        self.assertTrue(all(self.lock_was_free_on_interim))
+
+
+class BugG1ExtendFallsBackInsteadOfDroppingTextTests(unittest.TestCase):
+    """BUG-G1 (critical, silent content loss): when _extend_committed_locked
+    can't resolve the previous utterance's identity in the canonical
+    registry (a real timing race BUG-D's own spec already flagged as
+    possible), the candidate text must be preserved as its own committed
+    utterance -- never silently discarded. Deliberately does NOT register
+    the fallback commit's identity in canonical_identity_registry, which
+    reproduces the exact registry-miss condition BUG-G1 addresses.
+    """
+
+    def setUp(self) -> None:
+        self.session_id = "sess-bugg1"
+        cir.reset_for_session(self.session_id)
+        self.owner = UtteranceLifecycleOwner(host=None, commit_fallback_ms=250)
+        self.owner.reset_for_session(self.session_id)
+
+    def test_unresolvable_continuation_is_preserved_as_new_utterance(self) -> None:
+        held = self.owner.on_final_chunk(
+            text="Although it was raining heavily outside",
+            speaker=1,
+            channel=0,
+            start=0.0,
+            end=2.0,
+            is_final=True,
+            speech_final=False,
+            event_id="ev-1",
+            metadata={},
+        )
+        self.assertEqual(held.decision, "HOLD_FINAL_CHUNK")
+        fallback_commit = self.owner.on_timeout(token=self.owner._timeout_token)
+        self.assertIsNotNone(fallback_commit)
+        self.assertEqual(fallback_commit.reason, "inactivity_timeout_fallback")
+        # Deliberately NOT registering fallback_commit's identity in
+        # canonical_identity_registry -- reproduces the registry-miss race
+        # BUG-G1 is about. Before the fix, this made the continuation
+        # vanish entirely (IGNORE_DUPLICATE, text discarded, never
+        # committed under any id).
+
+        continuation = self.owner.on_final_chunk(
+            text="we decided to stay in the cozy living room, drink hot tea",
+            speaker=1,
+            channel=0,
+            start=2.2,
+            end=4.5,
+            is_final=True,
+            speech_final=True,
+            event_id="ev-2",
+            metadata={},
+        )
+        self.assertNotEqual(
+            continuation.decision,
+            "IGNORE_DUPLICATE",
+            "the spoken text must not be silently discarded when the "
+            "identity registry lookup can't resolve the extend target",
+        )
+        self.assertEqual(
+            continuation.text,
+            "we decided to stay in the cozy living room, drink hot tea",
+            "the candidate text must survive as its own committed "
+            "utterance, not vanish with no trace",
+        )
+        self.assertNotEqual(
+            continuation.utterance_id,
+            fallback_commit.utterance_id,
+            "since the extend couldn't resolve, this must be a genuinely "
+            "new (unmerged, but preserved) utterance, not falsely chained "
+            "onto the previous one",
+        )
 
 
 if __name__ == "__main__":

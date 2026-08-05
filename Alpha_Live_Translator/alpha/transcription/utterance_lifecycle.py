@@ -263,6 +263,11 @@ class UtteranceLifecycleOwner:
         self._timeout_token = 0
         self._timeout_after_id: Any = None
         self._events: list[dict[str, Any]] = []
+        # fixes BUG-F: commit/interim decisions get queued here while
+        # self._lock is held, and are only actually published (which can
+        # call into host/Tkinter code) after the lock is released -- see
+        # _drain_pending_emits_unlocked.
+        self._pending_emits: list[tuple[str, "LifecycleDecision"]] = []
         self._committed_utterance_ids: set[str] = set()
         self._stats = {
             "canonical_commits": 0,
@@ -658,18 +663,21 @@ class UtteranceLifecycleOwner:
         event_id: str = "",
         metadata: Optional[dict[str, Any]] = None,
     ) -> LifecycleDecision:
-        return self._ingest(
-            text=text,
-            speaker=speaker,
-            channel=channel,
-            start=start,
-            end=end,
-            is_final=False,
-            speech_final=False,
-            event_id=event_id or f"interim-{time.time_ns()}",
-            metadata=metadata or {},
-            source="interim",
-        )
+        try:
+            return self._ingest(
+                text=text,
+                speaker=speaker,
+                channel=channel,
+                start=start,
+                end=end,
+                is_final=False,
+                speech_final=False,
+                event_id=event_id or f"interim-{time.time_ns()}",
+                metadata=metadata or {},
+                source="interim",
+            )
+        finally:
+            self._drain_pending_emits_unlocked()
 
     def on_final_chunk(
         self,
@@ -685,19 +693,24 @@ class UtteranceLifecycleOwner:
         metadata: Optional[dict[str, Any]] = None,
         deepgram_request_id: str = "",
     ) -> LifecycleDecision:
-        return self._ingest(
-            text=text,
-            speaker=speaker,
-            channel=channel,
-            start=start,
-            end=end,
-            is_final=bool(is_final),
-            speech_final=speech_final,
-            event_id=event_id or f"final-{time.time_ns()}",
-            metadata=metadata or {},
-            source="final",
-            deepgram_request_id=deepgram_request_id,
-        )
+        try:
+            return self._ingest(
+                text=text,
+                speaker=speaker,
+                channel=channel,
+                start=start,
+                end=end,
+                is_final=bool(is_final),
+                speech_final=speech_final,
+                event_id=event_id or f"final-{time.time_ns()}",
+                metadata=metadata or {},
+                source="final",
+                deepgram_request_id=deepgram_request_id,
+            )
+        finally:
+            # fixes BUG-F: publish only after self._lock (acquired inside
+            # _ingest) has been released.
+            self._drain_pending_emits_unlocked()
 
     def on_utterance_end(
         self,
@@ -706,86 +719,96 @@ class UtteranceLifecycleOwner:
         event_id: str = "",
         metadata: Optional[dict[str, Any]] = None,
     ) -> LifecycleDecision:
-        with self._lock:
-            active = self._active
-            if active is None or not (active.text or "").strip():
-                d = LifecycleDecision(
-                    decision=IGNORE_DUPLICATE,
-                    reason="utterance_end_no_active",
-                    session_id=self._session_id,
-                    event_id=event_id or f"ue-{time.time_ns()}",
-                )
-                self._record_decision(d, is_final=True, speech_final=None, channel=channel)
-                return d
-            if active.committed or active.utterance_id in self._committed_utterance_ids:
-                self._stats["utterance_end_dedup"] += 1
-                d = LifecycleDecision(
-                    decision=IGNORE_DUPLICATE,
-                    reason="utterance_end_already_committed",
-                    utterance_id=active.utterance_id,
-                    text=active.text,
-                    session_id=self._session_id,
-                    event_id=event_id or f"ue-{time.time_ns()}",
-                    version=active.version,
-                )
-                self._record_decision(d, is_final=True, speech_final=True, channel=channel)
-                return d
-            if not _channel_matches_exactly(active.channel, channel):
-                try:
-                    from alpha.utils.japanese_accuracy_log import jp_accuracy_log
-
-                    jp_accuracy_log(
-                        "CROSS_CHANNEL_END_IGNORED",
+        try:
+            with self._lock:
+                active = self._active
+                if active is None or not (active.text or "").strip():
+                    d = LifecycleDecision(
+                        decision=IGNORE_DUPLICATE,
+                        reason="utterance_end_no_active",
                         session_id=self._session_id,
-                        active_channel=active.channel,
-                        observed_channel=channel,
-                        canonical_utterance_id=active.utterance_id,
+                        event_id=event_id or f"ue-{time.time_ns()}",
                     )
-                except Exception:
-                    pass
-                d = LifecycleDecision(
-                    decision=IGNORE_DUPLICATE,
-                    reason="cross_channel_utterance_end_ignored",
-                    utterance_id=active.utterance_id,
-                    text=active.text,
-                    session_id=self._session_id,
+                    self._record_decision(d, is_final=True, speech_final=None, channel=channel)
+                    return d
+                if active.committed or active.utterance_id in self._committed_utterance_ids:
+                    self._stats["utterance_end_dedup"] += 1
+                    d = LifecycleDecision(
+                        decision=IGNORE_DUPLICATE,
+                        reason="utterance_end_already_committed",
+                        utterance_id=active.utterance_id,
+                        text=active.text,
+                        session_id=self._session_id,
+                        event_id=event_id or f"ue-{time.time_ns()}",
+                        version=active.version,
+                    )
+                    self._record_decision(d, is_final=True, speech_final=True, channel=channel)
+                    return d
+                if not _channel_matches_exactly(active.channel, channel):
+                    try:
+                        from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+                        jp_accuracy_log(
+                            "CROSS_CHANNEL_END_IGNORED",
+                            session_id=self._session_id,
+                            active_channel=active.channel,
+                            observed_channel=channel,
+                            canonical_utterance_id=active.utterance_id,
+                        )
+                    except Exception:
+                        pass
+                    d = LifecycleDecision(
+                        decision=IGNORE_DUPLICATE,
+                        reason="cross_channel_utterance_end_ignored",
+                        utterance_id=active.utterance_id,
+                        text=active.text,
+                        session_id=self._session_id,
+                        event_id=event_id or f"ue-{time.time_ns()}",
+                        version=active.version,
+                        metadata={
+                            "channel": active.channel,
+                            "canonical_utterance_id": active.utterance_id,
+                            "source_version": active.version,
+                            "canonical_decision": "IGNORE",
+                            "translation_eligible": False,
+                        },
+                    )
+                    self._record_decision(d, is_final=True, speech_final=None, channel=channel)
+                    return d
+                return self._commit_locked(
+                    reason="utterance_end",
                     event_id=event_id or f"ue-{time.time_ns()}",
-                    version=active.version,
-                    metadata={
-                        "channel": active.channel,
-                        "canonical_utterance_id": active.utterance_id,
-                        "source_version": active.version,
-                        "canonical_decision": "IGNORE",
-                        "translation_eligible": False,
-                    },
+                    metadata=dict(metadata or {}),
+                    decision_name=COMMIT_ACTIVE,
                 )
-                self._record_decision(d, is_final=True, speech_final=None, channel=channel)
-                return d
-            return self._commit_locked(
-                reason="utterance_end",
-                event_id=event_id or f"ue-{time.time_ns()}",
-                metadata=dict(metadata or {}),
-                decision_name=COMMIT_ACTIVE,
-            )
+        finally:
+            self._drain_pending_emits_unlocked()
 
     def on_timeout(self, *, token: int) -> Optional[LifecycleDecision]:
-        with self._lock:
-            if token != self._timeout_token:
-                return None
-            active = self._active
-            if active is None or not (active.text or "").strip():
-                return None
-            if active.committed or active.utterance_id in self._committed_utterance_ids:
-                return None
-            if active.state not in (ACTIVE_FINAL_CHUNK, ACTIVE_INTERIM, READY_TO_COMMIT):
-                return None
-            self._stats["timeout_commits"] += 1
-            return self._commit_locked(
-                reason="inactivity_timeout_fallback",
-                event_id=f"timeout-{time.time_ns()}",
-                metadata={"timeout_ms": self._commit_fallback_ms},
-                decision_name=COMMIT_ACTIVE,
-            )
+        try:
+            with self._lock:
+                if token != self._timeout_token:
+                    return None
+                active = self._active
+                if active is None or not (active.text or "").strip():
+                    return None
+                if active.committed or active.utterance_id in self._committed_utterance_ids:
+                    return None
+                if active.state not in (ACTIVE_FINAL_CHUNK, ACTIVE_INTERIM, READY_TO_COMMIT):
+                    return None
+                self._stats["timeout_commits"] += 1
+                return self._commit_locked(
+                    reason="inactivity_timeout_fallback",
+                    event_id=f"timeout-{time.time_ns()}",
+                    metadata={"timeout_ms": self._commit_fallback_ms},
+                    decision_name=COMMIT_ACTIVE,
+                )
+        finally:
+            # fixes BUG-F: this is the exact call site from the confirmed
+            # thread dump (main thread stuck here trying to re-acquire
+            # self._lock while the WS thread held it inside a publish
+            # call). Publishing must happen after release, not before.
+            self._drain_pending_emits_unlocked()
 
     def force_cancel_active(self, reason: str = "cancelled") -> LifecycleDecision:
         with self._lock:
@@ -989,7 +1012,7 @@ class UtteranceLifecycleOwner:
                     cand_end=cand_end,
                 )
             ):
-                return self._extend_committed_locked(
+                extended = self._extend_committed_locked(
                     lexical=lexical,
                     speaker=speaker,
                     channel=channel,
@@ -1000,6 +1023,11 @@ class UtteranceLifecycleOwner:
                     deepgram_request_id=deepgram_request_id,
                     speech_final=sf if sf is not None else True,
                 )
+                # fixes BUG-G1: None means the extend couldn't be resolved --
+                # fall through to Case B/C below exactly as if this branch
+                # had not matched, instead of returning a lost-text decision.
+                if extended is not None:
+                    return extended
 
             # Case B — final chunk, utterance incomplete
             if is_final and sf is False:
@@ -1202,9 +1230,41 @@ class UtteranceLifecycleOwner:
         if target_utterance_id and target_utterance_id != str(prev.utterance_id or ""):
             self._log_identity_mismatch("revision_target_utterance_mismatch", prev=prev, channel=channel)
             return False
+        # fixes DIAGNOSTIC-H: this check and _text_related below previously
+        # failed completely silently -- no way to tell, from any log, which
+        # of the two was rejecting a real continuation/correction, or with
+        # what actual values. Both branches below are diagnostic-only additions.
         if not _timing_compatible(prev.start_time, prev.end_time, cand_start, cand_end):
+            try:
+                from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+                jp_accuracy_log(
+                    "CORRECTION_GATE_TIMING_MISMATCH",
+                    session_id=self._session_id,
+                    canonical_utterance_id=prev.utterance_id,
+                    prev_start_time=prev.start_time,
+                    prev_end_time=prev.end_time,
+                    cand_start=cand_start,
+                    cand_end=cand_end,
+                )
+            except Exception:
+                pass
             return False
-        return _text_related(prev.text, lexical)
+        related = _text_related(prev.text, lexical)
+        if not related:
+            try:
+                from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+                jp_accuracy_log(
+                    "CORRECTION_GATE_TEXT_MISMATCH",
+                    session_id=self._session_id,
+                    canonical_utterance_id=prev.utterance_id,
+                    prev_text_preview=(prev.text or "")[:80],
+                    cand_text_preview=(lexical or "")[:80],
+                )
+            except Exception:
+                pass
+        return related
 
     def _is_premature_continuation_locked(
         self,
@@ -1227,11 +1287,52 @@ class UtteranceLifecycleOwner:
         prev = self._last_committed
         if prev is None or not prev.committed:
             return False
+        # fixes DIAGNOSTIC-H: all three checks below previously failed
+        # completely silently. Diagnostic-only additions, no logic changed.
         if prev.commit_reason not in _PREMATURE_COMMIT_REASONS:
+            try:
+                from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+                jp_accuracy_log(
+                    "CONTINUATION_GATE_REASON_MISMATCH",
+                    session_id=self._session_id,
+                    canonical_utterance_id=prev.utterance_id,
+                    prev_commit_reason=prev.commit_reason,
+                )
+            except Exception:
+                pass
             return False
         if not _channel_matches_exactly(prev.channel, channel):
+            try:
+                from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+                jp_accuracy_log(
+                    "CONTINUATION_GATE_CHANNEL_MISMATCH",
+                    session_id=self._session_id,
+                    canonical_utterance_id=prev.utterance_id,
+                    prev_channel=str(prev.channel),
+                    cand_channel=str(channel),
+                )
+            except Exception:
+                pass
             return False
-        return _timing_compatible(prev.start_time, prev.end_time, cand_start, cand_end)
+        compatible = _timing_compatible(prev.start_time, prev.end_time, cand_start, cand_end)
+        if not compatible:
+            try:
+                from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+                jp_accuracy_log(
+                    "CONTINUATION_GATE_TIMING_MISMATCH",
+                    session_id=self._session_id,
+                    canonical_utterance_id=prev.utterance_id,
+                    prev_start_time=prev.start_time,
+                    prev_end_time=prev.end_time,
+                    cand_start=cand_start,
+                    cand_end=cand_end,
+                )
+            except Exception:
+                pass
+        return compatible
 
     def _apply_active_update_locked(
         self,
@@ -1697,7 +1798,7 @@ class UtteranceLifecycleOwner:
         metadata: dict[str, Any],
         deepgram_request_id: str,
         speech_final: Any,
-    ) -> LifecycleDecision:
+    ) -> Optional[LifecycleDecision]:
         prev = self._last_committed
         assert prev is not None
         original_id, target_utterance_id = self._resolve_correction_target_locked(
@@ -1711,7 +1812,7 @@ class UtteranceLifecycleOwner:
 
                 jp_accuracy_log(
                     "IDENTITY_REJECTION",
-                    reason="missing_exact_extend_target",
+                    reason="missing_exact_extend_target_falling_back_to_new",
                     session_id=self._session_id,
                     channel_index=channel,
                     canonical_utterance_id=str(
@@ -1720,25 +1821,13 @@ class UtteranceLifecycleOwner:
                 )
             except Exception:
                 pass
-            return LifecycleDecision(
-                decision=IGNORE_DUPLICATE,
-                reason="missing_exact_extend_target",
-                utterance_id=str(target_utterance_id or prev.utterance_id or ""),
-                text=lexical,
-                previous_text=prev.text,
-                version=int(prev.version or 0),
-                session_id=self._session_id,
-                event_id=event_id,
-                metadata={
-                    "channel": channel,
-                    "canonical_utterance_id": str(
-                        target_utterance_id or prev.utterance_id or ""
-                    ),
-                    "source_version": int(prev.version or 0),
-                    "canonical_decision": "IGNORE",
-                    "translation_eligible": False,
-                },
-            )
+            # fixes BUG-G1: previously returned an IGNORE_DUPLICATE decision
+            # here, which silently discarded `lexical` -- the caller in
+            # _ingest returned it unconditionally, so the spoken text was
+            # lost with no trace. Returning None instead tells the caller to
+            # fall through to normal Case B/C handling, which preserves the
+            # text as its own (unmerged, but not lost) utterance.
+            return None
         merged_text = _merge_lexical(prev.text, lexical)
         self._seq += 1
         uid = str(target_utterance_id or prev.utterance_id)  # keep same canonical identity
@@ -1878,6 +1967,15 @@ class UtteranceLifecycleOwner:
     # Emit / log
     # ------------------------------------------------------------------
     def _emit_interim(self, decision: LifecycleDecision) -> None:
+        # fixes BUG-F: do not publish from here -- this can run while
+        # self._lock is held (called from deep inside _ingest/_commit_locked/
+        # _supersede_committed_locked/_extend_committed_locked). Queue it;
+        # the actual publish happens in _dispatch_interim, only once
+        # _drain_pending_emits_unlocked runs with the lock released.
+        if decision.should_update_interim:
+            self._pending_emits.append(("interim", decision))
+
+    def _dispatch_interim(self, decision: LifecycleDecision) -> None:
         cb = self._on_interim_update
         if cb is None and self._host is not None:
             handler = getattr(self._host, "on_interim_transcript", None)
@@ -1896,13 +1994,20 @@ class UtteranceLifecycleOwner:
                     )
 
                 cb = _default
-        if cb and decision.should_update_interim:
+        if cb:
             try:
                 cb(decision)
             except Exception:
                 pass
 
     def _emit_commit(self, decision: LifecycleDecision) -> None:
+        # fixes BUG-F: see _emit_interim above -- same reasoning. This is
+        # the specific path that produced the confirmed deadlock (it's the
+        # one that reaches main_window.py's Tkinter calls).
+        if decision.should_commit:
+            self._pending_emits.append(("commit", decision))
+
+    def _dispatch_commit(self, decision: LifecycleDecision) -> None:
         cb = self._on_commit
         if cb is None and self._host is not None:
             publisher = getattr(self._host, "_publish_final_transcript_segment", None)
@@ -1929,11 +2034,28 @@ class UtteranceLifecycleOwner:
                     )
 
                 cb = _default
-        if cb and decision.should_commit:
+        if cb:
             try:
                 cb(decision)
             except Exception:
                 pass
+
+    def _drain_pending_emits_unlocked(self) -> None:
+        """Dispatch any commit/interim callbacks that were queued during a
+        just-released self._lock section. The caller MUST NOT be holding
+        self._lock when this runs -- these callbacks can end up calling
+        into host/Tkinter code (confirmed via a real thread dump for the
+        commit path), and Tkinter must never be touched while holding a
+        lock the main thread's own event loop might separately need (see
+        BUG-F). Only the brief swap below is lock-protected; the actual
+        dispatch loop runs fully unlocked."""
+        with self._lock:
+            pending, self._pending_emits = self._pending_emits, []
+        for kind, dec in pending:
+            if kind == "commit":
+                self._dispatch_commit(dec)
+            else:
+                self._dispatch_interim(dec)
 
     def _record_decision(
         self,

@@ -237,15 +237,31 @@ class DuplicateProtectionMixin:
         action, result_text = decide_transcript_action(previous_text, text)
         # Utterance lifecycle / authoritative same-utterance correction must
         # replace the active permanent record — never append a second version.
+        # fixes BUG-G2: previously this only trusted the authoritative
+        # SUPERSEDE_PREVIOUS/REPLACE_ACTIVE/EXTEND_ACTIVE signal (or a
+        # present superseded_record_id/revision_target_id) when a *second,
+        # separate, local* previous_text lookup above had also independently
+        # succeeded. That local lookup has its own identity-registry timing
+        # race (distinct from the one already fixed in utterance_lifecycle.py
+        # for BUG-D/E) and was failing far more often than the authoritative
+        # signal itself did -- measured at 0 successful "revise" actions out
+        # of 80 attempts in one real session, silently turning already-merged
+        # text back into disconnected "append" operations. `text` here is
+        # already the correct, fully-merged, authoritative text by the time
+        # it reaches this function (utterance_lifecycle.py did the merge) --
+        # trust the signal from the one controller allowed to make this call
+        # instead of re-deriving it from a second, weaker, race-prone local
+        # check. execute_pipeline_commit below still independently
+        # re-resolves the exact target and still fails closed on its own if
+        # it genuinely can't find one -- this does not bypass that check.
         life_decision = str(item.get("lifecycle_decision") or "").upper()
-        if life_decision in ("SUPERSEDE_PREVIOUS", "REPLACE_ACTIVE", "EXTEND_ACTIVE"):
-            if previous_text:
-                action, result_text = "update", text
-            else:
-                action, result_text = "add", text
-        elif item.get("superseded_record_id") or item.get("revision_target_id"):
-            if previous_text:
-                action, result_text = "update", text
+        has_authoritative_revision_signal = bool(
+            life_decision in ("SUPERSEDE_PREVIOUS", "REPLACE_ACTIVE", "EXTEND_ACTIVE")
+            or item.get("superseded_record_id")
+            or item.get("revision_target_id")
+        )
+        if has_authoritative_revision_signal:
+            action, result_text = "update", text
         if action == "skip" or not result_text:
             self._transcript_stability_counters.skipped += 1
             return
