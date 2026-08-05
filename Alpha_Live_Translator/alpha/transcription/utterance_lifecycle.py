@@ -57,6 +57,18 @@ _TIMING_GAP_MAX_S = 2.5
 _TIMING_START_MATCH_S = 0.35
 _TIMING_OVERLAP_MIN_S = 0.05
 
+# Commit reasons that represent the app's own uncertain guess that an
+# utterance was finished, rather than a confident signal (from Deepgram's
+# speech_final/UtteranceEnd, or an explicit incompatible-utterance
+# boundary) that it actually was. "extend_then_commit" is included so a
+# chain of several premature fragments (A, then B extends A, then C
+# extends A+B, ...) keeps working — each extension is itself only as
+# confident as the fragment before it, until a real boundary signal ends
+# the chain.
+_PREMATURE_COMMIT_REASONS = frozenset(
+    {"inactivity_timeout_fallback", "extend_then_commit"}
+)
+
 # Fallback inactivity commit (ms). Uses existing meeting-buffer scale; does not
 # change Deepgram endpointing configuration.
 DEFAULT_COMMIT_FALLBACK_MS = 2000
@@ -202,6 +214,7 @@ class ActiveUtterance:
     lineage_ids: list[str] = field(default_factory=list)
     committed_record_id: str = ""
     committed: bool = False
+    commit_reason: str = ""
     last_event_mono: float = field(default_factory=time.monotonic)
     created_mono: float = field(default_factory=time.monotonic)
 
@@ -963,6 +976,31 @@ class UtteranceLifecycleOwner:
                     speech_final=sf if sf is not None else True,
                 )
 
+            # fixes BUG-E: not a same-text correction, but may still be the
+            # next part of a sentence whose previous chunk we committed
+            # early ourselves (uncertain fallback, not a confident
+            # boundary). Append rather than starting an unrelated new line.
+            if (
+                self._last_committed is not None
+                and (active is None or not same_active)
+                and self._is_premature_continuation_locked(
+                    channel=channel,
+                    cand_start=cand_start,
+                    cand_end=cand_end,
+                )
+            ):
+                return self._extend_committed_locked(
+                    lexical=lexical,
+                    speaker=speaker,
+                    channel=channel,
+                    cand_start=cand_start,
+                    cand_end=cand_end,
+                    event_id=event_id,
+                    metadata=metadata,
+                    deepgram_request_id=deepgram_request_id,
+                    speech_final=sf if sf is not None else True,
+                )
+
             # Case B — final chunk, utterance incomplete
             if is_final and sf is False:
                 d = self._apply_active_update_locked(
@@ -1167,6 +1205,33 @@ class UtteranceLifecycleOwner:
         if not _timing_compatible(prev.start_time, prev.end_time, cand_start, cand_end):
             return False
         return _text_related(prev.text, lexical)
+
+    def _is_premature_continuation_locked(
+        self,
+        *,
+        channel: Any,
+        cand_start: float,
+        cand_end: float,
+    ) -> bool:
+        """Is this candidate plausibly the *next part* of an utterance whose
+        previous chunk was committed early by our own uncertain fallback,
+        rather than a confident Deepgram/boundary signal? Deliberately does
+        NOT check text similarity (unlike _is_correction_of_committed_locked)
+        -- a genuine continuation typically has completely different words
+        from what came before it; that's expected, not a red flag. The
+        safety gate here is instead: the previous commit must have been an
+        uncertain, app-driven guess, plus the same tight-timing/matching-
+        channel signals already used elsewhere in this file for "plausibly
+        still part of the same utterance."
+        """
+        prev = self._last_committed
+        if prev is None or not prev.committed:
+            return False
+        if prev.commit_reason not in _PREMATURE_COMMIT_REASONS:
+            return False
+        if not _channel_matches_exactly(prev.channel, channel):
+            return False
+        return _timing_compatible(prev.start_time, prev.end_time, cand_start, cand_end)
 
     def _apply_active_update_locked(
         self,
@@ -1435,6 +1500,7 @@ class UtteranceLifecycleOwner:
         self._cancel_timeout_locked()
         active.state = COMMITTED
         active.committed = True
+        active.commit_reason = reason
         self._committed_utterance_ids.add(active.utterance_id)
         self._stats["canonical_commits"] += 1
         self._stats["translation_jobs_hint"] += 1
@@ -1606,6 +1672,145 @@ class UtteranceLifecycleOwner:
 
         commit = self._commit_locked(
             reason="supersede_then_commit",
+            event_id=event_id,
+            metadata={
+                **metadata,
+                "superseded_record_id": original_id,
+                "original_record_id": original_id,
+            },
+            decision_name=SUPERSEDE_PREVIOUS,
+        )
+        commit.should_supersede_committed = True
+        commit.superseded_record_id = original_id
+        commit.previous_text = prev.text
+        return commit
+
+    def _extend_committed_locked(
+        self,
+        *,
+        lexical: str,
+        speaker: int,
+        channel: Any,
+        cand_start: float,
+        cand_end: float,
+        event_id: str,
+        metadata: dict[str, Any],
+        deepgram_request_id: str,
+        speech_final: Any,
+    ) -> LifecycleDecision:
+        prev = self._last_committed
+        assert prev is not None
+        original_id, target_utterance_id = self._resolve_correction_target_locked(
+            channel=channel,
+            metadata=metadata,
+            fallback_utterance_id=prev.utterance_id,
+        )
+        if not original_id:
+            try:
+                from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+                jp_accuracy_log(
+                    "IDENTITY_REJECTION",
+                    reason="missing_exact_extend_target",
+                    session_id=self._session_id,
+                    channel_index=channel,
+                    canonical_utterance_id=str(
+                        metadata.get("canonical_utterance_id") or prev.utterance_id or ""
+                    ),
+                )
+            except Exception:
+                pass
+            return LifecycleDecision(
+                decision=IGNORE_DUPLICATE,
+                reason="missing_exact_extend_target",
+                utterance_id=str(target_utterance_id or prev.utterance_id or ""),
+                text=lexical,
+                previous_text=prev.text,
+                version=int(prev.version or 0),
+                session_id=self._session_id,
+                event_id=event_id,
+                metadata={
+                    "channel": channel,
+                    "canonical_utterance_id": str(
+                        target_utterance_id or prev.utterance_id or ""
+                    ),
+                    "source_version": int(prev.version or 0),
+                    "canonical_decision": "IGNORE",
+                    "translation_eligible": False,
+                },
+            )
+        merged_text = _merge_lexical(prev.text, lexical)
+        self._seq += 1
+        uid = str(target_utterance_id or prev.utterance_id)  # keep same canonical identity
+        active = ActiveUtterance(
+            utterance_id=uid,
+            session_id=self._session_id,
+            state=READY_TO_COMMIT,
+            speaker=int(speaker or prev.speaker or 1),
+            channel=channel if channel is not None else prev.channel,
+            text=merged_text,
+            version=int(prev.version) + 1,
+            start_time=prev.start_time if prev.start_time >= 0 else cand_start,
+            end_time=cand_end if cand_end >= 0 else prev.end_time,
+            deepgram_request_id=str(deepgram_request_id or prev.deepgram_request_id),
+            lineage_ids=list(prev.lineage_ids) + ([event_id] if event_id else []),
+        )
+        # Mark previous committed snapshot superseded in audit trail (it's
+        # being absorbed into the extended utterance, same as a correction).
+        prev.state = SUPERSEDED
+        self._active = active
+        self._committed_utterance_ids.discard(uid)
+        self._stats["supersessions"] += 1
+
+        d_ext = LifecycleDecision(
+            decision=SUPERSEDE_PREVIOUS,
+            reason="premature_continuation_extend",
+            utterance_id=uid,
+            text=merged_text,
+            previous_text=prev.text,
+            should_supersede_committed=True,
+            superseded_record_id=original_id,
+            version=active.version,
+            session_id=self._session_id,
+            event_id=event_id,
+            metadata={
+                "original_record_id": original_id,
+                "revision_target_id": original_id,
+                "replacement_utterance_id": uid,
+                "session_id": self._session_id,
+                "channel": active.channel,
+                "channel_index": active.channel,
+                "canonical_utterance_id": uid,
+                "provider_utterance_id": _provider_utterance_id(
+                    metadata,
+                    event_id=event_id,
+                    deepgram_request_id=deepgram_request_id,
+                ),
+                "source_version": active.version,
+                "canonical_decision": SUPERSEDE,
+                "translation_eligible": speech_final is not False,
+                "lifecycle_state": active.state,
+                "start_time": active.start_time,
+                "end_time": active.end_time,
+            },
+        )
+        self._record_decision(
+            d_ext, is_final=True, speech_final=speech_final, channel=channel
+        )
+
+        if speech_final is False:
+            active.state = ACTIVE_FINAL_CHUNK
+            self._arm_timeout_locked()
+            d_ext.should_update_interim = True
+            d_ext.decision = HOLD_FINAL_CHUNK
+            d_ext.metadata["canonical_decision"] = REPLACE_PROVISIONAL
+            d_ext.metadata["translation_eligible"] = False
+            d_ext.metadata["lifecycle_state"] = active.state
+            self._emit_interim(d_ext)
+            return d_ext
+
+        commit = self._commit_locked(
+            reason="extend_then_commit",
             event_id=event_id,
             metadata={
                 **metadata,

@@ -1,13 +1,13 @@
-"""Regression tests for ALPHA_BUGFIX_SPEC_FOR_CLAUDE_CODE.md (BUG-A/B/C/D).
+"""Regression tests for ALPHA_BUGFIX_SPEC_FOR_CLAUDE_CODE.md (BUG-A..E).
 
 BUG-A (deepgram_client.py) and BUG-B (main_window.py) are trivial,
 localized fixes verified via the existing full suite (no regressions) and
 by direct source inspection matching the spec's before/after diff; they
 are not re-tested in isolation here.
 
-BUG-C and BUG-D get dedicated tests below, since both have behavior that
-is meaningfully different before vs. after the fix and is cheap to
-exercise without a live Deepgram session.
+BUG-C, BUG-D, and BUG-E get dedicated tests below, since each has
+behavior that is meaningfully different before vs. after the fix and is
+cheap to exercise without a live Deepgram session.
 """
 
 from __future__ import annotations
@@ -236,6 +236,145 @@ class BugDPostCommitCorrectionSupersedesTests(unittest.TestCase):
             "if this ever becomes True, the note above is stale and the "
             "other tests in this class should be revisited for realism",
         )
+
+
+class BugEPrematureContinuationExtendTests(unittest.TestCase):
+    """BUG-E (primary, dominant real-world pattern): a low-text-similarity
+    follow-up final, arriving shortly after a commit that was only the
+    app's own uncertain inactivity-timeout guess (not a confident
+    Deepgram/boundary signal), must be APPENDED to the previous utterance
+    (SUPERSEDE_PREVIOUS, same utterance_id, merged text) instead of
+    silently starting an unrelated new utterance -- this is what fixes
+    the 116/118 "continuation" cases (as opposed to BUG-D's 2/118
+    "correction" cases) that caused fragmented translations and
+    word-level content loss at artificial cut points in the real test
+    data.
+    """
+
+    def setUp(self) -> None:
+        self.session_id = "sess-buge"
+        cir.reset_for_session(self.session_id)
+        self.owner = UtteranceLifecycleOwner(host=None, commit_fallback_ms=250)
+        self.owner.reset_for_session(self.session_id)
+
+    def _register_commit_identity(self, decision) -> str:
+        """Simulates duplicate_protection.py's commit path -- the only
+        current place canonical_identity_registry actually gets populated
+        for a real commit."""
+        record_id = f"rec-{decision.utterance_id}"
+        cir.observe_identity(
+            session_id=self.session_id,
+            channel_index=0,
+            canonical_utterance_id=decision.utterance_id,
+            provider_utterance_id="",
+            source_version=1,
+            decision="CREATE_NEW",
+            text=decision.text,
+            lifecycle_state="COMMITTED",
+            translation_eligible=True,
+        )
+        cir.assign_canonical_record_id(
+            session_id=self.session_id,
+            channel_index=0,
+            canonical_utterance_id=decision.utterance_id,
+            canonical_record_id=record_id,
+        )
+        return record_id
+
+    def test_continuation_after_fallback_commit_is_appended_not_dropped(self) -> None:
+        # First chunk held as incomplete (speech_final=False), then forced
+        # through the real inactivity-fallback path via on_timeout() --
+        # this is the actual production trigger for commit_reason ==
+        # "inactivity_timeout_fallback", not a hand-set field.
+        held = self.owner.on_final_chunk(
+            text="Although it was raining heavily outside",
+            speaker=1,
+            channel=0,
+            start=0.0,
+            end=2.0,
+            is_final=True,
+            speech_final=False,
+            event_id="ev-1",
+            metadata={},
+        )
+        self.assertEqual(held.decision, "HOLD_FINAL_CHUNK")
+        fallback_commit = self.owner.on_timeout(token=self.owner._timeout_token)
+        self.assertIsNotNone(fallback_commit)
+        self.assertEqual(fallback_commit.reason, "inactivity_timeout_fallback")
+        self.assertEqual(
+            self.owner._last_committed.commit_reason, "inactivity_timeout_fallback"
+        )
+        self._register_commit_identity(fallback_commit)
+
+        # Deliberately dissimilar wording -- the real-world pattern (a
+        # genuine sentence continuation, not a same-word correction).
+        continuation = self.owner.on_final_chunk(
+            text="we decided to stay in the cozy living room, drink hot tea",
+            speaker=1,
+            channel=0,
+            start=2.2,
+            end=4.5,
+            is_final=True,
+            speech_final=True,
+            event_id="ev-2",
+            metadata={},
+        )
+        self.assertEqual(continuation.decision, "SUPERSEDE_PREVIOUS")
+        self.assertEqual(
+            continuation.utterance_id,
+            fallback_commit.utterance_id,
+            "a continuation-extend must keep the SAME canonical utterance id",
+        )
+        self.assertIn(
+            continuation.reason,
+            ("premature_continuation_extend", "extend_then_commit"),
+            "reason should reflect the new BUG-E extend path, not a plain new commit",
+        )
+        self.assertEqual(
+            continuation.text,
+            "Although it was raining heavily outside, we decided to stay in "
+            "the cozy living room, drink hot tea",
+            "text must be the two chunks merged via _merge_lexical, not "
+            "just the second chunk alone (which would silently drop the "
+            "first half of the sentence)",
+        )
+        self.assertTrue(continuation.superseded_record_id)
+
+    def test_continuation_after_confident_commit_starts_new_utterance(self) -> None:
+        """Negative case: if the previous commit was a CONFIDENT boundary
+        (speech_final=True, not a fallback guess), a dissimilar follow-up
+        must NOT be merged -- it's a genuinely new, separate utterance.
+        Proves the commit_reason gate actually discriminates."""
+        confident = self.owner.on_final_chunk(
+            text="Although it was raining heavily outside",
+            speaker=1,
+            channel=0,
+            start=0.0,
+            end=2.0,
+            is_final=True,
+            speech_final=True,
+            event_id="ev-1",
+            metadata={},
+        )
+        self.assertEqual(
+            self.owner._last_committed.commit_reason,
+            "speech_final",
+        )
+        self._register_commit_identity(confident)
+
+        next_utterance = self.owner.on_final_chunk(
+            text="we decided to stay in the cozy living room, drink hot tea",
+            speaker=1,
+            channel=0,
+            start=2.2,
+            end=4.5,
+            is_final=True,
+            speech_final=True,
+            event_id="ev-2",
+            metadata={},
+        )
+        self.assertNotEqual(next_utterance.decision, "SUPERSEDE_PREVIOUS")
+        self.assertNotEqual(next_utterance.utterance_id, confident.utterance_id)
 
 
 if __name__ == "__main__":
