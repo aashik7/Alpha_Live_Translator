@@ -146,7 +146,7 @@ CJK_REPEAT_SCAN_MAX_UNIT = 32
 CJK_CLEANUP_SLOW_MS = 20
 
 # When True, verbose NDJSON diagnostics ([LATENCY], [AUDIO_FORMAT], [INTERIM], etc.)
-DEBUG_DIAGNOSTICS = False
+DEBUG_DIAGNOSTICS = True
 
 # When True, Teams-focused quality diagnostics ([TEAMS_DIAG], etc.)
 DEBUG_TEAMS_DIAGNOSTICS = False

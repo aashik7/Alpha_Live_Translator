@@ -1239,13 +1239,19 @@ class AlphaApp(
         if box is None:
             return
         try:
-            if box.compare("interim_anchor", ">=", "1.0"):
+            has_mark = box.compare("interim_anchor", ">=", "1.0")
+            self._interim_log(
+                "[INTERIM] remove_attempt",
+                {"has_mark": bool(has_mark)},
+            )
+            if has_mark:
                 box.configure(state="normal")
                 box.delete("interim_anchor", "end")
                 box.mark_unset("interim_anchor")
                 box.configure(state="disabled")
-        except Exception:
-            pass
+                self._interim_log("[INTERIM] remove_success", {})
+        except Exception as exc:
+            self._interim_log("[INTERIM] remove_exception", {"error": str(exc)})
 
     def _ui_speaker_label_text(self) -> str:
         """UI-only speaker prefix; never part of Raw/Stable/Final lexical scoring."""
@@ -1485,6 +1491,10 @@ class AlphaApp(
         interim_text = (getattr(self, "_latest_interim_text", "") or "").strip()
         if box is None:
             return
+        self._interim_log(
+            "[INTERIM] update_start",
+            {"text_preview": interim_text[:80], "box_end_index": str(box.index("end"))},
+        )
         self._remove_interim_line_from_display()
         if not interim_text:
             return
@@ -1498,6 +1508,10 @@ class AlphaApp(
         box.insert("end", interim_text + " ⏳\n", "body")
         box.configure(state="disabled")
         box.see(tk.END)
+        self._interim_log(
+            "[INTERIM] update_done",
+            {"new_box_end_index": str(box.index("end"))},
+        )
         self._last_operation_hint = "interim_update"
         self._refresh_transcript_scrollbar(box)
         try:
