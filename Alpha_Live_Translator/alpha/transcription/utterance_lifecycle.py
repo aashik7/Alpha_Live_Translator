@@ -167,9 +167,16 @@ def _text_related(previous: str, current: str) -> bool:
         return True
     if curr_n.startswith(prev_n) or prev_n.startswith(curr_n):
         return True
-    # High prefix overlap for near-revisions (e.g. Terry → Tariqul).
-    prefix = min(len(prev_n), len(curr_n), max(8, int(0.5 * min(len(prev_n), len(curr_n)))))
-    if prefix >= 8 and prev_n[:prefix] == curr_n[:prefix]:
+    # High prefix overlap for near-revisions (e.g. Terry -> Tariqul).
+    # Floor raised 8->12 and overlap fraction 0.5->0.65: an 8-char/50%
+    # match let two independent same-speaker/same-channel utterances that
+    # merely opened with the same common phrase (e.g. "the meeting...")
+    # get treated as related. 12 chars minimum plus a majority (65%) of
+    # the shorter text keeps the near-revision case working while cutting
+    # this false-positive class.
+    min_len = min(len(prev_n), len(curr_n))
+    prefix = min(min_len, max(12, int(0.65 * min_len)))
+    if prefix >= 12 and prev_n[:prefix] == curr_n[:prefix]:
         return True
     return False
 
