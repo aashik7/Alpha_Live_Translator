@@ -2043,8 +2043,19 @@ class UtteranceLifecycleOwner:
         if cb:
             try:
                 cb(decision)
-            except Exception:
-                pass
+            except Exception as exc:
+                try:
+                    from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+                    jp_accuracy_log(
+                        "DISPATCH_COMMIT_CALLBACK_FAILED",
+                        reason=f"{type(exc).__name__}:{exc}",
+                        session_id=self._session_id,
+                        canonical_utterance_id=decision.utterance_id,
+                        channel_index=int((decision.metadata or {}).get("channel_index") or 0),
+                    )
+                except Exception:
+                    pass
 
     def _drain_pending_emits_unlocked(self) -> None:
         """Dispatch any commit/interim callbacks that were queued during a
