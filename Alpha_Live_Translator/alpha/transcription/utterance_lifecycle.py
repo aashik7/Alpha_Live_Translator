@@ -24,6 +24,7 @@ import threading
 import time
 import uuid
 from dataclasses import dataclass, field
+from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any, Callable, Optional
 
@@ -107,12 +108,21 @@ def _merge_lexical(previous: str, current: str) -> str:
         return curr
     if curr_n and curr_n in prev_n:
         return prev
-    prev_words = set(prev_n.split())
-    curr_words = set(curr_n.split())
+    prev_word_list = prev_n.split()
+    curr_word_list = curr_n.split()
+    prev_words = set(prev_word_list)
+    curr_words = set(curr_word_list)
     if prev_words and curr_words:
         overlap = len(prev_words & curr_words) / min(len(prev_words), len(curr_words))
         if overlap >= 0.6:
-            return curr if len(curr_n.split()) >= len(prev_n.split()) else prev
+            # Bare set overlap is order-blind: "cat sat mat" vs "mat sat cat"
+            # score the same 100% overlap despite being different content.
+            # Require the shared words to also appear in a compatible
+            # relative order (LCS-based ratio) before treating this as the
+            # same utterance re-said, not just an anagram of word choices.
+            order_ratio = SequenceMatcher(None, prev_word_list, curr_word_list).ratio()
+            if order_ratio >= 0.6:
+                return curr if len(curr_word_list) >= len(prev_word_list) else prev
     # Adjacent finalised chunks of one utterance (non-overlapping lexical spans).
     if prev.endswith((",", ";", ":")):
         return f"{prev} {curr}"
