@@ -947,11 +947,22 @@ class AlphaApp(
         start = time.perf_counter()
         chars_inserted = 0
         max_inserts = 12 if self._ui_queue_backpressure_active else 8
-        for item in batch[:max_inserts]:
+        retry_triggered = False
+        for idx, item in enumerate(batch[:max_inserts]):
             text_len = len((item.get("text") or ""))
-            self._display_transcript_item(item)
+            result = self._display_transcript_item(item)
+            if result == "retry_pending":
+                # Preserve chronological order: this item and everything
+                # still unprocessed this tick go back to the FRONT of the
+                # buffer, in original order. Nothing after it is ever
+                # displayed before it resolves or falls back.
+                remaining = [item] + batch[idx + 1:]
+                self._transcript_ui_batch_buffer[:0] = remaining
+                self._schedule_transcript_ui_batch_flush()
+                retry_triggered = True
+                break
             chars_inserted += text_len
-        if len(batch) > max_inserts:
+        if not retry_triggered and len(batch) > max_inserts:
             self._transcript_ui_batch_buffer.extend(batch[max_inserts:])
             self._schedule_transcript_ui_batch_flush()
         duration_ms = round((time.perf_counter() - start) * 1000, 2)

@@ -427,6 +427,37 @@ class DuplicateProtectionMixin:
                         return
                     revision_target = exact_target or revision_target
                     if not revision_target:
+                        # fixes §1.1 residual: the real assign_canonical_
+                        # record_id for this utterance may simply not have
+                        # landed from a PRIOR tick yet. This call always
+                        # runs on the Tk main thread's ~200ms
+                        # (TRANSCRIPT_UI_BATCH_FLUSH_MS) batch tick, so
+                        # blocking/sleeping here would freeze the whole UI
+                        # -- ask the caller to retry this exact item
+                        # (state carried on the item itself, per-utterance,
+                        # not shared) on a later tick instead. Bounded so
+                        # a genuinely missing target still falls back
+                        # exactly as before.
+                        retry_count = int(item.get("_revision_retry_count") or 0)
+                        first_seen = item.get("_revision_retry_first_seen")
+                        now = time.monotonic()
+                        if first_seen is None:
+                            item["_revision_retry_first_seen"] = now
+                            first_seen = now
+                        age_ms = (now - first_seen) * 1000.0
+                        if retry_count < 3 and age_ms < 650:
+                            item["_revision_retry_count"] = retry_count + 1
+                            jp_accuracy_log(
+                                "REVISION_TARGET_RETRY_SCHEDULED",
+                                reason="missing_exact_revision_target",
+                                session_id=session_id,
+                                channel_index=channel_index,
+                                canonical_utterance_id=canonical_utterance_id,
+                                source_version=source_version,
+                                retry_count=retry_count + 1,
+                                age_ms=round(age_ms, 1),
+                            )
+                            return "retry_pending"
                         self._transcript_stability_counters.skipped += 1
                         jp_accuracy_log(
                             "FALLBACK_BLOCKED",
@@ -435,6 +466,8 @@ class DuplicateProtectionMixin:
                             channel_index=channel_index,
                             canonical_utterance_id=canonical_utterance_id,
                             source_version=source_version,
+                            retry_count=retry_count,
+                            age_ms=round(age_ms, 1),
                         )
                         return
                 txn = execute_pipeline_commit(
