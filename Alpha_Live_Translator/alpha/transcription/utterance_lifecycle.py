@@ -412,14 +412,39 @@ class UtteranceLifecycleOwner:
             from alpha.transcription.canonical_identity_registry import resolve_canonical_record_id
 
             if target_utterance_id:
-                exact_record_id = str(
-                    resolve_canonical_record_id(
-                        session_id=self._session_id,
-                        channel_index=channel,
-                        canonical_utterance_id=target_utterance_id,
+                # The real ledger commit + assign_canonical_record_id for
+                # this utterance (duplicate_protection.py's
+                # _display_transcript_item) runs later than this in-memory
+                # decision -- it's dispatched via transcript_queue and only
+                # drained on the Tk main thread's ~100ms (UI_QUEUE_POLL_MS)
+                # poll tick, not synchronously with the commit above. A
+                # correction/extend candidate for the same utterance that
+                # arrives before that tick lands finds nothing registered
+                # yet and would otherwise be wrongly rejected. Bounded
+                # retry across that window (3 lookups, ~60ms apart, ~120ms
+                # total) closes most of the gap; self._lock is released
+                # during each sleep (same thread, RLock, balanced) so this
+                # never blocks other channels/utterances on this owner.
+                # If every attempt still comes up empty, behavior is
+                # unchanged from before: fall through to the existing
+                # graceful "no exact target" rejection below.
+                exact_record_id = ""
+                for attempt in range(3):
+                    exact_record_id = str(
+                        resolve_canonical_record_id(
+                            session_id=self._session_id,
+                            channel_index=channel,
+                            canonical_utterance_id=target_utterance_id,
+                        )
+                        or ""
                     )
-                    or ""
-                )
+                    if exact_record_id or attempt == 2:
+                        break
+                    self._lock.release()
+                    try:
+                        time.sleep(0.06)
+                    finally:
+                        self._lock.acquire()
                 if not exact_record_id:
                     return "", target_utterance_id
                 if target_record_id and target_record_id != exact_record_id:
