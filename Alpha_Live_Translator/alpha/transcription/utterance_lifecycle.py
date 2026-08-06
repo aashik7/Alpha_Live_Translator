@@ -107,6 +107,12 @@ def _merge_lexical(previous: str, current: str) -> str:
         return curr
     if curr_n and curr_n in prev_n:
         return prev
+    prev_words = set(prev_n.split())
+    curr_words = set(curr_n.split())
+    if prev_words and curr_words:
+        overlap = len(prev_words & curr_words) / min(len(prev_words), len(curr_words))
+        if overlap >= 0.6:
+            return curr if len(curr_n.split()) >= len(prev_n.split()) else prev
     # Adjacent finalised chunks of one utterance (non-overlapping lexical spans).
     if prev.endswith((",", ";", ":")):
         return f"{prev} {curr}"
