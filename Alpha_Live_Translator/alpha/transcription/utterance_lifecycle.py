@@ -1135,6 +1135,7 @@ class UtteranceLifecycleOwner:
                         speech_final=True,
                         source=source,
                         force_new=active is None,
+                        emit_interim=False,
                     )
                     return self._commit_locked(
                         reason="speech_final",
@@ -1165,6 +1166,7 @@ class UtteranceLifecycleOwner:
                     speech_final=True,
                     source=source,
                     force_new=True,
+                    emit_interim=False,
                 )
                 return self._commit_locked(
                     reason="speech_final_new_utterance",
@@ -1398,6 +1400,7 @@ class UtteranceLifecycleOwner:
         speech_final: Any,
         source: str,
         force_new: bool = False,
+        emit_interim: bool = True,
     ) -> LifecycleDecision:
         active = self._active
         previous_text = active.text if active else ""
@@ -1577,7 +1580,21 @@ class UtteranceLifecycleOwner:
         self._record_decision(
             d, is_final=source == "final", speech_final=speech_final, channel=channel
         )
-        self._emit_interim(d)
+        # emit_interim=False is passed by the two Case C call sites that fold
+        # this final fragment into active.text and then commit it in the very
+        # same _ingest call. Emitting an interim there published the utterance's
+        # *final* text through the live-preview channel microseconds before it
+        # was committed permanently -- and because the preview
+        # (_pending_interim, INTERIM_UI_THROTTLE_MS) and the commit
+        # (transcript_queue, TRANSCRIPT_UI_BATCH_FLUSH_MS) reach the UI on two
+        # independent timers, the preview could land *after* the commit had
+        # already run its final/interim comparison, repainting the
+        # just-committed sentence as a stale "in progress" line until the ghost
+        # watchdog reaped it ~1.5s later. Nothing consumes this emit except the
+        # UI preview, so suppressing it on the commit path removes the
+        # redundant delivery at its source.
+        if emit_interim:
+            self._emit_interim(d)
         return d
 
     def _commit_locked(
