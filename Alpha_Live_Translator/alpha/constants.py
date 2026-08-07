@@ -134,9 +134,20 @@ INTERIM_UI_THROTTLE_MS = 200
 # interim is by definition a preview of an utterance still in progress, so
 # it must keep being refreshed by new interim events. If nothing has
 # refreshed it for this long, it is not live -- it is an orphan left behind
-# by a commit/clear path, and the watchdog removes it. Comfortably above
-# INTERIM_UI_THROTTLE_MS (200) so normal streaming never trips it.
-INTERIM_GHOST_TTL_MS = 1500
+# by a commit/clear path, and the watchdog removes it.
+#
+# fixes BUG_FIX_ROADMAP.md Batch 1 item 2: the original 1500 was set
+# relative to INTERIM_UI_THROTTLE_MS (200) without measuring real
+# last-interim-to-final gaps. Live evidence (Bug Report.md §4.4) showed
+# normal gaps of 1635-1924ms in English and up to 4063ms in Japanese --
+# both above 1500, so the watchdog was clearing legitimate in-flight
+# previews, not just orphans. Do NOT derive this from
+# DEEPGRAM_ENDPOINTING_MS: Japanese's endpointing (500) is lower than
+# English's (1200) yet has the longest gaps, because the Japanese
+# "final" comes from the assembler's own hold/timeout logic, not
+# Deepgram endpointing -- an endpointing-derived formula sizes Japanese
+# backwards. 6000 = measured Japanese worst case (4063) + ~2s margin.
+INTERIM_GHOST_TTL_MS = 6000
 DEFER_LOGO_MS = 600
 DEFER_WAVEFORM_DRAW_MS = 400
 UI_LAG_MONITOR_ENABLED = False

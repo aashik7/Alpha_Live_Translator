@@ -214,6 +214,34 @@ class TestInterimGhostWatchdog(unittest.TestCase):
         self.assertEqual(host._latest_interim_text, "")
 
 
+class TestInterimGhostTtlCalibration(unittest.TestCase):
+    """BUG_FIX_ROADMAP.md Batch 1 item 2.
+
+    INTERIM_GHOST_TTL_MS must stay above real measured last-interim-to-
+    final gaps in both languages, or the watchdog clears legitimate
+    in-flight previews instead of orphans. Live evidence (Bug Report.md
+    §4.4): English gaps 1635-1924ms across 5 runs; Japanese gaps up to
+    4063ms. These are the actual measured numbers, not made up -- do not
+    lower this test's floor without new measured evidence to justify it.
+    """
+
+    def test_ttl_exceeds_measured_english_worst_case_with_margin(self):
+        measured_worst_case_ms = 1924
+        self.assertGreater(INTERIM_GHOST_TTL_MS, measured_worst_case_ms)
+
+    def test_ttl_exceeds_measured_japanese_worst_case_with_margin(self):
+        measured_worst_case_ms = 4063
+        margin_ms = 1000
+        self.assertGreaterEqual(
+            INTERIM_GHOST_TTL_MS,
+            measured_worst_case_ms + margin_ms,
+            "TTL must clear the worst measured Japanese gap with at least "
+            "1s of margin -- Japanese has the longest gaps despite having "
+            "the lower Deepgram endpointing value, because its 'final' "
+            "comes from assembler hold/timeout logic, not endpointing.",
+        )
+
+
 class TestInterimIdentityPlumbing(unittest.TestCase):
     """Identity must survive deepgram_client's double delivery of each interim."""
 
