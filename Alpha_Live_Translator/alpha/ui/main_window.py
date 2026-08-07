@@ -111,6 +111,7 @@ from alpha.constants import (
     DEBUG_AFTER_LOOP_VERBOSE,
     INTERIM_UI_THROTTLE_MS,
     INTERIM_LOG_THROTTLE_MS,
+    INTERIM_GHOST_TTL_MS,
     UI_SPEAKER_LABEL,
     TRANSLATION_ENABLED,
     DEFER_LOGO_MS,
@@ -299,6 +300,7 @@ class AlphaApp(
         self._last_interim_log_at = 0.0
         self._interim_after_id = None
         self._pending_interim = None
+        self._latest_interim_utterance_id = ""
         self._last_operation_hint = "idle"
         self._ui_lag_expected_at = 0.0
         self._ui_queue_after_id = None
@@ -729,7 +731,58 @@ class AlphaApp(
         if not getattr(self, "_ui_loops_started", False):
             return
         self._process_ui_queue_once()
+        self._check_interim_ghost_watchdog()
         self._schedule_ui_queue_tick()
+
+    def _check_interim_ghost_watchdog(self):
+        """Remove an interim preview line that has stopped being refreshed.
+
+        An interim ("... ⏳") line is by definition a preview of an
+        utterance still in progress, so a live one keeps being fed by new
+        interim events. If nothing has refreshed it for INTERIM_GHOST_TTL_MS,
+        it is not live -- it is an orphan some commit/clear path left
+        behind, and it must go.
+
+        This is a liveness invariant, not a text/identity heuristic: it
+        holds no matter which code path created the orphan, so a permanent
+        ghost line is structurally impossible even if the comparison logic
+        in _apply_final_interim_comparison is wrong, or a future code path
+        forgets to clear. Firing is logged so a recurring miss upstream is
+        visible rather than silently papered over.
+        """
+        if not (getattr(self, "_latest_interim_text", "") or "").strip():
+            return
+        last_at = getattr(self, "_last_interim_ui_at", 0.0) or 0.0
+        if last_at <= 0.0:
+            return
+        stale_ms = (time.perf_counter() - last_at) * 1000.0
+        if stale_ms < INTERIM_GHOST_TTL_MS:
+            return
+        stale_text = (getattr(self, "_latest_interim_text", "") or "").strip()
+        stale_id = str(getattr(self, "_latest_interim_utterance_id", "") or "")
+        self._clear_interim_tail()
+        self._interim_log(
+            "[INTERIM] ghost watchdog cleared",
+            {
+                "stale_ms": round(stale_ms, 1),
+                "ttl_ms": INTERIM_GHOST_TTL_MS,
+                "text_len": len(stale_text),
+                "text_preview": stale_text[:120],
+                "interim_utterance_id": stale_id,
+            },
+        )
+        try:
+            from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+            jp_accuracy_log(
+                "INTERIM_GHOST_LINE_CLEARED_BY_WATCHDOG",
+                stale_ms=round(stale_ms, 1),
+                ttl_ms=INTERIM_GHOST_TTL_MS,
+                text_len=len(stale_text),
+                interim_utterance_id=stale_id,
+            )
+        except Exception:
+            pass
 
     def _process_ui_queue_once(self):
         """Drain transcript queue with per-tick item and time budgets."""
@@ -3243,6 +3296,7 @@ class AlphaApp(
         """Reset in-memory interim tail tracking for a new listen session."""
         self._latest_interim_text = ""
         self._latest_interim_speaker = 1
+        self._latest_interim_utterance_id = ""
         self._latest_interim_committed = False
         self._last_final_text = ""
 
@@ -3882,7 +3936,10 @@ class AlphaApp(
             },
         )
         self._track_committed_segment_meta(item, merged_text)
-        self._apply_final_interim_comparison(merged_text)
+        self._apply_final_interim_comparison(
+            merged_text,
+            utterance_id=str((item or {}).get("canonical_utterance_id") or ""),
+        )
         return True
 
     def _log_internal_repeat_removed(self, original: str, cleaned: str, reason: str):
@@ -4161,6 +4218,22 @@ class AlphaApp(
 
     def on_interim_transcript(self, speaker, text, metadata=None):
         """Deepgram worker callback — coalesce interim UI updates on main thread."""
+        # deepgram_client.py delivers every interim tick here TWICE: once
+        # via utterance_lifecycle._dispatch_interim (metadata carries
+        # canonical_utterance_id) and once raw from
+        # _handle_interim_deepgram_result (no identity at all). The raw
+        # call lands last, so a plain overwrite here silently discards the
+        # only identity the interim ever has -- which is what forced the
+        # final/interim comparison to guess from text alone. Carry the
+        # identity forward across the pair instead of dropping it.
+        metadata = dict(metadata or {})
+        if not str(metadata.get("canonical_utterance_id") or "").strip():
+            pending = getattr(self, "_pending_interim", None)
+            prev_meta = pending[2] if pending and len(pending) > 2 else None
+            prev_id = str((prev_meta or {}).get("canonical_utterance_id") or "").strip()
+            prev_text = (pending[1] if pending else "") or ""
+            if prev_id and (prev_text or "").strip() == (text or "").strip():
+                metadata["canonical_utterance_id"] = prev_id
         self._pending_interim = (speaker, text, metadata)
         from alpha.utils.ui_thread_guard import is_ui_main_thread
 
@@ -4209,6 +4282,13 @@ class AlphaApp(
             speaker_num = int(speaker_num)
         self._latest_interim_text = interim_text
         self._latest_interim_speaker = speaker_num or 1
+        # Identity of the utterance this preview belongs to, when the
+        # producer supplied one. Used by _apply_final_interim_comparison to
+        # tell "this final IS my utterance" from "this final belongs to an
+        # older utterance and mine is still live" without guessing from text.
+        incoming_id = str((metadata or {}).get("canonical_utterance_id") or "").strip()
+        if incoming_id:
+            self._latest_interim_utterance_id = incoming_id
         self._interim_log(
             "[INTERIM] received",
             {
@@ -4230,6 +4310,7 @@ class AlphaApp(
     def _clear_interim_tail(self):
         self._latest_interim_text = ""
         self._latest_interim_speaker = 1
+        self._latest_interim_utterance_id = ""
         self._remove_interim_line_from_display()
 
     def _append_pending_interim_to_display(self):
@@ -4296,13 +4377,15 @@ class AlphaApp(
         if (getattr(self, "_latest_interim_text", "") or "").strip():
             self._append_pending_interim_to_display()
 
-    def _apply_final_interim_comparison(self, final_text: str):
+    def _apply_final_interim_comparison(self, final_text: str, utterance_id: str = ""):
         final_text = (final_text or "").strip()
         if not final_text:
             return
         interim_text = (getattr(self, "_latest_interim_text", "") or "").strip()
         norm_final = self._normalize_compare(final_text)
         norm_interim = self._normalize_compare(interim_text)
+        final_id = str(utterance_id or "").strip()
+        interim_id = str(getattr(self, "_latest_interim_utterance_id", "") or "").strip()
         action = "keep_interim"
         # Order matters: check "interim is fully covered by final" FIRST.
         # This also correctly covers the equal-strings case (the most common
@@ -4316,6 +4399,28 @@ class AlphaApp(
             action = "keep_interim"
         elif not norm_interim:
             action = "no_interim"
+        elif norm_interim and norm_final:
+            # Genuinely unrelated: neither text contains the other. Text
+            # alone cannot distinguish "stale ghost left over from an
+            # earlier utterance" (must clear) from "my utterance is still
+            # live and this final belongs to an older one" (must keep) --
+            # so decide on identity, which _handle_interim_transcript_ui
+            # now preserves, and only fall back to clearing when identity
+            # is genuinely unavailable (the confirmed real-world ghost
+            # pattern). A wrongly-cleared live interim self-heals on the
+            # next interim tick (~INTERIM_UI_THROTTLE_MS); a wrongly-kept
+            # ghost used to persist for the rest of the session.
+            if final_id and interim_id and final_id == interim_id:
+                action = "clear_interim_same_utterance"
+                self._clear_interim_tail()
+            elif final_id and interim_id:
+                # Different utterances: this interim is a live preview of a
+                # newer one. Keep it -- the ghost watchdog is the backstop
+                # if it turns out to be an orphan after all.
+                action = "keep_interim_other_utterance"
+            else:
+                action = "clear_interim_unrelated"
+                self._clear_interim_tail()
         self._last_final_text = final_text
         self._interim_log(
             "[INTERIM] final comparison",
@@ -4325,6 +4430,8 @@ class AlphaApp(
                 "interim_len": len(interim_text),
                 "final_preview": final_text[:120],
                 "interim_preview": interim_text[:120],
+                "final_utterance_id": final_id,
+                "interim_utterance_id": interim_id,
             },
         )
 
@@ -5899,7 +6006,10 @@ class AlphaApp(
         if is_finalizing:
             print("[STOP] final transcript committed during finalize")
         self._track_committed_segment_meta(item, text)
-        self._apply_final_interim_comparison(text)
+        self._apply_final_interim_comparison(
+            text,
+            utterance_id=str((item or {}).get("canonical_utterance_id") or ""),
+        )
 
     def _display_transcript_item(self, item):
         """Route finals through segment repair or legacy buffer before store commit."""

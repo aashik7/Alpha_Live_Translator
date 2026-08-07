@@ -130,6 +130,13 @@ UI_QUEUE_DEFER_MS = 10
 TRANSCRIPT_UI_BATCH_FLUSH_MS = 200
 TRANSCRIPT_UI_SCROLL_MAX_HZ = 4
 INTERIM_UI_THROTTLE_MS = 200
+# Liveness bound for the single mutable interim ("...") preview line. An
+# interim is by definition a preview of an utterance still in progress, so
+# it must keep being refreshed by new interim events. If nothing has
+# refreshed it for this long, it is not live -- it is an orphan left behind
+# by a commit/clear path, and the watchdog removes it. Comfortably above
+# INTERIM_UI_THROTTLE_MS (200) so normal streaming never trips it.
+INTERIM_GHOST_TTL_MS = 1500
 DEFER_LOGO_MS = 600
 DEFER_WAVEFORM_DRAW_MS = 400
 UI_LAG_MONITOR_ENABLED = False
