@@ -7966,11 +7966,16 @@ class AlphaApp(
             lpp.mark("stop_button_clicked_at")
         except Exception:
             pass
-        # Flush any debounced Stable translation before stop-accepting.
-        try:
-            self._flush_pending_translation_submit()
-        except Exception:
-            pass
+        # fixes [BUG_FIX_ROADMAP.md Batch 1 item 1]: this used to call
+        # self._flush_pending_translation_submit() with zero arguments,
+        # but that method requires a `key` (no default) and always raised
+        # TypeError, silently swallowed below -- it never once flushed
+        # anything. flush_pending_translation_submissions() (plural, no
+        # args needed, iterates every pending key) already runs later in
+        # this same Stop sequence via stop_finalize_worker.py, and is the
+        # complete, correct replacement (see its own docstring / TASK_7_
+        # REPORT.md) -- so the broken call here was redundant, not just
+        # broken, and is removed rather than patched.
         from alpha.utils.stop_finalize_worker import begin_stop_from_ui
         try:
             worker = getattr(self, "translation_worker", None)
