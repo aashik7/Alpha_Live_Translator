@@ -1720,6 +1720,24 @@ class DeepgramClientMixin:
             self._teams_maybe_log_interim_sample(
                 speaker_num, transcript, data.get("speech_final")
             )
+            # This call is intentionally unconditional -- do not gate it on
+            # UTTERANCE_LIFECYCLE_ENABLED/should_use_utterance_lifecycle.
+            # Japanese sessions never go through get_utterance_lifecycle(...)
+            # .on_interim(...) above (should_use_utterance_lifecycle() is
+            # English/generic-only by design), so this is their only path to
+            # the UI. On the English path it's also still needed: lifecycle's
+            # own _dispatch_interim only fires when a LifecycleDecision sets
+            # should_update_interim=True, which is False on several branches
+            # (see utterance_lifecycle.py), so lifecycle alone does not
+            # deliver every interim to the UI either. Net effect: on the
+            # English path with lifecycle enabled, this handler(...) call and
+            # the on_interim(...) call above both often fire for the same
+            # interim tick -- known, currently harmless (on_interim_transcript
+            # only overwrites self._pending_interim, and INTERIM_UI_THROTTLE_MS
+            # lets only one of the pair actually render). If you ever add a
+            # counter, metric, or other side effect to on_interim_transcript /
+            # _handle_interim_transcript_ui, it will silently double-count for
+            # every English interim tick -- guard it explicitly if you do.
             handler = getattr(self, "on_interim_transcript", None)
             if callable(handler):
                 handler(speaker_num, transcript, metadata=metadata)
