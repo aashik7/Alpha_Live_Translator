@@ -1,5 +1,24 @@
 # Proactive Full-Codebase Audit — 2026-08-06
 
+> **Working on this project? Start with `BUG_FIX_ROADMAP.md`, not this
+> file.** That file is the execution plan and the live ledger of what is
+> done vs. pending, and it tells you exactly which item to pick up next.
+> **This file is the evidence base** — it explains *what is wrong and
+> why* for each `§N.N` item the roadmap references, and carries a
+> `STATUS:` line per item recording whether it is fixed, mitigated, or
+> still open. Read the item here, then execute per the roadmap's method.
+>
+> Related: `Bug Report.md` is a frozen 2026-08-06 snapshot of this same
+> audit with **no** STATUS updates (do not use it for current state), but
+> it uniquely carries the appended **Japanese content loss** findings
+> (items 4.1-4.4) from 2026-08-07.
+>
+> **Fixes landed after this audit was written** (each annotated in-place
+> at its item below): `d7c1834`, `25a6623`, `1a32639`, `98a6fa0`,
+> `432dea1`, `78eb59e`, `5c48847`, and `a5e2ac4` — the last of which fixed
+> a *third* independent source of the interim ghost-line symptom found by
+> live test after §1.2's fix shipped (see §1.2's status note).
+
 STATUS: Analysis only. No code changed. Six parallel file-scoped audits
 (main_window.py, deepgram_client.py+event_bus.py, utterance_lifecycle.py+
 revision_metadata.py+speaker_boundary_guard.py, duplicate_protection.py+
@@ -106,6 +125,27 @@ than the one originally named. Both are now resolved: identity-gated
 unrelated-branch logic plus a liveness watchdog, commit `78eb59e` (see
 `ISSUE_1_INTERIM_GHOST_LINE_FIX_REPORT.md` for full detail). Regression
 tests: `tests/test_interim_ghost_line.py` (19 tests).
+
+**Follow-up (2026-08-07, commit `a5e2ac4`):** a live controlled test
+after `78eb59e` shipped found the *same visible symptom* still occurring
+briefly (~1.5-1.9s, self-healing via the watchdog rather than permanent)
+from a **third, independent source**: `utterance_lifecycle.py`'s Case C
+commit path called `_apply_active_update_locked(...)`, which
+unconditionally emitted an interim carrying the utterance's *final* text,
+microseconds before committing that same text. Fixed with an
+`emit_interim` parameter suppressed on the two commit call sites.
+Regression tests: `tests/test_commit_path_interim_emit.py` (6 tests).
+**This is the third distinct code path found producing one visible
+symptom** (the others: this item's fallthrough default, and
+`deepgram_client.py`'s raw+lifecycle double delivery, §3.9) — concrete
+evidence for why `BUG_FIX_ROADMAP.md` orders the underlying
+identity/controller work ahead of further symptom fixes.
+
+**Remaining, related, still open:** the watchdog's
+`INTERIM_GHOST_TTL_MS = 1500` is mis-calibrated — measured last-interim-
+to-final gaps are 1635-1924ms (English) and up to 4063ms (Japanese), so
+it now clears *legitimate* in-flight previews. See `Bug Report.md` §4.4
+and `BUG_FIX_ROADMAP.md` Batch 1 item 2.
 
 ### 1.3 `deepgram_client.py` — canonical-key fields are mostly decorative at the ingestion boundary
 **File:** `alpha/transcription/deepgram_client.py:1911-1934 (segment_metadata), 1547-1566 (event_id/deepgram_request_id)`

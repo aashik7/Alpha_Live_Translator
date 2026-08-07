@@ -1,5 +1,27 @@
 # Proactive Full-Codebase Audit — 2026-08-06
 
+> ## ⚠️ READ FIRST — this file is a FROZEN SNAPSHOT, not current state
+>
+> **Sections 1-3 below (the original 2026-08-06 audit) are preserved as
+> written on that date and are NOT kept up to date.** Several items they
+> describe as "confirmed still broken" have since been fixed — e.g. §1.2
+> (`_apply_final_interim_comparison`) was fixed on 2026-08-07 in commit
+> `78eb59e`, and §1.1 was mitigated in `98a6fa0` + `432dea1`.
+>
+> **Do not use this file to decide what still needs fixing.** Use:
+>
+> | Question | Authoritative file |
+> |---|---|
+> | What is still broken / what do I work on next? | **`BUG_FIX_ROADMAP.md`** (§6 Ledger) |
+> | What is the current fix status of an audit item? | **`PROACTIVE_AUDIT_20260806.md`** (carries per-item `STATUS:` lines) |
+> | What was the original evidence for a finding? | This file, or `PROACTIVE_AUDIT_20260806.md` — both carry the full original detail |
+>
+> **The one part of this file that IS current and unique:** the section
+> appended 2026-08-07 at the bottom — **"Japanese content loss" (items
+> 4.1-4.4)**. That content exists only here and is referenced by
+> `BUG_FIX_ROADMAP.md` items 2, 9, 28, and 34. Jump straight there if
+> that is what you came for.
+
 STATUS: Analysis only. No code changed. Six parallel file-scoped audits
 (main_window.py, deepgram_client.py+event_bus.py, utterance_lifecycle.py+
 revision_metadata.py+speaker_boundary_guard.py, duplicate_protection.py+
