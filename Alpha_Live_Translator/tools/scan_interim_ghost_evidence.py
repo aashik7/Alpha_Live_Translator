@@ -14,8 +14,9 @@ that file (stdlib only, no extra install needed) and reconstructs:
   * every watchdog firing (an orphaned interim actually being caught)
   * for every decision that KEPT the interim on screen, how long that
     interim had gone unrefreshed at the moment of the decision -- this is
-    the number that would blow past the 1500ms
-    (INTERIM_GHOST_TTL_MS) ceiling if the bug had reproduced
+    the number that would blow past the INTERIM_GHOST_TTL_MS ceiling
+    (6000ms as of BUG_FIX_ROADMAP.md Batch 1 item 2) if the bug had
+    reproduced
 
 It then renders one self-contained HTML file (inline SVG charts, no
 CDN/network dependency) with a plain-English PASS/WARN verdict at the
@@ -47,7 +48,21 @@ RUNS_DIR = PROJECT_ROOT / "troubleshooting" / "runs"
 # Mirrors alpha.constants.INTERIM_GHOST_TTL_MS. Kept as a plain literal
 # (not imported) so this script stays runnable standalone, without
 # pulling in the full alpha package / its side effects.
-INTERIM_GHOST_TTL_MS = 1500
+# fixes BUG_FIX_ROADMAP.md Batch 1 item 3: was left at the pre-item-2
+# value (1500) after the real constant was recalibrated to 6000 -- keep
+# this in sync whenever alpha.constants.INTERIM_GHOST_TTL_MS changes, or
+# the anomaly check below (line ~166) will flag legitimate long-pause
+# interims using a stale, too-tight threshold.
+INTERIM_GHOST_TTL_MS = 6000
+
+# fixes BUG_FIX_ROADMAP.md Batch 1 item 3: build_verdict() used to return
+# PASS whenever `anomalies` was empty, regardless of how many decisions
+# needed the watchdog to clean up after them. A run with 10 watchdog
+# firings out of 12 decisions reported PASS, even though that ratio means
+# the identity gate (Layer 1) is barely functioning and the liveness
+# watchdog (Layer 2, meant to be a rare backstop) is doing most of the
+# work. Above this ratio, report REVIEW instead.
+WATCHDOG_FIRING_RATIO_REVIEW_THRESHOLD = 0.25
 
 # Actions that clear the interim line -- the fix considers these "resolved".
 CLEARING_ACTIONS = {
@@ -337,10 +352,25 @@ def build_verdict(result: dict[str, Any]) -> tuple[str, str, str]:
         for a in ("clear_interim_unrelated", "clear_interim_same_utterance", "keep_interim_other_utterance")
     )
     if watchdog_n:
+        watchdog_ratio = watchdog_n / total
+        if watchdog_ratio >= WATCHDOG_FIRING_RATIO_REVIEW_THRESHOLD:
+            return (
+                "warn",
+                f"Watchdog fired on {watchdog_n} of {total} decisions "
+                f"({watchdog_ratio:.0%}) -- higher than expected.",
+                "The watchdog (Layer 2) is meant to be a rare backstop for "
+                "genuine orphans; the identity gate (Layer 1) should resolve "
+                "most decisions directly. A ratio this high means Layer 1 is "
+                "not doing its job -- most likely the TTL is still too tight "
+                "for this session's real timing, or identity is missing more "
+                "often than expected. Worth investigating before treating "
+                "this run as healthy.",
+            )
         return (
             "pass",
             f"No stuck/ghost interim detected. Watchdog caught {watchdog_n} "
-            f"orphaned interim(s) as designed.",
+            f"orphaned interim(s) as designed ({watchdog_ratio:.0%} of "
+            f"{total} decisions).",
             "The identity gate handled most decisions directly; the "
             "liveness watchdog backstopped the rest. This is exactly the "
             "intended two-layer behavior.",
