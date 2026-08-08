@@ -171,7 +171,16 @@ class DuplicateProtectionMixin:
                 pass
 
         if action == "update":
-            updated = self.transcript_store.update_last_segment(
+            # fixes BUG_FIX_ROADMAP.md Batch 3 item 17: the decision to
+            # update was made from get_last_segment_if_active (the store's
+            # true last row, speaker-confirmed) but the write went through
+            # update_last_segment's reverse scan under a *separate* lock
+            # acquisition -- so an append between the two made this
+            # overwrite an older row than the one that was read. The safe
+            # variant refuses anything but the true last row; the existing
+            # else-branch below already appends instead, so a refusal
+            # preserves the text rather than dropping it.
+            updated = self.transcript_store.update_last_segment_if_active(
                 speaker=speaker_num,
                 text=text,
                 timestamp=timestamp,

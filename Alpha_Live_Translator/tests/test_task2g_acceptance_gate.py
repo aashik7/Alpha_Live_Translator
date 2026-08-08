@@ -50,10 +50,16 @@ class TranscriptStoreHardBoundaryTests(unittest.TestCase):
         # True last row belongs to speaker 2 -- must NOT reach back to
         # speaker 1's earlier row the way the old get_last_segment(1) would.
         self.assertIsNone(store.get_last_segment_if_active(1))
-        # Old method's bug, confirmed still present (unchanged, other
-        # callers still rely on it) -- proves this is a real behavior delta.
-        self.assertIsNotNone(store.get_last_segment(1))
-        self.assertEqual(store.get_last_segment(1).text, "speaker one first line")
+        # Old method's bug, still reproducible on purpose -- proves this is
+        # a real behavior delta. BUG_FIX_ROADMAP.md Batch 3 item 17 renamed
+        # it from get_last_segment(speaker) to make the unsafe scan
+        # impossible to reach by reflex; no production caller uses it now,
+        # and it is retained only so this comparison keeps working.
+        self.assertIsNotNone(store.get_last_segment_unsafe_speaker_scan(1))
+        self.assertEqual(
+            store.get_last_segment_unsafe_speaker_scan(1).text,
+            "speaker one first line",
+        )
 
     def test_get_last_segment_if_active_matches_true_last(self):
         store = TranscriptStore()
@@ -247,7 +253,7 @@ class ManualModeIntegrationTests(unittest.TestCase):
         # speaker 1's row merely because it is store-adjacent in time.
         host = ManualModeCommitHost()
         host.commit(1, "これはテストの音声")
-        before = host.transcript_store.get_last_segment(1).text
+        before = host.transcript_store.get_last_segment_if_active(1).text
         host.commit(2, "音声認識のテストです")  # would satisfy the compound
         # continuation pattern (ends/starts match JAPANESE_COMPOUND_ENDINGS/
         # STARTS) if speaker were ignored entirely.

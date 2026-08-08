@@ -61,13 +61,16 @@ FORBIDDEN_GLUE = [
 def apply_hotfix_to_store(store: TranscriptStore, texts, speaker: int = 1) -> list[str]:
     """Mirror production store updates using hotfix decision logic."""
     for text in texts:
-        segment = store.get_last_segment(speaker)
+        # BUG_FIX_ROADMAP.md Batch 3 item 17: mirrors production, which now
+        # uses the speaker-confirmed true-last lookup. Identical results
+        # here -- this harness only ever drives one speaker.
+        segment = store.get_last_segment_if_active(speaker)
         previous = segment.text if segment is not None else None
         action, result = decide_transcript_action(previous, text)
         if action == "skip" or not result:
             continue
         if action == "update":
-            if not store.update_last_segment(speaker, result):
+            if not store.update_last_segment_if_active(speaker, result):
                 store.add_segment(speaker, result)
         else:
             store.add_segment(speaker, result)

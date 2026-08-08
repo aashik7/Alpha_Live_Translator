@@ -4684,7 +4684,26 @@ class AlphaApp(
                 or 1
             )
             if store is not None and merged_text:
-                store.update_last_segment(speaker, merged_text)
+                # fixes BUG_FIX_ROADMAP.md Batch 3 item 17: `update_speaker`
+                # in tail_check came from the store's true last row
+                # (_check_stop_tail_duplicate reads last_segments[-1]), but
+                # the write used to go through `update_last_segment`'s
+                # reverse scan under a *separate* lock acquisition -- so an
+                # append in between made this land on an older row. Unlike
+                # the other two call sites this one **ignored the return
+                # value**, so simply swapping in the strict variant would
+                # silently drop the merged tail whenever it refused -- on
+                # the Stop last-chance path, where a drop is permanent (the
+                # exact loss class items 10/11/11b exist to prevent).
+                # Append instead: a visible extra line is recoverable, a
+                # lost one is not.
+                if not store.update_last_segment_if_active(speaker, merged_text):
+                    store.add_segment(speaker=speaker, text=merged_text)
+                    jp_accuracy_log(
+                        "STOP_TAIL_MERGE_APPENDED_NOT_UPDATED",
+                        speaker=speaker,
+                        merged_preview=_diag_text_preview(merged_text, 160),
+                    )
                 # fixes TASK_5_FINAL_CLEANUP_REPORT.md Fix 3 (the second of
                 # TASK_3B_CHANGES.md's two flagged call sites): this appends
                 # a missing suffix onto the already-committed line, i.e. a
@@ -5402,7 +5421,16 @@ class AlphaApp(
             self._log_segment_repair_skipped("no_new_content", previous_text, text)
             return False
         repair_speaker = last_segment.speaker if last_segment.speaker is not None else speaker
-        updated = store.update_last_segment(
+        # fixes BUG_FIX_ROADMAP.md Batch 3 item 17: `last_segment` above came
+        # from the true-last `get_last_segment()`, but the write used to go
+        # through `update_last_segment`'s reverse scan under a *separate*
+        # lock acquisition -- so a row appended in between made this merge
+        # overwrite an older row than the one it was computed from. The safe
+        # variant refuses anything but the true last row; returning False
+        # here is already the existing fail-safe (the caller then commits
+        # `text` normally through the buffer/commit path, so nothing is
+        # dropped).
+        updated = store.update_last_segment_if_active(
             repair_speaker,
             merged,
             timestamp=item.get("timestamp"),
@@ -5965,7 +5993,24 @@ class AlphaApp(
 
         previous_text = None
         if hasattr(self, "transcript_store") and self.transcript_store is not None:
-            segment = self.transcript_store.get_last_segment(speaker)
+            # fixes BUG_FIX_ROADMAP.md Batch 3 item 17: this used
+            # get_last_segment(speaker), whose reverse scan reaches back
+            # PAST an intervening different-speaker turn and returns a row
+            # this new final does not continue -- the positional "last line"
+            # bug of TASK_2E_FINDINGS.md item 3. An earlier fix deliberately
+            # left it alone (see the comment below about previous_text being
+            # "untouched") because removing the unsafe method was out of its
+            # scope; item 17 is that scope.
+            #
+            # previous_text now goes None when the store's last row belongs
+            # to someone else. Every consumer of it fails safe in that
+            # direction: decide_transcript_action(None, text) -> "add" (and
+            # its result here is diagnostic only -- the real commit runs
+            # inside DuplicateProtectionMixin._display_transcript_item),
+            # and _evaluate_japanese_commit_dedup simply does not suppress.
+            # Worst case is a visible duplicate line, never a wrong merge
+            # into another speaker's row.
+            segment = self.transcript_store.get_last_segment_if_active(speaker)
             if segment is not None:
                 previous_text = segment.text
         if self._is_japanese_manual_mode() and not item.get("_jp_cleaned"):

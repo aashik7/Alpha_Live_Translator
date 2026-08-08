@@ -41,7 +41,7 @@ class TestAddTranslationMatchesByIdWhenAvailable(unittest.TestCase):
             speaker=1, text="original rough text", canonical_utterance_id="U-1"
         )
         # Simulate a correction landing before the translation result does.
-        store.update_last_segment(speaker=1, text="corrected final text")
+        store.update_last_segment_if_active(speaker=1, text="corrected final text")
 
         store.add_translation(
             original_text="original rough text",

@@ -73,8 +73,26 @@ class TranscriptStore:
             target_language=target_language,
         )
 
-    def update_last_segment(self, speaker, text, timestamp=None) -> bool:
-        """Update the latest segment for the same speaker; returns False if none found."""
+    def update_last_segment_unsafe_speaker_scan(
+        self, speaker, text, timestamp=None
+    ) -> bool:
+        """Reverse-scan for this speaker's latest row and overwrite it.
+
+        **Do not call from production code.** Renamed from
+        `update_last_segment` by BUG_FIX_ROADMAP.md Batch 3 item 17: every
+        caller paired it with a *different*, safer read
+        (`get_last_segment_if_active` or the true-last `get_last_segment`)
+        and then wrote through this reverse scan under a **separate** lock
+        acquisition -- a check-then-act race where an intervening
+        different-speaker append makes the write land on an older row than
+        the one the decision was made from. All call sites now use
+        `update_last_segment_if_active`.
+
+        Retained (rather than deleted) only because
+        `tests/test_task2g_acceptance_gate.py` deliberately pins this
+        method's behavior to document the safe/unsafe delta. The explicit
+        name is the guard: it cannot now be reached by reflex.
+        """
         cleaned = (text or "").strip()
         if not cleaned:
             return False
@@ -100,23 +118,42 @@ class TranscriptStore:
             canonical_utterance_id=segment.canonical_utterance_id,
         )
 
-    def get_last_segment(self, speaker=None) -> Optional[TranscriptSegment]:
-        """Return the latest segment, optionally filtered by speaker."""
-        with self._lock:
-            if speaker is None:
-                if not self._segments:
-                    return None
-                return self._copy_segment(self._segments[-1])
+    def get_last_segment(self) -> Optional[TranscriptSegment]:
+        """Return the store's true last segment, whoever it belongs to.
 
-            speaker_num = int(speaker) if speaker is not None else None
+        BUG_FIX_ROADMAP.md Batch 3 item 17 removed this method's optional
+        `speaker` filter: with a speaker it reverse-scanned past intervening
+        turns and returned a stale earlier row (the positional "last line"
+        bug of TASK_2E_FINDINGS.md item 3). The no-speaker form is
+        legitimate and unchanged -- it is genuinely "the last row" -- so it
+        stays. Speaker-qualified lookups must use
+        `get_last_segment_if_active`, or
+        `get_last_segment_unsafe_speaker_scan` if the old semantics really
+        are wanted.
+        """
+        with self._lock:
+            if not self._segments:
+                return None
+            return self._copy_segment(self._segments[-1])
+
+    def get_last_segment_unsafe_speaker_scan(
+        self, speaker
+    ) -> Optional[TranscriptSegment]:
+        """Reverse-scan backwards for this speaker's latest row.
+
+        **Do not call from production code.** Reaches back past an
+        intervening different-speaker turn and returns a row that is no
+        longer the one a new final would continue. Retained only because
+        `tests/test_task2g_acceptance_gate.py` pins it to document the
+        safe/unsafe delta; see the note on
+        `update_last_segment_unsafe_speaker_scan`.
+        """
+        speaker_num = int(speaker) if speaker is not None else None
+        with self._lock:
             for segment in reversed(self._segments):
                 if segment.speaker == speaker_num:
                     return self._copy_segment(segment)
         return None
-
-    def get_last_segment_for_speaker(self, speaker) -> Optional[TranscriptSegment]:
-        """Backward-compatible alias for get_last_segment(speaker=...)."""
-        return self.get_last_segment(speaker=speaker)
 
     def get_last_segment_if_active(self, speaker) -> Optional[TranscriptSegment]:
         """Return the store's true last segment, only if it belongs to `speaker`.
