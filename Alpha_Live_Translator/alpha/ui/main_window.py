@@ -1437,10 +1437,29 @@ class AlphaApp(
         source_record_id: str = "",
     ):
         self._last_operation_hint = "update_segment"
+        # fixes BUG_FIX_ROADMAP.md Batch 2 item 5: all 3 except blocks in
+        # this function used to swallow failures with zero logging. The
+        # store mutation this function reacts to has already committed by
+        # the time these run (see the TASK_8_REPORT.md/TASK_3A_FINDINGS.md
+        # comments below) -- a failure here previously left a committed
+        # utterance with, e.g., its old translation UI item gone and no
+        # new one requested, with no trace anywhere. Logging only; the
+        # swallow behavior itself is intentionally unchanged (these must
+        # not crash the store-update path over a UI-side failure).
         try:
             self._remove_interim_line_from_display()
-        except Exception:
-            pass
+        except Exception as exc:
+            try:
+                from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+                jp_accuracy_log(
+                    "STORE_SEGMENT_UPDATE_INTERIM_REMOVAL_FAILED",
+                    reason=f"{type(exc).__name__}:{exc}",
+                    canonical_utterance_id=canonical_utterance_id,
+                    source_version=source_version,
+                )
+            except Exception:
+                pass
         # fixes TASK_8_REPORT.md: same rationale as _on_store_segment_added
         # -- translation submission (and the stale-translation-line removal
         # it depends on) used to run AFTER all transcript-box rendering
@@ -1460,8 +1479,18 @@ class AlphaApp(
                 canonical_utterance_id=canonical_utterance_id,
                 source_version=source_version,
             )
-        except Exception:
-            pass
+        except Exception as exc:
+            try:
+                from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+                jp_accuracy_log(
+                    "STORE_SEGMENT_UPDATE_TRANSLATION_REMOVAL_FAILED",
+                    reason=f"{type(exc).__name__}:{exc}",
+                    canonical_utterance_id=canonical_utterance_id,
+                    source_version=source_version,
+                )
+            except Exception:
+                pass
         # Same utterance revised: debounce-replace pending translation (do not
         # enqueue a second permanent job for each provisional Stable update).
         try:
@@ -1473,8 +1502,18 @@ class AlphaApp(
                 source_version=source_version,
                 source_record_id=source_record_id,
             )
-        except Exception:
-            pass
+        except Exception as exc:
+            try:
+                from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+                jp_accuracy_log(
+                    "STORE_SEGMENT_UPDATE_TRANSLATION_RESUBMIT_FAILED",
+                    reason=f"{type(exc).__name__}:{exc}",
+                    canonical_utterance_id=canonical_utterance_id,
+                    source_version=source_version,
+                )
+            except Exception:
+                pass
         box = self._transcript_box()
         if box is None:
             return
