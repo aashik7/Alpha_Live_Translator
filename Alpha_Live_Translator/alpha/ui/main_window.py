@@ -760,6 +760,32 @@ class AlphaApp(
             return
         stale_text = (getattr(self, "_latest_interim_text", "") or "").strip()
         stale_id = str(getattr(self, "_latest_interim_utterance_id", "") or "")
+        stale_speaker = getattr(self, "_latest_interim_speaker", 1) or 1
+        # fixes BUG_FIX_ROADMAP.md Batch 3 item 11b: this watchdog enforces a
+        # *display* liveness invariant (see the docstring), but _clear_interim_tail
+        # also wipes _latest_interim_text -- which is the ONLY source
+        # _recover_interim_tail_on_stop reads. So a tail orphaned shortly before
+        # Stop was destroyed by the display layer before the content-recovery
+        # path could see it, making items 10 and 11 unreachable in exactly the
+        # scenario they exist for. Confirmed live in run
+        # ...20260809-033339: watchdog cleared a 10-char interim at +267.19s,
+        # Stop ran at +268.25s and found nothing; that speech is absent from
+        # the final export. Bug Report.md 4.3 predicted this interaction.
+        #
+        # Preserve the orphan for the Stop-time recovery path instead of
+        # dropping it. This does NOT weaken the ghost fix: the visible line is
+        # still removed immediately, right below. Whether the stash is safe to
+        # commit is decided by _check_stop_tail_duplicate (item 10) and
+        # _should_commit_interim_recovery (item 11), which is precisely what
+        # those two were hardened to judge -- so an orphan that did later get
+        # committed is filtered there rather than being pre-emptively lost here.
+        self._watchdog_orphaned_interim_text = stale_text
+        self._watchdog_orphaned_interim_speaker = stale_speaker
+        self._watchdog_orphaned_interim_utterance_id = stale_id
+        # Stamped so the Stop path can tell "nothing happened since this was
+        # orphaned" from "the speaker carried on". See the supersession check
+        # in _recover_interim_tail_on_stop.
+        self._watchdog_orphaned_interim_at = last_at
         self._clear_interim_tail()
         self._interim_log(
             "[INTERIM] ghost watchdog cleared",
@@ -769,6 +795,7 @@ class AlphaApp(
                 "text_len": len(stale_text),
                 "text_preview": stale_text[:120],
                 "interim_utterance_id": stale_id,
+                "orphan_preserved_for_stop_recovery": True,
             },
         )
         try:
@@ -4356,6 +4383,21 @@ class AlphaApp(
         self._latest_interim_utterance_id = ""
         self._remove_interim_line_from_display()
 
+    def _discard_watchdog_orphaned_interim(self):
+        """Drop the watchdog's preserved orphan (item 11b).
+
+        Called once the orphan can no longer represent uncommitted speech:
+        after the Stop-time recovery path has consumed or rejected it, and
+        at session reset. Kept separate from _clear_interim_tail because
+        that runs on the normal commit path too, where the orphan must
+        survive -- the whole point of item 11b is that a display-layer
+        clear must not destroy the content-recovery source.
+        """
+        self._watchdog_orphaned_interim_text = ""
+        self._watchdog_orphaned_interim_speaker = 1
+        self._watchdog_orphaned_interim_utterance_id = ""
+        self._watchdog_orphaned_interim_at = 0.0
+
     def _append_pending_interim_to_display(self):
         """Re-attach the single mutable interim line after a store re-render.
 
@@ -4545,6 +4587,48 @@ class AlphaApp(
             )
             return
         interim_text = (getattr(self, "_latest_interim_text", "") or "").strip()
+        recovered_speaker_override = None
+        # fixes BUG_FIX_ROADMAP.md Batch 3 item 11b: if the ghost watchdog
+        # cleared a still-uncommitted interim before Stop, _latest_interim_text
+        # is empty here even though real speech was pending. Fall back to the
+        # orphan the watchdog preserved, so items 10/11's filters get to judge
+        # it instead of it being gone before they run.
+        if not interim_text:
+            orphan = (
+                getattr(self, "_watchdog_orphaned_interim_text", "") or ""
+            ).strip()
+            # Supersession guard: only resurrect the orphan if no newer interim
+            # arrived after it was stashed. Otherwise the speaker carried on and
+            # the orphan is stale -- committing it would append old text at the
+            # END of the transcript, out of order. This is a supersession rule,
+            # not a time bound: the case the orphan exists for (watchdog clear
+            # immediately followed by Stop, no further speech) is untouched.
+            orphan_at = float(getattr(self, "_watchdog_orphaned_interim_at", 0.0) or 0.0)
+            newest_interim_at = float(getattr(self, "_last_interim_ui_at", 0.0) or 0.0)
+            if orphan and newest_interim_at > orphan_at:
+                self._interim_log(
+                    "[INTERIM] stop tail orphan superseded",
+                    {"text_len": len(orphan), "text_preview": orphan[:120]},
+                )
+                orphan = ""
+            if orphan:
+                interim_text = orphan
+                recovered_speaker_override = getattr(
+                    self, "_watchdog_orphaned_interim_speaker", 1
+                ) or 1
+                self._interim_log(
+                    "[INTERIM] stop tail using watchdog orphan",
+                    {
+                        "text_len": len(orphan),
+                        "text_preview": orphan[:120],
+                        "interim_utterance_id": str(
+                            getattr(
+                                self, "_watchdog_orphaned_interim_utterance_id", ""
+                            )
+                            or ""
+                        ),
+                    },
+                )
         if self._is_japanese_manual_mode() and JAPANESE_TEXT_NORMALIZATION_ENABLED:
             interim_text = self._apply_japanese_final_cleanup(interim_text)
         last_final_text = self._get_last_final_text_for_recovery()
@@ -4577,6 +4661,7 @@ class AlphaApp(
         if not interim_text:
             self._interim_log("[INTERIM] stop tail skipped", {"reason": "empty_interim"})
             self._clear_interim_tail()
+            self._discard_watchdog_orphaned_interim()
             return
         decision = tail_check.get("decision")
         if decision in ("skip_too_short", "skip_already_committed"):
@@ -4588,12 +4673,16 @@ class AlphaApp(
                 stats["stop_tail_duplicate_skipped_count"] += 1
             self._interim_log("[INTERIM] stop tail skipped", {"reason": decision})
             self._clear_interim_tail()
+            self._discard_watchdog_orphaned_interim()
             return
         if decision == "append_missing_suffix":
             merged_text = tail_check.get("commit_text")
-            speaker = tail_check.get("update_speaker") or getattr(
-                self, "_latest_interim_speaker", 1
-            ) or 1
+            speaker = (
+                tail_check.get("update_speaker")
+                or recovered_speaker_override
+                or getattr(self, "_latest_interim_speaker", 1)
+                or 1
+            )
             if store is not None and merged_text:
                 store.update_last_segment(speaker, merged_text)
                 # fixes TASK_5_FINAL_CLEANUP_REPORT.md Fix 3 (the second of
@@ -4629,6 +4718,7 @@ class AlphaApp(
                 self._latest_interim_committed = True
                 self._last_final_text = merged_text
                 self._clear_interim_tail()
+                self._discard_watchdog_orphaned_interim()
                 self._interim_log(
                     "[INTERIM] stop tail appended suffix",
                     {
@@ -4644,8 +4734,13 @@ class AlphaApp(
         if not should_commit:
             self._interim_log("[INTERIM] stop tail skipped", {"reason": reason})
             self._clear_interim_tail()
+            self._discard_watchdog_orphaned_interim()
             return
-        speaker = getattr(self, "_latest_interim_speaker", 1) or 1
+        speaker = (
+            recovered_speaker_override
+            or getattr(self, "_latest_interim_speaker", 1)
+            or 1
+        )
         item = {
             "speaker": speaker,
             "text": interim_text,
@@ -4659,6 +4754,7 @@ class AlphaApp(
         self._latest_interim_committed = True
         self._last_final_text = interim_text
         self._clear_interim_tail()
+        self._discard_watchdog_orphaned_interim()
         self._interim_log(
             "[INTERIM] stop tail committed",
             {

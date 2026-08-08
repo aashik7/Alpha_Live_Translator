@@ -472,7 +472,51 @@ passing. **Never delete entries** — mark them `[resolved, see item #N]`.
   **Do not guess a replacement number** — same rule as item 34: derive it
   from `logs/async_debug.log`'s `[INTERIM] stop tail skipped
   {"reason": "too_short"}` events across real runs, per language. Schedule
-  as its own item alongside item 34's threshold work.
+  as its own item alongside item 34's threshold work. **2026-08-09 update:
+  still no usable data.** Both of that day's runs logged `skip_too_short`
+  with `latest_interim_len: 0` — a trivially correct skip of an empty
+  interim, which tells us nothing about the 20-char cutoff. The
+  measurement needs runs that actually end with a short non-empty tail.
+- 2026-08-09 — **`test_task9_report.py::test_inactivity_timeout_fallback_survives_immediate_real_stop_5x`
+  is flaky under CPU load. It is not in §2.3's baseline 7 and it is not a
+  regression — do not chase it.** It failed twice while item 11b was being
+  verified, which cost a full stash/control cycle to clear. Evidence: a 6×
+  control run on stashed (pre-change) code passed 6/6; a 6× run *with* the
+  change also passed 6/6; and two later full-suite runs were clean with
+  the change in. The failures clustered immediately after a full-suite run,
+  i.e. with the machine still loaded. It is a real-Tk-root, real-thread,
+  real-`.after()`-timer test with bounded real-time waits
+  (`_commit_fallback_ms = 60`, a 20s deadline), so it slips when the
+  machine is busy. **If you see it fail: re-run it alone before assuming
+  anything.** If it ever fails on an idle machine, that *is* worth
+  investigating.
+- 2026-08-09 — **NEW, pre-existing, not a regression: on English runs the
+  canonical-ledger file is never written, and the export coverage gate
+  then reports a perfect pass on a zero denominator.** `[core:3]`
+  `transcripts/canonical_transcript_ledger.jsonl` is **0 lines** on every
+  English run checked — today's `...034448` *and* the pre-item-10/11
+  control `...155842`, so this predates Batch 3 and no roadmap item caused
+  it. Japanese runs write it normally (25 and 26 lines respectively).
+  The consequence is in `accuracy/export_coverage_report.json`, which for
+  English reads:
+  `source_commit_observed_count: 0`, `canonical_export_line_count: 0`,
+  and nonetheless `coverage_ratio: 1.0`, `export_lossless: true`,
+  `clean_export_ready_for_scoring: true`. **It is 0/0 reported as a
+  perfect pass.** Meanwhile `evidence_streams/canonical_commits.jsonl`
+  holds 12 real `append` commits and `Alpha_output_FINAL.txt` holds 12
+  lines — the data exists, the gate is simply reading a file nothing
+  populates on this path.
+  `Bug Report.md` §4.1 already warns that `coverage_ratio: 1.0` only
+  compares canonical → final and so cannot see a record lost *before* the
+  ledger. For English it is weaker still: it compares **nothing at all**
+  and still certifies the export lossless. This directly undercuts
+  `REPAIR_PLAN.md` Phase 4's acceptance gate ("Raw counts, canonical
+  counts, UI counts, and export counts reconcile") — for English that
+  reconciliation is vacuous. Related to item 21, which fixes a different
+  required-step check that also reports success without comparing what it
+  computed. **Do not treat any English run's `coverage_passed` as
+  evidence until this is fixed.** Needs its own item; likely belongs with
+  Batch 4 or the Batch 5 store consolidation (item 32).
 
 ---
 
@@ -523,6 +567,7 @@ passing. **Never delete entries** — mark them `[resolved, see item #N]`.
 | `13f20ca` | 2026-08-08 | 3 | **Batch 3 item 9c DONE.** Translation-gap self-heal was inert: `reconcile_translation_gaps` passed the canonical ledger's `sequence_number` as the translation worker's `segment_id`, two unrelated counters occupying the same range, so a genuinely untranslated utterance was rejected as a "duplicate" of an unrelated job. Now allocates from `host._translation_segment_seq` like every other submitter, and distinguishes rejection causes via the worker's public `get_counters()` so "already delivered" counts as resolved while "worker shut down" still fails. **Also corrected my own earlier diagnosis in this file — the gap was real content loss, not the false positive I first recorded.** Tests: `tests/test_translation_reconciliation_segment_id.py` (4) | Claude Opus 5 |
 | `b404c19` | 2026-08-08 | 2 | **Batch 3 item 10 DONE.** `_check_stop_tail_duplicate` dropped the Stop-time interim tail on ANY substring match against ANY of the last 5 segments (`commit_text=None` = permanent loss on the last-chance path). Narrowed to equality-or-prefix, the only shapes that actually evidence "already committed"; interior-only matches now fall through and commit. Tests: `tests/test_check_stop_tail_duplicate_containment.py` (7) | Claude Opus 5 |
 | `b2b39de` | 2026-08-09 | 2 | **Batch 3 item 11 DONE.** `_should_commit_interim_recovery` refused the Stop-time tail whenever it appeared anywhere inside the last committed final (`norm_interim in norm_final`). Narrowed to equality-or-prefix, exactly mirroring item 10 — this is the *second* filter on the same last-chance path, so both had to be fixed for a tail to survive Stop. Also removed the same function's unreachable trailing `return False, "no_match"` (approved as part of this item, not a drive-by: a dead drop-path in a function whose every other drop-path is permanent loss). Tests: `tests/test_should_commit_interim_recovery_containment.py` (9), proven against pre-fix code — exactly the 2 containment tests fail, the other 7 pin unchanged branches. Full suite 229 tests, baseline unchanged. | Claude Opus 5 |
+| `69605cc` | 2026-08-09 | 1 | **Batch 3 item 11b DONE** *(new — found by analyzing the Batch 3 checkpoint runs, not in the original audit)*. **This is what makes items 10 and 11 reachable at all.** The interim ghost watchdog cleared `_latest_interim_text` — the only source `_recover_interim_tail_on_stop` reads — so a tail orphaned shortly before Stop was destroyed by the **display** layer before the **content**-recovery path ran. Confirmed live: run `...033339` cleared a 10-char interim at +267.19s, Stop ran at +268.25s and found nothing; that speech is absent from the final export. `Bug Report.md` §4.3 predicted this interaction and asked that it be checked by whichever track touches Stop-time recovery. The watchdog now stashes the orphan (text/speaker/id/timestamp) before clearing and Stop falls back to it; the visible ghost line still goes immediately, so `78eb59e`/`a5e2ac4` are untouched. Whether the orphan is *safe* to commit stays items 10/11's job, by design. A supersession guard drops it if any newer interim arrived after it was stashed, so stale text can never be appended out of order. Tests: `tests/test_watchdog_orphan_stop_tail_recovery.py` (9), both halves proven separately against pre-fix code. Full suite 238, baseline unchanged | Claude Opus 5 |
 | `5ffb18d` | 2026-08-09 | 14, 15, 16 | **Batch 3 items 14/15/16 DONE** (12, 13 intentionally skipped over — user approved 14/15/16 out of order; not a dependency issue, see §4). **14:** `merge_japanese_fragments`'s `prev.endswith(curr): return prev` fast path removed — proven a no-op vs. the overlap search for curr ≤32 chars, only mattered for curr >32 chars where it silently discarded the whole fragment with no trace; static fix, 0/114 real merge events scanned showed this firing. **15:** `_SPEAKER_LOCK_CONTINUATION_PREFIXES` had 5 ordinary connectives (なんだけど/それが/だから/でも/けど) misread as same-speaker evidence; removed, kept the one specific phrase. **16:** confirmed `teams_commit_decision_from_dup_action` diagnostic-only by full control-flow trace, renamed to `..._diagnostic_only`. Tests: `tests/test_batch3_items_14_15_16.py` (9) — before/after control caught my own first-draft item-14 test asserting `curr in merged`, which passes either way since curr is a literal substring of prev by construction; corrected to assert growth. Full suite 238 tests, baseline unchanged. | Claude Sonnet 5 |
 | `0aa6a8f` | 2026-08-09 | 18, 19 | **Batch 3 items 18/19 DONE.** **18:** `TranscriptStore.add_translation` matched by exact text equality only — a segment revised between translation request and response silently dropped its translation, no log. `canonical_utterance_id` was already in scope at every real call site but never threaded through; added the field to `TranscriptSegment`, wired it from `main_window.py` through `duplicate_protection.py` into the store, id-match now tried first (falls back to the old text match when no id supplied; logs `TRANSLATION_STORE_ID_MATCH_NOT_FOUND` and returns, does not fall back, when an id is supplied but not found — avoids reintroducing the same silent-drop risk through the back door). **19:** `duplicate_continuation_ratio`'s `cur_c in prev_c: return 1.0` (full duplicate on ANY substring match, suppressed outright by callers at ratio≥0.95) narrowed to prefix-or-suffix-of-previous — the only shapes that evidence a genuine truncated re-send. No live occurrence found for 19 (0 `DUPLICATE_CONTINUATION_SUPPRESSED` events scanned), static fix like item 14. Tests: `tests/test_batch3_items_18_19.py` (7), proven against pre-fix code (3/7 fail: 2 errors from the new kwarg not existing yet, 1 failure from the containment case). Full suite 245 tests, baseline unchanged. | Claude Sonnet 5 |
 | `af6781e` | 2026-08-09 | 12 | **Batch 3 item 12 DONE.** `_should_repair_previous_segment`'s `norm_curr in norm_prev` (any substring, anywhere) narrowed to prefix-or-suffix of previous. Traced the actual severity via `_try_segment_repair`'s caller: `current` is never dropped when `should_repair=False` — it still commits as its own segment downstream — so unlike 10/11/19 this was a missed-merge/transcript-quality bug (previous stays uncorrected as a separate duplicate-looking line), not silent content loss. Tests: `tests/test_should_repair_previous_segment_containment.py` (4), proven against pre-fix code (1/4 fails, the coincidental-middle-match case). Full suite 249 tests, baseline unchanged. | Claude Sonnet 5 |
@@ -549,6 +594,9 @@ messages alone.
 | Batch 2 item 7b (`6726f68`) | Yes, 2026-08-08 | No `JAPANESE_STABILIZER_INGEST_FAILED` / `JAPANESE_PATH_DETECTION_FAILED` — the failure path did not trigger. Japanese run committed normally, so the routing change caused no regression |
 | Batch 2 item 9b (`b220c86`) | Yes, 2026-08-08 | **Start-button freeze fixed.** `TEMP_AUDIO_RETENTION_CLEANUP_STARTED` → `START_AUDIO_INIT_BEGIN` gap: **8.80s / 12.41s → 0.00s / 0.00s**. `..._COMPLETED` now lands *after* audio init (3.1s / 3.7s later), confirming it runs in the background |
 | §1.1 (`98a6fa0`+`432dea1`) | Yes, 2026-08-08 | **First live evidence of `revise` working.** Japanese run 15:53: `applied_action = {append: 21, revise: 5}`. Previously **0 revises across 138 commits**. English run: 14 append / 0 revise (no correction opportunities arose) |
+| Batch 3 item 9c (`13f20ca`) | Yes, 2026-08-09 | **CONFIRMED FIXED.** Runs `...033339` (ja) / `...034448` (en). Both now `final_status: completed`, `stop_finalize_failed: false` — the step that failed *both* post-Batch-2 runs. `DUPLICATE_SUBMISSIONS_REJECTED` **1 → 0** in both; `UNRESOLVED_TRANSLATION_SEQUENCES: []`, `MISSING_TRANSLATION_SEGMENT_IDS: 0`, jobs accepted/sent/completed 31/31/31 (ja) and 12/12/12 (en). No `TRANSLATION_RECONCILIATION_*` events fired at all — there was no gap left to heal |
+| Batch 3 items 10 + 11 (`b404c19`, `b2b39de`) | **NO — code path never executed** | Both runs reached Stop with `latest_interim_len: 0`, so `_recover_interim_tail_on_stop` returned at `empty_interim` **before** either filter ran. Neither the item-10 nor the item-11 branch was exercised. Unit tests pass and the baseline is clean, but there is **zero live evidence** for either — the same "wired up, never fired" shape §7 warns about. **Still outstanding: a session Stopped mid-sentence** (see §6d) |
+| Batch 3 interim-ghost regression check | Yes, 2026-08-09 | `tools/scan_interim_ghost_evidence.py`: **PASS** on both. Watchdog 1/31 (3%) ja, 0/12 en — far below item 3's 25% REVIEW threshold, consistent with the post-Batch-1 numbers. No duplicated closing line in either FINAL export (0 exact-duplicate lines), i.e. items 10/11's opposite failure mode did not appear — though that is weak evidence given the paths never ran |
 
 ### 6c. Pending — in execution order
 
@@ -770,6 +818,19 @@ chance.
 ~~**11. `[core:2]`** `alpha/ui/main_window.py` · `grep: def _should_commit_interim_recovery`~~ **DONE, `b2b39de`.**
 Narrowed `norm_interim in norm_final` to equality-or-prefix and removed the
 function's unreachable `no_match` drop-path.
+
+~~**11b. `[core:1]` — the ghost watchdog destroyed the Stop-tail recovery source**~~ **DONE, `69605cc`.**
+*(new, found 2026-08-09 while checking why the Batch 3 checkpoint never
+exercised items 10/11)* `alpha/ui/main_window.py` ·
+`grep: def _check_interim_ghost_watchdog`. The watchdog cleared
+`_latest_interim_text` via `_clear_interim_tail`, and that variable is the
+only thing `_recover_interim_tail_on_stop` reads — so the display layer
+deleted the content-recovery source. It now stashes the orphan first, and
+Stop falls back to it, gated by a supersession check. **Read this before
+touching any other Stop-path item:** it is the clearest example in this
+codebase of a display-layer mechanism silently disabling a content-safety
+mechanism, and `Bug Report.md` §4.3 had flagged the risk long before it
+was measured.
 
 **Worth knowing for items 12-19:** this function is the **second** of two
 sequential filters on the same Stop-time last-chance path —
@@ -1024,25 +1085,59 @@ the obvious-looking name.
 ### 6d. → NEXT UP
 
 **Batch 1 complete** (items 1-3). **Batch 2 complete** (items 4-9, 7b,
-9b). **Batch 3 in progress: items 9c, 10, 11, 12, 14, 15, 16, 18, 19 done**
-(`13f20ca`, `b404c19`, `b2b39de`, `5ffb18d`, `0aa6a8f`, `af6781e`). **Only
-13, 17, and 20 remain — see §5's 2026-08-09 notes for why they were
-skipped over rather than done in order.**
+9b). **Batch 3 in progress: items 9c, 10, 11, 11b, 12, 14, 15, 16, 18, 19
+done** (`13f20ca`, `b404c19`, `b2b39de`, `69605cc`, `5ffb18d`, `0aa6a8f`,
+`af6781e`). **Only 13, 17, and 20 remain — see §5's 2026-08-09 notes for
+why they were skipped over rather than done in order.**
 
-Batch 3's own checkpoint has **not** been run. 9c, 10, and 11 all changed
-real behavior on the Stop path (translation self-heal, and what the
-Stop-time interim tail does — **two** separate filters on that path were
-narrowed), so the next live session should confirm:
-- `final_status` is no longer `failed` on `translation_reconciliation`
-  (or, if it still fails, that it is a *genuine* unresolved gap — check
-  for `TRANSLATION_RECONCILIATION_ALREADY_DELIVERED` vs
-  `..._FORCED_SUBMIT_REJECTED` with its new `rejection_reason` field)
-- the last utterance of the session still has a translation
-- no duplicated closing line appears in the transcript (items 10 and 11
-  now commit tails they used to drop — the opposite failure mode to
-  watch for). Check `logs/async_debug.log` for `[INTERIM] stop tail
-  skipped` reasons, especially how often `too_short` fires (§5's
-  unmeasured-threshold finding from item 11's investigation).
+**Batch 3 checkpoint — run 2026-08-09, PARTIALLY satisfied.** Full
+results in §6b. Summary:
+- ✅ **item 9c confirmed fixed live** — both runs `completed`, zero
+  duplicate rejections, zero unresolved translation sequences. This was
+  the checkpoint's primary criterion and the failure that motivated 9c.
+- ✅ last utterance translated; no duplicated closing line; interim-ghost
+  scan PASS on both.
+- ❌ **items 10 and 11 are still unverified live.** Both sessions reached
+  Stop with `latest_interim_len: 0`, so `_recover_interim_tail_on_stop`
+  returned at `empty_interim` before either filter ran.
+- 🔍 **…and investigating *why* it was empty found item 11b** (`69605cc`),
+  a real content-loss bug: in the ja run the empty interim was **not**
+  benign — the ghost watchdog had cleared a live 10-char interim 1.06s
+  before Stop, and that speech is missing from the final export. In the en
+  run it was benign (both interims committed normally via
+  `action=clear_interim`). **Without 11b, items 10 and 11 could not have
+  fired in production at all** in the case they were written for. This is
+  the third time in this project that fixing one thing surfaced the next
+  (§7's warning), and the first time the checkpoint itself caught it.
+
+**→ Outstanding checkpoint action (needs a human, §3.10):** one more
+session per language where **Stop is pressed mid-sentence, while still
+speaking**, so an uncommitted interim tail actually exists at Stop. That
+is the only way to exercise items 10, 11 and 11b end-to-end. Two variants
+are worth doing, because they cover different halves:
+- **(a) Stop immediately** after the last word (within ~5s) — the tail is
+  still live, exercising items 10/11 directly.
+- **(b) Stop after a ~10s pause** following the last word — long enough
+  for the watchdog to fire first, exercising 11b's orphan hand-off. This
+  is the exact shape that lost speech in run `...033339`.
+
+In the resulting run check `logs/async_debug.log` for `[INTERIM] stop
+tail` entries and confirm:
+- `latest_interim_len` > 0, **or** a `stop tail using watchdog orphan`
+  entry in variant (b). If neither appears the test did not reproduce the
+  condition — repeat it.
+- the spoken tail appears in `transcripts/Alpha_output_FINAL.txt` and is
+  **not** dropped as `skip_already_committed` / `interim_in_final`
+- it appears exactly once — no duplicated closing line
+- no `stop tail orphan superseded` entry in variant (b) (that would mean
+  a later interim arrived and the orphan was correctly discarded — valid,
+  but it means the run did not test the hand-off either)
+- the `reason` distribution of any `stop tail skipped` events, which also
+  supplies the `too_short` measurement §5 is waiting on
+
+**The same outstanding session should also cover items 12, 14, 15, 16,
+18, 19** (all landed after this checkpoint ran, so none of them have
+live confirmation yet):
 - for Japanese sessions: no coincidentally-duplicated short phrase or
   misattributed speaker-turn line (items 14/15's theoretical fixes — no
   live occurrence was found for either, so this is the first real chance
@@ -1053,10 +1148,10 @@ narrowed), so the next live session should confirm:
 - for Japanese sessions: no short remark that coincidentally repeats part
   of an earlier line goes missing (item 19 — also never observed live)
 - a reworded/corrected previous segment now gets merged instead of
-  staying as two separate lines (item 12 — check for
-  `repair_merge` in the Teams commit-decision diagnostics; note item 12
-  cannot cause content loss even if wrong, only a missed merge, so this
-  one is lower priority to verify)
+  staying as two separate lines (item 12 — check for `repair_merge` in
+  the Teams commit-decision diagnostics; note item 12 cannot cause
+  content loss even if wrong, only a missed merge, so this one is lower
+  priority to verify)
 
 **→ Batch 3, item 13** — `alpha/transcription/duplicate_protection.py`,
 `grep: def decide_transcript_action`. Start at §3 step 1 (investigate).
@@ -1065,12 +1160,25 @@ must survive when no authoritative `lifecycle_decision` signal is
 present. Items 13, 17, 20 remain in §6c, all Opus-5-appropriate.
 
 **Still open from earlier live-test findings, not yet scheduled beyond
-their existing batch:** the Japanese assembler → canonical ledger loss
-(`Bug Report.md` §4.1, now measured at 5 lost sentences in one run —
-Batch 5) and the `noise_fragment` quarantine misclassification
-(`Bug Report.md` §4.2, now 3-for-3 wrong — item 34, Batch 5). Also the
-open question from 9c: *why* the last utterance never reached
-`submit_text_for_translation` in the first place.
+their existing batch** (both re-measured on the 2026-08-09 run and still
+reproducing):
+- **Japanese assembler → canonical ledger loss** (`Bug Report.md` §4.1 —
+  Batch 5). Today: 34 assembler decisions (25 `commit_new`, 6
+  `update_previous`, 2 `hold`) → 32 `stable_commits` → **25** canonical
+  records, with **4 stable-committed sentences under 60% present** in the
+  final export (worst 20.0%). The 2026-08-08 control was 6 such
+  sentences, worst 10.5%. **Do not read that as improvement** — different
+  speech content, same mechanism, still real loss.
+- **`noise_fragment` quarantine** (item 34, Batch 5). Today quarantined
+  `飲みます、食べます` ("I drink, I eat") — ordinary Japanese, again
+  `later_committed_to_stable: false`. Running total is now **4
+  quarantined, 0 recovered, 4/4 misclassified.**
+- The open question from 9c: *why* the last utterance never reached
+  `submit_text_for_translation` in the first place. Note today's runs had
+  no gap at all, so this did not reproduce and remains uninvestigated.
+- **New, from the 2026-08-09 analysis:** the English coverage gate is
+  vacuous because the canonical-ledger file is never written on that path
+  (§5). Pre-existing, needs its own item.
 
 ---
 

@@ -759,6 +759,41 @@ recorded: **3 quarantined, 0 recovered, 3 lost, 3/3 misclassified.**
 Still a small sample, but the rule's observed track record is now
 0-for-3.
 
+### 4.1/4.2 update — 2026-08-09 Batch-3 checkpoint run (`...20260809-033339`, ja)
+
+Both findings reproduce again on the first Japanese run after Batch 3
+items 9c/10/11 landed. Neither item targets this track, so this is a
+re-measurement, not a regression.
+
+| Measure | 2026-08-08 (`...155334`) | 2026-08-09 (`...033339`) |
+|---|---|---|
+| Assembler decisions | 35 (`commit_new` 26, `update_previous` 6, `hold` 2) | 34 (`commit_new` 25, `update_previous` 6, `hold` 2) |
+| `stable_commits.jsonl` rows | 33 | 32 |
+| Canonical commits | 26 (`append` 21, `revise` 5) | 25 (`append` 20, `revise` 5) |
+| Stable texts <60% present in `Alpha_output_FINAL.txt` | 6 (worst 10.5%) | **4** (worst 20.0%) |
+| `export_coverage_report.json` | `coverage_ratio: 1.0` | `coverage_ratio: 1.0` |
+
+The four sentences absent from today's final export:
+
+```
+かずっといつもどこかに行きたいって感じ。              (20.0% of it survives)
+行かなですね。日本人はね。うん。                      (37.5%)
+、だからそう、は出かけるのが好き。                    (23.5%)
+前私も熱が出たんですけど、で                          (57.1%)
+```
+
+**4 rather than 6 is not evidence of improvement** — the sessions had
+different speech content and neither item 9c, 10 nor 11 touches the
+assembler → ledger handoff. The mechanism is unchanged; only the sample
+differs. `coverage_passed: true` again failed to detect any of it, now
+confirmed on three independent runs.
+
+**4.2 quarantine tally is now 4 of 4.** Today's run quarantined
+`飲みます、食べます` ("I drink, I eat") as `noise_fragment`, again
+`later_committed_to_stable: false`. Running total across every run ever
+recorded: **4 quarantined, 0 recovered, 4 lost, 4/4 misclassified.** The
+rule has still never once been right.
+
 **English is not affected at this scale.** The same session's English run
 (`...155842`) lost 1 of 15 raw lines, and that line
 (`"For now, let's split this dialogue. split this dialogue. I'm gonna

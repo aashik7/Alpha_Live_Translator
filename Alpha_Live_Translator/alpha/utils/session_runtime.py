@@ -81,6 +81,13 @@ def begin_live_session(host: Any) -> SessionRuntime:
     host._translation_items_by_utterance = {}
     host._translation_segment_seq = 0
     host._latest_interim_text = ""
+    # Batch 3 item 11b: the watchdog's preserved orphan is session-scoped
+    # content -- a new session must never inherit the previous session's
+    # uncommitted tail and commit it into the wrong transcript.
+    host._watchdog_orphaned_interim_text = ""
+    host._watchdog_orphaned_interim_speaker = 1
+    host._watchdog_orphaned_interim_utterance_id = ""
+    host._watchdog_orphaned_interim_at = 0.0
     host._ui_callback_stats = {
         "scheduled": 0,
         "started": 0,
