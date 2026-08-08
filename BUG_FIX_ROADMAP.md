@@ -474,6 +474,26 @@ Collect evidence across multiple Japanese live runs on how often
 dropped as `noise_fragment` — see `Bug Report.md` §4.2). Feeds item 34.
 **Do not touch the threshold in this batch.**
 
+**9b. `[core:—]` — Start button: multi-second UI-thread freeze before audio/Deepgram init** *(new, found 2026-08-08 during Batch 1's live-test checkpoint — not part of the original audit)*
+`alpha/utils/session_runtime.py` · `grep: def begin_live_session` (called
+synchronously from the Start-button handler in `main_window.py`, before
+the background worker thread starts)
+**Full evidence, root-cause hypothesis, and measured numbers in
+`Bug Report.md` §4.5 — read that before investigating.** Summary: both of
+today's live-test runs show a **silent, zero-log gap** between
+run-identity/artifact bootstrap and `START_AUDIO_INIT_BEGIN` — 8.8s
+(English) and 12.5s (Japanese). User reports >30s in practice; not
+independently reproduced at that exact duration here, likely worse under
+cold-start conditions. Suspected cause: `begin_live_session()` runs on
+the **Tk UI thread**, and the evidence/artifact-index filesystem work
+logged immediately before the gap (`run_artifacts.py`,
+`troubleshooting_paths.py`) may be blocking it. **Does not fit any of
+the 4 core bugs** (not content loss, not identity, not silent-failure,
+not a timing constant) — it's UI-thread responsiveness. Placed here
+(Batch 2) because, like item 9, it's investigation-first and has no
+dependency on Batches 3-5. **Explicitly deferred — do not fix without a
+separate go-ahead.**
+
 **Checkpoint:** one live session per language. Confirm new log lines
 appear, with no unexpected volume.
 

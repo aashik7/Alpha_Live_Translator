@@ -744,3 +744,63 @@ watchdog firing is no longer routine housekeeping — it is a signal that
 something upstream failed. Sizing the TTL so it effectively never fires
 in normal operation is the intended end state, and the scan tool's
 verdict logic should treat a high firing rate as REVIEW rather than PASS.
+
+---
+
+## 4.5 Start button: multi-second UI-thread freeze before audio/Deepgram init (new, 2026-08-08)
+
+**Confidence: LOG** (gap measured directly) for the existence/duration of
+the stall; **STATIC, suspected** for the exact blocking call.
+**Severity: VISIBLE-BUG** (app appears frozen at Start; not a content-loss bug).
+**Status: OPEN, not fixed** (documentation only per explicit instruction).
+
+### Report
+User reported Start button taking >30s to become responsive after
+today's Batch-1 live tests (English + Japanese, both otherwise healthy —
+see the interim-ghost checkpoint results in `BUG_FIX_ROADMAP.md` §6b).
+
+### Measured evidence
+Both of today's captured runs show a silent gap — **zero log lines of any
+kind** — between session/run-identity bootstrap finishing and
+`START_AUDIO_INIT_BEGIN` (the point WASAPI/mic scan + Deepgram init
+actually starts):
+
+| Run | Language | Gap start (last event before silence) | Gap end (`START_AUDIO_INIT_BEGIN`) | Gap duration | Total Start→ready |
+|---|---|---|---|---|---|
+| `...133236` | en | 13:32:37.123 (`RUN_ARTIFACTS_INDEX_CREATED`) | 13:32:45.954 | **8.8s** | 14.9s |
+| `...134815` | ja | 13:48:15.716 (`STARTUP_CONTINUED_DESPITE_EVIDENCE_WARNING`) | 13:48:28.262 | **12.5s** | 13.7s |
+
+A third run folder from the same test session (`...134809`) contains
+only 2 log lines, one of which is an `ASYNC_LOG_HEALTH_SNAPSHOT` showing
+`last_flush_age_ms: 6006.4` (the async log writer's queue hadn't flushed
+in 6+ seconds) before that run folder was abandoned and superseded by
+`...134815` six seconds later — consistent with, though not proof of, the
+same stall causing an aborted first attempt.
+
+Neither gap reached the reported >30s in these specific captures — most
+likely explained by cold-start conditions (first launch of the day,
+antivirus/disk-cache state, filesystem contention) not present in these
+later same-session runs. Treat this as the same underlying defect at a
+different severity, not a separate, unreproduced issue.
+
+### Root cause (suspected, not confirmed)
+`main_window.py`'s Start-button handler calls
+`session_runtime.begin_live_session(host)` **synchronously on the Tk UI
+thread**, before the heavy `_start_listening_worker` is handed off to a
+background `threading.Thread`. The event names logged immediately before
+the silent gap (`TROUBLESHOOTING_RUN_FOLDER_CREATED`,
+`RUN_ARTIFACTS_INDEX_CREATED` in `alpha/utils/run_artifacts.py`,
+`UPLOAD_PACKAGE_REQUIRED_FILES_MATERIALIZED` in
+`alpha/utils/troubleshooting_paths.py`) are all filesystem/evidence
+bootstrap work. If any of that work is slow (disk I/O, antivirus
+scanning a freshly-touched folder, retention-policy scans), it would
+block the Tk main thread for exactly this window — matching a "click
+Start, app looks frozen" symptom precisely. **Not yet isolated to a
+specific call** — needs a targeted investigation (e.g. wrap the
+suspected calls in `begin_live_session`/`init_live_run_from_host` with
+timing marks) before a fix is designed.
+
+### Why this isn't in the 4 existing core-bug categories
+It doesn't cause content loss, identity weakness, silent failure, or a
+miscalibrated constant — it's UI-thread responsiveness. Tracked
+separately in `BUG_FIX_ROADMAP.md` as a new, ungrouped item.
