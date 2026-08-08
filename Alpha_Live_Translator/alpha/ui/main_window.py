@@ -1302,18 +1302,22 @@ class AlphaApp(
         box = self._transcript_box()
         if box is None:
             return
+        # fixes BUG_FIX_ROADMAP.md Batch 2 item 4: box.compare("interim_anchor",
+        # ...) raised TclError on the normal "nothing to remove" case (no
+        # interim currently on screen) -- every one of those was caught and
+        # logged as remove_exception, drowning any genuinely unexpected
+        # exception in noise. Guard on the mark actually existing first;
+        # zero behavior change, since "mark absent" already meant "nothing
+        # to remove" either way.
+        if "interim_anchor" not in box.mark_names():
+            self._interim_log("[INTERIM] remove_attempt", {"has_mark": False})
+            return
         try:
-            has_mark = box.compare("interim_anchor", ">=", "1.0")
-            self._interim_log(
-                "[INTERIM] remove_attempt",
-                {"has_mark": bool(has_mark)},
-            )
-            if has_mark:
-                box.configure(state="normal")
-                box.delete("interim_anchor", "end")
-                box.mark_unset("interim_anchor")
-                box.configure(state="disabled")
-                self._interim_log("[INTERIM] remove_success", {})
+            box.configure(state="normal")
+            box.delete("interim_anchor", "end")
+            box.mark_unset("interim_anchor")
+            box.configure(state="disabled")
+            self._interim_log("[INTERIM] remove_success", {})
         except Exception as exc:
             self._interim_log("[INTERIM] remove_exception", {"error": str(exc)})
 
