@@ -135,7 +135,14 @@ class DuplicateProtectionMixin:
         if scrollbar is not None and hasattr(self, "check_scrollbar_visibility"):
             self.check_scrollbar_visibility(box, scrollbar)
 
-    def _apply_transcript_to_store(self, speaker_num, text, timestamp=None, action: str = "add"):
+    def _apply_transcript_to_store(
+        self,
+        speaker_num,
+        text,
+        timestamp=None,
+        action: str = "add",
+        canonical_utterance_id: str = "",
+    ):
         if not hasattr(self, "transcript_store") or self.transcript_store is None:
             return
 
@@ -167,6 +174,7 @@ class DuplicateProtectionMixin:
                     timestamp=timestamp,
                     source_language=source_language,
                     target_language=target_language,
+                    canonical_utterance_id=canonical_utterance_id,
                 )
                 self._transcript_stability_counters.added += 1
         else:
@@ -176,6 +184,7 @@ class DuplicateProtectionMixin:
                 timestamp=timestamp,
                 source_language=source_language,
                 target_language=target_language,
+                canonical_utterance_id=canonical_utterance_id,
             )
             self._transcript_stability_counters.added += 1
 
@@ -578,6 +587,7 @@ class DuplicateProtectionMixin:
             result_text,
             timestamp=timestamp,
             action=action,
+            canonical_utterance_id=str(canonical_utterance_id or ""),
         )
         # Translation is submitted only from the UI segment hooks below,
         # and only after a successful canonical Stable commit above.

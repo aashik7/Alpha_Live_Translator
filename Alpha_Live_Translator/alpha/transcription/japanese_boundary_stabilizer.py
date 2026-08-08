@@ -235,7 +235,17 @@ def duplicate_continuation_ratio(previous: str, current: str) -> float:
     cur_c = compact_cjk_for_compare(current or "", "ja")
     if not prev_c or not cur_c:
         return 0.0
-    if cur_c in prev_c:
+    # fixes BUG_FIX_ROADMAP.md Batch 3 item 19: this used to be
+    # `if cur_c in prev_c: return 1.0` -- current counted as a full
+    # duplicate if it appeared ANYWHERE inside previous, including the
+    # middle. A ratio of 1.0 gets suppressed outright by callers of this
+    # function, so a genuinely new short remark that happened to be a
+    # literal substring of an earlier, longer line (e.g. a repeated
+    # "ありがとうございました") was silently dropped. Narrowed to prefix-or
+    # -suffix: current matching the START or the END of previous is real
+    # evidence of a truncated re-send of the same utterance; a coincidental
+    # match somewhere in the middle is not.
+    if prev_c.startswith(cur_c) or prev_c.endswith(cur_c):
         return 1.0
     if prev_c in cur_c:
         return len(prev_c) / max(len(cur_c), 1)

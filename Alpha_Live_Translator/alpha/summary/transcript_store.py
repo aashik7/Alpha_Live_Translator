@@ -19,6 +19,7 @@ class TranscriptSegment:
     source_language: Optional[str] = None
     target_language: Optional[str] = None
     translated_text: Optional[str] = None
+    canonical_utterance_id: Optional[str] = None
 
 
 class TranscriptStore:
@@ -35,6 +36,7 @@ class TranscriptStore:
         timestamp=None,
         source_language=None,
         target_language=None,
+        canonical_utterance_id=None,
     ) -> None:
         """Add one accepted clean transcript segment."""
         cleaned = (text or "").strip()
@@ -47,6 +49,9 @@ class TranscriptStore:
             timestamp=timestamp,
             source_language=source_language,
             target_language=target_language,
+            canonical_utterance_id=str(canonical_utterance_id).strip()
+            if canonical_utterance_id
+            else None,
         )
         with self._lock:
             self._segments.append(segment)
@@ -92,6 +97,7 @@ class TranscriptStore:
             source_language=segment.source_language,
             target_language=segment.target_language,
             translated_text=segment.translated_text,
+            canonical_utterance_id=segment.canonical_utterance_id,
         )
 
     def get_last_segment(self, speaker=None) -> Optional[TranscriptSegment]:
@@ -161,13 +167,47 @@ class TranscriptStore:
         translated_text,
         speaker=None,
         timestamp=None,
+        canonical_utterance_id="",
     ) -> None:
         cleaned_original = (original_text or "").strip()
         cleaned_translation = (translated_text or "").strip()
         if not cleaned_original or not cleaned_translation:
             return
         speaker_num = int(speaker) if speaker is not None else None
+        cid = str(canonical_utterance_id or "").strip()
         with self._lock:
+            # fixes BUG_FIX_ROADMAP.md Batch 3 item 18: this used to match
+            # only by exact text equality against every stored segment. If
+            # the segment's text was revised (e.g. a later correction)
+            # between when the translation request went out and when the
+            # result came back, no segment's text equals the original
+            # request text anymore, the loop finds nothing, and the
+            # translation is dropped with no log at all. When the caller
+            # can supply the segment's canonical_utterance_id, match on
+            # that first -- it survives text revisions. If an id was
+            # supplied but no segment carries it, that is itself worth
+            # knowing (fail loud, not silently fall back to a possibly
+            # wrong text match) rather than reintroducing the same silent
+            # drop through the back door.
+            if cid:
+                for segment in reversed(self._segments):
+                    if segment.canonical_utterance_id != cid:
+                        continue
+                    segment.translated_text = cleaned_translation
+                    if timestamp and not segment.timestamp:
+                        segment.timestamp = timestamp
+                    return
+                try:
+                    from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+                    jp_accuracy_log(
+                        "TRANSLATION_STORE_ID_MATCH_NOT_FOUND",
+                        canonical_utterance_id=cid,
+                        original_text_preview=cleaned_original[:120],
+                    )
+                except Exception:
+                    pass
+                return
             for segment in reversed(self._segments):
                 if segment.text != cleaned_original:
                     continue

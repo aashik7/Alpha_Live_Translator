@@ -7249,6 +7249,7 @@ class AlphaApp(
         translated_text,
         speaker=None,
         timestamp=None,
+        canonical_utterance_id="",
     ):
         """Attach a translation to a stored transcript segment when possible."""
         try:
@@ -7257,6 +7258,7 @@ class AlphaApp(
                 translated_text=translated_text,
                 speaker=speaker,
                 timestamp=timestamp,
+                canonical_utterance_id=canonical_utterance_id,
             )
         except Exception as exc:
             logger.debug("Failed to record translation segment: %s", exc)
@@ -7411,6 +7413,7 @@ class AlphaApp(
             translated_text,
             speaker=speaker,
             timestamp=timestamp,
+            canonical_utterance_id=canonical_utterance_id,
         )
 
     # -----------------------------------------------------------------------
