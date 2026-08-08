@@ -715,6 +715,57 @@ can respond with a concrete design instead of just "the current rule's
 observed track record is 0-for-2." Per the roadmap, the threshold itself
 is intentionally not touched in this pass.
 
+### 4.1/4.2 update — reproduced at much higher volume (2026-08-08 live test, run `...20260808-155334`, ja)
+
+The original 4.1 finding was a single lost sentence (10 assembler
+decisions → 9 canonical records). A Japanese live run today reproduces it
+**far more severely**:
+
+| Measure | Value |
+|---|---|
+| Assembler decisions | 34 (`commit_new` 26, `update_previous` 6, `hold` 2) |
+| Canonical commits | 26 (`append` 21, `revise` 5) |
+| `commit_new` texts absent from `Alpha_output_FINAL.txt` | **6** |
+| Of those, genuinely lost (not just revised) | **5** |
+| `export_coverage_report.json` | `coverage_ratio: 1.0, coverage_passed: true` |
+
+The 6 absent texts were re-checked with a longest-contiguous-substring
+match against the final export, specifically to avoid miscounting a
+`revise` (whose original wording legitimately disappears) as a loss.
+Five score 10-28% — i.e. only incidental short tokens like `はい。`
+survive — so they are genuinely absent, not reworded. The sixth scores
+52.9% and is consistent with a real revision.
+
+Lost sentences (each a complete, meaningful utterance):
+
+```
+じゃあ子供よりあやのさんの方が寝てるんですね。はい、そうです。はい。ちょっと日曜日の楽しみみたいになっていますね。
+後悔もある、時々。そうです、はい。
+夜九時とか十時ぐらいに、子供たちが寝た後、ポテトチップスを出して、はい。
+そっか。じゃあリビングでテレビを見て寝るんですね。はい。
+はい。あ、誘われなかったって悲しく感じるんですよ。
+```
+
+**`coverage_passed: true` again failed to detect any of this** — as
+documented in 4.1, that gate only compares canonical → final, so records
+lost *before* reaching the canonical ledger are structurally invisible to
+it. This is now confirmed twice, on independent runs.
+
+**4.2 quarantine tally is now 3 of 3.** A third `noise_fragment`
+quarantine appeared in the same run — `寝れた、幸せ、` ("slept well,
+happy,") — again ordinary conversational Japanese, again
+`later_committed_to_stable: false`. Running total across every run ever
+recorded: **3 quarantined, 0 recovered, 3 lost, 3/3 misclassified.**
+Still a small sample, but the rule's observed track record is now
+0-for-3.
+
+**English is not affected at this scale.** The same session's English run
+(`...155842`) lost 1 of 15 raw lines, and that line
+(`"For now, let's split this dialogue. split this dialogue. I'm gonna
+say 1, split ..."`) is a stuttered/duplicated Deepgram fragment, i.e.
+plausibly a correct suppression rather than a loss. English had 14
+appends, 0 revises, no quarantine events.
+
 ## 4.3 Why these are NOT the interim-ghost / watchdog issue
 
 Recorded explicitly so the two tracks do not get conflated later:

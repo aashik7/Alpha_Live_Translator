@@ -392,7 +392,12 @@ messages alone.
 |---|---|---|
 | `78eb59e` | Yes, 2026-08-07 | Permanent ghost gone; surfaced the `a5e2ac4` flicker case |
 | `a5e2ac4` | Yes, 2026-08-07 | `sf=True` interim events confirmed at zero. Watchdog then fired 10/12 decisions — **that is item 2 (TTL miscalibration), not a defect in `a5e2ac4`** |
-| All others in 6a | Not individually live-tested | — |
+| Batch 1 (`9892cb1`, `38a92b5`) | Yes, 2026-08-08 | Watchdog 83% → 2% (en) / 0% (ja). Re-confirmed in the 15:53/15:58 runs: **PASS**, 1/32 (3%) and 0/14 |
+| Batch 2 item 4 (`ddeb67f`) | Yes, 2026-08-08 | `remove_exception` log noise **92 and 58 per run → 0 and 0**. `remove_attempt` still logged normally |
+| Batch 2 items 5-8 (`5181b8c`/`38c6096`/`07d5234`/`ec38779`) | Yes, 2026-08-08 | Zero occurrences of all 11 new failure-event names across all 3 runs — i.e. none of those silent paths were hit this session. Confirms no new log spam; does **not** confirm the handlers fire correctly in production (unit tests cover that) |
+| Batch 2 item 7b (`6726f68`) | Yes, 2026-08-08 | No `JAPANESE_STABILIZER_INGEST_FAILED` / `JAPANESE_PATH_DETECTION_FAILED` — the failure path did not trigger. Japanese run committed normally, so the routing change caused no regression |
+| Batch 2 item 9b (`b220c86`) | Yes, 2026-08-08 | **Start-button freeze fixed.** `TEMP_AUDIO_RETENTION_CLEANUP_STARTED` → `START_AUDIO_INIT_BEGIN` gap: **8.80s / 12.41s → 0.00s / 0.00s**. `..._COMPLETED` now lands *after* audio init (3.1s / 3.7s later), confirming it runs in the background |
+| §1.1 (`98a6fa0`+`432dea1`) | Yes, 2026-08-08 | **First live evidence of `revise` working.** Japanese run 15:53: `applied_action = {append: 21, revise: 5}`. Previously **0 revises across 138 commits**. English run: 14 append / 0 revise (no correction opportunities arose) |
 
 ### 6c. Pending — in execution order
 
@@ -504,13 +509,61 @@ appear, with no unexpected volume.
 
 #### BATCH 3 — Core bug 2: identity & text-comparison hardening
 
-**Recommended model: Opus 5** for items 10, 13, 17, 21; Sonnet 5 is
-adequate for the rest (see §8). Depends on Batch 2's visibility.
+**Recommended model: Opus 5** for items 10, 13, 17, 21 and **9c**;
+Sonnet 5 is adequate for the rest (see §8). Depends on Batch 2's
+visibility.
 
 Each is its own commit + regression test. Use the already-shipped
 `_merge_lexical` (`1a32639`), `_text_related` (`25a6623`) and interim
 identity gate (`78eb59e`) fixes as templates for both the fix shape and
 the test shape.
+
+**9c. `[core:3]` — `translation_reconciliation` fails the whole run on a false-positive gap** *(new, found 2026-08-08 in the post-Batch-2 live test — do this FIRST in Batch 3)*
+`alpha/utils/stop_finalize_worker.py` · `grep: def reconcile_translation_gaps` (raise at `grep: could not deliver`) and `alpha/translation/translation_worker.py` · `grep: def enqueue_stable_segment`
+**Recommended model: Opus 5** (see §8 note below).
+
+Both runs of the 2026-08-08 post-Batch-2 live test ended
+`final_status: "failed"`, `stop_finalize_failed: true`, on this single
+required step — **but no translation was actually missing**:
+
+| Run | active | already_submitted | gap | forced | unresolved | accepted/sent/completed |
+|---|---|---|---|---|---|---|
+| `...155334` (ja) | 26 | 25 | 1 | 0 | **1** | 31 / 31 / 31 |
+| `...155842` (en) | 14 | 13 | 1 | 0 | **1** | 14 / 14 / 14 |
+
+`TRANSLATION_RECONCILIATION_FORCED_SUBMIT_REJECTED` fired once per run,
+and `translation_summary.json` shows `DUPLICATE_SUBMISSIONS_REJECTED = 1`
+in both. So the sequence is: the reconciler believed one committed
+utterance had no translation, force-resubmitted it, and
+`enqueue_stable_segment` correctly rejected it as a **duplicate of work
+already accepted and completed** — after which the reconciler treated
+that rejection as "could not deliver" and raised
+`TranslationReconciliationError`, failing the run.
+
+Two distinct defects, both needed:
+1. **Gap detection false positive** — the "already submitted" bookkeeping
+   the reconciler consults disagrees with the translation worker's own
+   dedup state for (at least) the final utterance of a session. Find why
+   one utterance is missing from `already_submitted` while the worker
+   knows it as done.
+2. **Rejection reasons are conflated** — `enqueue_stable_segment` returns
+   a bare `False` for *every* rejection cause (duplicate, not-accepting,
+   quota-disabled, empty text, unsupported language). "Rejected because
+   already delivered" is a **success** for reconciliation's purposes;
+   "rejected because the worker is shut down" is a real failure. The
+   reconciler cannot currently tell them apart, so it must assume the
+   worst. Give it enough information to distinguish them (the counters
+   already track each cause separately).
+
+**Severity: VISIBLE-BUG, not content loss** — the transcripts and
+translations are complete in both runs; `final_status` is simply wrong.
+That still matters: a fail-closed gate that cries wolf on healthy runs
+trains everyone to ignore it and will mask a genuine failure later.
+Directly undermines the same fail-closed contract as item 21.
+
+**Not new to Batch 2** — the same failure appears in run `...134815`
+(2026-08-08 13:48), before any Batch 2 item landed. It is not a
+regression from this work; it was simply not noticed until now.
 
 **10. `[core:2]`** `alpha/ui/main_window.py` · `grep: def _check_stop_tail_duplicate` · ≈5610
 **Highest severity in this batch.** Stop-time last-chance commit decided
@@ -768,16 +821,26 @@ in fresh live sessions, vs. 83% before the fix. Checkpoint satisfied.
 (`ddeb67f`/`5181b8c`/`38c6096`/`07d5234`/`ec38779`/`b220c86`/`6726f68`
 + item 9's doc-only entry).
 
-Batch 2's own checkpoint (one live session per language, confirm new log
-lines appear with no unexpected volume) has **not** been run since these
-landed. Worth folding into the next live-test session — especially now
-that 7b and 9b changed real behavior (routing and threading), not just
-logging. It does not need to block Batch 3.
+**Batch 2's checkpoint has now been run** (2026-08-08 live test, runs
+`...155334` ja + `...155842` en). Results in §6b — headline: item 4's log
+noise 92/58 → 0, item 9b's Start freeze 8.8s/12.4s → 0.00s, ghost-line
+scan PASS on both, and the first-ever live evidence of §1.1's `revise`
+path working (5 revises after 138 straight appends). No Batch 2 change
+regressed anything.
 
-**→ Batch 3, item 10** — `alpha/ui/main_window.py`,
-`grep: def _check_stop_tail_duplicate`. Start at §3 step 1 (investigate).
-Recommended model: Opus 5 (§8). See §6c Batch 3 for the full list
-(items 10-20).
+**One new issue found by that checkpoint: item 9c** (below) — both runs
+report `final_status: "failed"` on `translation_reconciliation`, but the
+translations are all present; it is a false-positive gap. **Pre-existing,
+not a Batch 2 regression** (same failure in `...134815`, before Batch 2
+landed).
+
+**→ Batch 3, item 9c FIRST** — `alpha/utils/stop_finalize_worker.py`,
+`grep: def reconcile_translation_gaps`. Do this before item 10: it is
+currently making every run report `failed`, which will otherwise mask
+real failures for the rest of the roadmap. Recommended model: Opus 5.
+Then **item 10** — `alpha/ui/main_window.py`,
+`grep: def _check_stop_tail_duplicate`, also Opus 5. See §6c Batch 3 for
+the full list.
 
 ---
 
@@ -843,7 +906,7 @@ efficiently you get there, not whether the process is safe.
 |---|---|---|---|
 | **1** (items 1-3) | One-line fix, one constant, one tool function | **Sonnet 5** | Mechanical, fully specified here, immediately verifiable. Opus adds nothing. Item 2 needs a human sign-off on the number, not model depth. |
 | **2** (items 4-9) | Add logging to known locations | **Sonnet 5** | Repetitive and mechanical. **Exception: item 7b** (the missing `return` that reroutes Japanese into the English pipeline) is a real behavior change — use **Opus 5** for that one. |
-| **3** (items 10-20) | Text/identity comparison semantics | **Opus 5** for 10, 13, 17, 20; **Sonnet 5** for 11, 12, 14, 15, 16, 18, 19 | 10 and 13 require reasoning about which correction shapes must survive; 17 is a multi-call-site refactor with a race condition; 20 is an architectural decision. The rest follow templates already in the repo. |
+| **3** (items 9c, 10-20) | Text/identity comparison semantics | **Opus 5** for 9c, 10, 13, 17, 20; **Sonnet 5** for 11, 12, 14, 15, 16, 18, 19 | 9c spans two modules and needs cross-state reasoning about *why* two independent bookkeeping views of "already translated" disagree, plus an API change to distinguish rejection causes — wrong guesses here produce a fix that silences the symptom while leaving the false-positive gap. 10 and 13 require reasoning about which correction shapes must survive; 17 is a multi-call-site refactor with a race condition; 20 is an architectural decision. The rest follow templates already in the repo. |
 | **4** (items 21-27) | Concurrency, state machine, fail-open policy | **Opus 5** | Race conditions, lock ordering, and asymmetric state transitions — the failure modes here are subtle and are not reliably caught by tests alone. Highest value per unit of model capability. |
 | **5** (items 28-37) | Architectural rewrite + validation | **Opus 5, extended thinking** | Multi-file redesign of the commit path, three-store consolidation, and a full `REPAIR_PLAN.md` Level 3-5 validation campaign. This is the one place where model capability materially changes the outcome. |
 
