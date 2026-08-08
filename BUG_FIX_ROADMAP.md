@@ -422,6 +422,20 @@ passing. **Never delete entries** — mark them `[resolved, see item #N]`.
   before toggling, `cp` it back after) instead — both of these were used
   safely for the same purpose on items 1 and 3 in the same session.
   `[resolved, see 9892cb1 + 1649e82]`
+- 2026-08-09 — **The same line-ending hazard has a second mechanism:
+  Python's `pathlib.Path.write_text()` (and any `open(..., "w")`) on
+  Windows translates every `\n` to `\r\n` on write.** Item 17 used a
+  short Python script to do a mechanical rename across a few test files;
+  `tests/test_task2g_acceptance_gate.py` happened to be **LF**, so it came
+  back CRLF and commit `43374ad` showed a 604-line unreviewable diff for
+  an 8-line edit. Fixed by a dedicated line-endings-only commit
+  (`5d4578a`), content verified byte-identical. **This repo is
+  mixed-ending — some files are CRLF, some LF — so there is no single
+  "correct" setting to normalize to.** Prefer the Edit tool for `.py`
+  edits. If a script really is needed, read and write in **binary**
+  (`read_bytes`/`write_bytes`) so endings pass through untouched, and
+  always check `git show --stat` before committing: a diff much larger
+  than the edit is the tell. `[resolved, see 43374ad + 5d4578a]`
 - 2026-08-09 — **The repo has moved to a different Windows user account**
   (`islamm` → `haquemdshafieh`), and three things broke as a result. None
   is an app bug; all three block this roadmap's own mandatory process, so
@@ -592,6 +606,7 @@ passing. **Never delete entries** — mark them `[resolved, see item #N]`.
 | `0aa6a8f` | 2026-08-09 | 18, 19 | **Batch 3 items 18/19 DONE.** **18:** `TranscriptStore.add_translation` matched by exact text equality only — a segment revised between translation request and response silently dropped its translation, no log. `canonical_utterance_id` was already in scope at every real call site but never threaded through; added the field to `TranscriptSegment`, wired it from `main_window.py` through `duplicate_protection.py` into the store, id-match now tried first (falls back to the old text match when no id supplied; logs `TRANSLATION_STORE_ID_MATCH_NOT_FOUND` and returns, does not fall back, when an id is supplied but not found — avoids reintroducing the same silent-drop risk through the back door). **19:** `duplicate_continuation_ratio`'s `cur_c in prev_c: return 1.0` (full duplicate on ANY substring match, suppressed outright by callers at ratio≥0.95) narrowed to prefix-or-suffix-of-previous — the only shapes that evidence a genuine truncated re-send. No live occurrence found for 19 (0 `DUPLICATE_CONTINUATION_SUPPRESSED` events scanned), static fix like item 14. Tests: `tests/test_batch3_items_18_19.py` (7), proven against pre-fix code (3/7 fail: 2 errors from the new kwarg not existing yet, 1 failure from the containment case). Full suite 245 tests, baseline unchanged. | Claude Sonnet 5 |
 | `af6781e` | 2026-08-09 | 12 | **Batch 3 item 12 DONE.** `_should_repair_previous_segment`'s `norm_curr in norm_prev` (any substring, anywhere) narrowed to prefix-or-suffix of previous. Traced the actual severity via `_try_segment_repair`'s caller: `current` is never dropped when `should_repair=False` — it still commits as its own segment downstream — so unlike 10/11/19 this was a missed-merge/transcript-quality bug (previous stays uncorrected as a separate duplicate-looking line), not silent content loss. Tests: `tests/test_should_repair_previous_segment_containment.py` (4), proven against pre-fix code (1/4 fails, the coincidental-middle-match case). Full suite 249 tests, baseline unchanged. | Claude Sonnet 5 |
 | `8f19afe` | 2026-08-09 | 13 | **Batch 3 item 13 DONE.** A substitution-style correction ("...three million" → "...four million") is neither containment nor extension, so `decide_transcript_action` fell through to `"add"` and the transcript kept BOTH the wrong line and the correction. Fixed **identity-only, never text similarity**: converting `add`→`update` REPLACES the stored line, so a wrong guess destroys committed speech — the opposite and worse direction from 10/11/12/19. Two distinct utterances can be near-identical ("the first quarter was strong" / "the second quarter was strong"); only a matching `canonical_utterance_id` proves a revision. **This was only solvable now because item 18 (`0aa6a8f`) added that field to `TranscriptSegment`** — the call-site comment had explicitly named its absence as why a weaker registry check was used. Also removed the two dead `.startswith()` branches (proven no-ops: each returned the same value as the check that subsumed it). Tests: `tests/test_same_utterance_substitution_update.py` (9), proven against pre-fix code. Full suite 267 tests, baseline unchanged. | Claude Opus 5 |
+| `43374ad` (+ `5d4578a`) | 2026-08-09 | 17 | **Batch 3 item 17 DONE.** Every write site decided from one lookup and wrote through `update_last_segment`'s reverse scan under a **separate** lock acquisition — an append in between made the write land on an older row than the one read. Fixed all three writes plus **one unsafe read the item did not list** (`_commit_transcript_item_to_store`'s `get_last_segment(speaker)`); all four now use `..._if_active`. Unsafe methods **renamed, not deleted** (`..._unsafe_speaker_scan`) — `test_task2g_acceptance_gate.py` deliberately pins them to document the safe/unsafe delta, so deleting would have destroyed that evidence; the rename still satisfies "not reachable by reflex". **The Stop-tail site ignored the return value**, so a bare swap would have silently dropped the merged tail on the last-chance path — it now appends and logs `STOP_TAIL_MERGE_APPENDED_NOT_UPDATED`. One real behavior change beyond the rename: `previous_text` goes `None` when the last row is another speaker's; every consumer fails safe (worst case a visible duplicate, never a wrong cross-speaker merge). Tests: `tests/test_transcript_store_unsafe_variants_retired.py` (8), incl. one that drives the old path to prove the race was real, not theoretical; 5/8 fail pre-fix. **`5d4578a` is a line-endings-only follow-up** — see §5's new note on `write_text()`. **audit §2.7 still OPEN.** Full suite 275 tests, baseline unchanged. | Claude Opus 5 |
 
 **Correction note on `5001275`:** the original draft of
 `PROACTIVE_AUDIT_20260806.md` mislabeled
@@ -901,9 +916,8 @@ explicitly mark it diagnostic-only so a future change cannot silently
 wire it into a live decision path — which would reintroduce this bug
 class a 5th time.
 
-**17. `[core:2]`** — combined fix, same root cause:
-`alpha/summary/transcript_store.py` · `grep: def update_last_segment` (≈71) and `grep: def get_last_segment` (≈97)
-Delete or alias these unsafe speaker-only methods so only the safe
+~~**17. `[core:2]`** — combined fix, same root cause: `alpha/summary/transcript_store.py`~~ **DONE, `43374ad`** (+ line-endings fix `5d4578a`). All **four** unsafe sites fixed — the three writes the item named, plus an unsafe *read* it did not (`_commit_transcript_item_to_store` derived `previous_text` from `get_last_segment(speaker)`). Renamed rather than deleted (`..._unsafe_speaker_scan`) because `tests/test_task2g_acceptance_gate.py` deliberately pins their behavior to document the delta; the rename still achieves "not reachable by reflex". `get_last_segment` lost its speaker filter (no-arg true-last form kept, legitimately used); dead `get_last_segment_for_speaker` alias deleted. **The Stop-tail site needed more than a swap — it ignored the return value, so the strict variant alone would have silently dropped the merged tail on the last-chance path; it now appends instead.** **audit §2.7 remains OPEN:** the `..._if_active` variants are still keyed by speaker only, with no channel/session key.
+*(Original description kept:)* Delete or alias these unsafe speaker-only methods so only the safe
 `..._if_active` variants (≈115, ≈135) remain callable, then update the
 three call sites still using the unsafe versions:
 `alpha/transcription/duplicate_protection.py` (`grep: transcript_store.update_last_segment`),
@@ -1106,11 +1120,13 @@ the obvious-looking name.
 ### 6d. → NEXT UP
 
 **Batch 1 complete** (items 1-3). **Batch 2 complete** (items 4-9, 7b,
-9b). **Batch 3 in progress: items 9c, 10, 11, 11b, 12, 13, 14, 15, 16, 18,
-19 done** (`13f20ca`, `b404c19`, `b2b39de`, `69605cc`, `5ffb18d`,
-`0aa6a8f`, `af6781e`, `8f19afe`). **Only 17 and 20 remain**, plus one new
-item proposed in §5 (a 5th containment instance found while doing item 13,
-in `decide_transcript_action` — deliberately not fixed as a drive-by).
+9b). **Batch 3 in progress: items 9c, 10, 11, 11b, 12, 13, 14, 15, 16, 17,
+18, 19 done** (`13f20ca`, `b404c19`, `b2b39de`, `69605cc`, `5ffb18d`,
+`0aa6a8f`, `af6781e`, `8f19afe`, `43374ad`). **Only item 20 remains**,
+plus two things surfaced while doing this batch and deliberately left
+unfixed: a 5th containment instance in `decide_transcript_action` (§5,
+found during item 13) and audit §2.7's speaker-only keying of the
+`..._if_active` variants (still open after item 17).
 
 **Batch 3 checkpoint — run 2026-08-09, PARTIALLY satisfied.** Full
 results in §6b. Summary:
@@ -1157,8 +1173,8 @@ tail` entries and confirm:
 - the `reason` distribution of any `stop tail skipped` events, which also
   supplies the `too_short` measurement §5 is waiting on
 
-**The same outstanding session should also cover items 12, 14, 15, 16,
-18, 19** (all landed after this checkpoint ran, so none of them have
+**The same outstanding session should also cover items 12, 13, 14, 15, 16,
+17, 18, 19** (all landed after this checkpoint ran, so none of them have
 live confirmation yet):
 - for Japanese sessions: no coincidentally-duplicated short phrase or
   misattributed speaker-turn line (items 14/15's theoretical fixes — no
@@ -1174,16 +1190,40 @@ live confirmation yet):
   the Teams commit-decision diagnostics; note item 12 cannot cause
   content loss even if wrong, only a missed merge, so this one is lower
   priority to verify)
+- **items 13 and 17 are the two highest-priority things to watch in this
+  run**, because both changed when a stored line gets **overwritten**:
+  - item 13: check `SAME_UTTERANCE_SUBSTITUTION_UPDATED`. Every occurrence
+    should correspond to a real correction of the same utterance. If a
+    line the speaker actually said has disappeared and this event fired
+    near it, that is the failure mode — report it rather than assuming
+    the id match was sound.
+  - item 17: check `STOP_TAIL_MERGE_APPENDED_NOT_UPDATED`. Each occurrence
+    means the strict write refused and the tail was appended as its own
+    line instead — content preserved, but it also means the race this
+    item fixed was live in that run. Zero occurrences is the expected
+    common case; a nonzero count is evidence worth recording, not a bug.
+  - also confirm no transcript line was silently replaced by an unrelated
+    speaker's text (the check-then-act race's original symptom).
 
-**→ Batch 3, item 17** — `alpha/summary/transcript_store.py`,
-`grep: def update_last_segment` and `grep: def get_last_segment`. Start at
-§3 step 1 (investigate). Recommended model: Opus 5 (§8) — multi-call-site
-refactor with a check-then-act race across two separate lock
-acquisitions. Items 17 and 20 remain in §6c, both Opus-5-appropriate.
-**Note for item 17:** items 13 and 18 both now depend on
-`TranscriptSegment.canonical_utterance_id` and on
-`get_last_segment_if_active`, so deleting/aliasing the unsafe variants
-must not disturb those paths — re-read both before changing them.
+**→ Batch 3, item 20** — the last item in this batch, and unlike the rest
+it is **not a code fix**: `alpha/transcription/deepgram_client.py`,
+`grep: segment_metadata = ` and `grep: def _commit_final_transcript_segment`.
+`channel_index` and `event_id` carry no per-utterance information, so
+this is an investigation + a **human decision** (mint a real per-utterance
+provider id, or document these as non-identifying and audit every
+consumer that trusts them) before any code changes. §6c says it may
+become its own mini-batch. Recommended model: Opus 5 (§8). **Do not start
+implementing without that decision.**
+
+**Also open, both deliberately deferred rather than done as drive-bys:**
+- the 5th containment instance in `decide_transcript_action` (§5's
+  2026-08-09 note, found during item 13) — Sonnet 5 is sufficient
+- audit §2.7: the `..._if_active` variants are keyed by **speaker only**,
+  with no channel/session key. Item 17 fixed the check-then-act race but
+  did not change this, so a same-speaker collision across channels or
+  sessions is still possible. Item 20's decision directly affects how
+  this should be fixed (both are about identity keys), so these two are
+  worth sequencing together.
 
 **Still open from earlier live-test findings, not yet scheduled beyond
 their existing batch** (both re-measured on the 2026-08-09 run and still
