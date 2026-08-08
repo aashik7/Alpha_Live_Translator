@@ -780,10 +780,26 @@ verdict logic should treat a high firing rate as REVIEW rather than PASS.
 
 ## 4.5 Start button: multi-second UI-thread freeze before audio/Deepgram init (new, 2026-08-08)
 
-**Confidence: LOG** (gap measured directly) for the existence/duration of
-the stall; **STATIC, suspected** for the exact blocking call.
+**Confidence: LOG** (gap measured directly, root cause then confirmed by
+code trace).
 **Severity: VISIBLE-BUG** (app appears frozen at Start; not a content-loss bug).
-**Status: OPEN, not fixed** (documentation only per explicit instruction).
+**Status: FIXED, commit `b220c86` (2026-08-08).** Root cause was more
+precise than the original "suspected" writeup below: not
+`begin_live_session()` on the UI thread, but a class-level monkey-patch
+(`install_japanese_stabilizer_hooks`, installed once at app startup via
+`main.py`, wrapping `_start_listening_worker` for the app's lifetime)
+that called `audio_temp_capture.cleanup_old_audio_temp(reason=
+"start_listening")` **directly and synchronously**. That function
+iterates every historical `troubleshooting/runs/` folder checking audio
+retention — cost grows with total run count, not just the session
+(dozens accumulated after today's testing). The exact same cleanup was
+already correctly scheduled non-blocking at Stop
+(`schedule_audio_cleanup_non_blocking`, `stop_finalize_worker.py`) —
+Start was simply calling the wrong sibling function. Fixed by swapping
+to the same non-blocking wrapper. See `BUG_FIX_ROADMAP.md` item 9b for
+the fix commit and test. The original investigation notes below are
+preserved for the evidence trail; the "suspected cause" paragraph is
+superseded by the precise root cause above.
 
 ### Report
 User reported Start button taking >30s to become responsive after

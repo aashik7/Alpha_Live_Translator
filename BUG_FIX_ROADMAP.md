@@ -370,7 +370,9 @@ passing. **Never delete entries** — mark them `[resolved, see item #N]`.
 | `ec38779` | 2026-08-08 | 3 | **Batch 2 item 8 DONE.** Logged `_observe_identity`'s fail-open path (`OBSERVE_IDENTITY_FAILED_OPEN`). Fail-open behavior deliberately unchanged — flipping it is item 27, gated on evidence from this logging. Tests: `tests/test_observe_identity_logs_fail_open.py` (3, explicitly asserts the fail-open return value is unchanged) | Claude Sonnet 5 |
 | (doc only, no commit hash yet — see next commit) | 2026-08-08 | 4 | **Batch 2 item 9 DONE (investigation only, no code change, per its own scope).** Scanned every `quarantine_decisions.jsonl` to date: 2 of 2 quarantine events ever recorded were `noise_fragment` misclassifications of real Japanese speech, 0 of 2 ever recovered. n=2 is too small to derive a replacement threshold — feeds item 34, threshold itself untouched. Findings appended to `Bug Report.md` §4.2. | Claude Sonnet 5 |
 
-**Batch 2 status: items 4-9 done. Item 7b explicitly excluded this pass (user instruction: "don't touch or modify 7b") — remains pending, own severity/model note preserved in §6c. Item 9b remains explicitly deferred (documentation only, no fix authorized).** Both are the only Batch 2 items still open; neither blocks starting Batch 3.
+| `b220c86` | 2026-08-08 | — | **Batch 2 item 9b DONE.** Root cause: class-level monkey-patch (`install_japanese_stabilizer_hooks`, installed once at app startup via `main.py`) called `audio_temp_capture.cleanup_old_audio_temp(reason="start_listening")` directly/synchronously inside `_start_listening_worker` — iterates every historical run folder, cost grows with total run count (dozens accumulated). Swapped to the already-existing, already-Stop-tested `schedule_audio_cleanup_non_blocking`. `Bug Report.md` §4.5 updated with the precise root cause (supersedes the original "suspected `begin_live_session` on UI thread" hypothesis). Tests: `tests/test_start_listening_audio_cleanup_non_blocking.py` (1) | Claude Sonnet 5 |
+
+**Batch 2 status: items 4-9 and 9b done. Only item 7b remains, explicitly excluded this pass (user instruction: "don't touch or modify 7b") — own severity/model note preserved in §6c.** It does not block Batch 3.
 
 **Correction note on `5001275`:** the original draft of
 `PROACTIVE_AUDIT_20260806.md` mislabeled
@@ -424,7 +426,7 @@ optional.
 
 ---
 
-#### BATCH 2 — Core bug 3: make silent failures loud (logging only) — items 4-9 ✅ DONE (see §6a: `ddeb67f`/`5181b8c`/`38c6096`/`07d5234`/`ec38779` + item 9's doc-only entry). 7b and 9b remain, both explicitly excluded/deferred (not oversights).
+#### BATCH 2 — Core bug 3: make silent failures loud (logging only) — items 4-9 and 9b ✅ DONE (see §6a: `ddeb67f`/`5181b8c`/`38c6096`/`07d5234`/`ec38779`/`b220c86` + item 9's doc-only entry). Only 7b remains, explicitly excluded (not an oversight).
 
 **Recommended model: Sonnet 5.** No dependency on Batch 1; may run in
 parallel, but keep commits separate.
@@ -462,25 +464,25 @@ recorded were `noise_fragment` misclassifications, 0 of 2 recovered.
 n=2 — too small for item 34 to act on yet, more runs needed. Threshold
 untouched, as instructed.
 
-**9b. `[core:—]` — Start button: multi-second UI-thread freeze before audio/Deepgram init** *(new, found 2026-08-08 during Batch 1's live-test checkpoint — not part of the original audit)*
-`alpha/utils/session_runtime.py` · `grep: def begin_live_session` (called
-synchronously from the Start-button handler in `main_window.py`, before
-the background worker thread starts)
-**Full evidence, root-cause hypothesis, and measured numbers in
-`Bug Report.md` §4.5 — read that before investigating.** Summary: both of
-today's live-test runs show a **silent, zero-log gap** between
-run-identity/artifact bootstrap and `START_AUDIO_INIT_BEGIN` — 8.8s
-(English) and 12.5s (Japanese). User reports >30s in practice; not
-independently reproduced at that exact duration here, likely worse under
-cold-start conditions. Suspected cause: `begin_live_session()` runs on
-the **Tk UI thread**, and the evidence/artifact-index filesystem work
-logged immediately before the gap (`run_artifacts.py`,
-`troubleshooting_paths.py`) may be blocking it. **Does not fit any of
-the 4 core bugs** (not content loss, not identity, not silent-failure,
-not a timing constant) — it's UI-thread responsiveness. Placed here
-(Batch 2) because, like item 9, it's investigation-first and has no
-dependency on Batches 3-5. **Explicitly deferred — do not fix without a
-separate go-ahead.**
+~~**9b. `[core:—]` — Start button: multi-second UI-thread freeze before audio/Deepgram init**~~ **DONE, `b220c86`.**
+*(new, found 2026-08-08 during Batch 1's live-test checkpoint — not part
+of the original audit)* Real root cause turned out to be more precise
+than the original hypothesis below (kept for the record): not
+`begin_live_session()` on the UI thread, but a class-level monkey-patch
+(`install_japanese_stabilizer_hooks`, `japanese_final_chunk_stabilizer.py`,
+installed once at app startup via `main.py`) that called
+`cleanup_old_audio_temp(reason="start_listening")` directly/synchronously
+instead of the already-existing `schedule_audio_cleanup_non_blocking`
+sibling already correctly used at Stop. `Bug Report.md` §4.5 has the
+full corrected write-up.
+
+*Original hypothesis, superseded, kept for the record:* `alpha/utils/session_runtime.py`
+· `grep: def begin_live_session` (called synchronously from the
+Start-button handler, before the background worker thread starts) —
+suspected `begin_live_session()` blocking the Tk UI thread via
+evidence/artifact-index filesystem work. Measured gap was real (8.8s
+English / 12.5s Japanese) but the *cause* was the audio-cleanup call
+described above, not this function.
 
 **Checkpoint:** one live session per language. Confirm new log lines
 appear, with no unexpected volume.
@@ -749,12 +751,11 @@ Its live-test checkpoint (§3.10) **has now been run** (`f3e251f`,
 2026-08-08): watchdog firing rate confirmed dropped to 2% (en) / 0% (ja)
 in fresh live sessions, vs. 83% before the fix. Checkpoint satisfied.
 
-**Batch 2 items 4-9 are done** (`ddeb67f`/`5181b8c`/`38c6096`/`07d5234`/`ec38779`
-+ item 9's doc-only entry). **7b is explicitly excluded** (user
-instruction 2026-08-08: "approved to work except 7b... don't touch or
-modify") — do not pick it up without a fresh go-ahead. **9b remains
-explicitly deferred** (documentation only; `Bug Report.md` §4.5 has the
-full write-up) — do not fix without a separate go-ahead.
+**Batch 2 items 4-9 and 9b are all done** (`ddeb67f`/`5181b8c`/`38c6096`/
+`07d5234`/`ec38779`/`b220c86` + item 9's doc-only entry). **Only 7b
+remains, explicitly excluded** (user instruction 2026-08-08: "approved
+to work except 7b... don't touch or modify") — do not pick it up
+without a fresh go-ahead.
 
 Batch 2's own checkpoint (one live session per language, confirm new log
 lines with no unexpected volume) has **not** been explicitly re-run since
