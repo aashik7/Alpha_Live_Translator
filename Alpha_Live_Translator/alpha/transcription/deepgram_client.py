@@ -1510,15 +1510,60 @@ class DeepgramClientMixin:
                     )
                 return False
 
+            # fixes BUG_FIX_ROADMAP.md Batch 2 item 7b (audit §2.10): the
+            # language-path decision and the Japanese stabilizer work used
+            # to share one try/except, so ANY failure inside -- most
+            # importantly stabilizer.ingest() raising -- was printed and
+            # then fell through into the English/generic block below.
+            # After this fix, NO failure in either step can reach that
+            # block: both now publish the final directly instead, so a
+            # Japanese final can never be handed to the English-only
+            # utterance lifecycle controller.
+            use_japanese = False
             try:
                 from alpha.transcription.japanese_final_chunk_stabilizer import (
-                    get_japanese_final_stabilizer,
-                    is_accepting_japanese_transcripts,
                     should_use_japanese_final_stabilizer,
                 )
-                from alpha.utils.japanese_accuracy_log import jp_accuracy_log
 
-                if should_use_japanese_final_stabilizer(self):
+                use_japanese = bool(should_use_japanese_final_stabilizer(self))
+            except Exception as exc:
+                # Language path is undeterminable. Do NOT fall through to
+                # the English/generic block: should_use_utterance_lifecycle()
+                # re-derives the same decision from the same (now broken)
+                # helper, and when that inner call also fails it falls back
+                # to a lang check that defaults to "" -- which does not
+                # start with "ja", so it returns True and would feed a
+                # Japanese final into the English-only controller. That is
+                # exactly the contamination audit §2.10 describes. Publish
+                # directly instead: the spoken text is preserved either way,
+                # and no wrong-language controller can see it. The cost is
+                # that an English final also skips the lifecycle here, but
+                # this branch only runs when the language module is already
+                # broken, and bypassing assembly is strictly safer than
+                # routing to a possibly-wrong controller.
+                try:
+                    from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+                    jp_accuracy_log(
+                        "JAPANESE_PATH_DETECTION_FAILED",
+                        reason=f"{type(exc).__name__}:{exc}",
+                        text_preview=str(segment_text or "")[:120],
+                        fallback="published_directly_no_controller",
+                    )
+                except Exception:
+                    pass
+                return self._publish_final_transcript_segment(
+                    speaker_num, segment_text, metadata=metadata
+                )
+
+            if use_japanese:
+                try:
+                    from alpha.transcription.japanese_final_chunk_stabilizer import (
+                        get_japanese_final_stabilizer,
+                        is_accepting_japanese_transcripts,
+                    )
+                    from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
                     stabilizer = get_japanese_final_stabilizer(self)
                     if not is_accepting_japanese_transcripts(self):
                         # fixes TASK_6_REPORT.md P1 (ALPHA_ARCHITECTURE_DEBUG_REPORT.md
@@ -1545,8 +1590,32 @@ class DeepgramClientMixin:
                         )
                         stabilizer.set_accepting(True)
                     return stabilizer.ingest(speaker_num, segment_text, metadata)
-            except Exception as exc:
-                print(f"[JAPANESE] stabilizer ingest error: {exc}")
+                except Exception as exc:
+                    print(f"[JAPANESE] stabilizer ingest error: {exc}")
+                    try:
+                        from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+                        jp_accuracy_log(
+                            "JAPANESE_STABILIZER_INGEST_FAILED",
+                            reason=f"{type(exc).__name__}:{exc}",
+                            text_preview=str(segment_text or "")[:120],
+                            fallback="published_directly_without_assembler",
+                        )
+                    except Exception:
+                        pass
+                    # Confirmed Japanese session: publish this final
+                    # directly rather than letting it fall through to the
+                    # English/generic block below. Publishing preserves the
+                    # spoken text -- and this is also what already happened
+                    # in practice before the fix, since
+                    # should_use_utterance_lifecycle() independently rejects
+                    # Japanese, so the pre-fix fall-through skipped the
+                    # lifecycle and landed on the same publish call at the
+                    # bottom. Making it explicit means the routing no longer
+                    # depends on that second, unrelated guard staying correct.
+                    return self._publish_final_transcript_segment(
+                        speaker_num, segment_text, metadata=metadata
+                    )
 
             # English / generic: utterance lifecycle owns incomplete finals and
             # cumulative revisions. Japanese path returned above.
