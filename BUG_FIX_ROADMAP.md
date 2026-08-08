@@ -518,52 +518,96 @@ Each is its own commit + regression test. Use the already-shipped
 identity gate (`78eb59e`) fixes as templates for both the fix shape and
 the test shape.
 
-**9c. `[core:3]` — `translation_reconciliation` fails the whole run on a false-positive gap** *(new, found 2026-08-08 in the post-Batch-2 live test — do this FIRST in Batch 3)*
+**9c. `[core:3]` — translation-gap safety net is broken by a segment-id collision, so a genuinely missing translation is never healed** *(new, found 2026-08-08 in the post-Batch-2 live test — do this FIRST in Batch 3)*
 `alpha/utils/stop_finalize_worker.py` · `grep: def reconcile_translation_gaps` (raise at `grep: could not deliver`) and `alpha/translation/translation_worker.py` · `grep: def enqueue_stable_segment`
 **Recommended model: Opus 5** (see §8 note below).
 
+> ⚠️ **This entry was rewritten 2026-08-08 after a deeper investigation.
+> The first version claimed "no translation was actually missing" and
+> called it a false-positive gap. That was WRONG** — the gap is real and
+> this IS content loss. The original wording is preserved at the bottom
+> of this entry so the correction is auditable.
+
 Both runs of the 2026-08-08 post-Batch-2 live test ended
 `final_status: "failed"`, `stop_finalize_failed: true`, on this single
-required step — **but no translation was actually missing**:
+required step:
 
 | Run | active | already_submitted | gap | forced | unresolved | accepted/sent/completed |
 |---|---|---|---|---|---|---|
 | `...155334` (ja) | 26 | 25 | 1 | 0 | **1** | 31 / 31 / 31 |
 | `...155842` (en) | 14 | 13 | 1 | 0 | **1** | 14 / 14 / 14 |
 
-`TRANSLATION_RECONCILIATION_FORCED_SUBMIT_REJECTED` fired once per run,
-and `translation_summary.json` shows `DUPLICATE_SUBMISSIONS_REJECTED = 1`
-in both. So the sequence is: the reconciler believed one committed
-utterance had no translation, force-resubmitted it, and
-`enqueue_stable_segment` correctly rejected it as a **duplicate of work
-already accepted and completed** — after which the reconciler treated
-that rejection as "could not deliver" and raised
-`TranslationReconciliationError`, failing the run.
+**The gap is real.** In the English run the canonical ledger holds 14
+records — `U-1`…`U-13` **plus `U-15`** — while
+`evidence_streams/translation_jobs.jsonl` holds 14 jobs covering only
+`U-1`…`U-13` (`U-13` twice, a revision). **`U-15` has no translation
+job at all**, so its translation is genuinely absent from the output.
+`final_status: "failed"` is therefore *correct*; the bug is that the
+safety net designed to heal exactly this could not.
 
-Two distinct defects, both needed:
-1. **Gap detection false positive** — the "already submitted" bookkeeping
-   the reconciler consults disagrees with the translation worker's own
-   dedup state for (at least) the final utterance of a session. Find why
-   one utterance is missing from `already_submitted` while the worker
-   knows it as done.
-2. **Rejection reasons are conflated** — `enqueue_stable_segment` returns
-   a bare `False` for *every* rejection cause (duplicate, not-accepting,
-   quota-disabled, empty text, unsupported language). "Rejected because
-   already delivered" is a **success** for reconciliation's purposes;
-   "rejected because the worker is shut down" is a real failure. The
-   reconciler cannot currently tell them apart, so it must assume the
-   worst. Give it enough information to distinguish them (the counters
-   already track each cause separately).
+**Why the self-heal fails — segment-id space collision.**
+`reconcile_translation_gaps` force-resubmits with
+`segment_id=int(rec.get("sequence_number") or 0)`, where
+`sequence_number` is the **canonical ledger's own record counter**
+(`canonical_transcript_ledger.py`, `grep: "sequence_number": _sequence`
+— 1, 2, 3 … per ledger record). But the translation worker's
+`segment_id` space is a **completely separate counter**,
+`main_window.py`'s `_translation_segment_seq` (`grep:
+_translation_segment_seq`, also 1, 2, 3 …). The two are unrelated but
+occupy the same integer range. `U-15` is ledger record #14, so
+reconciliation submits `segment_id=14`; the worker already has 14 in
+`_seen_request_ids` (`COMPLETED_TRANSLATION_SEGMENT_IDS = [1..14]`) and
+rejects it as a **duplicate of an unrelated earlier job**. Hence
+`DUPLICATE_SUBMISSIONS_REJECTED = 1` and `forced_count = 0`.
 
-**Severity: VISIBLE-BUG, not content loss** — the transcripts and
-translations are complete in both runs; `final_status` is simply wrong.
-That still matters: a fail-closed gate that cries wolf on healthy runs
-trains everyone to ignore it and will mask a genuine failure later.
-Directly undermines the same fail-closed contract as item 21.
+Two defects, both worth fixing:
+1. **Colliding id space (primary).** Reconciliation must allocate a
+   segment id from the *same* counter every other submitter uses
+   (`host._translation_segment_seq`), not from the ledger's. This alone
+   makes the safety net actually work.
+2. **Rejection reasons are conflated (secondary).** `enqueue_stable_segment`
+   returns a bare `False` for every cause (duplicate, not-accepting,
+   quota-disabled, empty text, unsupported language, obsolete version).
+   "Rejected because genuinely already delivered" should count as
+   success for reconciliation; "rejected because the worker is shut
+   down" is a real failure. The worker already tracks each cause in
+   separate counters (`get_counters()` is public), so the reconciler can
+   distinguish them by snapshotting before/after without changing the
+   return type or affecting other callers.
+
+**Severity: SILENT-LOSS** (one utterance's translation missing from the
+output, and the mechanism meant to catch it is inert). Also undermines
+the fail-closed contract in the same way as item 21 — but note the gate
+itself behaved correctly here.
+
+**Open question, out of 9c's scope:** *why* `U-15` never reached
+`submit_text_for_translation` in the first place. Finalize already runs
+`flush_pending_translation_debounce` before reconciliation, so `U-15`
+was never even in `_pending_translations_by_utterance`. 9c fixes the
+safety net so this self-heals regardless of cause; the primary-path miss
+deserves its own investigation afterwards.
 
 **Not new to Batch 2** — the same failure appears in run `...134815`
 (2026-08-08 13:48), before any Batch 2 item landed. It is not a
 regression from this work; it was simply not noticed until now.
+
+<details><summary>Original (incorrect) diagnosis, kept for audit</summary>
+
+> `TRANSLATION_RECONCILIATION_FORCED_SUBMIT_REJECTED` fired once per run,
+> and `translation_summary.json` shows `DUPLICATE_SUBMISSIONS_REJECTED = 1`
+> in both. So the sequence is: the reconciler believed one committed
+> utterance had no translation, force-resubmitted it, and
+> `enqueue_stable_segment` correctly rejected it as a **duplicate of work
+> already accepted and completed** … **Severity: VISIBLE-BUG, not content
+> loss** — the transcripts and translations are complete in both runs;
+> `final_status` is simply wrong.
+>
+> The error was reading `STABLE_TRANSLATION_JOBS_ACCEPTED = 14` against
+> 14 ledger records and concluding they must be the same 14 utterances,
+> without checking the actual ids. They were not: one job was a duplicate
+> revision of `U-13`, and `U-15` had none.
+
+</details>
 
 **10. `[core:2]`** `alpha/ui/main_window.py` · `grep: def _check_stop_tail_duplicate` · ≈5610
 **Highest severity in this batch.** Stop-time last-chance commit decided

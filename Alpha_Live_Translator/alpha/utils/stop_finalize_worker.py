@@ -480,9 +480,39 @@ def reconcile_translation_gaps(host: Any) -> dict[str, int]:
             or metadata.get("source_language")
             or ""
         )
+        # fixes BUG_FIX_ROADMAP.md Batch 3 item 9c: this used to pass
+        # segment_id=rec["sequence_number"] -- the canonical LEDGER's own
+        # record counter (canonical_transcript_ledger.py: "sequence_number":
+        # _sequence). The translation worker's segment_id space is a
+        # completely separate counter, main_window.py's
+        # _translation_segment_seq. Both start at 1 and increment per item,
+        # so they collide constantly: a genuinely-untranslated utterance
+        # that happens to be ledger record #N is rejected by the worker as
+        # a "duplicate" of the unrelated translation job that already used
+        # segment_id N. Confirmed live (run ...155842): U-15 was ledger
+        # record 14, had no translation job at all, and its forced resubmit
+        # was rejected because segment ids 1..14 were already used. That
+        # made this entire self-healing safety net inert. Allocate from the
+        # same counter every other submitter uses instead.
+        try:
+            host._translation_segment_seq = int(
+                getattr(host, "_translation_segment_seq", 0) or 0
+            ) + 1
+            forced_segment_id = int(host._translation_segment_seq)
+        except Exception:
+            # Host counter unavailable -- fall back to something that
+            # cannot collide with it rather than to the ledger's space.
+            forced_segment_id = int(time.time_ns() % 1_000_000_000) + 1_000_000_000
+
+        counters_before = {}
+        try:
+            counters_before = dict(worker.get_counters() or {})
+        except Exception:
+            counters_before = {}
+
         try:
             accepted = worker.enqueue_stable_segment(
-                segment_id=int(rec.get("sequence_number") or 0),
+                segment_id=forced_segment_id,
                 source_language=source_lang,
                 source_text=source_text,
                 stable_commit_timestamp=float(rec.get("created_at") or time.time()),
@@ -537,20 +567,76 @@ def reconcile_translation_gaps(host: Any) -> dict[str, int]:
                 source_version=metadata.get("source_version"),
             )
         else:
-            unresolved.append(utterance_id)
-            logger.error(
-                "TRANSLATION_RECONCILIATION_FORCED_SUBMIT_REJECTED record_id=%s "
-                "canonical_utterance_id=%s commit_reason=%s",
-                record_id,
-                utterance_id,
-                commit_reason,
+            # fixes BUG_FIX_ROADMAP.md Batch 3 item 9c (second defect):
+            # enqueue_stable_segment returns a bare False for every
+            # rejection cause, so "rejected because this really was
+            # already delivered" was indistinguishable from "rejected
+            # because the worker is shut down / quota-disabled". Only the
+            # latter is an unresolved gap. The worker tracks each cause in
+            # its own counter, so compare the public snapshot taken just
+            # before the call: a duplicate rejection means the translation
+            # exists, which is exactly what this reconciliation wanted.
+            rejection_reason = "unknown"
+            try:
+                counters_after = dict(worker.get_counters() or {})
+                for name in (
+                    "DUPLICATE_SUBMISSIONS_REJECTED",
+                    "NOT_ACCEPTING_SUBMISSIONS_REJECTED",
+                    "QUOTA_OR_DISABLED_SUBMISSIONS_REJECTED",
+                    "EMPTY_SUBMISSIONS_REJECTED",
+                    "UNSUPPORTED_LANGUAGE_SUBMISSIONS_REJECTED",
+                    "OBSOLETE_SUBMISSIONS_REJECTED",
+                    "INTERIM_SUBMISSIONS_REJECTED",
+                ):
+                    if int(counters_after.get(name, 0) or 0) > int(
+                        counters_before.get(name, 0) or 0
+                    ):
+                        rejection_reason = name
+                        break
+            except Exception:
+                rejection_reason = "unknown"
+
+            already_delivered = rejection_reason in (
+                "DUPLICATE_SUBMISSIONS_REJECTED",
+                "OBSOLETE_SUBMISSIONS_REJECTED",
             )
-            freeze_guard_log(
-                "TRANSLATION_RECONCILIATION_FORCED_SUBMIT_REJECTED",
-                record_id=record_id,
-                canonical_utterance_id=utterance_id,
-                commit_reason=commit_reason,
-            )
+            if already_delivered:
+                # Not a gap after all: the worker already holds this
+                # utterance (same text at this version, or a newer version
+                # already supersedes it). Count it as resolved.
+                forced_count += 1
+                logger.warning(
+                    "TRANSLATION_RECONCILIATION_ALREADY_DELIVERED record_id=%s "
+                    "canonical_utterance_id=%s commit_reason=%s reason=%s",
+                    record_id,
+                    utterance_id,
+                    commit_reason,
+                    rejection_reason,
+                )
+                freeze_guard_log(
+                    "TRANSLATION_RECONCILIATION_ALREADY_DELIVERED",
+                    record_id=record_id,
+                    canonical_utterance_id=utterance_id,
+                    commit_reason=commit_reason,
+                    rejection_reason=rejection_reason,
+                )
+            else:
+                unresolved.append(utterance_id)
+                logger.error(
+                    "TRANSLATION_RECONCILIATION_FORCED_SUBMIT_REJECTED record_id=%s "
+                    "canonical_utterance_id=%s commit_reason=%s reason=%s",
+                    record_id,
+                    utterance_id,
+                    commit_reason,
+                    rejection_reason,
+                )
+                freeze_guard_log(
+                    "TRANSLATION_RECONCILIATION_FORCED_SUBMIT_REJECTED",
+                    record_id=record_id,
+                    canonical_utterance_id=utterance_id,
+                    commit_reason=commit_reason,
+                    rejection_reason=rejection_reason,
+                )
 
     freeze_guard_log(
         "TRANSLATION_RECONCILIATION_DONE",
