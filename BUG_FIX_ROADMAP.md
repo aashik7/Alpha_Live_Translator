@@ -376,6 +376,10 @@ passing. **Never delete entries** — mark them `[resolved, see item #N]`.
 
 **BATCH 2 COMPLETE as of `6726f68`.** All items (4-9, 7b, 9b) done, each with a regression test proven to fail without its fix. Baseline unchanged throughout (183→209 tests). Next: Batch 3 (§6c).
 
+| `a1c346d` | 2026-08-08 | — | Recorded the post-Batch-2 live-test results (§6b) and filed the new item 9c | Claude Opus 5 |
+| `13f20ca` | 2026-08-08 | 3 | **Batch 3 item 9c DONE.** Translation-gap self-heal was inert: `reconcile_translation_gaps` passed the canonical ledger's `sequence_number` as the translation worker's `segment_id`, two unrelated counters occupying the same range, so a genuinely untranslated utterance was rejected as a "duplicate" of an unrelated job. Now allocates from `host._translation_segment_seq` like every other submitter, and distinguishes rejection causes via the worker's public `get_counters()` so "already delivered" counts as resolved while "worker shut down" still fails. **Also corrected my own earlier diagnosis in this file — the gap was real content loss, not the false positive I first recorded.** Tests: `tests/test_translation_reconciliation_segment_id.py` (4) | Claude Opus 5 |
+| `b404c19` | 2026-08-08 | 2 | **Batch 3 item 10 DONE.** `_check_stop_tail_duplicate` dropped the Stop-time interim tail on ANY substring match against ANY of the last 5 segments (`commit_text=None` = permanent loss on the last-chance path). Narrowed to equality-or-prefix, the only shapes that actually evidence "already committed"; interior-only matches now fall through and commit. Tests: `tests/test_check_stop_tail_duplicate_containment.py` (7) | Claude Opus 5 |
+
 **Correction note on `5001275`:** the original draft of
 `PROACTIVE_AUDIT_20260806.md` mislabeled
 `main_window.py::_apply_final_interim_comparison` as "confirmed still
@@ -518,7 +522,7 @@ Each is its own commit + regression test. Use the already-shipped
 identity gate (`78eb59e`) fixes as templates for both the fix shape and
 the test shape.
 
-**9c. `[core:3]` — translation-gap safety net is broken by a segment-id collision, so a genuinely missing translation is never healed** *(new, found 2026-08-08 in the post-Batch-2 live test — do this FIRST in Batch 3)*
+~~**9c. `[core:3]` — translation-gap safety net is broken by a segment-id collision**~~ **DONE, `13f20ca`.** *(found 2026-08-08 in the post-Batch-2 live test)* Full analysis kept below — it documents a diagnosis I got wrong first, which is worth preserving.
 `alpha/utils/stop_finalize_worker.py` · `grep: def reconcile_translation_gaps` (raise at `grep: could not deliver`) and `alpha/translation/translation_worker.py` · `grep: def enqueue_stable_segment`
 **Recommended model: Opus 5** (see §8 note below).
 
@@ -609,8 +613,8 @@ regression from this work; it was simply not noticed until now.
 
 </details>
 
-**10. `[core:2]`** `alpha/ui/main_window.py` · `grep: def _check_stop_tail_duplicate` · ≈5610
-**Highest severity in this batch.** Stop-time last-chance commit decided
+~~**10. `[core:2]`** `alpha/ui/main_window.py` · `grep: def _check_stop_tail_duplicate`~~ **DONE, `b404c19`.** Narrowed the already-committed match from any-substring to equality-or-prefix.
+*(Original description kept:)* **Highest severity in this batch.** Stop-time last-chance commit decided
 via `norm_interim == norm_seg or norm_interim in norm_seg` and
 `.startswith()` only. A reworded (non-substring) tail can be classified
 `skip_already_committed` and dropped entirely — at Stop, with no second
@@ -856,35 +860,34 @@ the obvious-looking name.
 
 ### 6d. → NEXT UP
 
-**Batch 1 is complete** (items 1-3, commits `6564b36`/`9892cb1`/`1649e82`/`38a92b5`).
-Its live-test checkpoint (§3.10) **has now been run** (`f3e251f`,
-2026-08-08): watchdog firing rate confirmed dropped to 2% (en) / 0% (ja)
-in fresh live sessions, vs. 83% before the fix. Checkpoint satisfied.
+**Batch 1 complete** (items 1-3). **Batch 2 complete** (items 4-9, 7b,
+9b). **Batch 3 in progress: items 9c and 10 done** (`13f20ca`,
+`b404c19`).
 
-**Batch 2 is complete** — all of items 4-9, 7b and 9b
-(`ddeb67f`/`5181b8c`/`38c6096`/`07d5234`/`ec38779`/`b220c86`/`6726f68`
-+ item 9's doc-only entry).
+Batch 3's own checkpoint has **not** been run. Both 9c and 10 changed
+real behavior on the Stop path (translation self-heal, and what the
+Stop-time interim tail does), so the next live session should confirm:
+- `final_status` is no longer `failed` on `translation_reconciliation`
+  (or, if it still fails, that it is a *genuine* unresolved gap — check
+  for `TRANSLATION_RECONCILIATION_ALREADY_DELIVERED` vs
+  `..._FORCED_SUBMIT_REJECTED` with its new `rejection_reason` field)
+- the last utterance of the session still has a translation
+- no duplicated closing line appears in the transcript (item 10 now
+  commits tails it used to drop — the opposite failure mode to watch for)
 
-**Batch 2's checkpoint has now been run** (2026-08-08 live test, runs
-`...155334` ja + `...155842` en). Results in §6b — headline: item 4's log
-noise 92/58 → 0, item 9b's Start freeze 8.8s/12.4s → 0.00s, ghost-line
-scan PASS on both, and the first-ever live evidence of §1.1's `revise`
-path working (5 revises after 138 straight appends). No Batch 2 change
-regressed anything.
+**→ Batch 3, item 11** — `alpha/ui/main_window.py`,
+`grep: def _should_commit_interim_recovery`. Start at §3 step 1
+(investigate). Recommended model: Sonnet 5 (§8). Items 11-20 remain in
+§6c; 11, 12, 14, 15, 16, 18, 19 are Sonnet-5-appropriate, 13, 17 and 20
+want Opus 5.
 
-**One new issue found by that checkpoint: item 9c** (below) — both runs
-report `final_status: "failed"` on `translation_reconciliation`, but the
-translations are all present; it is a false-positive gap. **Pre-existing,
-not a Batch 2 regression** (same failure in `...134815`, before Batch 2
-landed).
-
-**→ Batch 3, item 9c FIRST** — `alpha/utils/stop_finalize_worker.py`,
-`grep: def reconcile_translation_gaps`. Do this before item 10: it is
-currently making every run report `failed`, which will otherwise mask
-real failures for the rest of the roadmap. Recommended model: Opus 5.
-Then **item 10** — `alpha/ui/main_window.py`,
-`grep: def _check_stop_tail_duplicate`, also Opus 5. See §6c Batch 3 for
-the full list.
+**Still open from earlier live-test findings, not yet scheduled beyond
+their existing batch:** the Japanese assembler → canonical ledger loss
+(`Bug Report.md` §4.1, now measured at 5 lost sentences in one run —
+Batch 5) and the `noise_fragment` quarantine misclassification
+(`Bug Report.md` §4.2, now 3-for-3 wrong — item 34, Batch 5). Also the
+open question from 9c: *why* the last utterance never reached
+`submit_text_for_translation` in the first place.
 
 ---
 
