@@ -51,12 +51,13 @@ what actually happened.
 
 ## 1. Orientation — mandatory before touching any item
 
-1. **Locate the repo.** Root: `C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0`
-   (on a POSIX-style shell in the same environment:
-   `/c/Users/islamm/Documents/Tariqul/Alpha_Translator V 1.0`).
+1. **Locate the repo.** Do **not** trust a hardcoded absolute path — this
+   repo has already been moved between Windows user accounts once (see
+   §2.1). Determine the root from your own working directory, and confirm
+   `BUG_FIX_ROADMAP.md` + `Alpha_Live_Translator\` are both in it.
    Active app code is under `Alpha_Live_Translator\`. **Never modify
    anything under `_archive\`** (project convention, stated in the repo's
-   own `CLAUDE.md`).
+   own `CLAUDE.md`; note `_archive\` does not currently exist in the tree).
 2. **Read `CLAUDE.md`** at the repo root for standing project restrictions.
 3. **Read this entire file, top to bottom.**
 4. **Reconcile the Ledger against git.** Run `git log --oneline -30` from
@@ -64,7 +65,8 @@ what actually happened.
    something is done with no matching commit — or a commit exists that
    the Ledger does not reflect — **stop and fix this file first**, and
    log the discrepancy in §5. Do not start new work on an unreconciled
-   ledger.
+   ledger. **If `git` is not installed, read `.git\logs\HEAD` directly
+   instead — see §2.7.**
 5. **Establish the test baseline.** Run the full suite (§2.2) once before
    any new work and compare to §2.3. If it does not match exactly, **stop
    and tell the human** — something changed outside this roadmap's
@@ -76,7 +78,13 @@ what actually happened.
 ## 2. Project facts (established — not assumptions)
 
 ### 2.1 Paths
-- Repo root: `C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0`
+- Repo root: **machine-dependent — derive it, do not hardcode it.**
+  The repo was authored under `C:\Users\islamm\Documents\Tariqul\Alpha_Translator V 1.0`
+  and as of 2026-08-09 lives at
+  `C:\Users\haquemdshafieh\Documents\Tariqul\Alpha_Translator V 1.0`.
+  Any absolute path written in this file may be stale for the same reason
+  line numbers are (§2.4). Treat `<repo_root>` as a placeholder you resolve
+  yourself.
 - Active project folder: `Alpha_Live_Translator\` — **all file paths in
   §6 are relative to this folder** unless stated otherwise.
 - Python venv: `<repo_root>\.venv\Scripts\python.exe`. The project's real
@@ -85,6 +93,14 @@ what actually happened.
   `ModuleNotFoundError`. Use the venv interpreter for anything that
   imports `alpha.*`. (Plain `python -c "import ast; ast.parse(...)"`
   syntax checks are fine with system Python since they import nothing.)
+- **If the venv fails with `did not find executable at ...`:** `.venv` is
+  not relocatable — `pyvenv.cfg` stores the absolute path of the Python
+  that created it. After a move to a different user account, repoint
+  `home` / `executable` in `<repo_root>\.venv\pyvenv.cfg` to the local
+  Python **3.14** install (`py -0p` to find it). `site-packages` survives
+  the move intact, so a full recreate is not needed as long as the local
+  Python is the same 3.14.x. `.venv/` is gitignored, so this edit does not
+  affect the working tree's git status. Done once on 2026-08-09 (§5).
 
 ### 2.2 Test command
 Run from inside `Alpha_Live_Translator\`:
@@ -98,6 +114,12 @@ supported runner.
 
 ### 2.3 Known-good baseline (verified at commit `a5e2ac4`)
 **175 tests, 5 failures + 2 errors + 2 skipped.**
+
+**Re-verified 2026-08-09 at `0db8cbc` (HEAD, post-Batch-3-item-10):
+220 tests, 5 failures + 2 errors + 2 skipped — same exact 7 names, skips
+still 2.** The growth 175 → 220 is fully accounted for by the regression
+tests each completed item added, so the baseline is intact and Batch 3
+may continue from item 11.
 
 The total will grow as each item adds its regression test — that is
 expected. What must **never** change is that these exact 7 are the only
@@ -186,6 +208,41 @@ one will make you "fix" something that is already fixed.**
 Never push. Never force-push. Never amend an existing commit. Never use
 `--no-verify`. One fix = one commit. Match the existing message style
 (`git log --oneline -15`): root cause, the fix, verification evidence.
+
+**⚠️ The git CLI is not installed on every machine this repo lives on.**
+On 2026-08-09 the machine had **no `git` executable at all** even though
+`.git\` was present and intact. **Resolved the same day** — Git 2.55.0.3
+installed via `winget install --id Git.Git -e`, and `user.name` /
+`user.email` set **`--local`** (they were unset, so any commit would have
+failed) to the identity the rest of this repo's history uses. Keep the
+workaround below: the situation recurs on every fresh machine, and a new
+install has no identity configured.
+
+Two notes for a freshly-installed git on Windows:
+- **PATH is not live in an already-running shell.** Refresh it in-process
+  with `$env:Path = [Environment]::GetEnvironmentVariable("Path","Machine")
+  + ";" + [Environment]::GetEnvironmentVariable("Path","User")`, or call
+  `C:\Program Files\Git\cmd\git.exe` by full path.
+- **A `[graphify hook]` warning prints on every commit** ("could not
+  locate a Python with graphify installed"). It is a pre-existing repo
+  hook that cannot find its tool on this machine; it does **not** block
+  the commit and is not caused by your change. Do not "fix" it as part of
+  a roadmap item.
+
+Consequences of having no git, and the workaround:
+
+- **Reading history still works without git.** `.git\logs\HEAD` is the
+  reflog in plain text — one line per HEAD movement, `<old> <new> <author>
+  <unix-ts> <tz> <action>: <message>`. Reading its tail is an adequate
+  substitute for `git log --oneline -30` for §1 step 4's reconciliation.
+  `.git\refs\heads\main` holds the current commit hash. This is how the
+  2026-08-09 reconciliation was performed.
+- **Committing does not work without git.** Any item finished on such a
+  machine cannot complete §3 step 7. **Do not silently skip it and mark
+  the item done** — that is exactly the ledger drift §0 warns about.
+  Instead: finish steps 1-6, record the item in §6 with the in-progress
+  row format, note "commit pending — no git on this machine", and tell
+  the human so they can install git or commit from another machine.
 
 ---
 
@@ -330,6 +387,77 @@ passing. **Never delete entries** — mark them `[resolved, see item #N]`.
   before toggling, `cp` it back after) instead — both of these were used
   safely for the same purpose on items 1 and 3 in the same session.
   `[resolved, see 9892cb1 + 1649e82]`
+- 2026-08-09 — **The repo has moved to a different Windows user account**
+  (`islamm` → `haquemdshafieh`), and three things broke as a result. None
+  is an app bug; all three block this roadmap's own mandatory process, so
+  they are recorded here rather than as §6c items.
+  1. **`.venv` was dead.** `pyvenv.cfg` still named
+     `C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64\python.exe`,
+     so every invocation failed with `did not find executable at ...`.
+     Since §2.2's test command *is* the venv interpreter, **§1 step 5 and
+     §3 step 6 were both unrunnable** — i.e. no item could have been
+     verified on this machine. Repointed `home`/`executable`/`command` to
+     the local 3.14.6 install; `site-packages` was intact, so no recreate
+     was needed. Procedure now written into §2.1 so the next move is a
+     two-minute fix instead of a rediscovery. `[resolved]`
+  2. **`git` was not installed on this machine at all.** History was
+     reconciled by reading `.git\logs\HEAD` instead (see the
+     reconciliation result below), which worked, but committing was
+     impossible — item 11 sat finished-but-uncommitted for part of the
+     session. **Resolved:** Git 2.55.0.3 installed via winget, identity
+     set `--local`. The real `git log` was then re-run and **confirmed
+     the reflog-derived reconciliation was correct in every particular**,
+     so the fallback method in §2.7 is validated, not just plausible.
+     `[resolved]`
+  3. **Two absolute `C:\Users\islamm\...` paths in this file** (§1 step 1,
+     §2.1) were stale and would have sent a fresh agent to a nonexistent
+     directory. Replaced with "derive it yourself" guidance. **Same lesson
+     as the 2026-08-07 line-number entry above, one level up: absolute
+     paths in this repo's docs are as unreliable as line numbers.**
+     `[resolved]`
+- 2026-08-09 — **Ledger/git reconciliation result (§1 step 4): clean.**
+  `refs/heads/main` = `0db8cbc` ("Update roadmap ledger: Batch 3 items 9c
+  and 10 done"). Every commit §6a claims exists in the reflog with a
+  matching message, in the stated order. The only reflog entries absent
+  from §6a are this file's *own* ledger-maintenance commits (`df4c087`,
+  `b64d723`, `fbf86b0`, `c8fb830`, `0db8cbc`) — self-referential by
+  nature, not drift. One orphan, `21300bd`, was amended away into
+  `153f8b8` by a prior session and is not in the branch. **Baseline
+  re-verified the same day: 220 tests, the same exact 7 failures/errors,
+  2 skips (§2.3).** State is exactly what §6d says it is: Batches 1-2
+  complete, Batch 3 items 9c and 10 done, item 11 next.
+- 2026-08-09 — **The repo's `CLAUDE.md` contains an unfilled placeholder.**
+  Its last line reads: *"Do not spawn Explore subagents. Read only these
+  exact files directly: `[file list]`. Do not search or explore the rest
+  of the repo."* — `[file list]` was never substituted with actual
+  filenames. As written the restriction is unfollowable (it names no
+  files) and, read literally, forbids the repo-wide grepping that §2.4
+  and §3 step 1 of *this* file require. Flagging rather than editing:
+  `CLAUDE.md` is a tracked, human-owned instruction file. **The human
+  should either fill in the intended file list or delete that sentence.**
+  Until then, treat §2.4's grep-anchor method as the operative
+  instruction, since every item in §6c depends on it. `[open — human
+  decision]`
+- 2026-08-09 — **New finding while investigating item 11, deliberately not
+  fixed: `_should_commit_interim_recovery`'s `len(norm_interim) < 20`
+  guard is an unmeasured threshold that silently drops short closing
+  utterances at Stop.** `[core:4]`, `alpha/ui/main_window.py` ·
+  `grep: return False, "too_short"`. It is not the containment
+  anti-pattern item 11 names, so it was left alone per §3 step 4, but it
+  is arguably the *more* damaging of the two drop-paths in that function:
+  - English: `"thank you very much"` normalizes to 19 chars → **dropped**.
+  - Japanese: `_normalize_compare` routes through
+    `_compact_japanese_for_compare`, so 20 *compacted* chars is a
+    substantial sentence. `ありがとうございました` compacts to 11 →
+    **dropped**. This plausibly contributes to the Japanese content loss
+    tracked in `Bug Report.md` §4.1/4.2.
+  - It fires *after* item 10's filter has already returned
+    `commit_new_tail`, i.e. it can discard a tail that the first filter
+    explicitly judged worth committing.
+  **Do not guess a replacement number** — same rule as item 34: derive it
+  from `logs/async_debug.log`'s `[INTERIM] stop tail skipped
+  {"reason": "too_short"}` events across real runs, per language. Schedule
+  as its own item alongside item 34's threshold work.
 
 ---
 
@@ -379,6 +507,7 @@ passing. **Never delete entries** — mark them `[resolved, see item #N]`.
 | `a1c346d` | 2026-08-08 | — | Recorded the post-Batch-2 live-test results (§6b) and filed the new item 9c | Claude Opus 5 |
 | `13f20ca` | 2026-08-08 | 3 | **Batch 3 item 9c DONE.** Translation-gap self-heal was inert: `reconcile_translation_gaps` passed the canonical ledger's `sequence_number` as the translation worker's `segment_id`, two unrelated counters occupying the same range, so a genuinely untranslated utterance was rejected as a "duplicate" of an unrelated job. Now allocates from `host._translation_segment_seq` like every other submitter, and distinguishes rejection causes via the worker's public `get_counters()` so "already delivered" counts as resolved while "worker shut down" still fails. **Also corrected my own earlier diagnosis in this file — the gap was real content loss, not the false positive I first recorded.** Tests: `tests/test_translation_reconciliation_segment_id.py` (4) | Claude Opus 5 |
 | `b404c19` | 2026-08-08 | 2 | **Batch 3 item 10 DONE.** `_check_stop_tail_duplicate` dropped the Stop-time interim tail on ANY substring match against ANY of the last 5 segments (`commit_text=None` = permanent loss on the last-chance path). Narrowed to equality-or-prefix, the only shapes that actually evidence "already committed"; interior-only matches now fall through and commit. Tests: `tests/test_check_stop_tail_duplicate_containment.py` (7) | Claude Opus 5 |
+| `b2b39de` | 2026-08-09 | 2 | **Batch 3 item 11 DONE.** `_should_commit_interim_recovery` refused the Stop-time tail whenever it appeared anywhere inside the last committed final (`norm_interim in norm_final`). Narrowed to equality-or-prefix, exactly mirroring item 10 — this is the *second* filter on the same last-chance path, so both had to be fixed for a tail to survive Stop. Also removed the same function's unreachable trailing `return False, "no_match"` (approved as part of this item, not a drive-by: a dead drop-path in a function whose every other drop-path is permanent loss). Tests: `tests/test_should_commit_interim_recovery_containment.py` (9), proven against pre-fix code — exactly the 2 containment tests fail, the other 7 pin unchanged branches. Full suite 229 tests, baseline unchanged. | Claude Opus 5 |
 
 **Correction note on `5001275`:** the original draft of
 `PROACTIVE_AUDIT_20260806.md` mislabeled
@@ -620,8 +749,24 @@ via `norm_interim == norm_seg or norm_interim in norm_seg` and
 `skip_already_committed` and dropped entirely — at Stop, with no second
 chance.
 
-**11. `[core:2]`** `alpha/ui/main_window.py` · `grep: def _should_commit_interim_recovery` · ≈4450
-Same containment-only anti-pattern in the Stop-time recovery path.
+~~**11. `[core:2]`** `alpha/ui/main_window.py` · `grep: def _should_commit_interim_recovery`~~ **DONE, `b2b39de`.**
+Narrowed `norm_interim in norm_final` to equality-or-prefix and removed the
+function's unreachable `no_match` drop-path.
+
+**Worth knowing for items 12-19:** this function is the **second** of two
+sequential filters on the same Stop-time last-chance path —
+`_check_stop_tail_duplicate` (item 10) runs first, and a tail must pass
+*both* to survive. Item 10's fix alone did not close the loss; the
+identical anti-pattern one filter later still discarded it. When fixing
+the remaining instances, check whether the one you are looking at is
+itself chained behind another filter with the same defect.
+
+**Left open on purpose (logged in §5, needs its own item):** the same
+function's `len(norm_interim) < 20` guard is an unmeasured threshold that
+drops short closing utterances at Stop — 19-char English, 11-char
+Japanese after CJK compaction. Not containment, so out of item 11's
+scope, and per item 34's rule the replacement value must be measured, not
+guessed.
 
 **12. `[core:2]`** `alpha/ui/main_window.py` · `grep: def _should_repair_previous_segment` · ≈5072
 Same pattern; misclassifies a reworded previous segment as
@@ -861,8 +1006,8 @@ the obvious-looking name.
 ### 6d. → NEXT UP
 
 **Batch 1 complete** (items 1-3). **Batch 2 complete** (items 4-9, 7b,
-9b). **Batch 3 in progress: items 9c and 10 done** (`13f20ca`,
-`b404c19`).
+9b). **Batch 3 in progress: items 9c, 10 and 11 done** (`13f20ca`,
+`b404c19`, `b2b39de`).
 
 Batch 3's own checkpoint has **not** been run. Both 9c and 10 changed
 real behavior on the Stop path (translation self-heal, and what the
@@ -875,11 +1020,18 @@ Stop-time interim tail does), so the next live session should confirm:
 - no duplicated closing line appears in the transcript (item 10 now
   commits tails it used to drop — the opposite failure mode to watch for)
 
-**→ Batch 3, item 11** — `alpha/ui/main_window.py`,
-`grep: def _should_commit_interim_recovery`. Start at §3 step 1
-(investigate). Recommended model: Sonnet 5 (§8). Items 11-20 remain in
-§6c; 11, 12, 14, 15, 16, 18, 19 are Sonnet-5-appropriate, 13, 17 and 20
+**→ Batch 3, item 12** — `alpha/ui/main_window.py`,
+`grep: def _should_repair_previous_segment`. Start at §3 step 1
+(investigate). Recommended model: Sonnet 5 (§8). Items 12-20 remain in
+§6c; 12, 14, 15, 16, 18, 19 are Sonnet-5-appropriate, 13, 17 and 20
 want Opus 5.
+
+Batch 3's checkpoint now also needs to cover item 11: the Stop-time tail
+can now be committed in cases where **two** filters used to drop it, so
+watch the same opposite failure mode item 10 introduced — a duplicated
+closing line — and check `logs/async_debug.log` for
+`[INTERIM] stop tail skipped` reasons, especially how often `too_short`
+fires (that is the §5 finding that still needs measurement).
 
 **Still open from earlier live-test findings, not yet scheduled beyond
 their existing batch:** the Japanese assembler → canonical ledger loss
