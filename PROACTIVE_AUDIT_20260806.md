@@ -367,7 +367,31 @@ the English-only controller. A single transient stabilizer exception
 silently reroutes one final transcript into the wrong language's pipeline
 instead of being retried or fenced off.
 
-**STATUS: still open.**
+**STATUS: FIXED, commit `6726f68` (2026-08-08).**
+
+**Correction to the description above** — verified by control-flow trace
+while fixing it, so no future reader takes the original wording at face
+value. The fall-through was real, but the *common* outcome was **not**
+reaching `utterance_lifecycle.on_final_chunk`:
+`should_use_utterance_lifecycle()` independently rejects Japanese via its
+own inner guard, so the fall-through skipped the lifecycle block and
+landed on `_publish_final_transcript_segment` at the bottom — i.e. the
+Japanese **continuity assembler was bypassed** and a raw, unassembled
+Deepgram fragment was committed. The English-controller contamination
+described above was the *rarer* path: it additionally required the
+Japanese guard itself to be broken **and** `host._listen_language` to be
+unset, so that `should_use_utterance_lifecycle()`'s own inner guard also
+failed and its fallback lang check (defaulting to `""`, which does not
+start with `"ja"`) returned True.
+
+The fix splits the language-path decision and the stabilizer work into
+separate try blocks; **neither** failure can now reach the
+English/generic block — both publish the final directly (preserving the
+spoken text) and log (`JAPANESE_STABILIZER_INGEST_FAILED` /
+`JAPANESE_PATH_DETECTION_FAILED`). Closing the rarer path specifically
+required the *detection-failure* branch to stop falling through as well.
+Regression tests:
+`tests/test_japanese_stabilizer_failure_no_english_fallthrough.py` (4).
 
 ---
 

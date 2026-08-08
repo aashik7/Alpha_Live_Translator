@@ -372,7 +372,9 @@ passing. **Never delete entries** — mark them `[resolved, see item #N]`.
 
 | `b220c86` | 2026-08-08 | — | **Batch 2 item 9b DONE.** Root cause: class-level monkey-patch (`install_japanese_stabilizer_hooks`, installed once at app startup via `main.py`) called `audio_temp_capture.cleanup_old_audio_temp(reason="start_listening")` directly/synchronously inside `_start_listening_worker` — iterates every historical run folder, cost grows with total run count (dozens accumulated). Swapped to the already-existing, already-Stop-tested `schedule_audio_cleanup_non_blocking`. `Bug Report.md` §4.5 updated with the precise root cause (supersedes the original "suspected `begin_live_session` on UI thread" hypothesis). Tests: `tests/test_start_listening_audio_cleanup_non_blocking.py` (1) | Claude Sonnet 5 |
 
-**Batch 2 status: items 4-9 and 9b done. Only item 7b remains, explicitly excluded this pass (user instruction: "don't touch or modify 7b") — own severity/model note preserved in §6c.** It does not block Batch 3.
+| `6726f68` | 2026-08-08 | 1 | **Batch 2 item 7b DONE** (audit §2.10). Split the shared try/except in `_commit_final_transcript_segment` so neither a stabilizer-ingest failure nor a language-detection failure can fall through into the English/generic block — both now publish directly and log. Investigation corrected the audit's characterization: the *common* pre-fix outcome was bypassing the Japanese assembler (raw fragment committed), not entering the English lifecycle; the lifecycle-contamination path §2.10 describes was the rarer one (broken guard + unset `_listen_language`) and is what the detection-failure branch change actually closes. Tests: `tests/test_japanese_stabilizer_failure_no_english_fallthrough.py` (4) | Claude Opus 5 |
+
+**BATCH 2 COMPLETE as of `6726f68`.** All items (4-9, 7b, 9b) done, each with a regression test proven to fail without its fix. Baseline unchanged throughout (183→209 tests). Next: Batch 3 (§6c).
 
 **Correction note on `5001275`:** the original draft of
 `PROACTIVE_AUDIT_20260806.md` mislabeled
@@ -426,7 +428,7 @@ optional.
 
 ---
 
-#### BATCH 2 — Core bug 3: make silent failures loud (logging only) — items 4-9 and 9b ✅ DONE (see §6a: `ddeb67f`/`5181b8c`/`38c6096`/`07d5234`/`ec38779`/`b220c86` + item 9's doc-only entry). Only 7b remains, explicitly excluded (not an oversight).
+#### BATCH 2 — Core bug 3: make silent failures loud (logging only) — ✅ COMPLETE (all of 4-9, 7b, 9b; see §6a: `ddeb67f`/`5181b8c`/`38c6096`/`07d5234`/`ec38779`/`b220c86`/`6726f68` + item 9's doc-only entry)
 
 **Recommended model: Sonnet 5.** No dependency on Batch 1; may run in
 parallel, but keep commits separate.
@@ -443,16 +445,27 @@ All 3 swallowed excepts now log.
 ~~**7. `[core:3]`** — six locations, logging only~~ **DONE, `07d5234`.**
 All six now log; swallow behavior unchanged everywhere.
 
-**7b. `[core:1]` — Japanese stabilizer exception falls into the English commit path** *(audit §2.10 — missing from v3)* — **⛔ EXPLICITLY EXCLUDED, do not touch or modify without a fresh go-ahead** (user instruction, 2026-08-08: "Batch 2 all items approved to work except 7b"). Left in full below for whenever it is picked up.
-`alpha/transcription/deepgram_client.py` · `grep: stabilizer ingest error` · ≈1534
-If `stabilizer.ingest(...)` raises for a Japanese-configured session, the
-exception is caught and printed but **execution does not return** — it
-falls through into the English/generic commit block below, feeding a
-Japanese final into `utterance_lifecycle.on_final_chunk` (the
-English-only controller). This is a behavior fix, not logging-only:
-add the missing `return` (or an explicit fenced error path) so a
-transient stabilizer failure cannot silently reroute a transcript into
-the wrong language pipeline.
+~~**7b. `[core:1]` — Japanese stabilizer exception falls into the English commit path**~~ *(audit §2.10)* **DONE, `6726f68`.**
+Split the shared try/except in `_commit_final_transcript_segment`: the
+language-path decision and the stabilizer work no longer share a handler,
+and neither failure falls through to the English/generic block — both
+publish the final directly and log
+(`JAPANESE_STABILIZER_INGEST_FAILED` / `JAPANESE_PATH_DETECTION_FAILED`).
+
+**Audit §2.10's description was partly wrong and is corrected here for
+anyone reading it later:** the *common* pre-fix outcome was **not**
+entering the English lifecycle — `should_use_utterance_lifecycle()`
+independently rejects Japanese via its own inner guard, so the
+fall-through skipped the lifecycle and landed on the publish call at the
+bottom, i.e. the Japanese **assembler was bypassed** and a raw fragment
+committed. The lifecycle-contamination §2.10 describes was the *rarer*
+path, needing the Japanese guard itself to be broken **and**
+`_listen_language` unset (so `should_use_utterance_lifecycle()`'s
+fallback lang check defaults to `""`, doesn't start with `"ja"`, and
+returns True). Closing that one required the **detection-failure** branch
+to stop falling through too — an earlier draft of this fix fixed only the
+ingest branch while claiming it closed both; caught by running the new
+tests against pre-fix code and re-reading the control flow.
 
 ~~**8. `[core:3]`** `alpha/transcription/utterance_lifecycle.py` · `_observe_identity`~~ **DONE, `ec38779`.**
 Fail-open path now logged (`OBSERVE_IDENTITY_FAILED_OPEN`); fail-open
@@ -751,25 +764,20 @@ Its live-test checkpoint (§3.10) **has now been run** (`f3e251f`,
 2026-08-08): watchdog firing rate confirmed dropped to 2% (en) / 0% (ja)
 in fresh live sessions, vs. 83% before the fix. Checkpoint satisfied.
 
-**Batch 2 items 4-9 and 9b are all done** (`ddeb67f`/`5181b8c`/`38c6096`/
-`07d5234`/`ec38779`/`b220c86` + item 9's doc-only entry). **Only 7b
-remains, explicitly excluded** (user instruction 2026-08-08: "approved
-to work except 7b... don't touch or modify") — do not pick it up
-without a fresh go-ahead.
+**Batch 2 is complete** — all of items 4-9, 7b and 9b
+(`ddeb67f`/`5181b8c`/`38c6096`/`07d5234`/`ec38779`/`b220c86`/`6726f68`
++ item 9's doc-only entry).
 
 Batch 2's own checkpoint (one live session per language, confirm new log
-lines with no unexpected volume) has **not** been explicitly re-run since
-items 4-9 landed — folding it into whichever live-test session comes
-next is reasonable; it doesn't need to block Batch 3.
+lines appear with no unexpected volume) has **not** been run since these
+landed. Worth folding into the next live-test session — especially now
+that 7b and 9b changed real behavior (routing and threading), not just
+logging. It does not need to block Batch 3.
 
 **→ Batch 3, item 10** — `alpha/ui/main_window.py`,
 `grep: def _check_stop_tail_duplicate`. Start at §3 step 1 (investigate).
 Recommended model: Opus 5 (§8). See §6c Batch 3 for the full list
 (items 10-20).
-
-*(7b remains available to pick up whenever authorized — see its full
-entry preserved in §6c Batch 2 above. It does not block Batch 3, which
-has no dependency on it.)*
 
 ---
 
