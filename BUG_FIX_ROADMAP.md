@@ -376,6 +376,13 @@ passing. **Never delete entries** — mark them `[resolved, see item #N]`.
   actually a **keyword argument** passed into `_apply_active_update_locked`
   (grep `force_new=not same_active`). The finding itself is unchanged and
   still valid; only the framing in the audit text is imprecise.
+- 2026-08-09 — **Batch 3 items 14, 15, 16 were done out of order** (12
+  and 13 skipped over on user request). §4's "do not reorder without
+  writing the reason" — the reason: 12/13 need Opus-5-level judgment
+  about which correction shapes must survive (per §8), 14/15/16 are
+  independent, template-following, Sonnet-5-appropriate items in
+  different files with no shared state, so skipping ahead carried no
+  cross-item risk. 12 and 13 remain open in §6c, unaffected.
 - 2026-08-08 — **Never use `sed -i` on this repo's `.py` files, even for
   a quick temporary toggle during §3 step 5's before/after test proof.**
   GNU sed (via Git Bash) silently rewrote `constants.py`'s CRLF line
@@ -508,6 +515,7 @@ passing. **Never delete entries** — mark them `[resolved, see item #N]`.
 | `13f20ca` | 2026-08-08 | 3 | **Batch 3 item 9c DONE.** Translation-gap self-heal was inert: `reconcile_translation_gaps` passed the canonical ledger's `sequence_number` as the translation worker's `segment_id`, two unrelated counters occupying the same range, so a genuinely untranslated utterance was rejected as a "duplicate" of an unrelated job. Now allocates from `host._translation_segment_seq` like every other submitter, and distinguishes rejection causes via the worker's public `get_counters()` so "already delivered" counts as resolved while "worker shut down" still fails. **Also corrected my own earlier diagnosis in this file — the gap was real content loss, not the false positive I first recorded.** Tests: `tests/test_translation_reconciliation_segment_id.py` (4) | Claude Opus 5 |
 | `b404c19` | 2026-08-08 | 2 | **Batch 3 item 10 DONE.** `_check_stop_tail_duplicate` dropped the Stop-time interim tail on ANY substring match against ANY of the last 5 segments (`commit_text=None` = permanent loss on the last-chance path). Narrowed to equality-or-prefix, the only shapes that actually evidence "already committed"; interior-only matches now fall through and commit. Tests: `tests/test_check_stop_tail_duplicate_containment.py` (7) | Claude Opus 5 |
 | `b2b39de` | 2026-08-09 | 2 | **Batch 3 item 11 DONE.** `_should_commit_interim_recovery` refused the Stop-time tail whenever it appeared anywhere inside the last committed final (`norm_interim in norm_final`). Narrowed to equality-or-prefix, exactly mirroring item 10 — this is the *second* filter on the same last-chance path, so both had to be fixed for a tail to survive Stop. Also removed the same function's unreachable trailing `return False, "no_match"` (approved as part of this item, not a drive-by: a dead drop-path in a function whose every other drop-path is permanent loss). Tests: `tests/test_should_commit_interim_recovery_containment.py` (9), proven against pre-fix code — exactly the 2 containment tests fail, the other 7 pin unchanged branches. Full suite 229 tests, baseline unchanged. | Claude Opus 5 |
+| `5ffb18d` | 2026-08-09 | 14, 15, 16 | **Batch 3 items 14/15/16 DONE** (12, 13 intentionally skipped over — user approved 14/15/16 out of order; not a dependency issue, see §4). **14:** `merge_japanese_fragments`'s `prev.endswith(curr): return prev` fast path removed — proven a no-op vs. the overlap search for curr ≤32 chars, only mattered for curr >32 chars where it silently discarded the whole fragment with no trace; static fix, 0/114 real merge events scanned showed this firing. **15:** `_SPEAKER_LOCK_CONTINUATION_PREFIXES` had 5 ordinary connectives (なんだけど/それが/だから/でも/けど) misread as same-speaker evidence; removed, kept the one specific phrase. **16:** confirmed `teams_commit_decision_from_dup_action` diagnostic-only by full control-flow trace, renamed to `..._diagnostic_only`. Tests: `tests/test_batch3_items_14_15_16.py` (9) — before/after control caught my own first-draft item-14 test asserting `curr in merged`, which passes either way since curr is a literal substring of prev by construction; corrected to assert growth. Full suite 238 tests, baseline unchanged. | Claude Sonnet 5 |
 
 **Correction note on `5001275`:** the original draft of
 `PROACTIVE_AUDIT_20260806.md` mislabeled
@@ -781,20 +789,20 @@ signal override; live whenever that signal is absent. Also contains two
 dead `.startswith()` branches (unreachable — the `in` test two lines
 earlier already subsumes them); remove them as part of this fix.
 
-**14. `[core:2]`** `alpha/transcription/japanese_sentence_assembler.py` · `grep: def merge_japanese_fragments` · ≈597
-`curr.startswith(prev)` / `prev.endswith(curr)` accepted as proof of full
+~~**14. `[core:2]`** `alpha/transcription/japanese_sentence_assembler.py` · `grep: def merge_japanese_fragments`~~ **DONE, `5ffb18d`.** Removed the `prev.endswith(curr): return prev` fast path. No live occurrence found (0/114 real merge events scanned); a static fix, said so in the commit.
+*(Original description kept:)* `curr.startswith(prev)` / `prev.endswith(curr)` accepted as proof of full
 subsumption *before* the smarter overlap search runs — can drop a
 corrected-but-shorter retranscription that happens to be a literal
 suffix.
 
-**15. `[core:2]`** `alpha/transcription/japanese_sentence_assembler.py` · `grep: def _looks_like_speaker_continuation_tail` · ≈2573
-Literal-prefix/phrase-containment list misclassifies a different
+~~**15. `[core:2]`** `alpha/transcription/japanese_sentence_assembler.py` · `grep: def _looks_like_speaker_continuation_tail`~~ **DONE, `5ffb18d`.** Removed 5 ordinary connectives from `_SPEAKER_LOCK_CONTINUATION_PREFIXES`; kept the one specific retained phrase. **Item 23 still pending — re-check this dependency when 23 is picked up.**
+*(Original description kept:)* Literal-prefix/phrase-containment list misclassifies a different
 speaker's line that merely starts with an ordinary connective as a
 continuation. **Do this before item 23** — that item's logic consumes
 this function's output.
 
-**16. `[core:2]`** `alpha/transcription/deepgram_client.py` · `grep: def teams_commit_decision_from_dup_action` · ≈626
-A 4th independent instance of this anti-pattern class, living in the
+~~**16. `[core:2]`** `alpha/transcription/deepgram_client.py` · `grep: def teams_commit_decision_from_dup_action`~~ **DONE, `5ffb18d`.** Confirmed diagnostic-only by full control-flow trace, renamed to `teams_commit_decision_from_dup_action_diagnostic_only`.
+*(Original description kept:)* A 4th independent instance of this anti-pattern class, living in the
 ingestion layer. **Verify it is still diagnostic-only** (its output
 should only feed logging, not a commit branch). Then rename or
 explicitly mark it diagnostic-only so a future change cannot silently
@@ -1006,32 +1014,35 @@ the obvious-looking name.
 ### 6d. → NEXT UP
 
 **Batch 1 complete** (items 1-3). **Batch 2 complete** (items 4-9, 7b,
-9b). **Batch 3 in progress: items 9c, 10 and 11 done** (`13f20ca`,
-`b404c19`, `b2b39de`).
+9b). **Batch 3 in progress: items 9c, 10, 11, 14, 15, 16 done**
+(`13f20ca`, `b404c19`, `b2b39de`, `5ffb18d`). **12 and 13 were
+deliberately skipped over, not forgotten — still open, see §5's
+2026-08-09 note.**
 
-Batch 3's own checkpoint has **not** been run. Both 9c and 10 changed
+Batch 3's own checkpoint has **not** been run. 9c, 10, and 11 all changed
 real behavior on the Stop path (translation self-heal, and what the
-Stop-time interim tail does), so the next live session should confirm:
+Stop-time interim tail does — **two** separate filters on that path were
+narrowed), so the next live session should confirm:
 - `final_status` is no longer `failed` on `translation_reconciliation`
   (or, if it still fails, that it is a *genuine* unresolved gap — check
   for `TRANSLATION_RECONCILIATION_ALREADY_DELIVERED` vs
   `..._FORCED_SUBMIT_REJECTED` with its new `rejection_reason` field)
 - the last utterance of the session still has a translation
-- no duplicated closing line appears in the transcript (item 10 now
-  commits tails it used to drop — the opposite failure mode to watch for)
+- no duplicated closing line appears in the transcript (items 10 and 11
+  now commit tails they used to drop — the opposite failure mode to
+  watch for). Check `logs/async_debug.log` for `[INTERIM] stop tail
+  skipped` reasons, especially how often `too_short` fires (§5's
+  unmeasured-threshold finding from item 11's investigation).
+- for Japanese sessions: no coincidentally-duplicated short phrase or
+  misattributed speaker-turn line (items 14/15's theoretical fixes — no
+  live occurrence was found for either, so this is the first real chance
+  to observe them either way)
 
 **→ Batch 3, item 12** — `alpha/ui/main_window.py`,
 `grep: def _should_repair_previous_segment`. Start at §3 step 1
-(investigate). Recommended model: Sonnet 5 (§8). Items 12-20 remain in
-§6c; 12, 14, 15, 16, 18, 19 are Sonnet-5-appropriate, 13, 17 and 20
-want Opus 5.
-
-Batch 3's checkpoint now also needs to cover item 11: the Stop-time tail
-can now be committed in cases where **two** filters used to drop it, so
-watch the same opposite failure mode item 10 introduced — a duplicated
-closing line — and check `logs/async_debug.log` for
-`[INTERIM] stop tail skipped` reasons, especially how often `too_short`
-fires (that is the §5 finding that still needs measurement).
+(investigate). Recommended model: Sonnet 5 (§8). Items 12, 13, 17-20
+remain in §6c; 12, 18, 19 are Sonnet-5-appropriate, 13, 17 and 20 want
+Opus 5.
 
 **Still open from earlier live-test findings, not yet scheduled beyond
 their existing batch:** the Japanese assembler → canonical ledger loss
