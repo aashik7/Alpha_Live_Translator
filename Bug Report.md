@@ -684,6 +684,37 @@ recovered — here it was not. Worth checking how often
 `later_committed_to_stable` is false across runs; that field is a
 ready-made measure of how much this rule actually costs.
 
+### Evidence collection (2026-08-08, `BUG_FIX_ROADMAP.md` Batch 2 item 9 — data collection only, no fix)
+
+Scanned every `accuracy/quarantine_decisions.jsonl` under
+`troubleshooting/runs/` (all runs to date, including today's Batch-1
+live-test checkpoint sessions):
+
+| Run | `quarantine_decision` | `reason` | `later_committed_to_stable` | Text |
+|---|---|---|---|---|
+| `...160130` | quarantined | `noise_fragment` | **false** | `ありまして、はいはい。で、そのひな祭りパーティーに` |
+| `...160529` | quarantined | `noise_fragment` | **false** | `。忘れちゃうし、` (the example above) |
+| `...134815` (today, ja) | — | — | — | none quarantined |
+| `...133236` (today, en) | — | — | — | none quarantined |
+
+**2 of 2 quarantine events ever recorded (100%) were `noise_fragment`
+misclassifications of real, meaningful Japanese speech, and 0 of 2 (0%)
+were ever recovered** (`later_committed_to_stable: false` in both
+cases). The first one, `ありまして、はいはい。で、そのひな祭りパーティーに`
+("...and, yes yes. So at that Hina-doll-festival party..."), is not
+noise by any reasonable reading — same conclusion as the already-flagged
+`。忘れちゃうし、` example.
+
+**Caveat: n=2 is a very small sample** — today's two live-test runs
+triggered the rule zero times, so this doesn't yet show how often it
+fires in typical use, only that when it *has* fired historically, it has
+always been wrong. Not enough evidence yet to derive a specific
+replacement threshold; more runs (varied speech patterns, especially
+short utterances and filler words) are needed before item 34 (Batch 5)
+can respond with a concrete design instead of just "the current rule's
+observed track record is 0-for-2." Per the roadmap, the threshold itself
+is intentionally not touched in this pass.
+
 ## 4.3 Why these are NOT the interim-ghost / watchdog issue
 
 Recorded explicitly so the two tracks do not get conflated later:

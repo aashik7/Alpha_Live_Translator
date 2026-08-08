@@ -362,6 +362,16 @@ passing. **Never delete entries** — mark them `[resolved, see item #N]`.
 
 **BATCH 1 COMPLETE as of `38a92b5`.** All 3 items done, all with proven regression tests, baseline unchanged throughout (176→178→183 tests). Next: Batch 2 (§6c).
 
+| `f3e251f` | 2026-08-08 | — | Ran Batch 1's outstanding live-test checkpoint (English + Japanese) — confirmed watchdog firing rate dropped to 2% (en) / 0% (ja) vs. 83% before the fix, in fresh live sessions (not re-scanned old data). Also documented (not fixed) a new, separately-reported issue as item **9b**: Start-button multi-second UI-thread freeze. Full evidence in `Bug Report.md` §4.5. | Claude Sonnet 5 |
+| `ddeb67f` | 2026-08-08 | 3 | **Batch 2 item 4 DONE.** `_remove_interim_line_from_display` guarded on `"interim_anchor" in box.mark_names()` instead of catching the `TclError` `box.compare()` raised on the normal "nothing to remove" case (was logged as `remove_exception` 14×/run). Tests: `tests/test_remove_interim_line_no_exception_noise.py` (3) | Claude Sonnet 5 |
+| `5181b8c` | 2026-08-08 | 3 | **Batch 2 item 5 DONE.** Logged all 3 previously-silent except blocks in `_on_store_segment_updated` (interim-line removal, stale-translation removal, translation resubmit) via `jp_accuracy_log`, 3 distinct event names. Swallow behavior unchanged. Tests: `tests/test_on_store_segment_updated_logs_failures.py` (5) | Claude Sonnet 5 |
+| `38c6096` | 2026-08-08 | 3 | **Batch 2 item 6 DONE.** Logged `utterance_lifecycle.py`'s `reset_for_session` (identity-registry reset failure) and `_resolve_correction_target_locked` (falls back to unverified raw target on any exception) — both previously silent. Tests: `tests/test_utterance_lifecycle_logs_swallowed_failures.py` (4) | Claude Sonnet 5 |
+| `07d5234` | 2026-08-08 | 3 | **Batch 2 item 7 DONE.** Logged the remaining 6 silent except-blocks across `deepgram_client.py`, `pipeline_commit_transaction.py`, `stop_finalize_worker.py`, `japanese_sentence_assembler.py` (×2), `japanese_boundary_stabilizer.py`. Tests: `tests/test_batch2_item7_silent_failure_logging.py` (6, 4 exercise the real call path, 2 verify the log-call/helper wiring directly — documented why in the test file). | Claude Sonnet 5 |
+| `ec38779` | 2026-08-08 | 3 | **Batch 2 item 8 DONE.** Logged `_observe_identity`'s fail-open path (`OBSERVE_IDENTITY_FAILED_OPEN`). Fail-open behavior deliberately unchanged — flipping it is item 27, gated on evidence from this logging. Tests: `tests/test_observe_identity_logs_fail_open.py` (3, explicitly asserts the fail-open return value is unchanged) | Claude Sonnet 5 |
+| (doc only, no commit hash yet — see next commit) | 2026-08-08 | 4 | **Batch 2 item 9 DONE (investigation only, no code change, per its own scope).** Scanned every `quarantine_decisions.jsonl` to date: 2 of 2 quarantine events ever recorded were `noise_fragment` misclassifications of real Japanese speech, 0 of 2 ever recovered. n=2 is too small to derive a replacement threshold — feeds item 34, threshold itself untouched. Findings appended to `Bug Report.md` §4.2. | Claude Sonnet 5 |
+
+**Batch 2 status: items 4-9 done. Item 7b explicitly excluded this pass (user instruction: "don't touch or modify 7b") — remains pending, own severity/model note preserved in §6c. Item 9b remains explicitly deferred (documentation only, no fix authorized).** Both are the only Batch 2 items still open; neither blocks starting Batch 3.
+
 **Correction note on `5001275`:** the original draft of
 `PROACTIVE_AUDIT_20260806.md` mislabeled
 `main_window.py::_apply_final_interim_comparison` as "confirmed still
@@ -414,40 +424,24 @@ optional.
 
 ---
 
-#### BATCH 2 — Core bug 3: make silent failures loud (logging only)
+#### BATCH 2 — Core bug 3: make silent failures loud (logging only) — items 4-9 ✅ DONE (see §6a: `ddeb67f`/`5181b8c`/`38c6096`/`07d5234`/`ec38779` + item 9's doc-only entry). 7b and 9b remain, both explicitly excluded/deferred (not oversights).
 
 **Recommended model: Sonnet 5.** No dependency on Batch 1; may run in
 parallel, but keep commits separate.
 
-**4. `[core:3]`** `alpha/ui/main_window.py` · `grep: def _remove_interim_line_from_display` · ≈1301
-`box.compare("interim_anchor", ...)` raises `TclError` on the normal
-"nothing to remove" case, caught and logged as `remove_exception` every
-time (14× in one short run). Replace with a
-`if "interim_anchor" not in box.mark_names(): return` guard. Removes log
-noise currently drowning real signal. Zero behavior change.
+~~**4. `[core:3]`** `alpha/ui/main_window.py` · `grep: def _remove_interim_line_from_display`~~ **DONE, `ddeb67f`.**
+Guarded on `mark_names()` instead of catching the `TclError` the old
+`box.compare()` call raised on the normal case.
 
-**5. `[core:3]`** `alpha/ui/main_window.py` · `grep: def _on_store_segment_updated` · ≈1426
-Three swallowed `except Exception: pass` blocks around its side effects
-(interim-line removal, stale-translation removal, translation resubmit).
-Add logging to each. The store mutation has already committed by the time
-these run, so a silent failure here leaves committed text with a
-permanently missing translation.
+~~**5. `[core:3]`** `alpha/ui/main_window.py` · `grep: def _on_store_segment_updated`~~ **DONE, `5181b8c`.**
+All 3 swallowed excepts now log.
 
-**6. `[core:3]`** `alpha/transcription/utterance_lifecycle.py` ·
-`grep: def reset_for_session` (≈309) and `grep: def _resolve_correction_target_locked` (≈391)
-Both swallow exceptions with no logging at all. Add logging. **Do not
-change fail-open/fail-closed behavior here.**
+~~**6. `[core:3]`** `alpha/transcription/utterance_lifecycle.py` · `reset_for_session` / `_resolve_correction_target_locked`~~ **DONE, `38c6096`.**
 
-**7. `[core:3]`** — same pattern, six locations, add logging only:
-- `alpha/transcription/deepgram_client.py` · `grep: def _normalize_and_send_pcm` (empty-bytes early return, no log)
-- `alpha/transcription/pipeline_commit_transaction.py` · `grep: def _write_suppressed_stop_tail_candidate`
-- `alpha/utils/stop_finalize_worker.py` · `grep: schedule_evidence_pointer_finalization_background`
-- `alpha/transcription/japanese_sentence_assembler.py` · `grep: def _route_stable_publish` (stabilizer `process()` wrapped in silent except)
-- `alpha/transcription/japanese_sentence_assembler.py` · the
-  `transcript_snapshot_store` write block (`grep: append_transcript_snapshot`) — **zero logging today, not even to the Japanese accuracy log**, making it undiagnosable from the very evidence this project relies on
-- `alpha/transcription/japanese_boundary_stabilizer.py` · `grep: def _update_evidence_index`
+~~**7. `[core:3]`** — six locations, logging only~~ **DONE, `07d5234`.**
+All six now log; swallow behavior unchanged everywhere.
 
-**7b. `[core:1]` — Japanese stabilizer exception falls into the English commit path** *(audit §2.10 — missing from v3)*
+**7b. `[core:1]` — Japanese stabilizer exception falls into the English commit path** *(audit §2.10 — missing from v3)* — **⛔ EXPLICITLY EXCLUDED, do not touch or modify without a fresh go-ahead** (user instruction, 2026-08-08: "Batch 2 all items approved to work except 7b"). Left in full below for whenever it is picked up.
 `alpha/transcription/deepgram_client.py` · `grep: stabilizer ingest error` · ≈1534
 If `stabilizer.ingest(...)` raises for a Japanese-configured session, the
 exception is caught and printed but **execution does not return** — it
@@ -458,21 +452,15 @@ add the missing `return` (or an explicit fenced error path) so a
 transient stabilizer failure cannot silently reroute a transcript into
 the wrong language pipeline.
 
-**8. `[core:3]`** `alpha/transcription/utterance_lifecycle.py` ·
-`grep: return True, "unavailable"` · ≈388
-`_observe_identity` fails **open** — on any exception it returns
-"accepted", silently bypassing the one gate meant to prevent
-duplicate/cross-utterance mutation, in a file whose entire stated design
-is fail-closed. **Log only in this batch. Do NOT flip to fail-closed
-here** — that is a real behavior change needing evidence first (item 27).
+~~**8. `[core:3]`** `alpha/transcription/utterance_lifecycle.py` · `_observe_identity`~~ **DONE, `ec38779`.**
+Fail-open path now logged (`OBSERVE_IDENTITY_FAILED_OPEN`); fail-open
+behavior itself deliberately unchanged (that's item 27).
 
-**9. `[core:4]` — data collection only, no fix**
-`alpha/transcription/japanese_sentence_assembler.py` · quarantine logic
-writing `accuracy/quarantine_decisions.jsonl`
-Collect evidence across multiple Japanese live runs on how often
-`later_committed_to_stable: false` occurs (confirmed real speech is being
-dropped as `noise_fragment` — see `Bug Report.md` §4.2). Feeds item 34.
-**Do not touch the threshold in this batch.**
+~~**9. `[core:4]` — data collection only, no fix**~~ **DONE (investigation
+only, as scoped).** `Bug Report.md` §4.2: 2 of 2 quarantine events ever
+recorded were `noise_fragment` misclassifications, 0 of 2 recovered.
+n=2 — too small for item 34 to act on yet, more runs needed. Threshold
+untouched, as instructed.
 
 **9b. `[core:—]` — Start button: multi-second UI-thread freeze before audio/Deepgram init** *(new, found 2026-08-08 during Batch 1's live-test checkpoint — not part of the original audit)*
 `alpha/utils/session_runtime.py` · `grep: def begin_live_session` (called
@@ -757,16 +745,30 @@ the obvious-looking name.
 ### 6d. → NEXT UP
 
 **Batch 1 is complete** (items 1-3, commits `6564b36`/`9892cb1`/`1649e82`/`38a92b5`).
-Its live-test checkpoint (§3.10) has **not** been run yet — consider asking
-the human for one before or during Batch 2; it's not blocking, but it's
-the only real-world confirmation that item 2's TTL recalibration reduces
-watchdog firings in a fresh session (everything checked so far is either
-unit tests or a re-scan of *old*, pre-fix log data).
+Its live-test checkpoint (§3.10) **has now been run** (`f3e251f`,
+2026-08-08): watchdog firing rate confirmed dropped to 2% (en) / 0% (ja)
+in fresh live sessions, vs. 83% before the fix. Checkpoint satisfied.
 
-**→ Batch 2, item 4** — `alpha/ui/main_window.py`,
-`grep: def _remove_interim_line_from_display`. Start at §3 step 1
-(investigate). See §6c Batch 2 for the full list (items 4-9, with 7b
-flagged for Opus 5 per §8).
+**Batch 2 items 4-9 are done** (`ddeb67f`/`5181b8c`/`38c6096`/`07d5234`/`ec38779`
++ item 9's doc-only entry). **7b is explicitly excluded** (user
+instruction 2026-08-08: "approved to work except 7b... don't touch or
+modify") — do not pick it up without a fresh go-ahead. **9b remains
+explicitly deferred** (documentation only; `Bug Report.md` §4.5 has the
+full write-up) — do not fix without a separate go-ahead.
+
+Batch 2's own checkpoint (one live session per language, confirm new log
+lines with no unexpected volume) has **not** been explicitly re-run since
+items 4-9 landed — folding it into whichever live-test session comes
+next is reasonable; it doesn't need to block Batch 3.
+
+**→ Batch 3, item 10** — `alpha/ui/main_window.py`,
+`grep: def _check_stop_tail_duplicate`. Start at §3 step 1 (investigate).
+Recommended model: Opus 5 (§8). See §6c Batch 3 for the full list
+(items 10-20).
+
+*(7b remains available to pick up whenever authorized — see its full
+entry preserved in §6c Batch 2 above. It does not block Batch 3, which
+has no dependency on it.)*
 
 ---
 
