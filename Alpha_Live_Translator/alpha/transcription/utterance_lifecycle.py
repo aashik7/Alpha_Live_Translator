@@ -327,8 +327,21 @@ class UtteranceLifecycleOwner:
             from alpha.transcription.canonical_identity_registry import reset_for_session
 
             reset_for_session(self._session_id)
-        except Exception:
-            pass
+        except Exception as exc:
+            # fixes BUG_FIX_ROADMAP.md Batch 2 item 6: logging only -- a
+            # failure here previously left the identity registry
+            # unreset with zero trace, risking a new session inheriting
+            # stale identity entries from the previous one.
+            try:
+                from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+                jp_accuracy_log(
+                    "IDENTITY_REGISTRY_RESET_FAILED",
+                    reason=f"{type(exc).__name__}:{exc}",
+                    session_id=self._session_id,
+                )
+            except Exception:
+                pass
 
     def bind_host(self, host: Any) -> None:
         self._host = host
@@ -450,8 +463,26 @@ class UtteranceLifecycleOwner:
                 if target_record_id and target_record_id != exact_record_id:
                     return "", target_utterance_id
                 return exact_record_id, target_utterance_id
-        except Exception:
-            pass
+        except Exception as exc:
+            # fixes BUG_FIX_ROADMAP.md Batch 2 item 6: logging only -- on
+            # any exception here, this function falls through to
+            # returning the raw, UNVERIFIED target_record_id/
+            # target_utterance_id below instead of the registry-resolved
+            # exact match. Behavior is unchanged (still fails open to the
+            # raw values); this only makes that fallback visible.
+            try:
+                from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+                jp_accuracy_log(
+                    "CORRECTION_TARGET_RESOLUTION_FAILED",
+                    reason=f"{type(exc).__name__}:{exc}",
+                    session_id=self._session_id,
+                    channel_index=channel,
+                    canonical_utterance_id=target_utterance_id,
+                    revision_target_id=target_record_id,
+                )
+            except Exception:
+                pass
         return target_record_id, target_utterance_id
 
     # ------------------------------------------------------------------
