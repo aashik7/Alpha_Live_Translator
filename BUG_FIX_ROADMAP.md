@@ -462,6 +462,19 @@ passing. **Never delete entries** — mark them `[resolved, see item #N]`.
   with `latest_interim_len: 0` — a trivially correct skip of an empty
   interim, which tells us nothing about the 20-char cutoff. The
   measurement needs runs that actually end with a short non-empty tail.
+- 2026-08-09 — **`test_task9_report.py::test_inactivity_timeout_fallback_survives_immediate_real_stop_5x`
+  is flaky under CPU load. It is not in §2.3's baseline 7 and it is not a
+  regression — do not chase it.** It failed twice while item 11b was being
+  verified, which cost a full stash/control cycle to clear. Evidence: a 6×
+  control run on stashed (pre-change) code passed 6/6; a 6× run *with* the
+  change also passed 6/6; and two later full-suite runs were clean with
+  the change in. The failures clustered immediately after a full-suite run,
+  i.e. with the machine still loaded. It is a real-Tk-root, real-thread,
+  real-`.after()`-timer test with bounded real-time waits
+  (`_commit_fallback_ms = 60`, a 20s deadline), so it slips when the
+  machine is busy. **If you see it fail: re-run it alone before assuming
+  anything.** If it ever fails on an idle machine, that *is* worth
+  investigating.
 - 2026-08-09 — **NEW, pre-existing, not a regression: on English runs the
   canonical-ledger file is never written, and the export coverage gate
   then reports a perfect pass on a zero denominator.** `[core:3]`
@@ -539,6 +552,7 @@ passing. **Never delete entries** — mark them `[resolved, see item #N]`.
 | `13f20ca` | 2026-08-08 | 3 | **Batch 3 item 9c DONE.** Translation-gap self-heal was inert: `reconcile_translation_gaps` passed the canonical ledger's `sequence_number` as the translation worker's `segment_id`, two unrelated counters occupying the same range, so a genuinely untranslated utterance was rejected as a "duplicate" of an unrelated job. Now allocates from `host._translation_segment_seq` like every other submitter, and distinguishes rejection causes via the worker's public `get_counters()` so "already delivered" counts as resolved while "worker shut down" still fails. **Also corrected my own earlier diagnosis in this file — the gap was real content loss, not the false positive I first recorded.** Tests: `tests/test_translation_reconciliation_segment_id.py` (4) | Claude Opus 5 |
 | `b404c19` | 2026-08-08 | 2 | **Batch 3 item 10 DONE.** `_check_stop_tail_duplicate` dropped the Stop-time interim tail on ANY substring match against ANY of the last 5 segments (`commit_text=None` = permanent loss on the last-chance path). Narrowed to equality-or-prefix, the only shapes that actually evidence "already committed"; interior-only matches now fall through and commit. Tests: `tests/test_check_stop_tail_duplicate_containment.py` (7) | Claude Opus 5 |
 | `b2b39de` | 2026-08-09 | 2 | **Batch 3 item 11 DONE.** `_should_commit_interim_recovery` refused the Stop-time tail whenever it appeared anywhere inside the last committed final (`norm_interim in norm_final`). Narrowed to equality-or-prefix, exactly mirroring item 10 — this is the *second* filter on the same last-chance path, so both had to be fixed for a tail to survive Stop. Also removed the same function's unreachable trailing `return False, "no_match"` (approved as part of this item, not a drive-by: a dead drop-path in a function whose every other drop-path is permanent loss). Tests: `tests/test_should_commit_interim_recovery_containment.py` (9), proven against pre-fix code — exactly the 2 containment tests fail, the other 7 pin unchanged branches. Full suite 229 tests, baseline unchanged. | Claude Opus 5 |
+| `69605cc` | 2026-08-09 | 1 | **Batch 3 item 11b DONE** *(new — found by analyzing the Batch 3 checkpoint runs, not in the original audit)*. **This is what makes items 10 and 11 reachable at all.** The interim ghost watchdog cleared `_latest_interim_text` — the only source `_recover_interim_tail_on_stop` reads — so a tail orphaned shortly before Stop was destroyed by the **display** layer before the **content**-recovery path ran. Confirmed live: run `...033339` cleared a 10-char interim at +267.19s, Stop ran at +268.25s and found nothing; that speech is absent from the final export. `Bug Report.md` §4.3 predicted this interaction and asked that it be checked by whichever track touches Stop-time recovery. The watchdog now stashes the orphan (text/speaker/id/timestamp) before clearing and Stop falls back to it; the visible ghost line still goes immediately, so `78eb59e`/`a5e2ac4` are untouched. Whether the orphan is *safe* to commit stays items 10/11's job, by design. A supersession guard drops it if any newer interim arrived after it was stashed, so stale text can never be appended out of order. Tests: `tests/test_watchdog_orphan_stop_tail_recovery.py` (9), both halves proven separately against pre-fix code. Full suite 238, baseline unchanged | Claude Opus 5 |
 
 **Correction note on `5001275`:** the original draft of
 `PROACTIVE_AUDIT_20260806.md` mislabeled
@@ -786,6 +800,19 @@ chance.
 ~~**11. `[core:2]`** `alpha/ui/main_window.py` · `grep: def _should_commit_interim_recovery`~~ **DONE, `b2b39de`.**
 Narrowed `norm_interim in norm_final` to equality-or-prefix and removed the
 function's unreachable `no_match` drop-path.
+
+~~**11b. `[core:1]` — the ghost watchdog destroyed the Stop-tail recovery source**~~ **DONE, `69605cc`.**
+*(new, found 2026-08-09 while checking why the Batch 3 checkpoint never
+exercised items 10/11)* `alpha/ui/main_window.py` ·
+`grep: def _check_interim_ghost_watchdog`. The watchdog cleared
+`_latest_interim_text` via `_clear_interim_tail`, and that variable is the
+only thing `_recover_interim_tail_on_stop` reads — so the display layer
+deleted the content-recovery source. It now stashes the orphan first, and
+Stop falls back to it, gated by a supersession check. **Read this before
+touching any other Stop-path item:** it is the clearest example in this
+codebase of a display-layer mechanism silently disabling a content-safety
+mechanism, and `Bug Report.md` §4.3 had flagged the risk long before it
+was measured.
 
 **Worth knowing for items 12-19:** this function is the **second** of two
 sequential filters on the same Stop-time last-chance path —
@@ -1040,8 +1067,8 @@ the obvious-looking name.
 ### 6d. → NEXT UP
 
 **Batch 1 complete** (items 1-3). **Batch 2 complete** (items 4-9, 7b,
-9b). **Batch 3 in progress: items 9c, 10 and 11 done** (`13f20ca`,
-`b404c19`, `b2b39de`).
+9b). **Batch 3 in progress: items 9c, 10, 11 and 11b done** (`13f20ca`,
+`b404c19`, `b2b39de`, `69605cc`).
 
 **Batch 3 checkpoint — run 2026-08-09, PARTIALLY satisfied.** Full
 results in §6b. Summary:
@@ -1050,21 +1077,41 @@ results in §6b. Summary:
   the checkpoint's primary criterion and the failure that motivated 9c.
 - ✅ last utterance translated; no duplicated closing line; interim-ghost
   scan PASS on both.
-- ❌ **items 10 and 11 are still unverified live.** Both sessions were
-  Stopped after speech had already settled, so `latest_interim_len` was
-  `0` and `_recover_interim_tail_on_stop` returned at `empty_interim`
-  before reaching either filter.
+- ❌ **items 10 and 11 are still unverified live.** Both sessions reached
+  Stop with `latest_interim_len: 0`, so `_recover_interim_tail_on_stop`
+  returned at `empty_interim` before either filter ran.
+- 🔍 **…and investigating *why* it was empty found item 11b** (`69605cc`),
+  a real content-loss bug: in the ja run the empty interim was **not**
+  benign — the ghost watchdog had cleared a live 10-char interim 1.06s
+  before Stop, and that speech is missing from the final export. In the en
+  run it was benign (both interims committed normally via
+  `action=clear_interim`). **Without 11b, items 10 and 11 could not have
+  fired in production at all** in the case they were written for. This is
+  the third time in this project that fixing one thing surfaced the next
+  (§7's warning), and the first time the checkpoint itself caught it.
 
 **→ Outstanding checkpoint action (needs a human, §3.10):** one more
 session per language where **Stop is pressed mid-sentence, while still
 speaking**, so an uncommitted interim tail actually exists at Stop. That
-is the only way to exercise items 10 and 11. In the resulting run check
-`logs/async_debug.log` for `[INTERIM] stop tail` entries and confirm:
-- `latest_interim_len` > 0 (otherwise the test did not reproduce the
-  condition — repeat it)
+is the only way to exercise items 10, 11 and 11b end-to-end. Two variants
+are worth doing, because they cover different halves:
+- **(a) Stop immediately** after the last word (within ~5s) — the tail is
+  still live, exercising items 10/11 directly.
+- **(b) Stop after a ~10s pause** following the last word — long enough
+  for the watchdog to fire first, exercising 11b's orphan hand-off. This
+  is the exact shape that lost speech in run `...033339`.
+
+In the resulting run check `logs/async_debug.log` for `[INTERIM] stop
+tail` entries and confirm:
+- `latest_interim_len` > 0, **or** a `stop tail using watchdog orphan`
+  entry in variant (b). If neither appears the test did not reproduce the
+  condition — repeat it.
 - the spoken tail appears in `transcripts/Alpha_output_FINAL.txt` and is
   **not** dropped as `skip_already_committed` / `interim_in_final`
 - it appears exactly once — no duplicated closing line
+- no `stop tail orphan superseded` entry in variant (b) (that would mean
+  a later interim arrived and the orphan was correctly discarded — valid,
+  but it means the run did not test the hand-off either)
 - the `reason` distribution of any `stop tail skipped` events, which also
   supplies the `too_short` measurement §5 is waiting on
 
