@@ -383,6 +383,7 @@ passing. **Never delete entries** — mark them `[resolved, see item #N]`.
   independent, template-following, Sonnet-5-appropriate items in
   different files with no shared state, so skipping ahead carried no
   cross-item risk. 12 and 13 remain open in §6c, unaffected.
+- 2026-08-09 — **`test_task9_report.Issue3RealThreadIntegrationTest.test_inactivity_timeout_fallback_survives_immediate_real_stop_5x` flaked once** during item 12's full-suite verification (real Tk root + real threads + real timers, explicitly designed to run 5x to catch timing flakiness — it's sensitive to system load when run inside the full ~250-test suite). Per §2.3's own rule ("if a different test fails, treat it as a real regression... never assume") this was **not** waved off on assumption: re-run in isolation (exit 0, pass) and the full suite was re-run once more clean (exactly the same 7 named baseline failures, nothing else). Confirmed flake, not a regression from item 12 (unrelated file/subsystem — item 12 only touches `main_window.py` text-comparison logic). **If this test starts failing consistently, treat that as real and investigate — this note does not grant it a permanent pass.**
 - 2026-08-09 — **Batch 3 items 18, 19 also done out of order** (17
   skipped over this time, same reasoning: it's a multi-call-site refactor
   with a race condition, Opus-5-appropriate per §8, unlike 18/19's
@@ -524,6 +525,7 @@ passing. **Never delete entries** — mark them `[resolved, see item #N]`.
 | `b2b39de` | 2026-08-09 | 2 | **Batch 3 item 11 DONE.** `_should_commit_interim_recovery` refused the Stop-time tail whenever it appeared anywhere inside the last committed final (`norm_interim in norm_final`). Narrowed to equality-or-prefix, exactly mirroring item 10 — this is the *second* filter on the same last-chance path, so both had to be fixed for a tail to survive Stop. Also removed the same function's unreachable trailing `return False, "no_match"` (approved as part of this item, not a drive-by: a dead drop-path in a function whose every other drop-path is permanent loss). Tests: `tests/test_should_commit_interim_recovery_containment.py` (9), proven against pre-fix code — exactly the 2 containment tests fail, the other 7 pin unchanged branches. Full suite 229 tests, baseline unchanged. | Claude Opus 5 |
 | `5ffb18d` | 2026-08-09 | 14, 15, 16 | **Batch 3 items 14/15/16 DONE** (12, 13 intentionally skipped over — user approved 14/15/16 out of order; not a dependency issue, see §4). **14:** `merge_japanese_fragments`'s `prev.endswith(curr): return prev` fast path removed — proven a no-op vs. the overlap search for curr ≤32 chars, only mattered for curr >32 chars where it silently discarded the whole fragment with no trace; static fix, 0/114 real merge events scanned showed this firing. **15:** `_SPEAKER_LOCK_CONTINUATION_PREFIXES` had 5 ordinary connectives (なんだけど/それが/だから/でも/けど) misread as same-speaker evidence; removed, kept the one specific phrase. **16:** confirmed `teams_commit_decision_from_dup_action` diagnostic-only by full control-flow trace, renamed to `..._diagnostic_only`. Tests: `tests/test_batch3_items_14_15_16.py` (9) — before/after control caught my own first-draft item-14 test asserting `curr in merged`, which passes either way since curr is a literal substring of prev by construction; corrected to assert growth. Full suite 238 tests, baseline unchanged. | Claude Sonnet 5 |
 | `0aa6a8f` | 2026-08-09 | 18, 19 | **Batch 3 items 18/19 DONE.** **18:** `TranscriptStore.add_translation` matched by exact text equality only — a segment revised between translation request and response silently dropped its translation, no log. `canonical_utterance_id` was already in scope at every real call site but never threaded through; added the field to `TranscriptSegment`, wired it from `main_window.py` through `duplicate_protection.py` into the store, id-match now tried first (falls back to the old text match when no id supplied; logs `TRANSLATION_STORE_ID_MATCH_NOT_FOUND` and returns, does not fall back, when an id is supplied but not found — avoids reintroducing the same silent-drop risk through the back door). **19:** `duplicate_continuation_ratio`'s `cur_c in prev_c: return 1.0` (full duplicate on ANY substring match, suppressed outright by callers at ratio≥0.95) narrowed to prefix-or-suffix-of-previous — the only shapes that evidence a genuine truncated re-send. No live occurrence found for 19 (0 `DUPLICATE_CONTINUATION_SUPPRESSED` events scanned), static fix like item 14. Tests: `tests/test_batch3_items_18_19.py` (7), proven against pre-fix code (3/7 fail: 2 errors from the new kwarg not existing yet, 1 failure from the containment case). Full suite 245 tests, baseline unchanged. | Claude Sonnet 5 |
+| `af6781e` | 2026-08-09 | 12 | **Batch 3 item 12 DONE.** `_should_repair_previous_segment`'s `norm_curr in norm_prev` (any substring, anywhere) narrowed to prefix-or-suffix of previous. Traced the actual severity via `_try_segment_repair`'s caller: `current` is never dropped when `should_repair=False` — it still commits as its own segment downstream — so unlike 10/11/19 this was a missed-merge/transcript-quality bug (previous stays uncorrected as a separate duplicate-looking line), not silent content loss. Tests: `tests/test_should_repair_previous_segment_containment.py` (4), proven against pre-fix code (1/4 fails, the coincidental-middle-match case). Full suite 249 tests, baseline unchanged. | Claude Sonnet 5 |
 
 **Correction note on `5001275`:** the original draft of
 `PROACTIVE_AUDIT_20260806.md` mislabeled
@@ -784,8 +786,8 @@ Japanese after CJK compaction. Not containment, so out of item 11's
 scope, and per item 34's rule the replacement value must be measured, not
 guessed.
 
-**12. `[core:2]`** `alpha/ui/main_window.py` · `grep: def _should_repair_previous_segment` · ≈5072
-Same pattern; misclassifies a reworded previous segment as
+~~**12. `[core:2]`** `alpha/ui/main_window.py` · `grep: def _should_repair_previous_segment`~~ **DONE, `af6781e`.** Narrowed `norm_curr in norm_prev` to prefix-or-suffix. Traced severity: `current` is never dropped (still commits separately downstream via `_try_segment_repair`'s caller) — a missed-merge/quality bug, not content loss like 10/11/19.
+*(Original description kept:)* Same pattern; misclassifies a reworded previous segment as
 non-continuation.
 
 **13. `[core:2]`** `alpha/transcription/duplicate_protection.py` · `grep: def decide_transcript_action` · ≈49
@@ -1022,10 +1024,10 @@ the obvious-looking name.
 ### 6d. → NEXT UP
 
 **Batch 1 complete** (items 1-3). **Batch 2 complete** (items 4-9, 7b,
-9b). **Batch 3 in progress: items 9c, 10, 11, 14, 15, 16, 18, 19 done**
-(`13f20ca`, `b404c19`, `b2b39de`, `5ffb18d`, `0aa6a8f`). **12, 13, and 17
-were deliberately skipped over, not forgotten — still open, see §5's
-2026-08-09 note.**
+9b). **Batch 3 in progress: items 9c, 10, 11, 12, 14, 15, 16, 18, 19 done**
+(`13f20ca`, `b404c19`, `b2b39de`, `5ffb18d`, `0aa6a8f`, `af6781e`). **Only
+13, 17, and 20 remain — see §5's 2026-08-09 notes for why they were
+skipped over rather than done in order.**
 
 Batch 3's own checkpoint has **not** been run. 9c, 10, and 11 all changed
 real behavior on the Stop path (translation self-heal, and what the
@@ -1050,11 +1052,17 @@ narrowed), so the next live session should confirm:
   which would mean a translation arrived for an id no segment carries)
 - for Japanese sessions: no short remark that coincidentally repeats part
   of an earlier line goes missing (item 19 — also never observed live)
+- a reworded/corrected previous segment now gets merged instead of
+  staying as two separate lines (item 12 — check for
+  `repair_merge` in the Teams commit-decision diagnostics; note item 12
+  cannot cause content loss even if wrong, only a missed merge, so this
+  one is lower priority to verify)
 
-**→ Batch 3, item 12** — `alpha/ui/main_window.py`,
-`grep: def _should_repair_previous_segment`. Start at §3 step 1
-(investigate). Recommended model: Sonnet 5 (§8). Items 12, 13, 17, 20
-remain in §6c; 12 is Sonnet-5-appropriate, 13, 17 and 20 want Opus 5.
+**→ Batch 3, item 13** — `alpha/transcription/duplicate_protection.py`,
+`grep: def decide_transcript_action`. Start at §3 step 1 (investigate).
+Recommended model: Opus 5 (§8) — reasoning about which correction shapes
+must survive when no authoritative `lifecycle_decision` signal is
+present. Items 13, 17, 20 remain in §6c, all Opus-5-appropriate.
 
 **Still open from earlier live-test findings, not yet scheduled beyond
 their existing batch:** the Japanese assembler → canonical ledger loss
