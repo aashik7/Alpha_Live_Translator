@@ -411,9 +411,23 @@ def install_japanese_stabilizer_hooks(app_cls: type) -> None:
                 translation_layer_active=False,
             )
         try:
-            from alpha.utils.audio_temp_capture import cleanup_old_audio_temp
+            # fixes BUG_FIX_ROADMAP.md Batch 2 item 9b: this used to call
+            # cleanup_old_audio_temp(...) directly and synchronously,
+            # blocking every Start until it finished iterating EVERY
+            # historical run folder's audio_temp directory -- a cost that
+            # grows with total run count, not just this session (measured:
+            # an unaccounted 8.8s/12.5s gap between
+            # TEMP_AUDIO_RETENTION_CLEANUP_STARTED and audio/Deepgram init
+            # actually beginning, with dozens of run folders accumulated).
+            # The exact same cleanup is already scheduled non-blocking at
+            # Stop (stop_finalize_worker.py, reason="after_stop") via
+            # schedule_audio_cleanup_non_blocking -- use that same,
+            # already-tested wrapper here instead of the blocking call.
+            # Neither call site ever used the deleted-file-count return
+            # value, so this is a behavior-preserving swap.
+            from alpha.utils.audio_temp_capture import schedule_audio_cleanup_non_blocking
 
-            cleanup_old_audio_temp(reason="start_listening")
+            schedule_audio_cleanup_non_blocking(reason="start_listening")
         except Exception:
             pass
         return _orig_start_worker(self, *args, **kwargs)
