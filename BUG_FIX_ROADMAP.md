@@ -383,6 +383,13 @@ passing. **Never delete entries** — mark them `[resolved, see item #N]`.
   independent, template-following, Sonnet-5-appropriate items in
   different files with no shared state, so skipping ahead carried no
   cross-item risk. 12 and 13 remain open in §6c, unaffected.
+- 2026-08-09 — **Batch 3 items 18, 19 also done out of order** (17
+  skipped over this time, same reasoning: it's a multi-call-site refactor
+  with a race condition, Opus-5-appropriate per §8, unlike 18/19's
+  contained, single-module changes). 17 remains open in §6c, unaffected —
+  it does not share state with either 18 (a different file,
+  `transcript_store.py`'s translation matching) or 19 (a different file,
+  the boundary stabilizer's ratio function).
 - 2026-08-08 — **Never use `sed -i` on this repo's `.py` files, even for
   a quick temporary toggle during §3 step 5's before/after test proof.**
   GNU sed (via Git Bash) silently rewrote `constants.py`'s CRLF line
@@ -516,6 +523,7 @@ passing. **Never delete entries** — mark them `[resolved, see item #N]`.
 | `b404c19` | 2026-08-08 | 2 | **Batch 3 item 10 DONE.** `_check_stop_tail_duplicate` dropped the Stop-time interim tail on ANY substring match against ANY of the last 5 segments (`commit_text=None` = permanent loss on the last-chance path). Narrowed to equality-or-prefix, the only shapes that actually evidence "already committed"; interior-only matches now fall through and commit. Tests: `tests/test_check_stop_tail_duplicate_containment.py` (7) | Claude Opus 5 |
 | `b2b39de` | 2026-08-09 | 2 | **Batch 3 item 11 DONE.** `_should_commit_interim_recovery` refused the Stop-time tail whenever it appeared anywhere inside the last committed final (`norm_interim in norm_final`). Narrowed to equality-or-prefix, exactly mirroring item 10 — this is the *second* filter on the same last-chance path, so both had to be fixed for a tail to survive Stop. Also removed the same function's unreachable trailing `return False, "no_match"` (approved as part of this item, not a drive-by: a dead drop-path in a function whose every other drop-path is permanent loss). Tests: `tests/test_should_commit_interim_recovery_containment.py` (9), proven against pre-fix code — exactly the 2 containment tests fail, the other 7 pin unchanged branches. Full suite 229 tests, baseline unchanged. | Claude Opus 5 |
 | `5ffb18d` | 2026-08-09 | 14, 15, 16 | **Batch 3 items 14/15/16 DONE** (12, 13 intentionally skipped over — user approved 14/15/16 out of order; not a dependency issue, see §4). **14:** `merge_japanese_fragments`'s `prev.endswith(curr): return prev` fast path removed — proven a no-op vs. the overlap search for curr ≤32 chars, only mattered for curr >32 chars where it silently discarded the whole fragment with no trace; static fix, 0/114 real merge events scanned showed this firing. **15:** `_SPEAKER_LOCK_CONTINUATION_PREFIXES` had 5 ordinary connectives (なんだけど/それが/だから/でも/けど) misread as same-speaker evidence; removed, kept the one specific phrase. **16:** confirmed `teams_commit_decision_from_dup_action` diagnostic-only by full control-flow trace, renamed to `..._diagnostic_only`. Tests: `tests/test_batch3_items_14_15_16.py` (9) — before/after control caught my own first-draft item-14 test asserting `curr in merged`, which passes either way since curr is a literal substring of prev by construction; corrected to assert growth. Full suite 238 tests, baseline unchanged. | Claude Sonnet 5 |
+| `0aa6a8f` | 2026-08-09 | 18, 19 | **Batch 3 items 18/19 DONE.** **18:** `TranscriptStore.add_translation` matched by exact text equality only — a segment revised between translation request and response silently dropped its translation, no log. `canonical_utterance_id` was already in scope at every real call site but never threaded through; added the field to `TranscriptSegment`, wired it from `main_window.py` through `duplicate_protection.py` into the store, id-match now tried first (falls back to the old text match when no id supplied; logs `TRANSLATION_STORE_ID_MATCH_NOT_FOUND` and returns, does not fall back, when an id is supplied but not found — avoids reintroducing the same silent-drop risk through the back door). **19:** `duplicate_continuation_ratio`'s `cur_c in prev_c: return 1.0` (full duplicate on ANY substring match, suppressed outright by callers at ratio≥0.95) narrowed to prefix-or-suffix-of-previous — the only shapes that evidence a genuine truncated re-send. No live occurrence found for 19 (0 `DUPLICATE_CONTINUATION_SUPPRESSED` events scanned), static fix like item 14. Tests: `tests/test_batch3_items_18_19.py` (7), proven against pre-fix code (3/7 fail: 2 errors from the new kwarg not existing yet, 1 failure from the containment case). Full suite 245 tests, baseline unchanged. | Claude Sonnet 5 |
 
 **Correction note on `5001275`:** the original draft of
 `PROACTIVE_AUDIT_20260806.md` mislabeled
@@ -823,14 +831,14 @@ row. Related: audit §2.7's note that even the "safe" variant is keyed by
 speaker only with no channel/session key — record whether that remains
 open after this fix.
 
-**18. `[core:2]`** `alpha/summary/transcript_store.py` · `grep: def add_translation` · ≈158
-Matches an incoming translation to its segment by **exact text
+~~**18. `[core:2]`** `alpha/summary/transcript_store.py` · `grep: def add_translation`~~ **DONE, `0aa6a8f`.** Added `canonical_utterance_id` to `TranscriptSegment`, threaded it from `main_window.py` through `duplicate_protection.py` into the store; `add_translation` matches on it first when supplied, falls back to text-equality when not, logs `TRANSLATION_STORE_ID_MATCH_NOT_FOUND` rather than silently reusing the old text match if an id is given but not found.
+*(Original description kept:)* Matches an incoming translation to its segment by **exact text
 equality**, not record id. If the segment's text was revised between
 request and response, the match silently fails and the translation is
 dropped with no log. Move to record-id matching.
 
-**19. `[core:2]`** `alpha/transcription/japanese_boundary_stabilizer.py` · `grep: def duplicate_continuation_ratio` · ≈233
-Pure substring containment + positional character-match ratio, not
+~~**19. `[core:2]`** `alpha/transcription/japanese_boundary_stabilizer.py` · `grep: def duplicate_continuation_ratio`~~ **DONE, `0aa6a8f`.** Narrowed the `cur_c in prev_c` full-duplicate check to prefix-or-suffix-of-previous. No live occurrence found, static fix like item 14.
+*(Original description kept:)* Pure substring containment + positional character-match ratio, not
 substitution-aware. Can silently drop a genuinely new short remark that
 happens to be a literal substring of the previous line (e.g. a repeated
 "ありがとうございました").
@@ -1014,9 +1022,9 @@ the obvious-looking name.
 ### 6d. → NEXT UP
 
 **Batch 1 complete** (items 1-3). **Batch 2 complete** (items 4-9, 7b,
-9b). **Batch 3 in progress: items 9c, 10, 11, 14, 15, 16 done**
-(`13f20ca`, `b404c19`, `b2b39de`, `5ffb18d`). **12 and 13 were
-deliberately skipped over, not forgotten — still open, see §5's
+9b). **Batch 3 in progress: items 9c, 10, 11, 14, 15, 16, 18, 19 done**
+(`13f20ca`, `b404c19`, `b2b39de`, `5ffb18d`, `0aa6a8f`). **12, 13, and 17
+were deliberately skipped over, not forgotten — still open, see §5's
 2026-08-09 note.**
 
 Batch 3's own checkpoint has **not** been run. 9c, 10, and 11 all changed
@@ -1037,12 +1045,16 @@ narrowed), so the next live session should confirm:
   misattributed speaker-turn line (items 14/15's theoretical fixes — no
   live occurrence was found for either, so this is the first real chance
   to observe them either way)
+- translations still land on the right line even after a mid-session
+  correction (item 18 — check for `TRANSLATION_STORE_ID_MATCH_NOT_FOUND`,
+  which would mean a translation arrived for an id no segment carries)
+- for Japanese sessions: no short remark that coincidentally repeats part
+  of an earlier line goes missing (item 19 — also never observed live)
 
 **→ Batch 3, item 12** — `alpha/ui/main_window.py`,
 `grep: def _should_repair_previous_segment`. Start at §3 step 1
-(investigate). Recommended model: Sonnet 5 (§8). Items 12, 13, 17-20
-remain in §6c; 12, 18, 19 are Sonnet-5-appropriate, 13, 17 and 20 want
-Opus 5.
+(investigate). Recommended model: Sonnet 5 (§8). Items 12, 13, 17, 20
+remain in §6c; 12 is Sonnet-5-appropriate, 13, 17 and 20 want Opus 5.
 
 **Still open from earlier live-test findings, not yet scheduled beyond
 their existing batch:** the Japanese assembler → canonical ledger loss
