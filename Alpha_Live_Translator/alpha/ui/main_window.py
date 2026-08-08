@@ -4499,13 +4499,43 @@ class AlphaApp(
             if len(norm_interim) - len(norm_final) < 12:
                 return False, "not_meaningfully_longer"
             return True, "interim_extends_final"
-        if norm_final and norm_interim in norm_final:
+        # fixes BUG_FIX_ROADMAP.md Batch 3 item 11 (audit §3.4 row 3): this
+        # used to drop the leftover interim whenever it appeared ANYWHERE
+        # inside the last committed line (`norm_interim in norm_final`).
+        # Same defect and same reasoning as item 10 in
+        # _check_stop_tail_duplicate, one filter further down the same
+        # Stop-time last-chance path -- both filters must pass for
+        # uncommitted speech to survive Stop, so a false match here is
+        # permanent loss just the same.
+        #
+        # An interim is the in-progress hypothesis building toward a final,
+        # so the evidence that it is "already covered" by that final is
+        # that the final *equals* it or *starts with* it. An interior or
+        # suffix-only match is coincidence, not evidence: a speaker who
+        # repeats an earlier phrase as a fresh closing remark had that
+        # remark silently discarded.
+        #
+        # Note the asymmetry this removes -- the mirror-image case just
+        # above (final contained in interim) already refuses to drop
+        # anything without a 12-char meaningfulness margin, while this
+        # branch had no such guard at all. Interior-only matches now fall
+        # through to new_missing_tail, which commits and preserves the text.
+        if norm_final and (
+            norm_interim == norm_final or norm_final.startswith(norm_interim)
+        ):
             return False, "interim_in_final"
         if norm_final and norm_interim and norm_interim != norm_final:
             return True, "new_missing_tail"
-        if not norm_final:
-            return True, "no_prior_final"
-        return False, "no_match"
+        # The old trailing `return False, "no_match"` was unreachable and is
+        # removed rather than left as a dead drop-path in a function whose
+        # every other drop-path loses speech permanently. Reaching this line
+        # requires norm_final to be empty: if it were not, either it is
+        # contained in norm_interim (returned above), or norm_interim equals
+        # it or is its prefix (returned above), or the two differ and
+        # new_missing_tail returns -- and they cannot be equal here, because
+        # equality implies containment, which the first branch already
+        # returns on. norm_interim is always non-empty by the length guard.
+        return True, "no_prior_final"
 
     def _recover_interim_tail_on_stop(self):
         if getattr(self, "_latest_interim_committed", False):
