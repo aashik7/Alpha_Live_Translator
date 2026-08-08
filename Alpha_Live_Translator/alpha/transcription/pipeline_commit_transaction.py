@@ -101,9 +101,25 @@ def _write_suppressed_stop_tail_candidate(
 
             ident = get_current_run_identity()
             folder = ensure_path(getattr(ident, "run_folder", None))
-        except Exception:
+        except Exception as exc:
+            # fixes BUG_FIX_ROADMAP.md Batch 2 item 7: logging only.
             folder = None
+            _jp_log(
+                "SUPPRESSED_STOP_TAIL_CANDIDATE_FOLDER_RESOLUTION_FAILED",
+                reason=f"{type(exc).__name__}:{exc}",
+                transaction_id=transaction_id,
+            )
     if folder is None:
+        # fixes BUG_FIX_ROADMAP.md Batch 2 item 7: logging only -- this
+        # evidence entry for a legitimately-suppressed Stop-tail
+        # candidate was previously dropped with zero trace (the
+        # suppression itself, via the ledger, still succeeds either way
+        # -- this is audit-trail loss only, not transcript corruption).
+        _jp_log(
+            "SUPPRESSED_STOP_TAIL_CANDIDATE_WRITE_SKIPPED",
+            reason="no_active_run_folder",
+            transaction_id=transaction_id,
+        )
         return
     stage_dir = folder / "accuracy_stage_compare"
     stage_dir.mkdir(parents=True, exist_ok=True)

@@ -903,8 +903,15 @@ class JapaneseBoundaryStabilizer:
                 data = json.loads(p.read_text(encoding="utf-8"))
                 data.update(updates)
                 p.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-            except Exception:
-                pass
+            except Exception as exc:
+                # fixes BUG_FIX_ROADMAP.md Batch 2 item 7: logging only.
+                # This updates a secondary evidence index only (not the
+                # transcript itself), so behavior stays swallow-and-continue.
+                _jp_log(
+                    "ACCURACY_EVIDENCE_INDEX_UPDATE_FAILED",
+                    reason=f"{type(exc).__name__}:{exc}",
+                    path=str(p),
+                )
         _jp_log("LATEST_ACCURACY_INDEX_BOUNDARY_STABILIZER_FIELDS_UPDATED")
 
     def simulate_lines(self, lines: list[str]) -> tuple[list[str], list[dict[str, Any]]]:

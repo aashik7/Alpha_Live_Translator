@@ -1926,8 +1926,21 @@ def _run_finalize_worker(host: Any) -> None:
                 run_id=str(getattr(_this_run_identity, "run_id", "") or ""),
                 run_folder=str(getattr(_this_run_identity, "run_folder", "") or ""),
             )
-        except Exception:
-            pass
+        except Exception as exc:
+            # fixes BUG_FIX_ROADMAP.md Batch 2 item 7: logging only -- if
+            # get_current_run_identity() or the scheduling call itself
+            # raises, the evidence package was previously silently never
+            # scheduled: no log line recorded it, and the run's
+            # RUN_MANIFEST.json stays at completed_pending_evidence_package
+            # permanently with nothing to ever promote or explicitly fail
+            # it. Scheduling behavior itself is unchanged.
+            try:
+                freeze_guard_log(
+                    "EVIDENCE_PACKAGE_SCHEDULING_FAILED",
+                    reason=f"{type(exc).__name__}:{exc}",
+                )
+            except Exception:
+                pass
 
         # Do NOT call _queue_final_ui_update again after drain (V25.3.3.1).
         freeze_guard_log("EVIDENCE_PACKAGE_WORKER_DISABLED_DURING_RUNTIME")

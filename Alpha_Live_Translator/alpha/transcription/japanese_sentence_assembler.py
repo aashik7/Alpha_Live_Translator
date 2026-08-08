@@ -2324,8 +2324,18 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
                     action=stab.get("action"),
                     reason=stab.get("reason"),
                 )
-            except Exception:
-                pass
+            except Exception as exc:
+                # fixes BUG_FIX_ROADMAP.md Batch 2 item 7: logging only --
+                # on exception, the entire hold/merge/suppress decision
+                # from the stabilizer was previously discarded silently
+                # and segment fell through to _publish_sentence
+                # unchanged, with no log entry distinguishing this from
+                # "stabilizer decided to emit unchanged". Behavior
+                # (fall through unchanged) is intentionally unchanged.
+                jp_accuracy_log(
+                    "BOUNDARY_STABILIZER_CALL_FAILED",
+                    reason=f"{type(exc).__name__}:{exc}",
+                )
 
         self._publish_sentence(
             speaker,
@@ -4242,8 +4252,20 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
                     record_flight_event("stable_commit", force=True, segment_id=seg_id)
                 except Exception:
                     pass
-        except Exception:
-            pass
+        except Exception as exc:
+            # fixes BUG_FIX_ROADMAP.md Batch 2 item 7: logging only -- this
+            # block's failure (transcript_snapshot_store write,
+            # notify_stable_commit, record_flight_event) previously had
+            # zero logging anywhere, not even to this file's own
+            # dedicated accuracy log, making it undiagnosable from the
+            # exact evidence this project relies on for live-run
+            # analysis. Behavior (swallow, continue) is unchanged.
+            jp_accuracy_log(
+                "STABLE_COMMIT_SNAPSHOT_WRITE_FAILED",
+                reason=f"{type(exc).__name__}:{exc}",
+                boundary_revise=bool(boundary_revise),
+                suppress_stop_tail=bool(suppress_stop_tail),
+            )
         if suppress_stop_tail:
             jp_accuracy_log(
                 "commit_decision",

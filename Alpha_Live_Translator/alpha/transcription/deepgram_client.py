@@ -853,6 +853,21 @@ class DeepgramClientMixin:
             """Normalize at Deepgram boundary: mono int16 LE 16 kHz PCM bytes."""
             pcm_bytes, sample_count = ensure_deepgram_pcm_bytes(raw_chunk)
             if not pcm_bytes:
+                # fixes BUG_FIX_ROADMAP.md Batch 2 item 7: logging only --
+                # this was a silent no-op drop of one audio chunk with no
+                # trace anywhere. jp_accuracy_log throttles repeats of the
+                # same event internally, so this is safe even if normal
+                # audio processing hits it often.
+                try:
+                    from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+                    jp_accuracy_log(
+                        "PCM_NORMALIZE_EMPTY_OUTPUT",
+                        input_type=input_type,
+                        input_bytes=len(raw_chunk) if raw_chunk else 0,
+                    )
+                except Exception:
+                    pass
                 return 0
             if not getattr(self, "_audio_format_first_chunk_logged", False):
                 self._audio_format_first_chunk_logged = True
