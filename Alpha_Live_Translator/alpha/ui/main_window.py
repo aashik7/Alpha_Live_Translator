@@ -5670,7 +5670,25 @@ class AlphaApp(
             norm_seg = self._normalize_compare(seg_text)
             if not norm_seg:
                 continue
-            if norm_interim == norm_seg or norm_interim in norm_seg:
+            # fixes BUG_FIX_ROADMAP.md Batch 3 item 10 (audit §3.4 row 2):
+            # this used to drop the leftover interim whenever it was ANY
+            # substring of ANY of the last 5 committed segments
+            # (`norm_interim in norm_seg`). This runs at Stop, on the
+            # last-chance commit path, and returns commit_text=None -- so a
+            # false match here loses the text permanently, with no second
+            # chance.
+            #
+            # An interim is the in-progress hypothesis that was building
+            # toward a final, so the evidence that it is "already
+            # committed" is that the committed segment *equals* it or
+            # *starts with* it. An arbitrary interior substring match is
+            # coincidence, not evidence: a short but genuinely new closing
+            # utterance ("Thank you.", "Okay.", "はい。") that happens to
+            # appear somewhere inside an earlier committed line was being
+            # silently discarded. Interior-only matches now fall through to
+            # the suffix/merge logic below and ultimately to
+            # commit_new_tail, which preserves the text.
+            if norm_interim == norm_seg or norm_seg.startswith(norm_interim):
                 return {
                     "decision": "skip_already_committed",
                     "matched_segment_preview": _diag_text_preview(seg_text, 160),
