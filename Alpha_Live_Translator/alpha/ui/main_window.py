@@ -5175,7 +5175,19 @@ class AlphaApp(
         norm_curr = self._normalize_compare(curr)
         if norm_curr == norm_prev:
             return False, "exact_duplicate"
-        if norm_curr in norm_prev:
+        # fixes BUG_FIX_ROADMAP.md Batch 3 item 12: this used to be
+        # `if norm_curr in norm_prev` -- current counted as "nothing new,
+        # skip the repair" whenever it was a literal substring ANYWHERE
+        # inside previous, including the middle. A rewording of previous
+        # that happens to share a verbatim chunk somewhere in the old text
+        # was misclassified as non-continuation, so the correction never
+        # got merged in -- previous stayed uncorrected and current still
+        # committed separately downstream (not a content-loss bug like
+        # items 10/11/19: current is never dropped here, only the merge
+        # opportunity is missed). Narrowed to prefix-or-suffix of previous,
+        # the only shapes that actually evidence current is a truncated
+        # partial repeat rather than a coincidental substring match.
+        if norm_prev.startswith(norm_curr) or norm_prev.endswith(norm_curr):
             return False, "current_contained_in_previous"
         if norm_prev in norm_curr and len(norm_curr) - len(norm_prev) < 8:
             return False, "minor_extension_only"
