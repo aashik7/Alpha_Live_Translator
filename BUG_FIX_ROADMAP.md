@@ -319,6 +319,17 @@ passing. **Never delete entries** — mark them `[resolved, see item #N]`.
   actually a **keyword argument** passed into `_apply_active_update_locked`
   (grep `force_new=not same_active`). The finding itself is unchanged and
   still valid; only the framing in the audit text is imprecise.
+- 2026-08-08 — **Never use `sed -i` on this repo's `.py` files, even for
+  a quick temporary toggle during §3 step 5's before/after test proof.**
+  GNU sed (via Git Bash) silently rewrote `constants.py`'s CRLF line
+  endings to LF while toggling `INTERIM_GHOST_TTL_MS` back to 1500 and
+  forward again — the resulting commit (`9892cb1`) had a 713+/674- diff
+  for a one-line content change, unreviewable, and had to be followed by
+  a dedicated line-ending-fix commit (`1649e82`). Use the Edit tool
+  (preserves line endings) or a full-file backup/restore (`cp` the file
+  before toggling, `cp` it back after) instead — both of these were used
+  safely for the same purpose on items 1 and 3 in the same session.
+  `[resolved, see 9892cb1 + 1649e82]`
 
 ---
 
@@ -343,6 +354,13 @@ passing. **Never delete entries** — mark them `[resolved, see item #N]`.
 | `5c48847` | 2026-08-07 | 1 | Documented (not fixed) `deepgram_client.py`'s double interim delivery (audit §3.9). Recreated `PROACTIVE_AUDIT_20260806.md` after finding it was never committed — **this is the incident §0 cites as the reason to verify this Ledger against git.** | Claude Code |
 | `a5e2ac4` | 2026-08-07 | 1 | Stop `utterance_lifecycle.py` Case C's commit path from also publishing its final text through the interim-preview channel (`emit_interim` param). Found by live test *after* `78eb59e` — a 3rd independent source of the same visible symptom. Tests: `tests/test_commit_path_interim_emit.py` (6) | Claude Code |
 | `114391b` | 2026-08-07 | — | Added this roadmap + `Bug Report.md` (Japanese findings 4.1-4.4) | Claude Code |
+| `349ce1e` | 2026-08-07 | — | Rewrote roadmap to v4: grep anchors, restored 5 missing items, fixed cross-doc STATUS divergence | Claude Code |
+| `6564b36` | 2026-08-07 | 3 | **Batch 1 item 1 DONE.** Removed dead zero-arg `_flush_pending_translation_submit()` call in `_begin_graceful_stop` — confirmed genuinely redundant vs. `flush_pending_translation_submissions()` (plural), not just broken. Tests: `tests/test_begin_graceful_stop_no_broken_flush.py` (1) | Claude Sonnet 5 |
+| `9892cb1` | 2026-08-08 | 4 | **Batch 1 item 2 DONE.** `INTERIM_GHOST_TTL_MS` 1500 → 6000, per measured English (1924ms) and Japanese (4063ms) worst-case gaps. ⚠️ This commit's diff is a full-file rewrite of `constants.py` — see `1649e82` for why (process note, not a content issue). Tests: `TestInterimGhostTtlCalibration` added to `tests/test_interim_ghost_line.py` (2) | Claude Sonnet 5 |
+| `1649e82` | 2026-08-08 | — | **Process fix, not a roadmap item.** Restored `constants.py`'s CRLF line endings, accidentally flipped to LF by a `sed -i` used mid-fix to toggle the TTL for before/after test verification. Zero content change (verified byte-identical after line-ending normalization). **Lesson recorded in §5: never use `sed -i` on this repo's `.py` files, even for a quick toggle — use Edit or a full-file backup/restore instead.** | Claude Sonnet 5 |
+| `38a92b5` | 2026-08-08 | 4 | **Batch 1 item 3 DONE.** `tools/scan_interim_ghost_evidence.py::build_verdict()` now reports REVIEW (not PASS) when the watchdog-firings-to-decisions ratio ≥25% (`WATCHDOG_FIRING_RATIO_REVIEW_THRESHOLD`). Also resynced the tool's mirrored `INTERIM_GHOST_TTL_MS` literal (1500→6000, was left stale after item 2). Re-ran against the real run that had shown false PASS (`...20260807-153955`) — now correctly WARNs at 83%. Tests: `tests/test_scan_interim_ghost_evidence_verdict.py` (5) | Claude Sonnet 5 |
+
+**BATCH 1 COMPLETE as of `38a92b5`.** All 3 items done, all with proven regression tests, baseline unchanged throughout (176→178→183 tests). Next: Batch 2 (§6c).
 
 **Correction note on `5001275`:** the original draft of
 `PROACTIVE_AUDIT_20260806.md` mislabeled
@@ -369,48 +387,30 @@ Format per item: **`[core:N]`** · file · `grep:` anchor · `≈line` (as of
 
 ---
 
-#### BATCH 1 — trivial, standalone, near-zero risk
+#### BATCH 1 — trivial, standalone, near-zero risk — ✅ COMPLETE (see §6a: `6564b36`, `9892cb1`, `1649e82`, `38a92b5`)
 
-**Recommended model: Sonnet 5** (see §8).
+All 3 items done 2026-08-07/08. Kept below, struck through, for
+traceability — do not re-do these.
 
-**1. `[core:3]` — dead safety net that always throws**
-`alpha/ui/main_window.py` · `grep: def _begin_graceful_stop` · ≈7955
-Inside it, `self._flush_pending_translation_submit()` is called with zero
-arguments, but the method requires a `key` parameter with no default
-(`grep: def _flush_pending_translation_submit`, ≈6701). Every call raises
-`TypeError`, swallowed by a bare `except Exception: pass`. Harmless today
-only because `stop_finalize_worker.py` separately calls the correct
-plural method later — but this specific safety net has never once
-executed. **Investigate first whether the call is genuinely redundant**
-(then delete it) or should pass a real key (then fix it). Do not assume
-which.
+~~**1. `[core:3]` — dead safety net that always throws**~~ **DONE, `6564b36`.**
+~~`alpha/ui/main_window.py` · `grep: def _begin_graceful_stop`~~ Removed
+the dead zero-arg call; confirmed genuinely redundant against
+`flush_pending_translation_submissions()`.
 
-**2. `[core:4]` — interim ghost watchdog TTL is miscalibrated**
-`alpha/constants.py` · `grep: INTERIM_GHOST_TTL_MS`
-Currently `1500`. Measured gap between the last interim update and the
-matching final comparison: English **1635-1924 ms** across 5 runs;
-**Japanese up to 4063 ms** (full table in `Bug Report.md` §4.4). The TTL
-sits below both, so the watchdog clears legitimate in-flight previews.
-**Do NOT derive this from `DEEPGRAM_ENDPOINTING_MS`** — Japanese
-endpointing (500 ms) is *lower* than English (1200 ms) yet shows the
-*longest* gaps, because the Japanese "final" comes from the assembler's
-own hold/timeout logic, not Deepgram endpointing. An
-endpointing-derived formula sizes Japanese backwards. Prior
-investigation proposed a flat `6000` ms (JA worst case 4063 + ~2 s
-margin) — **proposed, not yet approved.** Re-verify against any newer
-run data and get explicit sign-off on the exact number.
+~~**2. `[core:4]` — interim ghost watchdog TTL is miscalibrated**~~ **DONE, `9892cb1`.**
+`INTERIM_GHOST_TTL_MS` 1500 → 6000.
 
-**3. `[core:4]` — scan tool reports PASS when it should report REVIEW**
-`tools/scan_interim_ghost_evidence.py` · `grep: def build_verdict`
-Returns PASS whenever `anomalies` is empty, ignoring the
-watchdog-firings-to-decisions ratio. A run with 10 firings out of 12
-decisions currently reports PASS. Above some threshold (≈20-30 % of
-decisions needing the watchdog) it should report REVIEW — a high ratio
-means Layer 1's identity gate is not doing its job. Tooling only; no
-production code.
+~~**3. `[core:4]` — scan tool reports PASS when it should report REVIEW**~~ **DONE, `38a92b5`.**
+Added `WATCHDOG_FIRING_RATIO_REVIEW_THRESHOLD = 0.25` to `build_verdict()`.
 
-**Checkpoint:** live test both languages (§3.10). Confirm near-zero
-watchdog firings and a correct verdict.
+**Checkpoint (§3.10 live test) — NOT YET RUN.** Batch 1's code fixes are
+in; the live-test confirmation that near-zero watchdog firings actually
+occur in a *new* session (not a re-scan of old pre-fix log data) is
+still outstanding. Whoever picks up Batch 2 should ask the human to run
+one live session per language and check
+`tools/scan_interim_ghost_evidence.py`'s output before assuming Batch
+1's real-world effect is confirmed — the checkpoint is process, not
+optional.
 
 ---
 
@@ -736,9 +736,17 @@ the obvious-looking name.
 
 ### 6d. → NEXT UP
 
-**Batch 1, item 1** — `alpha/ui/main_window.py`, `grep: def _begin_graceful_stop`,
-the zero-argument `_flush_pending_translation_submit()` call.
-Start at §3 step 1 (investigate).
+**Batch 1 is complete** (items 1-3, commits `6564b36`/`9892cb1`/`1649e82`/`38a92b5`).
+Its live-test checkpoint (§3.10) has **not** been run yet — consider asking
+the human for one before or during Batch 2; it's not blocking, but it's
+the only real-world confirmation that item 2's TTL recalibration reduces
+watchdog firings in a fresh session (everything checked so far is either
+unit tests or a re-scan of *old*, pre-fix log data).
+
+**→ Batch 2, item 4** — `alpha/ui/main_window.py`,
+`grep: def _remove_interim_line_from_display`. Start at §3 step 1
+(investigate). See §6c Batch 2 for the full list (items 4-9, with 7b
+flagged for Opus 5 per §8).
 
 ---
 
