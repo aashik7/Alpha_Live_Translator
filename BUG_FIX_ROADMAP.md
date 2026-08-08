@@ -383,6 +383,26 @@ passing. **Never delete entries** — mark them `[resolved, see item #N]`.
   independent, template-following, Sonnet-5-appropriate items in
   different files with no shared state, so skipping ahead carried no
   cross-item risk. 12 and 13 remain open in §6c, unaffected.
+- 2026-08-09 — **New finding while doing item 13, deliberately NOT fixed
+  (out of that item's scope): `decide_transcript_action`'s
+  `if curr_n in prev_n: return ("skip", None)` is a 5th instance of the
+  any-position containment anti-pattern, and this one DROPS the incoming
+  final entirely.** `[core:2]`,
+  `alpha/transcription/duplicate_protection.py` ·
+  `grep: def decide_transcript_action`. Identical in shape to items 10,
+  11, 12 and 19: a short new final that happens to be an interior
+  substring of the previous committed line for that speaker is skipped,
+  not committed. Item 13's write-up only covered the substitution gap and
+  the two dead branches, so narrowing this was left alone rather than
+  smuggled in as a drive-by (§3 step 4). **Two things to know before
+  fixing it:** (a) item 13 removed a now-dead `prev_n.startswith(curr_n)`
+  branch that this check used to subsume — narrowing this one makes that
+  case fall through to `("add", ...)` instead of `("skip", None)`, which
+  must be an intentional decision, not an accident; (b) unlike 10/11/19
+  the fix direction here is unambiguous (skip = drop = loss), so
+  prefix-or-suffix narrowing applies cleanly. **Propose as a new Batch 3
+  item — Sonnet 5 is sufficient given 10/11/12/19 already set the
+  template.** `[open]`
 - 2026-08-09 — **`test_task9_report.Issue3RealThreadIntegrationTest.test_inactivity_timeout_fallback_survives_immediate_real_stop_5x` flaked once** during item 12's full-suite verification (real Tk root + real threads + real timers, explicitly designed to run 5x to catch timing flakiness — it's sensitive to system load when run inside the full ~250-test suite). Per §2.3's own rule ("if a different test fails, treat it as a real regression... never assume") this was **not** waved off on assumption: re-run in isolation (exit 0, pass) and the full suite was re-run once more clean (exactly the same 7 named baseline failures, nothing else). Confirmed flake, not a regression from item 12 (unrelated file/subsystem — item 12 only touches `main_window.py` text-comparison logic). **If this test starts failing consistently, treat that as real and investigate — this note does not grant it a permanent pass.**
 - 2026-08-09 — **Batch 3 items 18, 19 also done out of order** (17
   skipped over this time, same reasoning: it's a multi-call-site refactor
@@ -571,6 +591,7 @@ passing. **Never delete entries** — mark them `[resolved, see item #N]`.
 | `5ffb18d` | 2026-08-09 | 14, 15, 16 | **Batch 3 items 14/15/16 DONE** (12, 13 intentionally skipped over — user approved 14/15/16 out of order; not a dependency issue, see §4). **14:** `merge_japanese_fragments`'s `prev.endswith(curr): return prev` fast path removed — proven a no-op vs. the overlap search for curr ≤32 chars, only mattered for curr >32 chars where it silently discarded the whole fragment with no trace; static fix, 0/114 real merge events scanned showed this firing. **15:** `_SPEAKER_LOCK_CONTINUATION_PREFIXES` had 5 ordinary connectives (なんだけど/それが/だから/でも/けど) misread as same-speaker evidence; removed, kept the one specific phrase. **16:** confirmed `teams_commit_decision_from_dup_action` diagnostic-only by full control-flow trace, renamed to `..._diagnostic_only`. Tests: `tests/test_batch3_items_14_15_16.py` (9) — before/after control caught my own first-draft item-14 test asserting `curr in merged`, which passes either way since curr is a literal substring of prev by construction; corrected to assert growth. Full suite 238 tests, baseline unchanged. | Claude Sonnet 5 |
 | `0aa6a8f` | 2026-08-09 | 18, 19 | **Batch 3 items 18/19 DONE.** **18:** `TranscriptStore.add_translation` matched by exact text equality only — a segment revised between translation request and response silently dropped its translation, no log. `canonical_utterance_id` was already in scope at every real call site but never threaded through; added the field to `TranscriptSegment`, wired it from `main_window.py` through `duplicate_protection.py` into the store, id-match now tried first (falls back to the old text match when no id supplied; logs `TRANSLATION_STORE_ID_MATCH_NOT_FOUND` and returns, does not fall back, when an id is supplied but not found — avoids reintroducing the same silent-drop risk through the back door). **19:** `duplicate_continuation_ratio`'s `cur_c in prev_c: return 1.0` (full duplicate on ANY substring match, suppressed outright by callers at ratio≥0.95) narrowed to prefix-or-suffix-of-previous — the only shapes that evidence a genuine truncated re-send. No live occurrence found for 19 (0 `DUPLICATE_CONTINUATION_SUPPRESSED` events scanned), static fix like item 14. Tests: `tests/test_batch3_items_18_19.py` (7), proven against pre-fix code (3/7 fail: 2 errors from the new kwarg not existing yet, 1 failure from the containment case). Full suite 245 tests, baseline unchanged. | Claude Sonnet 5 |
 | `af6781e` | 2026-08-09 | 12 | **Batch 3 item 12 DONE.** `_should_repair_previous_segment`'s `norm_curr in norm_prev` (any substring, anywhere) narrowed to prefix-or-suffix of previous. Traced the actual severity via `_try_segment_repair`'s caller: `current` is never dropped when `should_repair=False` — it still commits as its own segment downstream — so unlike 10/11/19 this was a missed-merge/transcript-quality bug (previous stays uncorrected as a separate duplicate-looking line), not silent content loss. Tests: `tests/test_should_repair_previous_segment_containment.py` (4), proven against pre-fix code (1/4 fails, the coincidental-middle-match case). Full suite 249 tests, baseline unchanged. | Claude Sonnet 5 |
+| `8f19afe` | 2026-08-09 | 13 | **Batch 3 item 13 DONE.** A substitution-style correction ("...three million" → "...four million") is neither containment nor extension, so `decide_transcript_action` fell through to `"add"` and the transcript kept BOTH the wrong line and the correction. Fixed **identity-only, never text similarity**: converting `add`→`update` REPLACES the stored line, so a wrong guess destroys committed speech — the opposite and worse direction from 10/11/12/19. Two distinct utterances can be near-identical ("the first quarter was strong" / "the second quarter was strong"); only a matching `canonical_utterance_id` proves a revision. **This was only solvable now because item 18 (`0aa6a8f`) added that field to `TranscriptSegment`** — the call-site comment had explicitly named its absence as why a weaker registry check was used. Also removed the two dead `.startswith()` branches (proven no-ops: each returned the same value as the check that subsumed it). Tests: `tests/test_same_utterance_substitution_update.py` (9), proven against pre-fix code. Full suite 267 tests, baseline unchanged. | Claude Opus 5 |
 
 **Correction note on `5001275`:** the original draft of
 `PROACTIVE_AUDIT_20260806.md` mislabeled
@@ -851,8 +872,8 @@ guessed.
 *(Original description kept:)* Same pattern; misclassifies a reworded previous segment as
 non-continuation.
 
-**13. `[core:2]`** `alpha/transcription/duplicate_protection.py` · `grep: def decide_transcript_action` · ≈49
-Residual gap (the historical `or True` bypass is already gone): a
+~~**13. `[core:2]`** `alpha/transcription/duplicate_protection.py` · `grep: def decide_transcript_action`~~ **DONE, `8f19afe`.** Same-utterance substitution now upgrades `add`→`update`, gated on matching `canonical_utterance_id` only (never text similarity — a wrong guess here overwrites committed speech). Both dead `.startswith()` branches removed as proven no-ops.
+*(Original description kept:)* Residual gap (the historical `or True` bypass is already gone): a
 substitution-style correction arriving with **no** authoritative
 `lifecycle_decision` signal still falls through to `"add"` (duplicate
 line) instead of `"update"`. Mitigated in the common case by the upstream
@@ -1085,10 +1106,11 @@ the obvious-looking name.
 ### 6d. → NEXT UP
 
 **Batch 1 complete** (items 1-3). **Batch 2 complete** (items 4-9, 7b,
-9b). **Batch 3 in progress: items 9c, 10, 11, 11b, 12, 14, 15, 16, 18, 19
-done** (`13f20ca`, `b404c19`, `b2b39de`, `69605cc`, `5ffb18d`, `0aa6a8f`,
-`af6781e`). **Only 13, 17, and 20 remain — see §5's 2026-08-09 notes for
-why they were skipped over rather than done in order.**
+9b). **Batch 3 in progress: items 9c, 10, 11, 11b, 12, 13, 14, 15, 16, 18,
+19 done** (`13f20ca`, `b404c19`, `b2b39de`, `69605cc`, `5ffb18d`,
+`0aa6a8f`, `af6781e`, `8f19afe`). **Only 17 and 20 remain**, plus one new
+item proposed in §5 (a 5th containment instance found while doing item 13,
+in `decide_transcript_action` — deliberately not fixed as a drive-by).
 
 **Batch 3 checkpoint — run 2026-08-09, PARTIALLY satisfied.** Full
 results in §6b. Summary:
@@ -1153,11 +1175,15 @@ live confirmation yet):
   content loss even if wrong, only a missed merge, so this one is lower
   priority to verify)
 
-**→ Batch 3, item 13** — `alpha/transcription/duplicate_protection.py`,
-`grep: def decide_transcript_action`. Start at §3 step 1 (investigate).
-Recommended model: Opus 5 (§8) — reasoning about which correction shapes
-must survive when no authoritative `lifecycle_decision` signal is
-present. Items 13, 17, 20 remain in §6c, all Opus-5-appropriate.
+**→ Batch 3, item 17** — `alpha/summary/transcript_store.py`,
+`grep: def update_last_segment` and `grep: def get_last_segment`. Start at
+§3 step 1 (investigate). Recommended model: Opus 5 (§8) — multi-call-site
+refactor with a check-then-act race across two separate lock
+acquisitions. Items 17 and 20 remain in §6c, both Opus-5-appropriate.
+**Note for item 17:** items 13 and 18 both now depend on
+`TranscriptSegment.canonical_utterance_id` and on
+`get_last_segment_if_active`, so deleting/aliasing the unsafe variants
+must not disturb those paths — re-read both before changing them.
 
 **Still open from earlier live-test findings, not yet scheduled beyond
 their existing batch** (both re-measured on the 2026-08-09 run and still
