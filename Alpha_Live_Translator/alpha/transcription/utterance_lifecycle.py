@@ -398,7 +398,28 @@ class UtteranceLifecycleOwner:
                 translation_eligible=translation_eligible,
             )
             return bool(result.accepted), str(result.reason or ""), dict(result.entry or {})
-        except Exception:
+        except Exception as exc:
+            # fixes BUG_FIX_ROADMAP.md Batch 2 item 8: logging only. This
+            # is a fail-OPEN path in a file whose whole design is
+            # fail-closed -- on any exception here, the one gate meant to
+            # prevent duplicate/cross-utterance mutation is silently
+            # bypassed. NOT changing fail-open to fail-closed in this
+            # batch (that's a real behavior change needing evidence of
+            # how often this actually fires -- see item 27); this only
+            # makes the bypass visible.
+            try:
+                from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+                jp_accuracy_log(
+                    "OBSERVE_IDENTITY_FAILED_OPEN",
+                    reason=f"{type(exc).__name__}:{exc}",
+                    session_id=self._session_id,
+                    channel_index=channel,
+                    canonical_utterance_id=utterance_id,
+                    source_version=version,
+                )
+            except Exception:
+                pass
             return True, "unavailable", {}
 
     def _resolve_correction_target_locked(
