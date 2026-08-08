@@ -457,7 +457,38 @@ passing. **Never delete entries** — mark them `[resolved, see item #N]`.
   **Do not guess a replacement number** — same rule as item 34: derive it
   from `logs/async_debug.log`'s `[INTERIM] stop tail skipped
   {"reason": "too_short"}` events across real runs, per language. Schedule
-  as its own item alongside item 34's threshold work.
+  as its own item alongside item 34's threshold work. **2026-08-09 update:
+  still no usable data.** Both of that day's runs logged `skip_too_short`
+  with `latest_interim_len: 0` — a trivially correct skip of an empty
+  interim, which tells us nothing about the 20-char cutoff. The
+  measurement needs runs that actually end with a short non-empty tail.
+- 2026-08-09 — **NEW, pre-existing, not a regression: on English runs the
+  canonical-ledger file is never written, and the export coverage gate
+  then reports a perfect pass on a zero denominator.** `[core:3]`
+  `transcripts/canonical_transcript_ledger.jsonl` is **0 lines** on every
+  English run checked — today's `...034448` *and* the pre-item-10/11
+  control `...155842`, so this predates Batch 3 and no roadmap item caused
+  it. Japanese runs write it normally (25 and 26 lines respectively).
+  The consequence is in `accuracy/export_coverage_report.json`, which for
+  English reads:
+  `source_commit_observed_count: 0`, `canonical_export_line_count: 0`,
+  and nonetheless `coverage_ratio: 1.0`, `export_lossless: true`,
+  `clean_export_ready_for_scoring: true`. **It is 0/0 reported as a
+  perfect pass.** Meanwhile `evidence_streams/canonical_commits.jsonl`
+  holds 12 real `append` commits and `Alpha_output_FINAL.txt` holds 12
+  lines — the data exists, the gate is simply reading a file nothing
+  populates on this path.
+  `Bug Report.md` §4.1 already warns that `coverage_ratio: 1.0` only
+  compares canonical → final and so cannot see a record lost *before* the
+  ledger. For English it is weaker still: it compares **nothing at all**
+  and still certifies the export lossless. This directly undercuts
+  `REPAIR_PLAN.md` Phase 4's acceptance gate ("Raw counts, canonical
+  counts, UI counts, and export counts reconcile") — for English that
+  reconciliation is vacuous. Related to item 21, which fixes a different
+  required-step check that also reports success without comparing what it
+  computed. **Do not treat any English run's `coverage_passed` as
+  evidence until this is fixed.** Needs its own item; likely belongs with
+  Batch 4 or the Batch 5 store consolidation (item 32).
 
 ---
 
@@ -531,6 +562,9 @@ messages alone.
 | Batch 2 item 7b (`6726f68`) | Yes, 2026-08-08 | No `JAPANESE_STABILIZER_INGEST_FAILED` / `JAPANESE_PATH_DETECTION_FAILED` — the failure path did not trigger. Japanese run committed normally, so the routing change caused no regression |
 | Batch 2 item 9b (`b220c86`) | Yes, 2026-08-08 | **Start-button freeze fixed.** `TEMP_AUDIO_RETENTION_CLEANUP_STARTED` → `START_AUDIO_INIT_BEGIN` gap: **8.80s / 12.41s → 0.00s / 0.00s**. `..._COMPLETED` now lands *after* audio init (3.1s / 3.7s later), confirming it runs in the background |
 | §1.1 (`98a6fa0`+`432dea1`) | Yes, 2026-08-08 | **First live evidence of `revise` working.** Japanese run 15:53: `applied_action = {append: 21, revise: 5}`. Previously **0 revises across 138 commits**. English run: 14 append / 0 revise (no correction opportunities arose) |
+| Batch 3 item 9c (`13f20ca`) | Yes, 2026-08-09 | **CONFIRMED FIXED.** Runs `...033339` (ja) / `...034448` (en). Both now `final_status: completed`, `stop_finalize_failed: false` — the step that failed *both* post-Batch-2 runs. `DUPLICATE_SUBMISSIONS_REJECTED` **1 → 0** in both; `UNRESOLVED_TRANSLATION_SEQUENCES: []`, `MISSING_TRANSLATION_SEGMENT_IDS: 0`, jobs accepted/sent/completed 31/31/31 (ja) and 12/12/12 (en). No `TRANSLATION_RECONCILIATION_*` events fired at all — there was no gap left to heal |
+| Batch 3 items 10 + 11 (`b404c19`, `b2b39de`) | **NO — code path never executed** | Both runs reached Stop with `latest_interim_len: 0`, so `_recover_interim_tail_on_stop` returned at `empty_interim` **before** either filter ran. Neither the item-10 nor the item-11 branch was exercised. Unit tests pass and the baseline is clean, but there is **zero live evidence** for either — the same "wired up, never fired" shape §7 warns about. **Still outstanding: a session Stopped mid-sentence** (see §6d) |
+| Batch 3 interim-ghost regression check | Yes, 2026-08-09 | `tools/scan_interim_ghost_evidence.py`: **PASS** on both. Watchdog 1/31 (3%) ja, 0/12 en — far below item 3's 25% REVIEW threshold, consistent with the post-Batch-1 numbers. No duplicated closing line in either FINAL export (0 exact-duplicate lines), i.e. items 10/11's opposite failure mode did not appear — though that is weak evidence given the paths never ran |
 
 ### 6c. Pending — in execution order
 
@@ -1009,16 +1043,30 @@ the obvious-looking name.
 9b). **Batch 3 in progress: items 9c, 10 and 11 done** (`13f20ca`,
 `b404c19`, `b2b39de`).
 
-Batch 3's own checkpoint has **not** been run. Both 9c and 10 changed
-real behavior on the Stop path (translation self-heal, and what the
-Stop-time interim tail does), so the next live session should confirm:
-- `final_status` is no longer `failed` on `translation_reconciliation`
-  (or, if it still fails, that it is a *genuine* unresolved gap — check
-  for `TRANSLATION_RECONCILIATION_ALREADY_DELIVERED` vs
-  `..._FORCED_SUBMIT_REJECTED` with its new `rejection_reason` field)
-- the last utterance of the session still has a translation
-- no duplicated closing line appears in the transcript (item 10 now
-  commits tails it used to drop — the opposite failure mode to watch for)
+**Batch 3 checkpoint — run 2026-08-09, PARTIALLY satisfied.** Full
+results in §6b. Summary:
+- ✅ **item 9c confirmed fixed live** — both runs `completed`, zero
+  duplicate rejections, zero unresolved translation sequences. This was
+  the checkpoint's primary criterion and the failure that motivated 9c.
+- ✅ last utterance translated; no duplicated closing line; interim-ghost
+  scan PASS on both.
+- ❌ **items 10 and 11 are still unverified live.** Both sessions were
+  Stopped after speech had already settled, so `latest_interim_len` was
+  `0` and `_recover_interim_tail_on_stop` returned at `empty_interim`
+  before reaching either filter.
+
+**→ Outstanding checkpoint action (needs a human, §3.10):** one more
+session per language where **Stop is pressed mid-sentence, while still
+speaking**, so an uncommitted interim tail actually exists at Stop. That
+is the only way to exercise items 10 and 11. In the resulting run check
+`logs/async_debug.log` for `[INTERIM] stop tail` entries and confirm:
+- `latest_interim_len` > 0 (otherwise the test did not reproduce the
+  condition — repeat it)
+- the spoken tail appears in `transcripts/Alpha_output_FINAL.txt` and is
+  **not** dropped as `skip_already_committed` / `interim_in_final`
+- it appears exactly once — no duplicated closing line
+- the `reason` distribution of any `stop tail skipped` events, which also
+  supplies the `too_short` measurement §5 is waiting on
 
 **→ Batch 3, item 12** — `alpha/ui/main_window.py`,
 `grep: def _should_repair_previous_segment`. Start at §3 step 1
@@ -1034,12 +1082,25 @@ closing line — and check `logs/async_debug.log` for
 fires (that is the §5 finding that still needs measurement).
 
 **Still open from earlier live-test findings, not yet scheduled beyond
-their existing batch:** the Japanese assembler → canonical ledger loss
-(`Bug Report.md` §4.1, now measured at 5 lost sentences in one run —
-Batch 5) and the `noise_fragment` quarantine misclassification
-(`Bug Report.md` §4.2, now 3-for-3 wrong — item 34, Batch 5). Also the
-open question from 9c: *why* the last utterance never reached
-`submit_text_for_translation` in the first place.
+their existing batch** (both re-measured on the 2026-08-09 run and still
+reproducing):
+- **Japanese assembler → canonical ledger loss** (`Bug Report.md` §4.1 —
+  Batch 5). Today: 34 assembler decisions (25 `commit_new`, 6
+  `update_previous`, 2 `hold`) → 32 `stable_commits` → **25** canonical
+  records, with **4 stable-committed sentences under 60% present** in the
+  final export (worst 20.0%). The 2026-08-08 control was 6 such
+  sentences, worst 10.5%. **Do not read that as improvement** — different
+  speech content, same mechanism, still real loss.
+- **`noise_fragment` quarantine** (item 34, Batch 5). Today quarantined
+  `飲みます、食べます` ("I drink, I eat") — ordinary Japanese, again
+  `later_committed_to_stable: false`. Running total is now **4
+  quarantined, 0 recovered, 4/4 misclassified.**
+- The open question from 9c: *why* the last utterance never reached
+  `submit_text_for_translation` in the first place. Note today's runs had
+  no gap at all, so this did not reproduce and remains uninvestigated.
+- **New, from the 2026-08-09 analysis:** the English coverage gate is
+  vacuous because the canonical-ledger file is never written on that path
+  (§5). Pre-existing, needs its own item.
 
 ---
 
