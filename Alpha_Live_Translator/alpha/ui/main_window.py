@@ -144,7 +144,7 @@ from alpha.transcription.deepgram_client import (
     _language_ndjson_log,
     _teams_diag_ndjson_log,
     get_debug_log_path,
-    teams_commit_decision_from_dup_action,
+    teams_commit_decision_from_dup_action_diagnostic_only,
     teams_log_quality_signals,
 )
 from alpha.transcription.japanese_final_chunk_stabilizer import (
@@ -5933,7 +5933,7 @@ class AlphaApp(
             item["canonical_utterance_id"] = new_id
             item["source_version"] = 1
         dup_action, _result_text = decide_transcript_action(previous_text, text)
-        predicted_decision, predicted_reason = teams_commit_decision_from_dup_action(
+        predicted_decision, predicted_reason = teams_commit_decision_from_dup_action_diagnostic_only(
             dup_action, previous_text, text
         )
         if self._is_japanese_manual_mode() and JAPANESE_CHAR_DEDUP_ENABLED:
@@ -5991,7 +5991,7 @@ class AlphaApp(
         store_count_after = self._diag_store_segment_count()
         if store_count_after == store_count_before:
             if dup_action == "skip":
-                skip_decision, skip_reason = teams_commit_decision_from_dup_action(
+                skip_decision, skip_reason = teams_commit_decision_from_dup_action_diagnostic_only(
                     dup_action, previous_text, text
                 )
             elif self._is_japanese_manual_mode():

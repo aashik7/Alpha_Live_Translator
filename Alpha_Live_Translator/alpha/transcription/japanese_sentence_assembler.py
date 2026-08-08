@@ -313,11 +313,12 @@ _INCOMPLETE_TAIL_WEAK_ENDINGS = (
 )
 
 _SPEAKER_LOCK_CONTINUATION_PREFIXES = (
-    "なんだけど",
-    "それが",
-    "だから",
-    "でも",
-    "けど",
+    # fixes BUG_FIX_ROADMAP.md Batch 3 item 15: this used to also list
+    # "なんだけど", "それが", "だから", "でも", "けど" -- ordinary Japanese
+    # connectives any speaker can open a sentence with, not evidence the
+    # same speaker is continuing. A genuinely different speaker's new turn
+    # that happened to start with one of them was misclassified as a
+    # continuation tail and speaker-locked onto the wrong speaker.
     "理由までちゃんと",
 )
 
@@ -603,8 +604,17 @@ def merge_japanese_fragments(previous: str, current: str) -> str:
         return prev
     if curr.startswith(prev):
         return curr
-    if prev.endswith(curr):
-        return prev
+    # fixes BUG_FIX_ROADMAP.md Batch 3 item 14: this used to short-circuit
+    # to `return prev` (discard curr entirely) whenever curr was a literal
+    # suffix of prev. For curr <= 32 chars that is a no-op vs. the overlap
+    # search below (it reaches the identical conclusion on its first
+    # iteration), so removing it changes nothing there. It only mattered
+    # for curr > 32 chars, where the search below is capped and would
+    # never have found the match -- meaning a fragment over 32 characters
+    # that happened to duplicate the buffer's tail was silently discarded
+    # in full, with no visible trace. Falling through now trades that for,
+    # at worst, an appended duplicate -- visible and reviewable, not a
+    # silent loss.
     max_overlap = min(len(prev), len(curr), 32)
     for size in range(max_overlap, 0, -1):
         if prev[-size:] == curr[:size]:

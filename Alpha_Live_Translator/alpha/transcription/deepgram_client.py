@@ -623,8 +623,19 @@ def teams_log_quality_signals(
         )
 
 
-def teams_commit_decision_from_dup_action(action: str, previous_text: str, current_text: str):
-    """Map duplicate-protection action to Teams commit decision labels."""
+def teams_commit_decision_from_dup_action_diagnostic_only(
+    action: str, previous_text: str, current_text: str
+):
+    """Map duplicate-protection action to Teams commit decision labels.
+
+    DIAGNOSTIC-ONLY (BUG_FIX_ROADMAP.md Batch 3 item 16): the real commit
+    decision is made by decide_transcript_action() and observed via the
+    transcript store's before/after segment count. This function's return
+    value must only ever feed logging (both call sites currently do
+    exactly that -- verified by full control-flow trace). The name is
+    suffixed so a future change cannot silently wire it into a live commit
+    branch without the rename standing out at every call site.
+    """
     from alpha.transcription.duplicate_protection import normalize_for_compare
 
     current = (current_text or "").strip()
