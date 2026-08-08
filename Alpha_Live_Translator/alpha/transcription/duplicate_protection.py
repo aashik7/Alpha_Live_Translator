@@ -72,12 +72,23 @@ def decide_transcript_action(previous_text: str | None, current_text: str) -> tu
     if prev_n in curr_n:
         return ("update", current)
 
-    if curr_n.startswith(prev_n):
-        return ("update", current)
-
-    if prev_n.startswith(curr_n):
-        return ("skip", None)
-
+    # fixes BUG_FIX_ROADMAP.md Batch 3 item 13: two dead branches used to
+    # sit here --
+    #     if curr_n.startswith(prev_n): return ("update", current)
+    #     if prev_n.startswith(curr_n): return ("skip", None)
+    # Both are provably unreachable AND redundant: curr_n.startswith(prev_n)
+    # implies prev_n in curr_n, which the check directly above already
+    # returned ("update", current) for; prev_n.startswith(curr_n) implies
+    # curr_n in prev_n, which the `curr_n in prev_n` check above already
+    # returned ("skip", None) for. Same inputs, same outputs -- removing
+    # them is a no-op, not a behavior change.
+    #
+    # Note for whoever narrows the `curr_n in prev_n` check above (see §5's
+    # 2026-08-09 note -- it is the same any-position containment
+    # anti-pattern as items 10/11/12/19 and it DROPS current): once that is
+    # narrowed to prefix-or-suffix, `prev_n.startswith(curr_n)` stops being
+    # subsumed and would have to be reconsidered deliberately rather than
+    # silently inherited from this dead code.
     return ("add", current)
 
 
@@ -234,6 +245,7 @@ class DuplicateProtectionMixin:
                 allow_previous_lookup = False
 
         previous_text = None
+        previous_utterance_id = ""
         if (
             allow_previous_lookup
             and hasattr(self, "transcript_store")
@@ -242,8 +254,59 @@ class DuplicateProtectionMixin:
             segment = self.transcript_store.get_last_segment_if_active(speaker_num)
             if segment is not None:
                 previous_text = segment.text
+                previous_utterance_id = str(
+                    getattr(segment, "canonical_utterance_id", "") or ""
+                )
 
         action, result_text = decide_transcript_action(previous_text, text)
+
+        # fixes BUG_FIX_ROADMAP.md Batch 3 item 13: a substitution-style
+        # correction ("...three million" -> "...four million") is neither a
+        # containment nor an extension of the previous text, so
+        # decide_transcript_action falls through to "add" and the transcript
+        # keeps BOTH the wrong line and the corrected one. Until now the only
+        # thing that could fix that was the authoritative lifecycle signal
+        # below, which is absent on some paths.
+        #
+        # The reason this could not be solved here before is recorded in the
+        # comment above: TranscriptStore had no canonical_utterance_id, so
+        # there was no way to prove the stored previous line was the SAME
+        # utterance rather than a different one that merely looked similar.
+        # Batch 3 item 18 (`0aa6a8f`) added that field, so the proof is now
+        # available and no text-similarity guess is needed.
+        #
+        # Deliberately identity-only, never similarity: turning "add" into
+        # "update" REPLACES the stored line, so a wrong guess destroys
+        # committed speech -- the opposite and worse failure direction from
+        # items 10/11/12/19, which were about not dropping content. Two
+        # genuinely distinct utterances can be textually near-identical
+        # ("the first quarter was strong" / "the second quarter was strong"),
+        # and no threshold on the text alone can separate that from a real
+        # correction. Matching utterance ids can. Anything without that proof
+        # keeps the existing behavior: a visible duplicate line, which is
+        # recoverable, rather than a silent overwrite, which is not.
+        if (
+            action == "add"
+            and canonical_utterance_id
+            and previous_utterance_id == canonical_utterance_id
+        ):
+            action, result_text = "update", text
+            # Local aliased import: this function binds the bare name
+            # `jp_accuracy_log` further down, which would make it a local
+            # everywhere in this scope and raise UnboundLocalError here.
+            try:
+                from alpha.utils.japanese_accuracy_log import (
+                    jp_accuracy_log as _jal_substitution,
+                )
+
+                _jal_substitution(
+                    "SAME_UTTERANCE_SUBSTITUTION_UPDATED",
+                    canonical_utterance_id=canonical_utterance_id,
+                    previous_preview=(previous_text or "")[:120],
+                    current_preview=text[:120],
+                )
+            except Exception:
+                pass
         # Utterance lifecycle / authoritative same-utterance correction must
         # replace the active permanent record — never append a second version.
         # fixes BUG-G2: previously this only trusted the authoritative
