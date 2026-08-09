@@ -1647,9 +1647,37 @@ class DeepgramClientMixin:
                         end=meta.get("end_time"),
                         is_final=True,
                         speech_final=meta.get("speech_final"),
+                        # fixes BUG_FIX_ROADMAP.md Batch 3 item 20 (audit
+                        # §1.3): this used to be
+                        #     meta.get("event_id")
+                        #     or meta.get("request_id")
+                        #     or f"dg-final-{time.time_ns()}"
+                        # `segment_metadata` never carries an "event_id"
+                        # key, so the first term was always None and
+                        # `request_id` -- Deepgram's **connection-level** id,
+                        # identical for every utterance in the session --
+                        # always won, leaving the unique fallback dead code.
+                        #
+                        # event_id feeds active.lineage_ids, which becomes
+                        # source_raw_event_ids on the ledger record, which
+                        # stable_revision_decision._same_revision_chain uses
+                        # via _lineage_overlap(). A session constant makes
+                        # that overlap non-zero for EVERY pair of utterances,
+                        # so the lineage half of the same-segment test was a
+                        # constant-true check. Measured live: in run
+                        # ...155842 one such id appears in 13 of 14 canonical
+                        # records; in ...133236, in 30. (The comment in
+                        # stable_revision_decision.py about lineage overlap
+                        # being "sticky and false-positive across adjacent
+                        # utterances" is that symptom -- this is its cause.)
+                        #
+                        # The connection id is NOT lost: it is passed
+                        # separately as deepgram_request_id just below and
+                        # stored on its own field. Japanese was never
+                        # affected -- that path supplies per-event
+                        # `raw-NNNNNN` ids that genuinely vary.
                         event_id=str(
                             meta.get("event_id")
-                            or meta.get("request_id")
                             or f"dg-final-{time.time_ns()}"
                         ),
                         metadata=meta,
