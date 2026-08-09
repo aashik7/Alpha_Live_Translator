@@ -616,6 +616,10 @@ passing. **Never delete entries** — mark them `[resolved, see item #N]`.
 | `8f19afe` | 2026-08-09 | 13 | **Batch 3 item 13 DONE.** A substitution-style correction ("...three million" → "...four million") is neither containment nor extension, so `decide_transcript_action` fell through to `"add"` and the transcript kept BOTH the wrong line and the correction. Fixed **identity-only, never text similarity**: converting `add`→`update` REPLACES the stored line, so a wrong guess destroys committed speech — the opposite and worse direction from 10/11/12/19. Two distinct utterances can be near-identical ("the first quarter was strong" / "the second quarter was strong"); only a matching `canonical_utterance_id` proves a revision. **This was only solvable now because item 18 (`0aa6a8f`) added that field to `TranscriptSegment`** — the call-site comment had explicitly named its absence as why a weaker registry check was used. Also removed the two dead `.startswith()` branches (proven no-ops: each returned the same value as the check that subsumed it). Tests: `tests/test_same_utterance_substitution_update.py` (9), proven against pre-fix code. Full suite 267 tests, baseline unchanged. | Claude Opus 5 |
 | `43374ad` (+ `5d4578a`) | 2026-08-09 | 17 | **Batch 3 item 17 DONE.** Every write site decided from one lookup and wrote through `update_last_segment`'s reverse scan under a **separate** lock acquisition — an append in between made the write land on an older row than the one read. Fixed all three writes plus **one unsafe read the item did not list** (`_commit_transcript_item_to_store`'s `get_last_segment(speaker)`); all four now use `..._if_active`. Unsafe methods **renamed, not deleted** (`..._unsafe_speaker_scan`) — `test_task2g_acceptance_gate.py` deliberately pins them to document the safe/unsafe delta, so deleting would have destroyed that evidence; the rename still satisfies "not reachable by reflex". **The Stop-tail site ignored the return value**, so a bare swap would have silently dropped the merged tail on the last-chance path — it now appends and logs `STOP_TAIL_MERGE_APPENDED_NOT_UPDATED`. One real behavior change beyond the rename: `previous_text` goes `None` when the last row is another speaker's; every consumer fails safe (worst case a visible duplicate, never a wrong cross-speaker merge). Tests: `tests/test_transcript_store_unsafe_variants_retired.py` (8), incl. one that drives the old path to prove the race was real, not theoretical; 5/8 fail pre-fix. **`5d4578a` is a line-endings-only follow-up** — see §5's new note on `write_text()`. **audit §2.7 still OPEN.** Full suite 275 tests, baseline unchanged. | Claude Opus 5 |
 
+| `3a59f6d` | 2026-08-09 | 20 | **Batch 3 item 20 DONE — BATCH 3 COMPLETE.** Human decision was *"fix the id, then audit"*; both halves landed. **Fix:** `_commit_final_transcript_segment`'s `event_id` fell back to `meta["request_id"]` — Deepgram's **connection-level** id — because `segment_metadata` never sets an `"event_id"` key, so the unique fallback beside it was unreachable dead code. That constant flowed into `lineage_ids` → `source_raw_event_ids` → `_lineage_overlap()`, making the lineage half of `_same_revision_chain` **constant-true**: measured at 13 of 14 canonical records in run `...155842` and 30 of 44 in `...133236`. `stable_revision_decision.py`'s existing "sticky and false-positive across adjacent utterances" comment was that symptom — this was its cause, and the text guard added to compensate was load-bearing because of it. Connection id is not lost (already passed separately as `deepgram_request_id`); Japanese unaffected (supplies real per-event `raw-NNNNNN` ids). **Audit:** new `CANONICAL_KEY_FIELDS_AUDIT.md`, backed by a scan of all 12,286 evidence rows. Two findings reported honestly rather than inflated: `channel_index`'s three serializations do **not** cause a live key mismatch (both key builders normalize the two forms that reach them identically; the `'0'` form is confined to raw-capture streams — a latent hazard only), and `_provider_utterance_id` was **deliberately left** resolving to the connection constant (it is store-only, never compared; injecting a locally-minted id into a field named for a *provider* id would mislead differently). Tests: `tests/test_final_event_id_is_per_utterance.py` (4), 2/4 fail pre-fix. Full suite 331, baseline unchanged (+1 known §5 task9 timing flake, verified passing in isolation). | Claude Sonnet 5 |
+
+**BATCH 3 COMPLETE as of `3a59f6d`.** All items done (9c, 10, 11, 11b, 12, 13, 14, 15, 16, 17, 18, 19, 20). Four things were surfaced during the batch and **deliberately left open rather than fixed as drive-bys** — all are recorded, none are forgotten: the 5th containment instance in `decide_transcript_action` (§5, from item 13), audit §2.7's speaker-only store keying (from item 17), and two entries in `CANONICAL_KEY_FIELDS_AUDIT.md` §5 (drop `channel_index` from the keys; re-evaluate `_textually_related_revision` now that lineage overlap carries real information). **Batch 3's live-test checkpoint is still outstanding** — see §6d.
+
 **Correction note on `5001275`:** the original draft of
 `PROACTIVE_AUDIT_20260806.md` mislabeled
 `main_window.py::_apply_final_interim_comparison` as "confirmed still
@@ -953,9 +957,8 @@ substitution-aware. Can silently drop a genuinely new short remark that
 happens to be a literal substring of the previous line (e.g. a repeated
 "ありがとうございました").
 
-**20. `[core:2]` — canonical-key fields are decorative at the ingestion boundary** *(audit §1.3 — missing from v3)*
-`alpha/transcription/deepgram_client.py` · `grep: segment_metadata = ` (≈1929) and `grep: def _commit_final_transcript_segment` (≈1472)
-Two of `REPAIR_PLAN.md`'s six required canonical-key fields carry no
+~~**20. `[core:2]` — canonical-key fields are decorative at the ingestion boundary**~~ **DONE, `3a59f6d`.** Decision taken (fix + audit). `event_id` no longer inherits the connection-level `request_id`, restoring `_lineage_overlap` as a real signal. Full write-up in **`CANONICAL_KEY_FIELDS_AUDIT.md`**, including what was deliberately *not* changed and why.
+*(Original description kept:)* Two of `REPAIR_PLAN.md`'s six required canonical-key fields carry no
 information: `channel_index` is Deepgram's `[channel, total_channels]`
 pair and is **constant `[0, 1]`** for every event (the session always
 requests mono) — and is serialized inconsistently (a real list in one
@@ -1132,13 +1135,26 @@ the obvious-looking name.
 ### 6d. → NEXT UP
 
 **Batch 1 complete** (items 1-3). **Batch 2 complete** (items 4-9, 7b,
-9b). **Batch 3 in progress: items 9c, 10, 11, 11b, 12, 13, 14, 15, 16, 17,
-18, 19 done** (`13f20ca`, `b404c19`, `b2b39de`, `69605cc`, `5ffb18d`,
-`0aa6a8f`, `af6781e`, `8f19afe`, `43374ad`). **Only item 20 remains**,
-plus two things surfaced while doing this batch and deliberately left
-unfixed: a 5th containment instance in `decide_transcript_action` (§5,
-found during item 13) and audit §2.7's speaker-only keying of the
-`..._if_active` variants (still open after item 17).
+9b). **BATCH 3 COMPLETE** as of `3a59f6d` — items 9c, 10, 11, 11b, 12,
+13, 14, 15, 16, 17, 18, 19, 20 (`13f20ca`, `b404c19`, `b2b39de`,
+`69605cc`, `5ffb18d`, `0aa6a8f`, `af6781e`, `8f19afe`, `43374ad`,
+`3a59f6d`).
+
+**Four things were surfaced during Batch 3 and deliberately left open**
+rather than fixed as drive-bys. None are forgotten; all are written down:
+1. the 5th containment instance in `decide_transcript_action` (§5's
+   2026-08-09 note, found during item 13) — Sonnet 5 is sufficient
+2. audit §2.7 — `TranscriptStore`'s `..._if_active` variants are keyed by
+   **speaker only**, no channel/session key (from item 17)
+3. drop `channel_index` from the two key builders entirely — it is
+   constant on mono, and keeping it is what makes its inconsistent
+   serialization a latent hazard (`CANONICAL_KEY_FIELDS_AUDIT.md` §5)
+4. re-evaluate `_textually_related_revision`'s role in
+   `_same_revision_chain` — it was tuned to compensate for the lineage
+   half being inert, which item 20 has now fixed (same file, §5)
+
+(2) and (3) are both "what should the identity key actually be?" and are
+worth deciding together.
 
 **Batch 3 checkpoint — run 2026-08-09, PARTIALLY satisfied.** Full
 results in §6b. Summary:
@@ -1216,26 +1232,40 @@ live confirmation yet):
     common case; a nonzero count is evidence worth recording, not a bug.
   - also confirm no transcript line was silently replaced by an unrelated
     speaker's text (the check-then-act race's original symptom).
+- **item 20** — in `evidence_streams/canonical_commits.jsonl`, check
+  `source_raw_event_ids`. Before the fix one connection-level UUID
+  appeared in nearly every record (13 of 14 in run `...155842`). It
+  should now hold **distinct per-utterance ids**; a single id repeated
+  across most records means the fix did not take effect on that path.
+  Then watch for the second-order effect: `_lineage_overlap` is a real
+  signal again rather than constant-true, so `_same_revision_chain` is
+  now strictly harder to satisfy — confirm no genuine revision started
+  being treated as a new utterance (a duplicated, slightly-different
+  line is the tell). This is also the moment to look at deferred
+  finding (4).
 
-**→ Batch 3, item 20** — the last item in this batch, and unlike the rest
-it is **not a code fix**: `alpha/transcription/deepgram_client.py`,
-`grep: segment_metadata = ` and `grep: def _commit_final_transcript_segment`.
-`channel_index` and `event_id` carry no per-utterance information, so
-this is an investigation + a **human decision** (mint a real per-utterance
-provider id, or document these as non-identifying and audit every
-consumer that trusts them) before any code changes. §6c says it may
-become its own mini-batch. Recommended model: Opus 5 (§8). **Do not start
-implementing without that decision.**
+**→ NEXT: run Batch 3's outstanding live-test checkpoint before starting
+Batch 4.** Batch 3 is code-complete but **13 of its items have never been
+seen in a real session** — the 2026-08-09 checkpoint predates all of them
+and only confirmed item 9c. Two of those items (13 and 17) changed when a
+stored line gets **overwritten**, which is the one direction where being
+wrong destroys speech, so this checkpoint matters more than the previous
+ones. The full instruction list is above in this section (§6d); item 20's
+`event_id` change should be added to it — confirm `source_raw_event_ids`
+now holds distinct per-utterance ids rather than one repeated UUID, and
+that no new spurious revisions appear now that `_lineage_overlap` is a
+real signal instead of constant-true.
 
-**Also open, both deliberately deferred rather than done as drive-bys:**
-- the 5th containment instance in `decide_transcript_action` (§5's
-  2026-08-09 note, found during item 13) — Sonnet 5 is sufficient
-- audit §2.7: the `..._if_active` variants are keyed by **speaker only**,
-  with no channel/session key. Item 17 fixed the check-then-act race but
-  did not change this, so a same-speaker collision across channels or
-  sessions is still possible. Item 20's decision directly affects how
-  this should be fixed (both are about identity keys), so these two are
-  worth sequencing together.
+**Then → Batch 4** (items 21-27, Core bug 1: concurrency / state machine
+/ fail-open policy). Recommended model: **Opus 5** for the whole batch
+(§8) — race conditions and lock ordering, where tests alone do not
+reliably catch the failure modes.
+
+**The four deferred Batch 3 findings** (listed at the top of this
+section) are unscheduled. (1) is small and safe to fold into any later
+session. (2)+(3) should be decided together as one "what is the identity
+key?" question. (4) should be looked at **during** Batch 3's live test,
+since that is when the effect of item 20 first becomes observable.
 
 **Still open from earlier live-test findings, not yet scheduled beyond
 their existing batch** (both re-measured on the 2026-08-09 run and still
