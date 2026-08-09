@@ -112,6 +112,8 @@ from alpha.constants import (
     INTERIM_UI_THROTTLE_MS,
     INTERIM_LOG_THROTTLE_MS,
     INTERIM_GHOST_TTL_MS,
+    STOP_TAIL_MIN_CHARS_LATIN,
+    STOP_TAIL_MIN_CHARS_CJK,
     UI_SPEAKER_LABEL,
     TRANSLATION_ENABLED,
     DEFER_LOGO_MS,
@@ -4535,7 +4537,29 @@ class AlphaApp(
     def _should_commit_interim_recovery(self, interim_text: str, last_final_text: str):
         norm_interim = self._normalize_compare(interim_text)
         norm_final = self._normalize_compare(last_final_text)
-        if len(norm_interim) < 20:
+        # fixes BUG_FIX_ROADMAP.md item 11c: this was a single inline `< 20`
+        # applied to both scripts. Because the length is measured after
+        # _normalize_compare -- which for CJK compacts away all spacing and
+        # punctuation -- 20 sat below the English median interim (30) but at
+        # more than double the Japanese median (9), rejecting 91% of every
+        # Japanese interim ever recorded. All three interims ever genuinely
+        # pending at Stop were Japanese and normalized to 7, 16 and 7, so each
+        # one died here, on the last-chance path, after items 10/11/11b had
+        # already been fixed to let them through. The floor is now per-script
+        # and named, so the value is reviewable rather than folded into an
+        # expression.
+        #
+        # Kept inline rather than extracted into a helper method on purpose:
+        # several test hosts bind this function onto a stub without inheriting
+        # AlphaApp, so a new method dependency raises AttributeError there.
+        # `_is_japanese_manual_mode` is already required by _normalize_compare
+        # two lines above, so it adds nothing new.
+        min_chars = (
+            STOP_TAIL_MIN_CHARS_CJK
+            if (self._is_japanese_manual_mode() and JAPANESE_CHAR_DEDUP_ENABLED)
+            else STOP_TAIL_MIN_CHARS_LATIN
+        )
+        if len(norm_interim) < min_chars:
             return False, "too_short"
         if norm_final and norm_final in norm_interim:
             if len(norm_interim) - len(norm_final) < 12:

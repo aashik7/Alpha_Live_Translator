@@ -148,6 +148,48 @@ INTERIM_UI_THROTTLE_MS = 200
 # Deepgram endpointing -- an endpointing-derived formula sizes Japanese
 # backwards. 6000 = measured Japanese worst case (4063) + ~2s margin.
 INTERIM_GHOST_TTL_MS = 6000
+
+# Minimum NORMALIZED length for _should_commit_interim_recovery to commit the
+# leftover interim at Stop. This is the last-chance recovery path, so refusing
+# here loses real speech permanently.
+#
+# These were one shared inline literal `20`, which is not a language-neutral
+# unit: the value is measured AFTER _normalize_compare, and for CJK that routes
+# through compact_cjk_for_compare, which strips all spacing and punctuation. A
+# Japanese character carries far more meaning than a Latin one, so the same
+# number means two completely different things.
+#
+# Measured over all 2210 interims in every recorded run (27 run folders):
+#
+#            n     <20     %<20   min  p50  p90  max
+#     en  1188     351    29.5%     1   30   65  108
+#     ja  1022     931    91.1%     0    9   19   33
+#
+# 20 sits BELOW the English median (30) but at more than DOUBLE the Japanese
+# median (9) and above its p90 (19) -- the longest Japanese interim ever
+# recorded is 33. For Japanese the guard therefore meant "never recover a
+# tail": it would have admitted 91 of 1022.
+#
+# CJK floor of 4 comes from the observed content distribution, not taste.
+# Normalized Japanese interims at length 0-3 are punctuation and bare
+# particles (`、` `。` `で` `と` `に` `は`, then 2-char fragments like `いう`
+# `お昼` `とか`); meaning starts at 4 (`いい仕事`) and is unambiguous by 7
+# (`いいです、すごく。`, `ありがとうございます。` = 10). All three interims ever
+# genuinely pending at Stop normalize to 7, 16 and 7 -- every one discarded by
+# the old floor, including `日曜日、寝たから` and `たのはどこですか。最近はもう友達と`.
+#
+# The Latin floor stays at 20: no English interim has ever been pending at
+# Stop in any recorded run, so there is no evidence to move it, and English
+# short interims are dominated by fragments (`I`, `Hi.`, `Oh`, `The`, `Okay,`).
+#
+# Erring low is deliberate. Too low costs one visible junk line at the end of a
+# transcript; too high costs speech that is silently gone forever, which
+# REPAIR_PLAN.md ranks as the worse failure. The containment guards in
+# _check_stop_tail_duplicate and _should_commit_interim_recovery still run
+# afterwards, so this floor is not the only protection.
+STOP_TAIL_MIN_CHARS_LATIN = 20
+STOP_TAIL_MIN_CHARS_CJK = 4
+
 DEFER_LOGO_MS = 600
 DEFER_WAVEFORM_DRAW_MS = 400
 UI_LAG_MONITOR_ENABLED = False
