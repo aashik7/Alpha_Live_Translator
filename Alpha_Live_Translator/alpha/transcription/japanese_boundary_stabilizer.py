@@ -349,7 +349,37 @@ class JapaneseBoundaryStabilizer:
             should_emit = False
             should_export = False
             _jp_log("BOUNDARY_OUTPUT_HOLD_PENDING", reason=reason)
-        elif update_previous or action in ("merge_with_previous", "merge_pending_and_current"):
+        # fixes BUG_FIX_ROADMAP.md item 19b: `merge_pending_and_current` used to
+        # be listed here alongside `merge_with_previous`, which forced
+        # should_revise=True for it. The two are structurally different and only
+        # one of them may revise:
+        #
+        #   merge_with_previous       merges `self._previous_line` -- the line
+        #                             ALREADY COMMITTED downstream -- with the
+        #                             current text. Revising that record is
+        #                             correct, and its call site says so
+        #                             explicitly by passing update_previous=True.
+        #   merge_pending_and_current merges `self._pending` -- this stabilizer's
+        #                             OWN held buffer, which was never committed
+        #                             anywhere -- with the current text. The
+        #                             result is a BRAND-NEW utterance that has no
+        #                             relationship to the committed line. Its call
+        #                             site deliberately does NOT pass
+        #                             update_previous, i.e. it asks to append.
+        #
+        # Matching on the action name overrode that second call site's own
+        # intent, so the new utterance was written over an unrelated committed
+        # record in place, destroying it. Measured in live run
+        # ...20260809-050227: 3 of 3 `merge_pending_and_current` events each
+        # destroyed a different committed sentence (194 characters of real
+        # speech), and the correlation held 9/9 across every run with data. The
+        # run's own coverage gate could not see it -- it validates lineage, not
+        # text, so it still reported export_lossless: true.
+        #
+        # Now only an explicit update_previous (or merge_with_previous, which
+        # sets it) revises; merge_pending_and_current falls through to
+        # append_new_line, which is what it always meant to do.
+        elif update_previous or action == "merge_with_previous":
             output_action = "revise_previous_line"
             should_revise = True
             should_append = False
