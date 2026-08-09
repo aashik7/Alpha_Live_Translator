@@ -649,6 +649,74 @@ messages alone.
 | Batch 3 item 9c (`13f20ca`) | Yes, 2026-08-09 | **CONFIRMED FIXED.** Runs `...033339` (ja) / `...034448` (en). Both now `final_status: completed`, `stop_finalize_failed: false` — the step that failed *both* post-Batch-2 runs. `DUPLICATE_SUBMISSIONS_REJECTED` **1 → 0** in both; `UNRESOLVED_TRANSLATION_SEQUENCES: []`, `MISSING_TRANSLATION_SEGMENT_IDS: 0`, jobs accepted/sent/completed 31/31/31 (ja) and 12/12/12 (en). No `TRANSLATION_RECONCILIATION_*` events fired at all — there was no gap left to heal |
 | Batch 3 items 10 + 11 (`b404c19`, `b2b39de`) | **NO — code path never executed** | Both runs reached Stop with `latest_interim_len: 0`, so `_recover_interim_tail_on_stop` returned at `empty_interim` **before** either filter ran. Neither the item-10 nor the item-11 branch was exercised. Unit tests pass and the baseline is clean, but there is **zero live evidence** for either — the same "wired up, never fired" shape §7 warns about. **Still outstanding: a session Stopped mid-sentence** (see §6d) |
 | Batch 3 interim-ghost regression check | Yes, 2026-08-09 | `tools/scan_interim_ghost_evidence.py`: **PASS** on both. Watchdog 1/31 (3%) ja, 0/12 en — far below item 3's 25% REVIEW threshold, consistent with the post-Batch-1 numbers. No duplicated closing line in either FINAL export (0 exact-duplicate lines), i.e. items 10/11's opposite failure mode did not appear — though that is weak evidence given the paths never ran |
+| **Batch 3 post-completion checkpoint** — runs `...20260809-173846` (en) / `...20260809-174516` (ja) | Yes, 2026-08-09 | See the dedicated write-up below. Headline: **item 20 CONFIRMED FIXED live; item 18's new diagnostic fired 35× and surfaced a real, pre-existing plumbing gap; items 10/11/11b are STILL unexercised for the third run running** |
+
+#### Batch 3 post-completion checkpoint — 2026-08-09, runs `...173846` (en) and `...174516` (ja)
+
+Both runs `final_status: completed`.
+
+**✅ Item 20 — CONFIRMED FIXED LIVE.** This is the first item in the batch
+with unambiguous before/after live numbers. In the English run the most
+frequent lineage id now appears in **1 of 11 canonical records (9%)**, and
+the ids include `dg-final-1786264746658536100` — the per-event value the
+fix made reachable. Before the fix the equivalent run had one
+connection-level UUID in **13 of 14 records (93%)**. 367 distinct lineage
+ids over 11 records. The Japanese run is unchanged as predicted
+(`raw-NNNNNN`, max 4/36 = 11%, i.e. genuine revision-chain overlap). No
+duplicated or split lines appeared in either FINAL export, so the
+second-order risk — a stricter `_same_revision_chain` splitting a real
+revision into two lines — did **not** materialise.
+
+**✅ Item 9c — re-confirmed, and this time the self-heal actually ran.**
+Both runs: `UNRESOLVED_TRANSLATION_SEQUENCES: []`, 0 duplicate/empty/
+unsupported rejections, 0 pending at exit. Each run logged one
+`TRANSLATION_RECONCILIATION_FORCED_SUBMIT` **followed by**
+`TRANSLATION_RECONCILIATION_DONE` — a gap existed, was force-submitted
+with a non-colliding id, and resolved. The 2026-08-09 checkpoint only
+showed "no gap arose"; this is stronger evidence.
+
+**⚠️ Item 18 — the diagnostic fired 35× and found a real bug. Not a
+regression: it made an existing silent failure audible.**
+`TRANSLATION_STORE_ID_MATCH_NOT_FOUND` fired 35 times in the Japanese run
+(36 canonical records). Investigated in full:
+- All 35 requested `jp-utt-*` ids **do exist** in the canonical ledger
+  (35/35 overlap) — the ids are correct and the utterances are real.
+- `transcripts/clean_active_transcript.jsonl` — the store-facing stream,
+  **exactly 35 rows** — carries `canonical_utterance_id` on **0** of them,
+  while `stable_commits.jsonl` carries it on 36. **The Japanese
+  *assembler* path drops the id somewhere between the stable commit and
+  the `TranscriptStore` write.** (The Japanese *manual-mode* path is fine:
+  executing the real code via `ManualModeCommitHost` shows `jpm-utt-*` ids
+  stored correctly.)
+- **This is not something item 18 broke.** `final_export_records.jsonl`
+  has `translated_text` on **0 rows in every run examined, including the
+  two pre-item-18 baselines** (`...155334`, `...155842`). The attachment
+  was already failing; item 18 replaced a silent text-match miss with a
+  loud id-match miss. That is precisely what the item was for.
+- **User-visible impact today: none.** Every `store.get_all()` consumer
+  (`run_artifacts.py`, `main_window.py`, `segment_count_reconciliation.py`)
+  reads only `segment.text`; nothing anywhere reads
+  `TranscriptSegment.translated_text`. It is write-only state. This
+  becomes real the moment a bilingual export or summary is built from the
+  store — presumably the reason the field exists. **Filed as a new item
+  in §6c.**
+
+**❌ Items 10 / 11 / 11b — STILL NOT EXERCISED. Third consecutive run.**
+Both sessions again reached Stop with `latest_interim_len: 0` and
+`[INTERIM] stop tail skipped … reason: empty_interim`. No `orphan` events,
+so 11b's hand-off is untested too. **The checkpoint asks for Stop pressed
+*mid-sentence, while still speaking*; that has not happened yet in any of
+the six sessions run so far.** Until it does, these three fixes have unit
+tests and no live evidence.
+
+**Fired zero times — no evidence either way, not a pass:**
+`SAME_UTTERANCE_SUBSTITUTION_UPDATED` (item 13),
+`STOP_TAIL_MERGE_APPENDED_NOT_UPDATED` (item 17 — expected: zero means the
+race did not occur), `DUPLICATE_CONTINUATION_SUPPRESSED` (item 19, now
+four runs with no occurrence), `IDENTITY_REJECTION`, `FALLBACK_BLOCKED`,
+`STABLE_COMMIT_BEFORE_TRANSLATION_REJECTED`. No transcript line was
+silently replaced by another speaker's text, which is item 17's own
+failure mode.
 
 ### 6c. Pending — in execution order
 
@@ -978,6 +1046,31 @@ back-to-back short utterances. Compare
 `IDENTITY_REJECTION` / `FALLBACK_BLOCKED` / quarantine rates against the
 pre-Batch-3 baseline; confirm a measurable drop.
 
+**20b. `[core:2]` — the Japanese assembler path never gets its
+`canonical_utterance_id` into `TranscriptStore`** *(found by item 18's
+diagnostic during the 2026-08-09 post-completion checkpoint — see §6b)*
+`alpha/transcription/japanese_sentence_assembler.py` ·
+`grep: metadata["canonical_utterance_id"] = self._current_canonical_utterance_id`
+→ the chain down to
+`alpha/transcription/duplicate_protection.py` · `grep: def _apply_transcript_to_store`
+Measured live: `TRANSLATION_STORE_ID_MATCH_NOT_FOUND` fired **35 times in
+one Japanese run**. All 35 `jp-utt-*` ids exist in the canonical ledger,
+and `stable_commits.jsonl` carries the id on 36 rows — but
+`clean_active_transcript.jsonl` (the store-facing stream, exactly 35 rows)
+carries it on **0**. So the id is minted and survives into the ledger, and
+is then lost before the store write. The Japanese **manual-mode** path
+(`jpm-utt-*`) is unaffected — verified by executing the real code — so
+this is specific to the assembler path.
+**Impact today is zero and that is the trap:** nothing in the codebase
+reads `TranscriptSegment.translated_text` (every `store.get_all()` consumer
+reads only `.text`), so the field is write-only. This defect only bites
+when a bilingual export or summary is built from the store — which is the
+apparent purpose of the field. **Fix the plumbing before anything is built
+on it.** Note `final_export_records.jsonl` has had `translated_text` on 0
+rows in *every* run ever captured, pre- and post-item-18 — this is old, not
+a regression. Recommended model: Sonnet 5 (tracing a metadata field through
+a known chain).
+
 ---
 
 #### BATCH 4 — Core bug 1 (partial): concurrency & state-machine safety
@@ -1244,17 +1337,25 @@ live confirmation yet):
   line is the tell). This is also the moment to look at deferred
   finding (4).
 
-**→ NEXT: run Batch 3's outstanding live-test checkpoint before starting
-Batch 4.** Batch 3 is code-complete but **13 of its items have never been
-seen in a real session** — the 2026-08-09 checkpoint predates all of them
-and only confirmed item 9c. Two of those items (13 and 17) changed when a
-stored line gets **overwritten**, which is the one direction where being
-wrong destroys speech, so this checkpoint matters more than the previous
-ones. The full instruction list is above in this section (§6d); item 20's
-`event_id` change should be added to it — confirm `source_raw_event_ids`
-now holds distinct per-utterance ids rather than one repeated UUID, and
-that no new spurious revisions appear now that `_lineage_overlap` is a
-real signal instead of constant-true.
+**Batch 3's post-completion checkpoint HAS now been run** (2026-08-09,
+runs `...173846` en / `...174516` ja) — full results in §6b. Item 20
+confirmed fixed with clear before/after numbers, item 9c re-confirmed with
+the self-heal actually firing, and item 18's diagnostic earned its keep by
+exposing a real pre-existing gap (now filed as **item 20b**). Items 13, 17
+and 19 never fired, so they remain unobserved rather than passed.
+
+**→ NEXT, and it is a human task, not a code task: one session per
+language Stopped MID-SENTENCE, while still speaking.** Items 10, 11 and
+11b have now gone **three consecutive checkpoints without their code path
+executing once** — every session so far has been Stopped after the speaker
+finished, so `_recover_interim_tail_on_stop` returns at `empty_interim`
+before any of the three fixes is reached. They have unit tests and zero
+live evidence. The two variants and the exact log lines to check are
+listed earlier in this section. **Do this before Batch 4** — it is the
+oldest outstanding verification in the project.
+
+**Then → item 20b** (§6c) — small, well-scoped, and it should be fixed
+before anyone builds a bilingual export on `TranscriptStore`.
 
 **Then → Batch 4** (items 21-27, Core bug 1: concurrency / state machine
 / fail-open policy). Recommended model: **Opus 5** for the whole batch
