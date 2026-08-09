@@ -511,6 +511,14 @@ passing. **Never delete entries** — mark them `[resolved, see item #N]`.
   with `latest_interim_len: 0` — a trivially correct skip of an empty
   interim, which tells us nothing about the 20-char cutoff. The
   measurement needs runs that actually end with a short non-empty tail.
+  `[RESOLVED — see item 11c, c43f57b]` The measurement was obtained a
+  different way: instead of waiting for `too_short` events (which never
+  fire, because the tail is usually already empty), every `[INTERIM]
+  received` event across all 27 run folders was normalized with the real
+  `compact_cjk_for_compare` and tabulated per language. n=2210. That gave
+  the distribution directly and showed the floor was mis-sized for CJK by
+  roughly a factor of five. **Method note worth reusing: when the event you
+  want to count never fires, measure the population it would have judged.**
 - 2026-08-09 — **`test_task9_report.py::test_inactivity_timeout_fallback_survives_immediate_real_stop_5x`
   is flaky under CPU load. It is not in §2.3's baseline 7 and it is not a
   regression — do not chase it.** It failed twice while item 11b was being
@@ -617,6 +625,10 @@ still broken (fixed in `78eb59e`) was a *different*, narrower defect —
 the unrelated-text fallthrough default. See `PROACTIVE_AUDIT_20260806.md`
 §1.2. Flagged here so no future agent re-litigates it from commit
 messages alone.
+
+| `ac8feb5` | 2026-08-09 | 1 | **Item 19b DONE** *(new — found by analyzing the Batch 3 checkpoint runs, not in the audit)*. `japanese_boundary_stabilizer.py::_map_output_contract` decided revise-vs-append by matching the ACTION NAME, listing `merge_pending_and_current` next to `merge_with_previous`. They are structurally different: the latter merges `_previous_line` (already committed downstream — revising is right, and its call site passes `update_previous=True`), the former merges `_pending` (this stabilizer's own never-committed buffer, so the result is a **brand-new utterance** and its call site deliberately does NOT pass the flag). Name-matching overrode that intent, writing the new utterance over an unrelated committed record in place. Live evidence, run `...050227`: 3 of 3 such events each destroyed a different sentence, 194 chars total; correlation was 9/9 across every run with data. **Not a Batch 3 regression** — normalized per 100 chars of raw speech the destructive rate was actually *lowest* in that run (0.19 vs 0.27/0.30); what rose was severity per event (64.7 vs 10.0 chars), because it is the corpus's only single-speaker monologue, so sentences accrete into one record before an overwrite wipes it. Tests: `tests/test_merge_pending_appends_not_revises.py` (10) | Claude Opus 5 |
+| `c43f57b` | 2026-08-09 | 4 | **Item 11c DONE** *(new)*. `_should_commit_interim_recovery`'s inline `< 20` floor was one number for two scripts, but the length is measured *after* `_normalize_compare`, which for CJK compacts away all spacing and punctuation. Measured across all **2210 interims in 27 run folders**: en n=1188, median 30, 29.5% under 20 — ja n=1022, **median 9, 91.1% under 20, max 33**. So 20 sat below the English median but above the Japanese p90, i.e. for Japanese it meant "never recover a tail" (91 of 1022 admitted). All three interims ever genuinely pending at Stop were Japanese, normalizing to **7, 16 and 7** — every one killed here, *after* items 10/11/11b had been fixed precisely so they would reach this decision. Replaced with named `STOP_TAIL_MIN_CHARS_CJK = 4` / `STOP_TAIL_MIN_CHARS_LATIN = 20` (Latin unchanged — no English interim has ever been pending at Stop, so no evidence to move it). 4 is from the observed content distribution: norm 0-3 is punctuation and bare particles, meaning starts at 4. Tests: `tests/test_stop_tail_too_short_threshold.py` (15) | Claude Opus 5 |
+| `9dae426` | 2026-08-09 | — | **Deterministic end-to-end harness for the whole Stop-tail chain** (`tests/test_stop_tail_recovery_end_to_end.py`, 17 tests). Items 10/11/11b/12 each had unit tests but nothing proved they compose, and three consecutive live sessions never exercised the path at all. Verified by mutation: reverting item 10 fails exactly the 2 interior-substring tests, reverting item 11 fails 1, removing item 11b's stash fails all 4 orphan tests. **This is now the primary verification route for that path — prefer extending it over waiting for a live session to reproduce the condition.** | Claude Opus 5 |
 
 ### 6b. Live-test verification status (tracked separately from code status)
 
