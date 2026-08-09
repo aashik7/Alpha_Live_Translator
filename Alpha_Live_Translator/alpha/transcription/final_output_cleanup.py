@@ -50,6 +50,88 @@ def cleanup_punctuation_artifacts(text: str) -> tuple[str, bool]:
     return out, changed
 
 
+_FRAGMENT_SPLIT_RE = re.compile(r",\s*|、\s*|(?<=[.!?。！？])\s+")
+_INTRA_LINE_MIN_FRAGMENT = 8
+
+
+def collapse_intra_line_progressive_repeats(text: str) -> tuple[str, int]:
+    """Collapse a provider hypothesis chain that arrived inside ONE line.
+
+    fixes BUG_FIX_ROADMAP.md item 21b. Every duplicate detector in this file
+    compares line i against line i-1 (and `prefix_overlap_ratio`, which on the
+    observed English chains scores 0.19-0.67, below its 0.7 gate), so all of
+    them are structurally blind to repetition that arrives *within a single
+    line*. That is exactly what a long unendpointed segment produces: live run
+    `v3.3.5.5.8.5.26.5.3-20260809-142601` spoke for 13 seconds without a
+    pause long enough to endpoint, Stop sent `Finalize`, and Deepgram
+    returned ONE 460-character final containing its own growing hypotheses
+    joined together:
+
+        "Okay. So what I did is now I'm actually, talking and, talking and I
+         will stop the, talking and I will stop the button middle, talking
+         and I will stop the button middle of the sentence, ..."
+
+    The run's own gate reported `cumulative_duplicate_count: 0` and
+    `export_lossless: true` while that line sat in the export verbatim.
+
+    A hypothesis chain has a signature ordinary speech does not: consecutive
+    fragments where one is a strict prefix-extension of its neighbour. Only
+    those are collapsed, keeping the longest member of each chain. Text
+    whose fragments merely share a topic is untouched, so ordinary lists
+    ("apples, oranges, and pears") and ordinary Japanese
+    ("そうですね、確かに、その通りです。") pass through unchanged.
+
+    Returns the cleaned text and how many fragments were dropped.
+    """
+    raw = text or ""
+    parts = [p.strip() for p in _FRAGMENT_SPLIT_RE.split(raw) if p and p.strip()]
+    if len(parts) < 3:
+        return raw, 0
+
+    def _norm(s: str) -> str:
+        return re.sub(r"[^\w\s]", "", (s or "").lower()).strip()
+
+    kept: list[str] = []
+    dropped = 0
+    for part in parts:
+        np = _norm(part)
+        if not np:
+            continue
+        if kept:
+            nk = _norm(kept[-1])
+            if np.startswith(nk) and len(nk) >= _INTRA_LINE_MIN_FRAGMENT:
+                # neighbour was a partial hypothesis of this one
+                kept[-1] = part
+                dropped += 1
+                continue
+            if nk.startswith(np) and len(np) >= _INTRA_LINE_MIN_FRAGMENT:
+                # this one is a stale earlier hypothesis
+                dropped += 1
+                continue
+        kept.append(part)
+
+    if not dropped:
+        return raw, 0
+
+    out = ""
+    for frag in kept:
+        if not out:
+            out = frag
+        elif re.search(r"[.!?。！？]$", out):
+            out += " " + frag
+        else:
+            out += ", " + frag
+    _jp_log(
+        "INTRA_LINE_PROGRESSIVE_REPEAT_COLLAPSED",
+        dropped=dropped,
+        before_len=len(raw),
+        after_len=len(out),
+        before_preview=raw[:80],
+        after_preview=out[:80],
+    )
+    return out, dropped
+
+
 def count_punctuation_artifacts(lines: list[str]) -> int:
     count = 0
     for ln in lines:
@@ -98,6 +180,8 @@ def sweep_residual_duplicates(lines: list[str]) -> tuple[list[str], dict[str, An
         "punctuation_artifact_before_count": 0,
         "punctuation_artifact_after_count": 0,
         "punctuation_artifact_cleaned_count": 0,
+        "intra_line_progressive_repeat_dropped_count": 0,
+        "intra_line_progressive_repeat_lines": 0,
     }
     if not lines:
         return [], metrics
@@ -118,6 +202,13 @@ def sweep_residual_duplicates(lines: list[str]) -> tuple[list[str], dict[str, An
         if punct_changed:
             metrics["punctuation_artifact_cleaned_count"] += 1
             _jp_log("PUNCTUATION_ARTIFACT_DETECTED", text_preview=cleaned[:80])
+        # item 21b: collapse a provider hypothesis chain that arrived inside
+        # this single line. Runs before the line-vs-line passes below, which
+        # cannot see intra-line repetition at all.
+        cleaned, intra_dropped = collapse_intra_line_progressive_repeats(cleaned)
+        if intra_dropped:
+            metrics["intra_line_progressive_repeat_dropped_count"] += intra_dropped
+            metrics["intra_line_progressive_repeat_lines"] += 1
         cleaned_input.append(f"{prefix}{cleaned}" if prefix else cleaned)
 
     if not RESIDUAL_DUPLICATE_CLEANUP_ENABLED:
