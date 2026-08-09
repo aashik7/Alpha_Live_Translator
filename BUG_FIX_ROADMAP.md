@@ -618,7 +618,7 @@ passing. **Never delete entries** — mark them `[resolved, see item #N]`.
 
 | `3a59f6d` | 2026-08-09 | 20 | **Batch 3 item 20 DONE — BATCH 3 COMPLETE.** Human decision was *"fix the id, then audit"*; both halves landed. **Fix:** `_commit_final_transcript_segment`'s `event_id` fell back to `meta["request_id"]` — Deepgram's **connection-level** id — because `segment_metadata` never sets an `"event_id"` key, so the unique fallback beside it was unreachable dead code. That constant flowed into `lineage_ids` → `source_raw_event_ids` → `_lineage_overlap()`, making the lineage half of `_same_revision_chain` **constant-true**: measured at 13 of 14 canonical records in run `...155842` and 30 of 44 in `...133236`. `stable_revision_decision.py`'s existing "sticky and false-positive across adjacent utterances" comment was that symptom — this was its cause, and the text guard added to compensate was load-bearing because of it. Connection id is not lost (already passed separately as `deepgram_request_id`); Japanese unaffected (supplies real per-event `raw-NNNNNN` ids). **Audit:** new `CANONICAL_KEY_FIELDS_AUDIT.md`, backed by a scan of all 12,286 evidence rows. Two findings reported honestly rather than inflated: `channel_index`'s three serializations do **not** cause a live key mismatch (both key builders normalize the two forms that reach them identically; the `'0'` form is confined to raw-capture streams — a latent hazard only), and `_provider_utterance_id` was **deliberately left** resolving to the connection constant (it is store-only, never compared; injecting a locally-minted id into a field named for a *provider* id would mislead differently). Tests: `tests/test_final_event_id_is_per_utterance.py` (4), 2/4 fail pre-fix. Full suite 331, baseline unchanged (+1 known §5 task9 timing flake, verified passing in isolation). | Claude Sonnet 5 |
 
-**BATCH 3 COMPLETE as of `3a59f6d`.** All items done (9c, 10, 11, 11b, 12, 13, 14, 15, 16, 17, 18, 19, 20). Four things were surfaced during the batch and **deliberately left open rather than fixed as drive-bys** — all are recorded, none are forgotten: the 5th containment instance in `decide_transcript_action` (§5, from item 13), audit §2.7's speaker-only store keying (from item 17), and two entries in `CANONICAL_KEY_FIELDS_AUDIT.md` §5 (drop `channel_index` from the keys; re-evaluate `_textually_related_revision` now that lineage overlap carries real information). **Post-completion live checkpoint run 2026-08-09** (§6b) — item 20 and 9c confirmed live; item 18's diagnostic surfaced a real bug, filed as **item 20b, moved into Batch 4** (§6c) rather than reopening this batch; items 10/11/11b's code path is still unexercised after three sessions, see §6d for the outstanding human task.
+**BATCH 3 COMPLETE as of `3a59f6d`.** All items done (9c, 10, 11, 11b, 12, 13, 14, 15, 16, 17, 18, 19, 20). Four things were surfaced during the batch and **deliberately left open rather than fixed as drive-bys** — all are recorded, none are forgotten: the 5th containment instance in `decide_transcript_action` (§5, from item 13), audit §2.7's speaker-only store keying (from item 17), and two entries in `CANONICAL_KEY_FIELDS_AUDIT.md` §5 (drop `channel_index` from the keys; re-evaluate `_textually_related_revision` now that lineage overlap carries real information). **Post-completion live checkpoint run 2026-08-09** (§6b) — item 20 and 9c confirmed live; item 18's diagnostic surfaced a real bug, filed as **item 20b, moved into Batch 4** (§6c) rather than reopening this batch; items 10 and 11 were then closed by run `...192516` (Stop-tail path reached at last), and **item 11b alone is carried into Batch 4 as `11b-LT`** — verification-only, still zero live evidence.
 
 **Correction note on `5001275`:** the original draft of
 `PROACTIVE_AUDIT_20260806.md` mislabeled
@@ -701,13 +701,55 @@ regression: it made an existing silent failure audible.**
   store — presumably the reason the field exists. **Filed as a new item
   in §6c.**
 
-**❌ Items 10 / 11 / 11b — STILL NOT EXERCISED. Third consecutive run.**
-Both sessions again reached Stop with `latest_interim_len: 0` and
-`[INTERIM] stop tail skipped … reason: empty_interim`. No `orphan` events,
-so 11b's hand-off is untested too. **The checkpoint asks for Stop pressed
-*mid-sentence, while still speaking*; that has not happened yet in any of
-the six sessions run so far.** Until it does, these three fixes have unit
-tests and no live evidence.
+**❌ Items 10 / 11 / 11b — not exercised in these two runs** (third
+consecutive checkpoint). Both sessions again reached Stop with
+`latest_interim_len: 0` and `[INTERIM] stop tail skipped … reason:
+empty_interim`. **Superseded by the 19:25 runs below, where the path
+finally executed.**
+
+#### Stop-mid-sentence retest — 2026-08-09 19:25, runs `...192450`, `...192502`, `...192516`
+
+Purpose-built attempt at the outstanding human task. `...192501` produced
+no logs (aborted, 98K). `...192450` and `...192502` again hit
+`latest_interim_len: 0` / `empty_interim`.
+
+**✅ `...192516` — the Stop-tail path executed for the first time in the
+project.** `latest_interim_len: 37` (> 0), so
+`_recover_interim_tail_on_stop` got past `empty_interim` and
+`_check_stop_tail_duplicate` actually ran. Result:
+
+```
+interim_preview    = "My name is Tarikhis Tamashik I'm from"   (37)
+last_final_preview = "My name is Tarikhis Tamashik I'm from"   (37)
+decision           = skip_already_committed
+```
+
+The interim was a **byte-identical copy** of the already-committed final,
+so `skip_already_committed` is the **correct** decision — equality is
+exactly the proof items 10 and 11 deliberately *kept* when they narrowed
+those filters. `final_status: completed`, FINAL export contains the line,
+**0 exact-duplicate lines**.
+
+**What this does and does not prove.** It settles the two questions that
+were actually risky:
+- the path is **reachable** (four checkpoints of doubt now closed), and
+- items 10/11 did **not** introduce their own failure mode — they can only
+  ever commit *more* than before, and the duplicated-closing-line
+  regression that would have caused did **not** appear.
+
+It does **not** exercise the branch the two items changed: an interim tail
+that sits *inside* a committed segment (interior substring), which used to
+be dropped and should now commit. Producing that on purpose needs a tail
+that is a mid-string fragment of the last final, not a copy of it — rare
+enough that it may never occur naturally. **Treated as verified as far as
+is practical; the interior-containment branch stays covered by unit tests
+only, and that is recorded rather than claimed as a live pass.**
+
+**❌ Item 11b — still zero live evidence.** No `watchdog orphan`,
+`orphan superseded`, or `_discard_watchdog_orphaned_interim` events in any
+of the four runs. Variant (b) — Stop after a ~10s pause, long enough for
+the ghost watchdog to fire first — has still not been performed. **Carried
+into Batch 4.**
 
 **Fired zero times — no evidence either way, not a pass:**
 `SAME_UTTERANCE_SUBSTITUTION_UPDATED` (item 13),
@@ -1052,6 +1094,22 @@ pre-Batch-3 baseline; confirm a measurable drop.
 
 **Recommended model: Opus 5** (see §8). Depends on Batch 3.
 
+**11b-LT. `[verification only — no code change]` — Batch 3 item 11b has
+never executed live** *(carried from Batch 3; items 10 and 11 were closed
+by run `...192516`, this one was not)*
+Not a defect to fix — `69605cc`'s code is written and unit-tested. What is
+missing is a **single human session**: Stop pressed after a **~10s pause**
+following the last word, so the interim ghost watchdog fires *before*
+Stop and the orphan hand-off actually runs. Any other Stop timing skips
+the branch entirely — five sessions to date have produced **zero**
+`watchdog orphan` / `orphan superseded` /
+`_discard_watchdog_orphaned_interim` events. Pass condition: a
+`stop tail using watchdog orphan` entry in `logs/async_debug.log`, and the
+stashed text present in `transcripts/Alpha_output_FINAL.txt` **exactly
+once**. Until then 11b is wired-up-never-fired, the shape §7 warns about.
+**Costs one session, not a work item — do it alongside whatever Batch 4
+session happens next.**
+
 **20b. `[core:2]` — the Japanese assembler path never gets its
 `canonical_utterance_id` into `TranscriptStore`** *(found by item 18's
 diagnostic during the 2026-08-09 post-completion checkpoint — see §6b;
@@ -1347,15 +1405,21 @@ the self-heal actually firing, and item 18's diagnostic earned its keep by
 exposing a real pre-existing gap (now filed as **item 20b**). Items 13, 17
 and 19 never fired, so they remain unobserved rather than passed.
 
-**→ NEXT, and it is a human task, not a code task: one session per
-language Stopped MID-SENTENCE, while still speaking.** Items 10, 11 and
-11b have now gone **three consecutive checkpoints without their code path
-executing once** — every session so far has been Stopped after the speaker
-finished, so `_recover_interim_tail_on_stop` returns at `empty_interim`
-before any of the three fixes is reached. They have unit tests and zero
-live evidence. The two variants and the exact log lines to check are
-listed earlier in this section. **Do this before Batch 4** — it is the
-oldest outstanding verification in the project.
+**Items 10 and 11 are now closed** — run `...192516` (2026-08-09 19:25)
+finally reached the Stop-tail path with `latest_interim_len: 37`, decided
+`skip_already_committed` on a byte-identical interim (correct), and
+produced no duplicate closing line. That settles both risky questions:
+the path is reachable, and the narrowing introduced no regression. The
+interior-substring branch remains unit-test-only and is recorded as such
+in §6b — not claimed as a live pass.
+
+**→ Item 11b is carried into Batch 4** as the one piece of Batch 3 with
+still-zero live evidence. It needs the **variant (b)** session: Stop after
+a **~10s pause** following the last word, long enough for the interim
+ghost watchdog to fire *before* Stop, which is the only way its orphan
+hand-off runs. Confirm a `stop tail using watchdog orphan` entry appears
+and that the stashed text lands in the FINAL export exactly once. Four
+sessions so far have produced no `orphan` events of any kind.
 
 **Then → Batch 4, starting with item 20b** (§6c — filed from the
 checkpoint, now living at the top of Batch 4's item list). It is small
