@@ -618,7 +618,7 @@ passing. **Never delete entries** — mark them `[resolved, see item #N]`.
 
 | `3a59f6d` | 2026-08-09 | 20 | **Batch 3 item 20 DONE — BATCH 3 COMPLETE.** Human decision was *"fix the id, then audit"*; both halves landed. **Fix:** `_commit_final_transcript_segment`'s `event_id` fell back to `meta["request_id"]` — Deepgram's **connection-level** id — because `segment_metadata` never sets an `"event_id"` key, so the unique fallback beside it was unreachable dead code. That constant flowed into `lineage_ids` → `source_raw_event_ids` → `_lineage_overlap()`, making the lineage half of `_same_revision_chain` **constant-true**: measured at 13 of 14 canonical records in run `...155842` and 30 of 44 in `...133236`. `stable_revision_decision.py`'s existing "sticky and false-positive across adjacent utterances" comment was that symptom — this was its cause, and the text guard added to compensate was load-bearing because of it. Connection id is not lost (already passed separately as `deepgram_request_id`); Japanese unaffected (supplies real per-event `raw-NNNNNN` ids). **Audit:** new `CANONICAL_KEY_FIELDS_AUDIT.md`, backed by a scan of all 12,286 evidence rows. Two findings reported honestly rather than inflated: `channel_index`'s three serializations do **not** cause a live key mismatch (both key builders normalize the two forms that reach them identically; the `'0'` form is confined to raw-capture streams — a latent hazard only), and `_provider_utterance_id` was **deliberately left** resolving to the connection constant (it is store-only, never compared; injecting a locally-minted id into a field named for a *provider* id would mislead differently). Tests: `tests/test_final_event_id_is_per_utterance.py` (4), 2/4 fail pre-fix. Full suite 331, baseline unchanged (+1 known §5 task9 timing flake, verified passing in isolation). | Claude Sonnet 5 |
 
-**BATCH 3 COMPLETE as of `3a59f6d`.** All items done (9c, 10, 11, 11b, 12, 13, 14, 15, 16, 17, 18, 19, 20). Four things were surfaced during the batch and **deliberately left open rather than fixed as drive-bys** — all are recorded, none are forgotten: the 5th containment instance in `decide_transcript_action` (§5, from item 13), audit §2.7's speaker-only store keying (from item 17), and two entries in `CANONICAL_KEY_FIELDS_AUDIT.md` §5 (drop `channel_index` from the keys; re-evaluate `_textually_related_revision` now that lineage overlap carries real information). **Batch 3's live-test checkpoint is still outstanding** — see §6d.
+**BATCH 3 COMPLETE as of `3a59f6d`.** All items done (9c, 10, 11, 11b, 12, 13, 14, 15, 16, 17, 18, 19, 20). Four things were surfaced during the batch and **deliberately left open rather than fixed as drive-bys** — all are recorded, none are forgotten: the 5th containment instance in `decide_transcript_action` (§5, from item 13), audit §2.7's speaker-only store keying (from item 17), and two entries in `CANONICAL_KEY_FIELDS_AUDIT.md` §5 (drop `channel_index` from the keys; re-evaluate `_textually_related_revision` now that lineage overlap carries real information). **Post-completion live checkpoint run 2026-08-09** (§6b) — item 20 and 9c confirmed live; item 18's diagnostic surfaced a real bug, filed as **item 20b, moved into Batch 4** (§6c) rather than reopening this batch; items 10/11/11b's code path is still unexercised after three sessions, see §6d for the outstanding human task.
 
 **Correction note on `5001275`:** the original draft of
 `PROACTIVE_AUDIT_20260806.md` mislabeled
@@ -1046,9 +1046,18 @@ back-to-back short utterances. Compare
 `IDENTITY_REJECTION` / `FALLBACK_BLOCKED` / quarantine rates against the
 pre-Batch-3 baseline; confirm a measurable drop.
 
+---
+
+#### BATCH 4 — Core bug 1 (partial): concurrency & state-machine safety
+
+**Recommended model: Opus 5** (see §8). Depends on Batch 3.
+
 **20b. `[core:2]` — the Japanese assembler path never gets its
 `canonical_utterance_id` into `TranscriptStore`** *(found by item 18's
-diagnostic during the 2026-08-09 post-completion checkpoint — see §6b)*
+diagnostic during the 2026-08-09 post-completion checkpoint — see §6b;
+kept its Batch-3-era number, moved into Batch 4 because it was filed
+after Batch 3 closed — do first, before 21, it is small and unrelated to
+the rest of this batch's concurrency theme)*
 `alpha/transcription/japanese_sentence_assembler.py` ·
 `grep: metadata["canonical_utterance_id"] = self._current_canonical_utterance_id`
 → the chain down to
@@ -1069,13 +1078,7 @@ apparent purpose of the field. **Fix the plumbing before anything is built
 on it.** Note `final_export_records.jsonl` has had `translated_text` on 0
 rows in *every* run ever captured, pre- and post-item-18 — this is old, not
 a regression. Recommended model: Sonnet 5 (tracing a metadata field through
-a known chain).
-
----
-
-#### BATCH 4 — Core bug 1 (partial): concurrency & state-machine safety
-
-**Recommended model: Opus 5** (see §8). Depends on Batch 3.
+a known chain — the rest of Batch 4 wants Opus 5, this one item doesn't).
 
 **21. `[core:1]`** `alpha/utils/stop_finalize_worker.py` · `grep: def _confirm_transcript_commits` · ≈1116
 Computes `transcript_remaining` / `batch_remaining` and only **logs**
@@ -1354,12 +1357,15 @@ live evidence. The two variants and the exact log lines to check are
 listed earlier in this section. **Do this before Batch 4** — it is the
 oldest outstanding verification in the project.
 
-**Then → item 20b** (§6c) — small, well-scoped, and it should be fixed
-before anyone builds a bilingual export on `TranscriptStore`.
+**Then → Batch 4, starting with item 20b** (§6c — filed from the
+checkpoint, now living at the top of Batch 4's item list). It is small
+and well-scoped, unrelated to the rest of the batch's concurrency theme,
+and should be fixed before anyone builds a bilingual export on
+`TranscriptStore`. Recommended model for 20b: Sonnet 5.
 
-**Then → Batch 4** (items 21-27, Core bug 1: concurrency / state machine
-/ fail-open policy). Recommended model: **Opus 5** for the whole batch
-(§8) — race conditions and lock ordering, where tests alone do not
+**Then the rest of Batch 4** (items 21-27, Core bug 1: concurrency /
+state machine / fail-open policy). Recommended model: **Opus 5** for
+these (§8) — race conditions and lock ordering, where tests alone do not
 reliably catch the failure modes.
 
 **The four deferred Batch 3 findings** (listed at the top of this
