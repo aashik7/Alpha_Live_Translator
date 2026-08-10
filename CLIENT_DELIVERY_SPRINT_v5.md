@@ -160,7 +160,17 @@ twelve.
 - **39** run scorer — **Sonnet 5**
 - **40** reference corpus + baseline numbers — **Sonnet 5**
 
-**Gate:** all 27 recorded runs replay; baseline numbers written into §9.
+**Gate:** ~~all 27 recorded runs replay~~ — **corrected 2026-08-10, see §9.**
+Only **6** runs are replayable from `provider_events.jsonl` at all; the
+other 21 carry no genuine provider ingress (10 have the file but only
+post-lifecycle re-emissions, 11 lack the file). All 6 are Japanese —
+English sessions record no raw ingress by design.
+
+Gate is therefore a content requirement, not a count: **all 6 runs with
+genuine provider ingress replay, and those 6 must include
+`...20260807-160529` and the two 08-08 higher-volume reproduction runs
+(`...20260808-134815`, `...20260808-155334`).** All three are present.
+Baseline numbers written into §9.
 
 ### Days 3–6 (Aug 12–15) · Content integrity — items 41, 42, 43, 22, 23, 33s
 
@@ -344,7 +354,7 @@ recommended (pending). `[gate]` = human approval required before coding.
 
 | Item | What | Model | Day | Status |
 |---|---|---|---|---|
-| 38 | `tools/replay_run.py` — replay a recorded run's `provider_events.jsonl` headlessly, diff against its FINAL export | **Opus 5** | 1–2 | TODO `[gate]` |
+| 38 | `tools/replay_run.py` — replay a recorded run's `provider_events.jsonl` headlessly, diff against its FINAL export | **Opus 5** | 1–2 | **INVESTIGATED, BLOCKED** — design approved with 5 conditions; conditions 1 and 2 both returned findings that change the design. Three decisions needed before coding, see §9 (2026-08-10 rows) |
 | 39 | `tools/score_run.py` — pass/fail on the §7 gates plus latency percentiles | **Sonnet 5** | 2 | TODO |
 | 40 | Reference corpus: 10 min ja + 10 min en, hand-written expected transcript, baseline recorded | **Sonnet 5** | 2 | TODO |
 | 41 | Prove problem A's root cause against run `...20260807-160529` — prove, do not assume | **Fable 5** `xhigh` | 3–4 | TODO |
@@ -369,6 +379,11 @@ wrong.
 | Date | Agent / model | What happened |
 |---|---|---|
 | 2026-08-10 | — | v5 created. Batches 1–3 complete, Batch 4 items 20b/20c/21 complete. Sprint scope set for 2026-08-24 client delivery. |
+| 2026-08-10 | Opus 5 | **Item 38 condition 1 — the proposed input filter was wrong.** The design filtered `provider_events.jsonl` on `metadata.source == "system"`. `metadata.source` is not a provenance field at all — it is the **speaker-source label**, written from `source_snapshot.chosen_source / speaker_label` in `deepgram_client.py`. Histogram across all 16 runs that have the file: `system` 199, `utterance_lifecycle_accept_boundary_proposal` 113, `none` 94, *missing* 52, `mic` 3, `mixed` 1. That filter would have discarded 98 genuine ingress rows (`none`/`mic`/`mixed`). The `none` row flagged in the approval is genuine provider ingress — `speech_final: true`, `confidence: 0.998`, real audio timing 98.93–100.85 s — with speaker label "none". Nothing to drop. |
+| 2026-08-10 | Opus 5 | **Correct discriminator, verified across 462 rows / 16 runs: `metadata.raw_deepgram_text` presence (equivalently `confidence is not None`).** Perfectly bimodal — 242 rows have both, 220 have neither, **zero mixed**. The 220 are assembler commit re-emissions: `_publish_final_transcript_segment` also calls `record_raw_deepgram_final`, and the Japanese assembler publishes through it carrying lifecycle metadata. `canonical_finalize.py`'s comment claiming provider_events "can never carry a synthetic row" is true only of the `synthetic_record`/`synthetic_lineage` flags — assembler output that is not flagged synthetic does reach the file. |
+| 2026-08-10 | Opus 5 | **Coverage is 6 runs, not 27 or 16.** English sessions record **zero** genuine ingress: only `japanese_final_chunk_stabilizer.py` calls `record_raw_deepgram_final` on true ingress, so an en run's provider_events contains re-emissions only (confirmed: all 10 en runs have 0 ingress rows **and** 0 `stable_commits`). Replay from this input is Japanese-only. The 6: `...160529` (25 ingress), `...155922` (3), `...160130` (11), `...134815` (50), `...155334` (71), `...174516` (82). Excluded 11 runs with no provider_events.jsonl: `_pending`, `...132428`, `...160518`, `...160519`, `...160528`, `...134809`, `...155841`, `...173845`, `...192450`, `...192501`, `...192502`. Excluded 10 more that have the file but no ingress (all en): `...132429`, `...132635`, `...150958`, `...153955`, `...160352`, `...133236`, `...155842`, `...173846`, `...192516`, `...134258`. |
+| 2026-08-10 | Opus 5 | **§1's "reproduced at higher volume on 08-08 and 08-09" is half wrong.** Measured stable_commits vs ledger records on every run that has an assembler stream: `...160130` 4/3 (−1), `...160529` 10/9 (−1), `...134815` 29/23 (**−6**), `...155334` 32/26 (**−6**), `...155922` 3/3 (0), `...174516` 36/36 (**0**). 08-08 reproduces at volume as claimed. **08-09 does not reproduce at all** — the only 08-09 run with an assembler stream is clean. There is no 08-09 reproduction run to include in the gate. |
+| 2026-08-10 | Opus 5 | **Item 38 condition 2 — the host path diverges from production; reporting before writing, as instructed.** Production: `stabilizer.ingest()` → `assembler.ingest()` → assembler posts a *deferred* flush via `LanguagePipelineWorker.schedule_flush(assembler, due_mono, generation, reason)`, executed by a background thread against wall-clock `due_mono`. `JapaneseTestHost` (test_task2c) deliberately bypasses that: its own docstring says timeout scenarios use "the assembler's synchronous `try_execute_continuity_hold` entry point **instead of real timers**", and tests call `assembler.flush(...)` by hand. So *when* a flush happens — which decides what the assembler batches into one commit — is production-timed but harness-manual. Whether problem A survives that change is unknown and is exactly what condition 4 says to report rather than tune around. |
 
 ---
 
