@@ -1138,6 +1138,15 @@ rows in *every* run ever captured, pre- and post-item-18 — this is old, not
 a regression. Recommended model: Sonnet 5 (tracing a metadata field through
 a known chain — the rest of Batch 4 wants Opus 5, this one item doesn't).
 
+**20c. `[core:2]`** `alpha/transcription/duplicate_protection.py` · `grep: def decide_transcript_action`
+*(deferred finding from Batch 3 item 13, §5's 2026-08-09 note)* The 5th
+instance of the any-position containment anti-pattern that items
+10/11/12/19 already fixed elsewhere — `curr_n in prev_n: return ("skip",
+None)` drops the incoming final outright on a coincidental interior
+match. Narrow to prefix-or-suffix, same as the other four. No dependency
+on the rest of this batch. **Recommended model: Sonnet 5** — the template
+is fully established by now.
+
 **21. `[core:1]`** `alpha/utils/stop_finalize_worker.py` · `grep: def _confirm_transcript_commits` · ≈1116
 Computes `transcript_remaining` / `batch_remaining` and only **logs**
 them — never compares to zero — so `commit_confirm_ok` is effectively
@@ -1199,6 +1208,19 @@ With logged evidence from Batches 2-4 now available, decide whether
 narrower condition. **Evidence-driven** — check how often item 8's log
 line actually fired before deciding.
 
+**27b. `[core:2]`** `alpha/transcription/stable_revision_decision.py` · `grep: def _textually_related_revision`
+*(deferred finding from Batch 3 item 20, `CANONICAL_KEY_FIELDS_AUDIT.md`
+§5 finding 4)* This function's `sim >= 0.72` threshold was tuned while
+`_lineage_overlap` was constant-true (item 20's root cause) — it was
+compensating for lineage carrying no information. Now that lineage
+overlap is real, re-evaluate whether the threshold is still right: it may
+now be stricter than intended in combination with real overlap, or
+redundant in cases where it used to be the only signal doing real work.
+**Needs a live run with a genuine same-utterance correction to observe —
+not just code reading.** No dependency on the rest of this batch.
+**Recommended model: Opus 5** (judgment call on a tuned threshold, not a
+template fix).
+
 **Checkpoint:** `REPAIR_PLAN.md` Level 2 (component integration:
 lifecycle → ledger → UI store → translation, no real APIs) and Level 3
 (replay recorded event sequences) if a replay harness exists; otherwise a
@@ -1212,6 +1234,24 @@ lifecycle → ledger → UI store → translation, no real APIs) and Level 3
 where item **4.1** — the measured Japanese content loss — gets fixed.
 Deliberately last. Treat as its own mini-project following
 `REPAIR_PLAN.md`'s methodology, **not** a single surgical commit.
+
+**28a. `[core:2]` — audit §2.7: store keying is speaker-only**
+`alpha/summary/transcript_store.py` (the `..._if_active` variants)
+*(deferred finding from Batch 3 item 17)* No channel/session key, only
+speaker — item 17 fixed the check-then-act *race*, not this. A
+same-speaker collision across channels or sessions is still possible.
+**Do before item 28** — this batch is about to redesign identity for the
+same controller, do it against the corrected key rather than the old one.
+**Sequence with 28b.** Recommended model: Opus 5.
+
+**28b. `[core:2]`** `CANONICAL_KEY_FIELDS_AUDIT.md` §5, finding 2
+*(deferred finding from Batch 3 item 20)* `channel_index` is constant on
+mono and contributes nothing to either key builder
+(`canonical_identity_registry.py`, `canonical_transcript_ledger.py`);
+keeping it in the key is what makes its inconsistent serialization (list
+vs. two string forms) a latent hazard rather than a dead field. Drop it
+from both. **Do before item 28, sequenced with 28a.** Recommended model:
+Opus 5.
 
 **28.** Capture deterministic replay fixtures from a session reproducing
 item 4.1, **before touching any code** (`REPAIR_PLAN.md` Phase 0). Exact
@@ -1295,20 +1335,20 @@ the obvious-looking name.
 `3a59f6d`).
 
 **Four things were surfaced during Batch 3 and deliberately left open**
-rather than fixed as drive-bys. None are forgotten; all are written down:
-1. the 5th containment instance in `decide_transcript_action` (§5's
-   2026-08-09 note, found during item 13) — Sonnet 5 is sufficient
-2. audit §2.7 — `TranscriptStore`'s `..._if_active` variants are keyed by
-   **speaker only**, no channel/session key (from item 17)
-3. drop `channel_index` from the two key builders entirely — it is
-   constant on mono, and keeping it is what makes its inconsistent
-   serialization a latent hazard (`CANONICAL_KEY_FIELDS_AUDIT.md` §5)
-4. re-evaluate `_textually_related_revision`'s role in
-   `_same_revision_chain` — it was tuned to compensate for the lineage
-   half being inert, which item 20 has now fixed (same file, §5)
-
-(2) and (3) are both "what should the identity key actually be?" and are
-worth deciding together.
+rather than fixed as drive-bys. Rather than a separate holding batch, each
+was folded into the batch where it will actually get fixed, keeping its
+own item number and model recommendation:
+- **item 20c** (Batch 4, §6c) — the 5th containment instance in
+  `decide_transcript_action` (found during item 13). Sonnet 5, no
+  dependency, pick up anytime.
+- **item 27b** (Batch 4, §6c) — re-evaluate `_textually_related_revision`
+  (found during item 20). Opus 5, no dependency.
+- **items 28a + 28b** (Batch 5, §6c) — audit §2.7's speaker-only store
+  keying (found during item 17) and dropping `channel_index` from the key
+  builders (found during item 20). Both Opus 5, sequenced with each other,
+  and placed **before** item 28 proper — Batch 5 is about to redesign
+  identity for this exact controller, so these fix "what is the identity
+  key" first rather than after.
 
 **Batch 3 checkpoint — run 2026-08-09, PARTIALLY satisfied.** Full
 results in §6b. Summary:
