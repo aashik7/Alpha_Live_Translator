@@ -1,5 +1,10 @@
 # Project Context
 
+**For current work, read `CLIENT_DELIVERY_SPRINT_v5.md`, not
+`BUG_FIX_ROADMAP.md`.** v5 supersedes v4 for execution order/scope
+(client delivery deadline 2026-08-24); v4 stays as the historical
+evidence record, read only when a v5 item explicitly points there.
+
 This project has known architectural bugs documented in:
 - ROOT_CAUSE.md — confirmed root-cause audit
 - REPAIR_PLAN.md — phased repair plan (follow task order strictly)
