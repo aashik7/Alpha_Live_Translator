@@ -66,7 +66,25 @@ def decide_transcript_action(previous_text: str | None, current_text: str) -> tu
     if curr_n == prev_n:
         return ("skip", None)
 
-    if curr_n in prev_n:
+    # fixes BUG_FIX_ROADMAP.md Batch 4 item 20c: this used to be
+    # `if curr_n in prev_n: return ("skip", None)` -- current counted as
+    # "nothing new" whenever it was a literal substring ANYWHERE inside
+    # previous, including the middle, and the caller
+    # (_display_transcript_item) returns unconditionally on "skip" with no
+    # fallback -- current is dropped outright, never stored, displayed, or
+    # translated. Same any-position containment anti-pattern items
+    # 10/11/12/19 already fixed elsewhere in this codebase, and it becomes
+    # MORE reachable for the Japanese assembler path specifically now that
+    # item 20b (`2367285`) stopped `revision_target_id` from being
+    # self-referentially truthy on every commit -- before that fix, this
+    # function's return value was overridden to "update" for nearly every
+    # Japanese commit regardless, masking whatever it returned here.
+    # Narrowed to prefix-or-suffix of previous, the only shapes that
+    # actually evidence current is a truncated partial repeat (e.g. a
+    # provider re-send) rather than a coincidental substring match (e.g. a
+    # short "ありがとうございました" that happens to also appear inside an
+    # earlier, unrelated, longer line).
+    if prev_n.startswith(curr_n) or prev_n.endswith(curr_n):
         return ("skip", None)
 
     if prev_n in curr_n:
@@ -76,19 +94,11 @@ def decide_transcript_action(previous_text: str | None, current_text: str) -> tu
     # sit here --
     #     if curr_n.startswith(prev_n): return ("update", current)
     #     if prev_n.startswith(curr_n): return ("skip", None)
-    # Both are provably unreachable AND redundant: curr_n.startswith(prev_n)
-    # implies prev_n in curr_n, which the check directly above already
-    # returned ("update", current) for; prev_n.startswith(curr_n) implies
-    # curr_n in prev_n, which the `curr_n in prev_n` check above already
-    # returned ("skip", None) for. Same inputs, same outputs -- removing
-    # them is a no-op, not a behavior change.
-    #
-    # Note for whoever narrows the `curr_n in prev_n` check above (see §5's
-    # 2026-08-09 note -- it is the same any-position containment
-    # anti-pattern as items 10/11/12/19 and it DROPS current): once that is
-    # narrowed to prefix-or-suffix, `prev_n.startswith(curr_n)` stops being
-    # subsumed and would have to be reconsidered deliberately rather than
-    # silently inherited from this dead code.
+    # curr_n.startswith(prev_n) still implies prev_n in curr_n, which the
+    # check directly above still returns ("update", current) for -- still
+    # dead. prev_n.startswith(curr_n) is no longer dead code eliminated by
+    # simplification -- it is now the narrowed check immediately above,
+    # deliberately kept (item 20c), not silently dropped.
     return ("add", current)
 
 
