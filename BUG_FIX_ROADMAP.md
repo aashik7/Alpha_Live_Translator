@@ -621,6 +621,7 @@ passing. **Never delete entries** — mark them `[resolved, see item #N]`.
 **BATCH 3 COMPLETE as of `3a59f6d`.** All items done (9c, 10, 11, 11b, 12, 13, 14, 15, 16, 17, 18, 19, 20). Four things were surfaced during the batch and **deliberately left open rather than fixed as drive-bys** — all are recorded, none are forgotten: the 5th containment instance in `decide_transcript_action` (§5, from item 13), audit §2.7's speaker-only store keying (from item 17), and two entries in `CANONICAL_KEY_FIELDS_AUDIT.md` §5 (drop `channel_index` from the keys; re-evaluate `_textually_related_revision` now that lineage overlap carries real information). **Post-completion live checkpoint run 2026-08-09** (§6b) — item 20 and 9c confirmed live; item 18's diagnostic surfaced a real bug, filed as **item 20b, moved into Batch 4** (§6c) rather than reopening this batch; items 10 and 11 were then closed by run `...192516` (Stop-tail path reached at last), and **item 11b alone is carried into Batch 4 as `11b-LT`** — verification-only, still zero live evidence.
 
 | `2367285` | 2026-08-09 | 20b | **Batch 4 item 20b DONE — and its own first diagnosis retracted.** The original filing (above, from item 18's diagnostic) concluded the assembler lost `canonical_utterance_id` before the store write, based on `clean_active_transcript.jsonl` showing 0/35 rows with the field. **That measurement was against the wrong file** — `clean_active_transcript.jsonl` is `stable_line_revision.py`'s own stream and never carried `canonical_utterance_id` (it uses `canonical_line_id`, a different scheme); "0/35" proved nothing. **Real root cause**, found by driving the actual assembler code and confirmed against live evidence: `japanese_sentence_assembler.py` set `metadata["revision_target_id"]` to the just-committed record's **own** id on every successful commit — including brand-new appends, not just revisions. Confirmed self-referential (`revision_target_id == canonical_record_id`) on **all 36** `applied_action: "append"` records in run `...174516`. `duplicate_protection.py` correctly treats any truthy `revision_target_id` as an authoritative revision signal, so every Japanese assembler commit was forced through `action="update"` — which, once the store held more than one same-speaker row, silently overwrote the store's **one** row's text on each new utterance while never touching its `canonical_utterance_id`. Every utterance after the first stayed permanently pinned to the *first* utterance's id — exactly the measured 35/36 `TRANSLATION_STORE_ID_MATCH_NOT_FOUND`. Fixed at both sites that set `revision_target_id`: only set when the commit genuinely revises a prior record. Tests: `tests/test_japanese_assembler_append_not_treated_as_revision.py` (3), driving the **real** assembler + real ledger + real `duplicate_protection.py` + real `TranscriptStore` — pre-fix reproduces the exact bug (two unrelated same-speaker sentences collapse into one store row, the second overwriting the first); post-fix, two rows with two distinct ids. Existing genuine-revision tests (30 across 4 files) still pass. Full suite 334, baseline unchanged. `CANONICAL_KEY_FIELDS_AUDIT.md` §5b has the full corrected write-up. | Claude Opus 5 |
+| `012695d` | 2026-08-09 | 20c | **Batch 4 item 20c DONE.** The 5th any-position containment instance (items 10/11/12/19 already fixed elsewhere): `decide_transcript_action`'s `curr_n in prev_n: return ("skip", None)` dropped an incoming final outright whenever it was a substring anywhere inside the previous line — confirmed from the caller (`_display_transcript_item`) that "skip" has no fallback, so this was real content loss. **Newly relevant because of item 20b**: before that fix, `revision_target_id` being self-referentially truthy on every Japanese commit forced `action="update"` regardless of what this function returned, masking its output; post-20b, a brand-new Japanese append's fate depends on this function for the first time in production. Narrowed to prefix-or-suffix, same pattern as the other four. Updated item 13's dead-code comment: one removed branch stays correctly dead (still subsumed), the other is no longer eliminated by simplification — it's now this fix's narrowed check, kept deliberately. Tests: `tests/test_decide_transcript_action_containment.py` (10) — 6 pin the pure decision table, 2 drive the **real** `_display_transcript_item` as a Japanese-assembler-shaped commit (applying item 20b's lesson: verify the caller-side claim directly, not by reading code). Pre-fix: exactly the 3 expected tests fail. Full suite 344, baseline unchanged. | Claude Opus 5 |
 
 **Correction note on `5001275`:** the original draft of
 `PROACTIVE_AUDIT_20260806.md` mislabeled
@@ -1130,8 +1131,8 @@ that turned out wrong** — `clean_active_transcript.jsonl` never carried
 `canonical_utterance_id` by design (it uses `canonical_line_id`, a
 different scheme); the "0" measured nothing.
 
-**20c. `[core:2]`** `alpha/transcription/duplicate_protection.py` · `grep: def decide_transcript_action`
-*(deferred finding from Batch 3 item 13, §5's 2026-08-09 note)* The 5th
+~~**20c. `[core:2]`** `alpha/transcription/duplicate_protection.py` · `grep: def decide_transcript_action`~~ **DONE, `012695d`.** Narrowed `curr_n in prev_n` to prefix-or-suffix, same as items 10/11/12/19. Confirmed via a real integration test (not just the pure function) that this became MORE reachable for the Japanese assembler path after item 20b stopped masking its output. See the ledger row below.
+*(Original description kept:)* *(deferred finding from Batch 3 item 13, §5's 2026-08-09 note)* The 5th
 instance of the any-position containment anti-pattern that items
 10/11/12/19 already fixed elsewhere — `curr_n in prev_n: return ("skip",
 None)` drops the incoming final outright on a coincidental interior
@@ -1464,21 +1465,31 @@ and had to be corrected by actually running the code (item 9c's original
 plausible-looking evidence read still needs to be driven through the real
 code before trusting it enough to fix.
 
-**→ NEXT: item 20c** (§6c) — the 5th containment instance in
-`decide_transcript_action`, deferred from item 13. Small, Sonnet 5, no
-dependency. **Also still outstanding, no fixed order between them:**
+**Item 20c is now DONE too** (`012695d`) — unlike 20b, this one's
+diagnosis was correct the first time and confirmed by driving the real
+`_display_transcript_item`, not just the pure function, applying 20b's
+lesson directly. All three of the checkpoint-surfaced Batch-3-era
+findings that had item numbers in Batch 4 (20b, 20c) are now fixed;
+`27b` still doesn't (see below).
+
+**→ NEXT: item 21** (§6c) — `_confirm_transcript_commits` never compares
+`transcript_remaining`/`batch_remaining` to zero, so `commit_confirm_ok`
+is effectively always `True`. Smallest, highest-value item in the rest
+of Batch 4 per its own write-up — do it first. **No fixed order beyond
+that among the rest:**
 - **item 11b-LT** (§6c) — the one piece of Batch 3 with still-zero live
   evidence. Needs a human session: Stop after a ~10s pause so the
   interim ghost watchdog fires before Stop. Verification only, no code.
-- the rest of Batch 4 (items 21-27, 27b — concurrency / state machine /
-  fail-open policy). Recommended model: **Opus 5** (§8) — race
-  conditions and lock ordering, where tests alone do not reliably catch
-  the failure modes.
+- items 22-27, 27b (concurrency / state machine / fail-open policy, plus
+  the deferred `_textually_related_revision` re-evaluation). Recommended
+  model: **Opus 5** (§8) — race conditions and lock ordering, where
+  tests alone do not reliably catch the failure modes.
 
-**Two of the original four deferred Batch 3 findings remain unscheduled**
-(the other two, 20c and 27b, now have item numbers in Batch 4 above):
-items 28a+28b (§6c) should be decided together as one "what is the
-identity key?" question, sequenced before Batch 5's item 28 proper.
+**All four of the original deferred Batch 3 findings now have item
+numbers and a home** (20c and 27b in Batch 4, 28a+28b in Batch 5) — none
+are unscheduled anymore, only 20c is done so far. 28a+28b should still be
+decided together as one "what is the identity key?" question, sequenced
+before Batch 5's item 28 proper.
 
 **Still open from earlier live-test findings, not yet scheduled beyond
 their existing batch** (both re-measured on the 2026-08-09 run and still
