@@ -3877,7 +3877,25 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
                     return
                 if pipeline_txn.record_id:
                     self._last_stable_line_id = str(pipeline_txn.record_id)
-                    metadata["revision_target_id"] = self._last_stable_line_id
+                    # fixes BUG_FIX_ROADMAP.md Batch 3 item 20b: this used to
+                    # set revision_target_id to the JUST-CREATED record's own
+                    # id unconditionally, including for a brand-new append
+                    # with nothing to revise -- self-referential and wrong.
+                    # duplicate_protection.py's _display_transcript_item
+                    # treats any truthy revision_target_id as proof of an
+                    # authoritative revision and forces action="update",
+                    # which for a same-speaker session overwrites
+                    # TranscriptStore's last row's TEXT while leaving its
+                    # canonical_utterance_id untouched -- so every commit
+                    # after the first stayed attached to the FIRST
+                    # utterance's id forever. See
+                    # CANONICAL_KEY_FIELDS_AUDIT.md for the measured
+                    # production impact (35 of 36 records in one run).
+                    # Only set it when this commit is genuinely revising a
+                    # prior record.
+                    metadata["revision_target_id"] = (
+                        self._last_stable_line_id if update_previous_requested else ""
+                    )
                     metadata["canonical_record_id"] = self._last_stable_line_id
                 stable_layer_update_previous = bool(metadata.get("stable_layer_update_previous"))
                 post_update_previous = stable_layer_update_previous
@@ -3938,7 +3956,28 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
                 record_id = proposal_result.get("record_id")
                 if record_id:
                     self._last_stable_line_id = str(record_id)
-                    metadata["revision_target_id"] = self._last_stable_line_id
+                    # fixes BUG_FIX_ROADMAP.md Batch 3 item 20b: same defect
+                    # as the pipeline_txn branch above -- this used to set
+                    # revision_target_id to the id of the record this very
+                    # commit just created, unconditionally, so a brand-new
+                    # "append" (final_revision_action == "append") looked
+                    # self-referentially "revised" to every downstream
+                    # consumer. duplicate_protection.py's
+                    # _display_transcript_item treats a truthy
+                    # revision_target_id as an authoritative revision signal
+                    # and forces action="update" -- which, once the store had
+                    # more than one same-speaker row, silently overwrote the
+                    # store's last row's TEXT on every subsequent commit
+                    # while its canonical_utterance_id stayed pinned to
+                    # whichever utterance happened to be first. Measured
+                    # live: 35 of 36 canonical records in one run
+                    # (CANONICAL_KEY_FIELDS_AUDIT.md). Only set it for a
+                    # genuine revision.
+                    metadata["revision_target_id"] = (
+                        self._last_stable_line_id
+                        if final_revision_action == "revise_previous"
+                        else ""
+                    )
                     metadata["canonical_record_id"] = self._last_stable_line_id
                 stable_layer_update_previous = bool(metadata.get("stable_layer_update_previous"))
                 post_update_previous = stable_layer_update_previous

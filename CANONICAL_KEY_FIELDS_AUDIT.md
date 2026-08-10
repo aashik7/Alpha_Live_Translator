@@ -133,6 +133,49 @@ Pinned by `tests/test_final_event_id_is_per_utterance.py`.
 
 ---
 
+## 5b. Correction, 2026-08-09 — item 20b's original diagnosis was wrong
+
+The first pass at item 20b (filed 2026-08-09, from the same checkpoint
+that produced this file) concluded the Japanese **assembler** path lost
+`canonical_utterance_id` before the `TranscriptStore` write, based on
+`clean_active_transcript.jsonl` showing 0 of 35 rows carrying the field.
+**That evidence was misread.** `clean_active_transcript.jsonl` is
+`stable_line_revision.py`'s own evidence stream — it was never designed
+to carry `canonical_utterance_id` at all (its identity field is
+`canonical_line_id`, a completely different scheme). Measuring "0/35"
+against a file that structurally cannot have the field proves nothing
+about the real `TranscriptStore` write.
+
+**The real root cause, confirmed by driving the actual production code
+and by direct evidence from run `...174516`:**
+`japanese_sentence_assembler.py` set `metadata["revision_target_id"]` to
+the just-committed record's **own** id whenever a `record_id` came back
+from the commit — unconditionally, for a brand-new append exactly the
+same as for a genuine revision. Confirmed: all 36 canonical records in
+that run with `applied_action: "append"` had
+`revision_target_id == canonical_record_id` (self-referential — a commit
+with nothing to revise pointing "the thing I'm revising" at itself).
+
+`duplicate_protection.py::_display_transcript_item` treats any truthy
+`revision_target_id` as an authoritative revision signal and forces
+`action="update"` — correct behavior on its part, the defect is upstream.
+For a same-speaker session this routes every commit through
+`TranscriptStore.update_last_segment_if_active`, which overwrites the
+store's one row's **text** on each call without ever touching its
+`canonical_utterance_id` — so every utterance after the first stayed
+permanently attached to the *first* utterance's id. That is what produced
+the measured 35 of 36 `TRANSLATION_STORE_ID_MATCH_NOT_FOUND` events, and
+it also explains why the store never had more than one live row per
+same-speaker run regardless of how many distinct sentences were spoken.
+
+**Fixed:** `revision_target_id` is now only set when the commit is
+genuinely revising a prior record. Reproduced directly against the real
+assembler + real `duplicate_protection.py` + real `TranscriptStore` in
+`tests/test_japanese_assembler_append_not_treated_as_revision.py` — two
+unrelated same-speaker sentences pre-fix collapsed into one store row
+(the second overwrote the first); post-fix they are two rows with two
+distinct ids.
+
 ## 5. Still open
 
 1. **`_provider_utterance_id` still resolves to the connection id.**
