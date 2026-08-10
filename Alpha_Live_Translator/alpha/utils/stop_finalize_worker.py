@@ -1199,23 +1199,73 @@ def _stop_language_pipeline_worker(host: Any) -> dict[str, Any]:
     return result
 
 
-def _confirm_transcript_commits(host: Any) -> None:
-    """Confirm assembler/UI queues have no pending transcript commits."""
+def _confirm_transcript_commits(host: Any) -> dict[str, Any]:
+    """Confirm assembler/UI queues have no pending transcript commits.
+
+    fixes BUG_FIX_ROADMAP.md Batch 4 item 21: this used to return None and
+    only *log* the three counts it measures, never comparing any of them to
+    zero. Its caller passed `run_timed_step(...)`'s return value on as
+    `commit_confirm_ok` -- but that boolean only reports whether the step
+    finished without raising or timing out, and this function never raised.
+    So `commit_confirm_ok` was effectively a constant `True`, and
+    `compute_utterance_reconstruction_ok` gated a run's `completed` status
+    on it. A Stop that finished with transcript items still queued reported
+    success. Measured across 279 real `STOP_TRANSCRIPT_COMMITS_CONFIRMED`
+    events, 2 had `transcript_queue_remaining: 1` -- i.e. two real runs
+    already reported `completed` while genuinely undrained.
+
+    Now returns the verdict alongside the measurements so the caller can
+    use it. Deliberately treats an *unmeasurable* queue as not-confirmed
+    rather than as drained: `_safe_qsize` returns **-1** (not 0) when the
+    queue is absent or `qsize()` raises, and "we could not check" must not
+    be reported as "we checked and it was empty" -- that is the same
+    unverified-claim shape this item exists to remove. All 279 observed
+    events had real 0 values, so this costs nothing in practice.
+
+    `language_pipeline_pending_task_count` is deliberately **not** part of
+    the verdict, only logged. It counts entries in
+    `LanguagePipelineWorker`'s scheduled-task heap -- future flush/
+    quarantine *timers*, not queued transcript commits. A timer scheduled
+    a few hundred ms out that Stop's own flush has already made moot is
+    normal and is not evidence of an undrained transcript, so gating on it
+    would manufacture false failures. It stays in the log because it is
+    still useful evidence. (All 279 observed events had it at 0, so this
+    is a correctness choice, not a threshold dodge.)
+    """
     pending_worker = 0
+    language_pipeline_measured = True
     try:
         from alpha.utils.language_pipeline_worker import get_language_pipeline_worker
 
-        pending_worker = get_language_pipeline_worker().pending_task_count()
+        pending_worker = int(get_language_pipeline_worker().pending_task_count())
     except Exception:
-        pass
+        language_pipeline_measured = False
+        pending_worker = 0
     transcript_remaining = _safe_qsize(getattr(host, "transcript_queue", None))
     batch_remaining = len(getattr(host, "_transcript_ui_batch_buffer", []) or [])
-    freeze_guard_log(
-        "STOP_TRANSCRIPT_COMMITS_CONFIRMED",
-        transcript_queue_remaining=transcript_remaining,
-        transcript_batch_remaining=batch_remaining,
-        language_pipeline_pending_task_count=pending_worker,
-    )
+
+    transcript_measured = transcript_remaining >= 0
+    ok = bool(transcript_measured and transcript_remaining == 0 and batch_remaining == 0)
+    if not ok:
+        if not transcript_measured:
+            reason = "transcript_queue_unmeasurable"
+        elif transcript_remaining > 0:
+            reason = "transcript_queue_not_drained"
+        else:
+            reason = "transcript_ui_batch_not_drained"
+    else:
+        reason = ""
+
+    result: dict[str, Any] = {
+        "ok": ok,
+        "reason": reason,
+        "transcript_queue_remaining": transcript_remaining,
+        "transcript_batch_remaining": batch_remaining,
+        "language_pipeline_pending_task_count": pending_worker,
+        "language_pipeline_measured": language_pipeline_measured,
+    }
+    freeze_guard_log("STOP_TRANSCRIPT_COMMITS_CONFIRMED", **result)
+    return result
 
 
 def _write_translation_and_ui_evidence_streams(
@@ -1603,9 +1653,40 @@ def _run_finalize_worker(host: Any) -> None:
         except Exception:
             pass
 
-        commit_confirm_ok = run_timed_step(
-            host, "transcript_commit_confirm", lambda: _confirm_transcript_commits(host)
+        # fixes BUG_FIX_ROADMAP.md Batch 4 item 21: this used to be
+        #     commit_confirm_ok = run_timed_step(host, ..., lambda: _confirm...)
+        # which assigned run_timed_step's own return value -- "the step
+        # finished without raising or timing out" -- to a name meaning "the
+        # transcript queues are confirmed drained". Since
+        # _confirm_transcript_commits never raised, that was a constant
+        # True. Capture the function's real verdict through a holder dict
+        # (same pattern as utterance_reconstruction_result immediately
+        # below, which exists for the same reason) and require BOTH: the
+        # step completed AND the check itself passed.
+        commit_confirm_result: dict[str, Any] = {}
+        commit_confirm_step_ok = run_timed_step(
+            host,
+            "transcript_commit_confirm",
+            lambda: commit_confirm_result.update(_confirm_transcript_commits(host)),
         )
+        commit_confirm_ok = bool(commit_confirm_step_ok) and bool(
+            commit_confirm_result.get("ok", False)
+        )
+        if not commit_confirm_ok:
+            freeze_guard_log(
+                "STOP_TRANSCRIPT_COMMIT_CONFIRM_FAILED",
+                step_completed=bool(commit_confirm_step_ok),
+                reason=str(
+                    commit_confirm_result.get("reason")
+                    or ("step_did_not_complete" if not commit_confirm_step_ok else "")
+                ),
+                transcript_queue_remaining=commit_confirm_result.get(
+                    "transcript_queue_remaining"
+                ),
+                transcript_batch_remaining=commit_confirm_result.get(
+                    "transcript_batch_remaining"
+                ),
+            )
         # fixes TASK_12_REPORT.md: this used to call
         # compute_utterance_reconstruction_ok(...) directly, unwrapped by
         # run_timed_step or any try/except at this call site -- the only
