@@ -620,6 +620,8 @@ passing. **Never delete entries** — mark them `[resolved, see item #N]`.
 
 **BATCH 3 COMPLETE as of `3a59f6d`.** All items done (9c, 10, 11, 11b, 12, 13, 14, 15, 16, 17, 18, 19, 20). Four things were surfaced during the batch and **deliberately left open rather than fixed as drive-bys** — all are recorded, none are forgotten: the 5th containment instance in `decide_transcript_action` (§5, from item 13), audit §2.7's speaker-only store keying (from item 17), and two entries in `CANONICAL_KEY_FIELDS_AUDIT.md` §5 (drop `channel_index` from the keys; re-evaluate `_textually_related_revision` now that lineage overlap carries real information). **Post-completion live checkpoint run 2026-08-09** (§6b) — item 20 and 9c confirmed live; item 18's diagnostic surfaced a real bug, filed as **item 20b, moved into Batch 4** (§6c) rather than reopening this batch; items 10 and 11 were then closed by run `...192516` (Stop-tail path reached at last), and **item 11b alone is carried into Batch 4 as `11b-LT`** — verification-only, still zero live evidence.
 
+| `2367285` | 2026-08-09 | 20b | **Batch 4 item 20b DONE — and its own first diagnosis retracted.** The original filing (above, from item 18's diagnostic) concluded the assembler lost `canonical_utterance_id` before the store write, based on `clean_active_transcript.jsonl` showing 0/35 rows with the field. **That measurement was against the wrong file** — `clean_active_transcript.jsonl` is `stable_line_revision.py`'s own stream and never carried `canonical_utterance_id` (it uses `canonical_line_id`, a different scheme); "0/35" proved nothing. **Real root cause**, found by driving the actual assembler code and confirmed against live evidence: `japanese_sentence_assembler.py` set `metadata["revision_target_id"]` to the just-committed record's **own** id on every successful commit — including brand-new appends, not just revisions. Confirmed self-referential (`revision_target_id == canonical_record_id`) on **all 36** `applied_action: "append"` records in run `...174516`. `duplicate_protection.py` correctly treats any truthy `revision_target_id` as an authoritative revision signal, so every Japanese assembler commit was forced through `action="update"` — which, once the store held more than one same-speaker row, silently overwrote the store's **one** row's text on each new utterance while never touching its `canonical_utterance_id`. Every utterance after the first stayed permanently pinned to the *first* utterance's id — exactly the measured 35/36 `TRANSLATION_STORE_ID_MATCH_NOT_FOUND`. Fixed at both sites that set `revision_target_id`: only set when the commit genuinely revises a prior record. Tests: `tests/test_japanese_assembler_append_not_treated_as_revision.py` (3), driving the **real** assembler + real ledger + real `duplicate_protection.py` + real `TranscriptStore` — pre-fix reproduces the exact bug (two unrelated same-speaker sentences collapse into one store row, the second overwriting the first); post-fix, two rows with two distinct ids. Existing genuine-revision tests (30 across 4 files) still pass. Full suite 334, baseline unchanged. `CANONICAL_KEY_FIELDS_AUDIT.md` §5b has the full corrected write-up. | Claude Opus 5 |
+
 **Correction note on `5001275`:** the original draft of
 `PROACTIVE_AUDIT_20260806.md` mislabeled
 `main_window.py::_apply_final_interim_comparison` as "confirmed still
@@ -1110,13 +1112,11 @@ once**. Until then 11b is wired-up-never-fired, the shape §7 warns about.
 **Costs one session, not a work item — do it alongside whatever Batch 4
 session happens next.**
 
-**20b. `[core:2]` — the Japanese assembler path never gets its
-`canonical_utterance_id` into `TranscriptStore`** *(found by item 18's
-diagnostic during the 2026-08-09 post-completion checkpoint — see §6b;
-kept its Batch-3-era number, moved into Batch 4 because it was filed
-after Batch 3 closed — do first, before 21, it is small and unrelated to
-the rest of this batch's concurrency theme)*
-`alpha/transcription/japanese_sentence_assembler.py` ·
+~~**20b. `[core:2]`** `alpha/transcription/japanese_sentence_assembler.py`~~ **DONE, `2367285`.** The original diagnosis below was **wrong** — corrected in `CANONICAL_KEY_FIELDS_AUDIT.md` §5b, kept here rather than silently rewritten. Real root cause: `metadata["revision_target_id"]` was set to the just-committed record's own id on every append, not just revisions — self-referential, confirmed on all 36 `applied_action: "append"` records in run `...174516`. That made `duplicate_protection.py` treat every Japanese assembler commit as an authoritative revision, silently overwriting `TranscriptStore`'s one row per same-speaker run instead of adding new ones. Fixed at both sites that set it; reproduced and proven against the real assembler/store in `tests/test_japanese_assembler_append_not_treated_as_revision.py`.
+*(Original filing, superseded — kept for the record:)* "the Japanese
+assembler path never gets its `canonical_utterance_id` into
+`TranscriptStore`" *(found by item 18's diagnostic during the 2026-08-09
+post-completion checkpoint — see §6b)*
 `grep: metadata["canonical_utterance_id"] = self._current_canonical_utterance_id`
 → the chain down to
 `alpha/transcription/duplicate_protection.py` · `grep: def _apply_transcript_to_store`
@@ -1125,18 +1125,10 @@ one Japanese run**. All 35 `jp-utt-*` ids exist in the canonical ledger,
 and `stable_commits.jsonl` carries the id on 36 rows — but
 `clean_active_transcript.jsonl` (the store-facing stream, exactly 35 rows)
 carries it on **0**. So the id is minted and survives into the ledger, and
-is then lost before the store write. The Japanese **manual-mode** path
-(`jpm-utt-*`) is unaffected — verified by executing the real code — so
-this is specific to the assembler path.
-**Impact today is zero and that is the trap:** nothing in the codebase
-reads `TranscriptSegment.translated_text` (every `store.get_all()` consumer
-reads only `.text`), so the field is write-only. This defect only bites
-when a bilingual export or summary is built from the store — which is the
-apparent purpose of the field. **Fix the plumbing before anything is built
-on it.** Note `final_export_records.jsonl` has had `translated_text` on 0
-rows in *every* run ever captured, pre- and post-item-18 — this is old, not
-a regression. Recommended model: Sonnet 5 (tracing a metadata field through
-a known chain — the rest of Batch 4 wants Opus 5, this one item doesn't).
+is then lost before the store write. **This last sentence is the part
+that turned out wrong** — `clean_active_transcript.jsonl` never carried
+`canonical_utterance_id` by design (it uses `canonical_line_id`, a
+different scheme); the "0" measured nothing.
 
 **20c. `[core:2]`** `alpha/transcription/duplicate_protection.py` · `grep: def decide_transcript_action`
 *(deferred finding from Batch 3 item 13, §5's 2026-08-09 note)* The 5th
@@ -1461,22 +1453,32 @@ hand-off runs. Confirm a `stop tail using watchdog orphan` entry appears
 and that the stashed text lands in the FINAL export exactly once. Four
 sessions so far have produced no `orphan` events of any kind.
 
-**Then → Batch 4, starting with item 20b** (§6c — filed from the
-checkpoint, now living at the top of Batch 4's item list). It is small
-and well-scoped, unrelated to the rest of the batch's concurrency theme,
-and should be fixed before anyone builds a bilingual export on
-`TranscriptStore`. Recommended model for 20b: Sonnet 5.
+**Item 20b is now DONE** (`2367285`) — and its own first diagnosis was
+wrong, corrected before being fixed. See the ledger row above and
+`CANONICAL_KEY_FIELDS_AUDIT.md` §5b for the retraction and the real root
+cause (`revision_target_id` self-referential on every append, not a lost
+id). Worth noting for calibration: this is the second time in Batch
+3/4 that the *first* diagnosis of a checkpoint-surfaced finding was wrong
+and had to be corrected by actually running the code (item 9c's original
+"false positive" correction in §6a is the first) — a reminder that a
+plausible-looking evidence read still needs to be driven through the real
+code before trusting it enough to fix.
 
-**Then the rest of Batch 4** (items 21-27, Core bug 1: concurrency /
-state machine / fail-open policy). Recommended model: **Opus 5** for
-these (§8) — race conditions and lock ordering, where tests alone do not
-reliably catch the failure modes.
+**→ NEXT: item 20c** (§6c) — the 5th containment instance in
+`decide_transcript_action`, deferred from item 13. Small, Sonnet 5, no
+dependency. **Also still outstanding, no fixed order between them:**
+- **item 11b-LT** (§6c) — the one piece of Batch 3 with still-zero live
+  evidence. Needs a human session: Stop after a ~10s pause so the
+  interim ghost watchdog fires before Stop. Verification only, no code.
+- the rest of Batch 4 (items 21-27, 27b — concurrency / state machine /
+  fail-open policy). Recommended model: **Opus 5** (§8) — race
+  conditions and lock ordering, where tests alone do not reliably catch
+  the failure modes.
 
-**The four deferred Batch 3 findings** (listed at the top of this
-section) are unscheduled. (1) is small and safe to fold into any later
-session. (2)+(3) should be decided together as one "what is the identity
-key?" question. (4) should be looked at **during** Batch 3's live test,
-since that is when the effect of item 20 first becomes observable.
+**Two of the original four deferred Batch 3 findings remain unscheduled**
+(the other two, 20c and 27b, now have item numbers in Batch 4 above):
+items 28a+28b (§6c) should be decided together as one "what is the
+identity key?" question, sequenced before Batch 5's item 28 proper.
 
 **Still open from earlier live-test findings, not yet scheduled beyond
 their existing batch** (both re-measured on the 2026-08-09 run and still
