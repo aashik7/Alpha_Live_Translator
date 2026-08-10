@@ -66,34 +66,45 @@ the real code was actually driven:
   reproducing the failure directly. See `CANONICAL_KEY_FIELDS_AUDIT.md`
   §5b for the full retraction.
 
-**The rule this produced, binding for every future bug-fix session in
-this repo, on any machine or account:**
-1. Before treating an evidence file's absence/presence of a field as
-   proof, confirm that file's schema was ever *supposed* to carry that
-   field — read the code that writes it, don't assume by field name.
-2. Before declaring a root cause fixed, reproduce the failure by
-   **actually calling the real production code** (a minimal host/harness
-   that borrows the real methods, like the `_Host`/`*TestHost` patterns
-   already in `tests/`) — not just by reading the source and reasoning
-   about what it "should" do. Static reading finds candidates; running
-   the code confirms them.
-3. If a regression test only exercises a pure/isolated function but the
-   bug's real severity claim is about what a *caller* does (drops silently
-   vs. falls back vs. logs), add an integration-level test through the
-   real caller too, not just the pure function in isolation.
+**These are judgment calls, not hardcoded gates — apply the one that
+fits the situation in front of you, skip the ones that don't:**
+1. **When** a claim rests on a log/evidence file's field being present or
+   absent (not on reading the writer's code directly), confirm that
+   file's schema was ever *supposed* to carry that field first — read the
+   code that writes it. Skip this when you already traced the field from
+   its write site, or the file's schema is already well-established
+   elsewhere in this repo's docs.
+2. **When** about to declare a root cause fixed for a bug that involves
+   cross-module state or a call chain you haven't executed, reproduce it
+   by calling the real production code (a minimal host/harness borrowing
+   real methods, like `_Host`/`*TestHost` in `tests/`) rather than relying
+   only on reading the source. Skip this for a small, self-contained pure
+   function where reading the code IS the verification (e.g. a one-line
+   comparison bug) — items 10/11/12/19's fixes didn't need it, item 20b's
+   did.
+3. **When** a bug's real severity claim is about caller behavior (drops
+   silently vs. falls back vs. logs) rather than the function's own
+   return value, add an integration test through the real caller, not
+   only a pure-function test. Skip this when the pure function's contract
+   already fully determines the outcome.
 4. If an earlier diagnosis in `BUG_FIX_ROADMAP.md` turns out wrong,
    **retract it visibly** (strike it, link to the correction) — never
    silently rewrite it as if the mistake never happened. Future sessions
    need to see what was tried and why it was wrong, not just the final
    answer.
 
-# Git workflow — commit and push after every change, without being asked
+# Git workflow — push once a fix is actually verified
 
-Once a fix (code + its regression test) is verified against the full
-test suite and the baseline is unchanged, **commit it and push to
-`origin/main` immediately** — do not wait to be told, and do not batch
-multiple fixes into one uncommitted pile. This applies to every change:
-code fixes, roadmap/ledger updates, documentation corrections, all of it.
+**When** a fix (code + its regression test) has been verified against
+the full test suite with the baseline unchanged — commit and push to
+`origin/main` without waiting to be asked, rather than batching several
+verified fixes into one uncommitted pile. Same for a roadmap/ledger
+update once its content is finalized.
+
+**Skip this** for work still in progress (investigation not yet landed
+on a fix, a test not yet proven against pre-fix code, anything you'd
+still revise this turn) — commit when the unit of work is actually done,
+not on every intermediate edit.
 
 Before pushing, always `git fetch origin` and check for divergence first
 (this repo is worked on from multiple machines/accounts) — merge if
