@@ -623,6 +623,8 @@ passing. **Never delete entries** — mark them `[resolved, see item #N]`.
 | `2367285` | 2026-08-09 | 20b | **Batch 4 item 20b DONE — and its own first diagnosis retracted.** The original filing (above, from item 18's diagnostic) concluded the assembler lost `canonical_utterance_id` before the store write, based on `clean_active_transcript.jsonl` showing 0/35 rows with the field. **That measurement was against the wrong file** — `clean_active_transcript.jsonl` is `stable_line_revision.py`'s own stream and never carried `canonical_utterance_id` (it uses `canonical_line_id`, a different scheme); "0/35" proved nothing. **Real root cause**, found by driving the actual assembler code and confirmed against live evidence: `japanese_sentence_assembler.py` set `metadata["revision_target_id"]` to the just-committed record's **own** id on every successful commit — including brand-new appends, not just revisions. Confirmed self-referential (`revision_target_id == canonical_record_id`) on **all 36** `applied_action: "append"` records in run `...174516`. `duplicate_protection.py` correctly treats any truthy `revision_target_id` as an authoritative revision signal, so every Japanese assembler commit was forced through `action="update"` — which, once the store held more than one same-speaker row, silently overwrote the store's **one** row's text on each new utterance while never touching its `canonical_utterance_id`. Every utterance after the first stayed permanently pinned to the *first* utterance's id — exactly the measured 35/36 `TRANSLATION_STORE_ID_MATCH_NOT_FOUND`. Fixed at both sites that set `revision_target_id`: only set when the commit genuinely revises a prior record. Tests: `tests/test_japanese_assembler_append_not_treated_as_revision.py` (3), driving the **real** assembler + real ledger + real `duplicate_protection.py` + real `TranscriptStore` — pre-fix reproduces the exact bug (two unrelated same-speaker sentences collapse into one store row, the second overwriting the first); post-fix, two rows with two distinct ids. Existing genuine-revision tests (30 across 4 files) still pass. Full suite 334, baseline unchanged. `CANONICAL_KEY_FIELDS_AUDIT.md` §5b has the full corrected write-up. | Claude Opus 5 |
 | `012695d` | 2026-08-09 | 20c | **Batch 4 item 20c DONE.** The 5th any-position containment instance (items 10/11/12/19 already fixed elsewhere): `decide_transcript_action`'s `curr_n in prev_n: return ("skip", None)` dropped an incoming final outright whenever it was a substring anywhere inside the previous line — confirmed from the caller (`_display_transcript_item`) that "skip" has no fallback, so this was real content loss. **Newly relevant because of item 20b**: before that fix, `revision_target_id` being self-referentially truthy on every Japanese commit forced `action="update"` regardless of what this function returned, masking its output; post-20b, a brand-new Japanese append's fate depends on this function for the first time in production. Narrowed to prefix-or-suffix, same pattern as the other four. Updated item 13's dead-code comment: one removed branch stays correctly dead (still subsumed), the other is no longer eliminated by simplification — it's now this fix's narrowed check, kept deliberately. Tests: `tests/test_decide_transcript_action_containment.py` (10) — 6 pin the pure decision table, 2 drive the **real** `_display_transcript_item` as a Japanese-assembler-shaped commit (applying item 20b's lesson: verify the caller-side claim directly, not by reading code). Pre-fix: exactly the 3 expected tests fail. Full suite 344, baseline unchanged. | Claude Opus 5 |
 
+| `0ed9991` | 2026-08-09 | 21 | **Batch 4 item 21 DONE.** `_confirm_transcript_commits` measured the transcript queue/batch counts, only **logged** them, and returned `None`; the caller assigned `run_timed_step`'s return value — "the step finished without raising or timing out" — to `commit_confirm_ok`. Since the function never raised, that boolean was effectively a constant `True`, and `compute_utterance_reconstruction_ok` gated the run's reported status on it: a Stop finishing with transcript items still queued reported `completed`. **Checked live evidence before tightening the gate** (per CLAUDE.md's verification rule): 279 `STOP_TRANSCRIPT_COMMITS_CONFIRMED` events across all captured runs, exactly **2** with `transcript_queue_remaining: 1` — so this makes those two correctly fail without disturbing the other 277. **Deviated from the item's suggested fix** (wire in `ui_stop_drain_barrier`'s `passed`): this check runs *after* the drain barrier so its own measurement is later and more authoritative, and `passed` is absent entirely on the barrier's timeout/no-runner/post-failed paths (`ok` is the always-present field there). Two details recorded: `_safe_qsize` returns **-1**, not 0, when unmeasurable — treated as explicitly not-confirmed with its own reason, since "could not check" must never read as "checked and empty"; and `language_pipeline_pending_task_count` is deliberately **not** in the verdict (it counts scheduled future flush/quarantine *timers*, not queued commits — gating on it manufactures false failures). **I had it in the verdict initially and the full suite caught it** — my own test passed alone and failed in the full run from another test's leftover scheduled tasks; investigating rather than patching around it showed the gate itself was wrong. Tests: `tests/test_stop_transcript_commit_confirm_gate.py` (10) — 8 on the verdict incl. the -1 case, 2 on the consumer side proving it reaches the reported status. Pre-fix: 8/10 fail. Full suite 354, baseline unchanged. | Claude Opus 5 |
+
 **Correction note on `5001275`:** the original draft of
 `PROACTIVE_AUDIT_20260806.md` mislabeled
 `main_window.py::_apply_final_interim_comparison` as "confirmed still
@@ -1140,8 +1142,8 @@ match. Narrow to prefix-or-suffix, same as the other four. No dependency
 on the rest of this batch. **Recommended model: Sonnet 5** — the template
 is fully established by now.
 
-**21. `[core:1]`** `alpha/utils/stop_finalize_worker.py` · `grep: def _confirm_transcript_commits` · ≈1116
-Computes `transcript_remaining` / `batch_remaining` and only **logs**
+~~**21. `[core:1]`** `alpha/utils/stop_finalize_worker.py` · `grep: def _confirm_transcript_commits`~~ **DONE, `0ed9991`.** The function now returns its verdict and the caller requires both step-completion AND the check passing. **Deviated from the item's suggested approach**: rather than wiring in `ui_stop_drain_barrier`'s `passed`, `_confirm_transcript_commits` computes its own — it runs *after* the drain barrier, so its measurement is the later and more authoritative one, and `passed` is absent entirely on the barrier's timeout/no-runner/post-failed paths (`ok` is the always-present field there, not `passed`). Verified against 279 real events (2 genuinely undrained) before tightening. See the ledger row.
+*(Original description kept:)* Computes `transcript_remaining` / `batch_remaining` and only **logs**
 them — never compares to zero — so `commit_confirm_ok` is effectively
 always `True` and a run can report `completed` with undrained transcript
 items. The correctly-computed boolean already exists:
@@ -1472,15 +1474,25 @@ lesson directly. All three of the checkpoint-surfaced Batch-3-era
 findings that had item numbers in Batch 4 (20b, 20c) are now fixed;
 `27b` still doesn't (see below).
 
-**→ NEXT: item 21** (§6c) — `_confirm_transcript_commits` never compares
-`transcript_remaining`/`batch_remaining` to zero, so `commit_confirm_ok`
-is effectively always `True`. Smallest, highest-value item in the rest
-of Batch 4 per its own write-up — do it first. **No fixed order beyond
-that among the rest:**
+**Item 21 is now DONE** (`0ed9991`) — `commit_confirm_ok` reflects the
+real drain check instead of "the step didn't crash". **Watch for this in
+the next live run:** two of the 279 historical events were genuinely
+undrained, so a run *should* now be able to report a failed
+`utterance_reconstruction` where it previously always said `completed`.
+If that starts firing on most runs rather than rarely, the gate is too
+strict and needs re-measuring — but the evidence says it should be rare.
+
+**→ NEXT: item 22** (§6c) — `utterance_lifecycle.py` defaults *both*
+unknown speakers to `1`, so two genuinely different unknown speakers
+register as the same speaker (fail-**open**); switch to the shared
+fail-closed `speakers_confirmed_same()`. **Do before item 23**, which
+needs the same primitive. Recommended model: **Opus 5**.
+
+**No fixed order beyond that among the rest:**
 - **item 11b-LT** (§6c) — the one piece of Batch 3 with still-zero live
   evidence. Needs a human session: Stop after a ~10s pause so the
   interim ghost watchdog fires before Stop. Verification only, no code.
-- items 22-27, 27b (concurrency / state machine / fail-open policy, plus
+- items 23-27, 27b (concurrency / state machine / fail-open policy, plus
   the deferred `_textually_related_revision` re-evaluation). Recommended
   model: **Opus 5** (§8) — race conditions and lock ordering, where
   tests alone do not reliably catch the failure modes.
