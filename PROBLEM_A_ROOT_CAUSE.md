@@ -2,14 +2,17 @@
 
 **Date:** 2026-08-11 · **Model:** Opus 5 · **Item:** 41 of `CLIENT_DELIVERY_SPRINT_v5.md`
 
-> **Status: ROOT CAUSE STRONGLY INDICATED, NOT PROVEN.**
+> **Status: ROOT CAUSE PROVEN. Updated 2026-08-12 — this supersedes the
+> "strongly indicated, not proven" verdict this file carried on 2026-08-11.**
 >
-> Item 41's standard is *"prove, do not assume"*, and its §10 names an
-> unbuildable fixture as a stop-and-report condition. **Phase 5 failed** — the
-> mechanism does not reproduce deterministically in a headless harness, so at
-> least one condition in the real path is still unidentified. Everything below
-> is established evidence; the gap is stated plainly in §6. **Item 42 must not
-> proceed on this as if it were proven.**
+> That earlier verdict was correct at the time: Phase 5 had failed and no
+> deterministic reproduction existed. It now does. **`tools/reproduce_problem_a.py`
+> reproduces the loss headlessly with a single independent variable**, and the
+> one structural fact that was missing — *why the revision-decision engine can
+> never prevent it* — has been located and verified. §6 records both the
+> original gap and how it closed; nothing has been quietly rewritten.
+>
+> **Item 42 may proceed.** See §5 and §8.
 >
 > Location note: the item 41 prompt suggested `troubleshooting/problem_A_root_cause.md`.
 > `troubleshooting/` is gitignored (`Alpha_Live_Translator/.gitignore:32`), so
@@ -207,7 +210,86 @@ path, one differing variable, opposite outcomes — a natural control group.
 
 ---
 
-## 6. What is NOT proven — the honest gap
+## 6. The gap — and how it closed on 2026-08-12
+
+**The gap was real and is now closed. Both states are recorded here on
+purpose; the failed attempt is what made the successful one findable.**
+
+### 6a. What closed it — Phase 5 now succeeds
+
+Two things were missing on 2026-08-11.
+
+**(1) The wrong entry point.** The failed attempt drove
+`_route_stable_publish`. That function merges a short follow-up into the held
+buffer *before* publishing (anchor: the `_stable_hold_pending` block, then
+`merge_short_fragments`), so the revise it produced was non-destructive — the
+new text *contained* the old, which is precisely the harmless case that
+accounts for 3 of the recorded revises losing nothing. Driving
+`_publish_sentence` directly — one layer lower, where the defect actually
+lives, with every function below it still the real production implementation
+including the real ledger — reproduces the loss immediately.
+
+**(2) The missing structural fact: `previous_record` has no `speaker` key.**
+Verified directly at `japanese_sentence_assembler.py`, anchor
+`previous_record = {`: the dict carries `line_id`, `text`,
+`source_raw_event_ids`, `start_time`, `end_time`, `utterance_id`,
+`segment_id` — **and no `speaker`**, even though `self._last_stable_commit`
+has one. In `stable_revision_decision.py`, anchor
+`previous_speaker = previous_record.get("speaker")` therefore reads `None`,
+and `speakers_confirmed_same` (`speaker_boundary_guard.py`) is fail-closed:
+
+```python
+if active_speaker is None or candidate_speaker is None:
+    return False
+```
+
+That guard sits immediately after the no-previous-record check and **before
+every other rule**, so `decide_stable_revision_action` returns
+`("append", "speaker_boundary_forced_new_line")` on every non-first commit.
+Measured in the corpus: **105 of 111 decisions**, every non-first one. This is
+why **Rules A–F, `REVISION_CONTENT_LOSS_GUARD_ENABLED`,
+`REVISION_TERMINAL_SENTENCE_GUARD_ENABLED` and `_unique_content_lost` are
+unreachable on the Japanese path** — the one guard designed to block a
+destructive overwrite has never executed in the recorded corpus.
+
+So the engine always says "append", and the stale flag always overrides it.
+The engine cannot save you, which is why the loss is systematic rather than
+occasional.
+
+### 6b. The reproduction
+
+`Alpha_Live_Translator/tools/reproduce_problem_a.py`, run headlessly:
+
+| run | `boundary_should_revise` | ledger records | distinct ids | `applied_action` | sentence A |
+|---|---|---|---|---|---|
+| control | absent | **2** | 2 | `append`, `append` | **survives** |
+| subject | `True` | **1** | 1 | `revise` | **destroyed** |
+
+One variable. Everything else identical. The control proves the harness does
+not itself lose text, so the subject's loss cannot be blamed on the fixture —
+and the fixture exits `2` with an explicit "FIXTURE INVALID" message if the
+control ever stops being clean.
+
+### 6c. What is still NOT proven
+
+Stated precisely, so item 42 does not over-claim:
+
+- **Proven:** given `update_previous_requested=True` and a textually disjoint
+  candidate, the previous sentence is destroyed in the canonical ledger, and
+  the decision engine is structurally incapable of preventing it.
+- **Not directly observed:** which of the four inputs set the flag in each
+  individual live case. Log evidence narrows it — 12 of the 14 recorded ledger
+  revises coincide with a `BOUNDARY_OUTPUT_REVISE_PREVIOUS_LINE`; the other 2
+  came from `stable_layer_update_previous` / `post_update_previous`, and
+  `apply_punctuation_start_post_correction` emits no log event, so the
+  artifacts cannot separate those two. This does not affect the root cause —
+  all four inputs feed the same variable through the same gate — but it does
+  mean item 42 must fix the **gate**, not any single input.
+- **Not reproduced:** the full live path end-to-end. `replay_run.py` still
+  reproduces 0 of the losses (item 38b). The reproduction above isolates the
+  defect; it does not simulate a whole session.
+
+### 6d. The original 2026-08-11 record, kept verbatim
 
 **Phase 5 (fixture) failed. There is no deterministic reproduction.**
 
@@ -247,6 +329,12 @@ Consequences, stated plainly:
 capture one live Japanese session. That requires editing a `.py`, which item 41
 forbids — so it needs human approval before anyone attempts it.
 
+> **Closed 2026-08-12 without needing any of that.** No instrumentation and no
+> extra live session were required: the missing piece was the entry point
+> (`_publish_sentence`, not `_route_stable_publish`) plus the missing `speaker`
+> key. See §6a–6b. The proposed instrumentation is **no longer needed** — do
+> not spend a live session on it.
+
 ---
 
 ## 7. Contradictions found
@@ -257,3 +345,68 @@ forbids — so it needs human approval before anyone attempts it.
 | item 38 / `replay_run.py` | Reported **14** losses; true count is **10**. Two false-positive classes (§2). Detector not fixed — item 41 forbids `.py` edits. |
 | `stage_manifest.json` vs `export_coverage_report.json` | Same metric name `export_coverage_ratio` reported as **1.0** and **0.9** for the same run. |
 | `coverage_ratio` gate | Passes on a run that four sibling fields in the same file show as 0.9. |
+
+---
+
+## 8. Item 42 execution brief — added 2026-08-12
+
+Item 41 is closed. This section is what item 42 starts from, so that approving
+item 42 is the only decision left to make.
+
+### 8a. Run this first
+
+```bash
+cd Alpha_Live_Translator
+"<repo_root>/.venv/Scripts/python.exe" tools/reproduce_problem_a.py
+```
+
+Exit `1` today, with sentence A destroyed. That command **is** sprint §4
+step 5 ("prove the test catches the bug"): it already fails, for the proven
+reason, before a line of the fix is written. Item 42 makes it exit `0`.
+
+It is deliberately not under `tests/`, so the 410 / 5F + 2E + 2S baseline is
+unaffected. Item 42 should additionally add a real regression test under
+`tests/` once the fix exists.
+
+### 8b. The `[gate]` decision — the one thing that needs a human
+
+There are three places to intervene, and **the choice is not obvious**:
+
+| # | where | effect | risk |
+|---|---|---|---|
+| 1 | the id-mint gate — stop it reading the stale `update_previous_requested` | narrowest, directly removes the proven mechanism | must remove the `final_revision_action` overwrite in the same change (§5.1), or two authorities remain |
+| 2 | the boundary stabilizer — stop it signalling revise across a speaker boundary | fixes an input | 3 other inputs feed the same gate; 2 of the 14 recorded revises did **not** come from the stabilizer, so this alone is provably insufficient |
+| 3 | add the missing `speaker` key to `previous_record` | lets the decision engine work as designed | **most dangerous — see 8c** |
+
+Recommendation, not a decision: **#1, with the overwrite removed in the same
+change.** It is the narrowest change that removes the proven mechanism, and it
+leaves exactly one authority on the path.
+
+### 8c. Why option 3 alone could make things worse
+
+Adding the `speaker` key would make `speakers_confirmed_same` able to return
+`True` for the first time in this corpus — which makes **Rules A–F reachable
+for the first time in this corpus**. They have never executed in any recorded
+run (0 of 111 decisions). Turning on a large block of never-exercised
+decision logic while trying to fix a data-loss bug is how this project's
+ledger already records six cases of one fix unmasking the next.
+
+Worse, there is a known hole waiting behind that door: `_unique_content_lost`
+returns `False` whenever `len(prev_n) < 8`, so `_content_loss_risk` clears and
+a **short** previous record can be legally overwritten by disjoint text under
+Rule C. Fixing the speaker key without first closing that hole would convert
+a systematic loss into an intermittent one that is harder to detect.
+
+If option 3 is chosen anyway, it must be a separate, separately-tested item —
+not folded into item 42.
+
+### 8d. Measurement caveat
+
+Do not certify "problem A is fixed" with `tools/replay_run.py`'s
+`_dropped_content` alone — §2 shows it over-reports by ~2 in 12. Use the
+fixture for the mechanism and the corrected per-run counts in §2 for scale.
+
+### 8e. Do not spend a live session on instrumentation
+
+The 2026-08-11 plan to add temporary logging at the id-mint gate and capture a
+live Japanese session is **obsolete**. The reproduction exists headlessly.
