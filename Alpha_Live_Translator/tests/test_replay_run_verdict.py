@@ -25,6 +25,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from tools.replay_run import (  # noqa: E402
     UnknownRowShape,
     _dropped_content,
+    _recorded_gaps_s,
     _unreached_utterances,
     classify_row,
 )
@@ -77,6 +78,27 @@ class DroppedContentTest(unittest.TestCase):
 
     def test_empty_commit_text_is_not_counted(self):
         self.assertEqual([], _dropped_content([(UID, "   ")], {}))
+
+
+class RecordedGapsTest(unittest.TestCase):
+    """Item 38b. Real inter-arrival gaps drive the real-timer replay's
+    waits -- a wrong gap here means a wrong wall-clock wait, silently."""
+
+    def test_gaps_are_consecutive_deltas(self):
+        rows = [{"timestamp": 10.0}, {"timestamp": 14.5}, {"timestamp": 16.0}]
+        self.assertEqual([4.5, 1.5], _recorded_gaps_s(rows))
+
+    def test_one_row_has_no_gap(self):
+        self.assertEqual([], _recorded_gaps_s([{"timestamp": 1.0}]))
+
+    def test_non_monotonic_timestamp_clamps_to_zero_not_negative(self):
+        """A replay tool must not hand time.sleep() a negative duration."""
+        rows = [{"timestamp": 10.0}, {"timestamp": 9.0}]
+        self.assertEqual([0.0], _recorded_gaps_s(rows))
+
+    def test_missing_timestamp_is_zero_not_a_crash(self):
+        rows = [{"timestamp": 10.0}, {}, {"timestamp": 12.0}]
+        self.assertEqual([0.0, 0.0], _recorded_gaps_s(rows))
 
 
 class ClassifyRowTest(unittest.TestCase):

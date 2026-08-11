@@ -89,9 +89,9 @@ SKIP_TK_INTEGRATION_TESTS=1 "<repo_root>/.venv/Scripts/python.exe" -m unittest d
 
 There is no pytest in this venv; `unittest discover` is the only runner.
 
-**Baseline:** **364 tests** (was 354; item 38 added 10), 5 failures + 2
-errors + 2 skipped. Same 7 names. Any change to that set means you broke
-something.
+**Baseline:** **368 tests** (was 354; item 38 added 10, item 38b added 4),
+5 failures + 2 errors + 2 skipped. Same 7 names. Any change to that set
+means you broke something.
 
 **One caveat, added 2026-08-11.** The 7 names are the *stable* set, but
 an 8th can appear:
@@ -206,15 +206,36 @@ under condition 4, not a gate failure. See §9 and item 38b.
 The bugs that lose the client's words.
 
 - **41** prove problem A's root cause against the fixture — **Fable 5,
-  `/effort xhigh`**. Item 38 already localised it: the assembler commits
-  two textually disjoint sentences under one `canonical_utterance_id`,
-  the ledger keys on that id, and the second commit overwrites the
-  first. 41's job is now to prove *why the id is reused* — read the id
-  minting site in the assembler, not the ledger write. **Fast-feed
-  replay does not reproduce this** (decision 5b resolved, §9), so drive
-  the assembler under real `LanguagePipelineWorker` timing or from the
-  recorded commit stream directly; do not expect `replay_run.py` to
-  show it.
+  `/effort xhigh`**. Item 38 localised it: the assembler commits two
+  textually disjoint sentences under one `canonical_utterance_id`, the
+  ledger keys on that id, and the second commit overwrites the first.
+  Item 38b then ruled out timing as the mechanism (real-timer replay
+  fixes decision *counts* but still reproduces 0 of 14 losses) and left a
+  specific, cross-validated lead in its place — **do not start 41 from
+  scratch, start from this:**
+
+  `japanese_sentence_assembler.py:3635` computes `update_previous_requested`
+  from boundary-stabilizer signals *before* `decide_stable_revision_action`
+  runs. That function's verdict (`final_revision_action`) can disagree —
+  correctly recognise a candidate as a new, disjoint sentence
+  (`"append"`) — and when it does, lines 3749–3756 reset
+  `stable_layer_update_previous`/`post_update_previous` and even clear
+  `metadata["boundary_should_revise"]`, but **`update_previous_requested`
+  itself is never reassigned.** The id-mint gate at line ~3912
+  (`proposed_action = "revise_previous" if update_previous_requested else
+  "commit_new"`) reads that stale variable, not `final_revision_action`.
+  Cross-checked against `logs/japanese_accuracy.log`'s
+  `STABLE_REVISION_DECISION` events on all 6 runs: `update_previous_requested
+  == True and final_action == "append"` matches 12 of 13 observed
+  id-reuse events exactly (§9, 2026-08-11). **This is a lead, not a
+  proof** — unverified: why the boundary stabilizer sets
+  `update_previous_requested=True` on a candidate its own downstream
+  check rejects, and whether fixing the read site (use
+  `final_revision_action`) or the write site (boundary stabilizer) is
+  correct. That determination is 41's actual job. Do not expect
+  `replay_run.py`, real-timer or not, to reproduce this for you — drive
+  `decide_stable_revision_action`/the boundary stabilizer directly, or
+  work from `japanese_accuracy.log` on the recorded runs.
 - **42** fix it: a commit that is not a revision of its target must
   never land on that target's id — no silent overwrite. An overwrite
   that is genuinely wanted must be a containment/extension of what it
@@ -419,7 +440,7 @@ recommended (pending). `[gate]` = human approval required before coding.
 | Item | What | Model | Day | Status |
 |---|---|---|---|---|
 | 38 | `tools/replay_run.py` — replay a recorded run's `provider_events.jsonl` headlessly, diff against its FINAL export | **Opus 5** | 1–2 | **DONE** — gate resolved 2026-08-11, all 5 conditions met. Tests `tests/test_replay_run_verdict.py` (10). Recorded-side measurement is the deliverable and it proved problem A's mechanism (id collision, 14 sentences, 505 chars, 14/14 confirmed absent from export). Replay side does **not** reproduce it — finding under condition 4, carried to item 38b |
-| 38b | Real-timer replay: drive the assembler through `LanguagePipelineWorker` scheduling instead of fast-feed, so timing-dependent losses reproduce | **Opus 5** | — | **TODO — scope before starting.** Opened by decision 5b. Not required for item 41 (38's recorded-side measurement already gives it the target); required before `replay_run.py` can serve items 44/48 |
+| 38b | Real-timer replay: drive the assembler through `LanguagePipelineWorker` scheduling instead of fast-feed | **Opus 5** | — | **DONE 2026-08-11.** `tools/replay_run.py --real-timer`, tests in `test_replay_run_verdict.py::RecordedGapsTest` (pure-function; the real-timer replay itself is a slow opt-in tool, not suite-run). Result: fixes decision-count divergence (was 13 vs 29 etc., now matches within 1 on every run) but **still reproduces 0 of 14 content losses.** Timing was not problem A's mechanism. Left a cross-validated lead for item 41, see §9 and item 41's rewritten description |
 | 39 | `tools/score_run.py` — pass/fail on the §7 gates plus latency percentiles | **Sonnet 5** | 2 | TODO |
 | 40 | Reference corpus: 10 min ja + 10 min en, hand-written expected transcript, baseline recorded | **Sonnet 5** | 2 | TODO |
 | 41 | Prove problem A's root cause against run `...20260807-160529` — prove, do not assume | **Fable 5** `xhigh` | 3–4 | TODO |
@@ -456,6 +477,8 @@ wrong.
 | 2026-08-11 | Opus 5 | **The baseline holds at 7 names; one 8th name is intermittent. Recording the wrong intermediate conclusion too, because it is instructive.** First full-suite run of the session reported `Ran 354 tests … FAILED (failures=7, errors=2, skipped=2)` and this file was briefly edited to say §3's 5+2 baseline was stale. **That was wrong** — the very next full run, `Ran 364 tests … FAILED (failures=5, errors=2, skipped=2)`, produced exactly the 7 documented names. The difference is `test_task9_report.Issue3RealThreadIntegrationTest.test_inactivity_timeout_fallback_survives_immediate_real_stop_5x`, a real-thread timing test: two subtest iterations failed in run 1, none in run 2, and its module passes 9/9 tests in 3 runs out of 3 alone. It is flaky under full-suite load, not a regression, and not caused by this session (nothing in `tests/` imports `tools/replay_run.py`; the only other edits were markdown). **Lesson for future sessions: one deviating full-suite run is not evidence of a broken baseline — re-run before editing §3.** Test count is now 364 (354 + item 38's 10). The flake itself is not fixed here (§0 rule 3); stabilise or quarantine is a human call. |
 | 2026-08-11 | Opus 5 | **`ROADMAP_V5.md` did not exist; it was created, then deleted on the human's call. This file is the only plan.** §0 rule 1, §6, §7 and §8 all pointed at a `ROADMAP_V5.md` that was nowhere in the tree. It was created at repo root (commit `2d34a41`), and the human rejected that: the sprint follows `CLIENT_DELIVERY_SPRINT_v5.md` and nothing else. Removed, and every reference repointed to **§6**, which now *is* the post-delivery backlog — the deferrals it already listed, plus the English-replay entry and the WER-gap measure that had been routed to the missing file. Two authorities for "what is deferred" is the same mistake §0 rule 2 forbids for code; one list, in this file. |
 | 2026-08-10 | Opus 5 | **Item 38 condition 2 — the host path diverges from production; reporting before writing, as instructed.** Production: `stabilizer.ingest()` → `assembler.ingest()` → assembler posts a *deferred* flush via `LanguagePipelineWorker.schedule_flush(assembler, due_mono, generation, reason)`, executed by a background thread against wall-clock `due_mono`. `JapaneseTestHost` (test_task2c) deliberately bypasses that: its own docstring says timeout scenarios use "the assembler's synchronous `try_execute_continuity_hold` entry point **instead of real timers**", and tests call `assembler.flush(...)` by hand. So *when* a flush happens — which decides what the assembler batches into one commit — is production-timed but harness-manual. Whether problem A survives that change is unknown and is exactly what condition 4 says to report rather than tune around. |
+| 2026-08-11 | Opus 5 | **Item 38b done. ~~"Timing is therefore a determining factor for problem A"~~ (2026-08-11 row above) is retracted — it explained the decision-*count* divergence, not the content-loss mechanism, and those turned out to be two different things.** Built `replay_events_real_timer` in `tools/replay_run.py` (`--real-timer`): starts the real `LanguagePipelineWorker` singleton via `start_language_pipeline_worker()`/`stop_and_join()` (the same pair Start/Stop call in production) and sleeps each row's real recorded gap (`metadata.timestamp` deltas) instead of feeding back-to-back, so the deferred flush fires against real wall-clock time. Ran all 6 replayable runs at real speed (span 64–300s each; run in parallel background processes, ~300s wall total instead of the ~956s serial sum). Result, decisions recorded→replayed→(fast-feed for comparison): `...155922` 3→3 (fast-feed 3), `...160130` 4→4 (4), `...160529` 10→10 (8), `...134815` 29→29 (13), `...155334` 32→33 (19), `...174516` 36→35 (18). **Decision counts now match or land within 1 on every run — real timing fully explains the segmentation divergence.** Content loss: recorded→replayed drops `...155922` 1→0, `...160130` 2→0, `...160529` 2→0, `...134815` 3→0, `...155334` 6→0, `...174516` 0→0. **Still 0 of 14 reproduced.** Timing was necessary to explain *how many* commits happen, not *why two disjoint ones share an id*. |
+| 2026-08-11 | Opus 5 | **Incidental to building 38b, not a drive-by fix (§0 rule 3) — logged for item 41, not implemented.** Read `japanese_sentence_assembler.py`'s id-mint path end to end while diagnosing why 38b still doesn't reproduce the loss. `update_previous_requested` (line 3635) is computed once, from boundary-stabilizer signals, *before* `decide_stable_revision_action` runs. That call (line 3673) can return `final_revision_action="append"` — a considered verdict that the candidate is a new, disjoint sentence — and when it does, lines 3749–3756 correctly reset `stable_layer_update_previous`/`post_update_previous` and clear `metadata["boundary_should_revise"]`. **`update_previous_requested` itself is never reassigned.** The id-mint gate at line ~3912 (`proposed_action = "revise_previous" if update_previous_requested else "commit_new"`) reads that stale, pre-decision variable — not `final_revision_action`, the function that was specifically hardened by items 10/11/12/19/20c to tell a revision from a new sentence. Cross-checked against real evidence, not left as a code-reading theory: parsed `logs/japanese_accuracy.log`'s `STABLE_REVISION_DECISION` events (pipe-delimited `timestamp \| {json}`, not plain JSONL) on all 6 runs and matched `update_previous_requested == True and final_action == "append"` against the actual id-reuse events in each run's `stable_commits.jsonl`. **12 of 13 id-reuse events match exactly**; the one miss (`...160130`) is plausibly a text-normalisation artifact in the comparison script (a business-glossary correction shifted the text between the two logs by a few characters), not a predicate failure — not chased further, out of this item's scope. Two structural explanations for why real-timer replay still doesn't reproduce this were checked and ruled out: the interim-Deepgram-stream hypothesis (`japanese_boundary_stabilizer.py` has no `interim`/`is_final` reference) and the bypassed-component hypothesis (`get_boundary_stabilizer()` is called from inside the assembler's own `_ingest_locked` chain at line 2299, which replay does exercise). **This is a lead for item 41, not a proof** — unresolved: why the boundary stabilizer disagrees with `decide_stable_revision_action` in the first place, whether the fix belongs at the read site or the write site, and why replay still can't reproduce it despite having the mechanism. Item 41's description in §5 rewritten to start here instead of from scratch. |
 
 ---
 

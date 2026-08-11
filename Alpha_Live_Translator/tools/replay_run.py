@@ -41,37 +41,52 @@ have 0 ingress rows and 0 `stable_commits`. Six runs are replayable:
 `...160529`, `...155922`, `...160130`, `...134815`, `...155334`,
 `...174516`.
 
-LIMITATION — FAST-FEED, NO REAL TIMERS
---------------------------------------
-Events are fed as fast as possible; original inter-event timestamps are
-**not** honoured, and neither is `LanguagePipelineWorker`'s real
-scheduling thread. In production the assembler posts a *deferred* flush
-via `schedule_flush(assembler, due_mono, generation, reason)`, executed
-against wall-clock time; here the flush is driven directly. Flush timing
-decides what the assembler batches into one commit, so this replay is
-faithful for *content* routing but not for *timing*.
+TWO REPLAY MODES
+----------------
+`replay_events` (default) feeds every row back to back; original
+inter-event timestamps are not honoured, and neither is
+`LanguagePipelineWorker`'s real scheduling thread. `replay_events_real_timer`
+(`--real-timer`, item 38b) instead starts the real worker and sleeps the
+real recorded gap between rows, so the deferred flush production posts
+via `schedule_flush(assembler, due_mono, generation, reason)` executes
+against real wall-clock time exactly as it would live.
 
-**Measured 2026-08-11: the loss pattern does not reproduce under
-fast-feed.** All 14 recorded losses across the 6 replayable runs are
-`overwritten_by_id_collision`; replay reproduces 0 of them, and the
+**Measured 2026-08-11, fast-feed: the loss pattern does not reproduce.**
+All 14 recorded losses across the 6 replayable runs are
+`overwritten_by_id_collision`; fast-feed reproduces 0 of them, and the
 segmentation itself diverges — identical ingress yields 13 replayed
 commit decisions against 29 recorded on `...134815`, 19 against 32 on
-`...155334`. No timer fires mid-stream, so the assembler mints a fresh
-id where the real run reused one, and the collision never happens.
-Problem A is therefore timing-dependent; reproducing it needs real
-`LanguagePipelineWorker` scheduling, which is a separately-scoped item
-(v5 §8 item 38b) rather than a change to this tool.
+`...155334`. That divergence was consistent with "no timer fires
+mid-stream", which read as timing-dependent.
 
-That is a finding, not a defect here — this harness is deliberately not
-tuned until its numbers agree with an expectation. What it does
-establish is the *recorded* side, measured against the ledger and the
-export independently, which is what proves problem A and gives item 41
-its target.
+**Measured 2026-08-11, real-timer (item 38b): that reading was wrong.**
+Real timing fixes the segmentation divergence -- decision counts now
+match or come within 1 on every run (`...134815` 29 vs 29, `...155334`
+33 vs 32, full table in `CLIENT_DELIVERY_SPRINT_v5.md` §9) -- but content
+loss still reproduces **0 of 14** even so. Timing was necessary to
+explain the decision-*count* mismatch and is not sufficient to explain
+the *content-loss* mechanism; those are two separate things this tool
+originally conflated. See `_dropped_content`'s docstring for the
+mechanism and §9 for the code-level lead this handed to item 41 -- a
+disagreement between `update_previous_requested` (set before
+`decide_stable_revision_action` runs) and that function's own
+`final_revision_action` verdict, cross-validated against
+`japanese_accuracy.log`'s `STABLE_REVISION_DECISION` events on 12 of 13
+observed id-reuse cases across all 6 runs. Why real-timer replay still
+does not reproduce it is unresolved -- two structural explanations
+(interim-stream dependency, a bypassed boundary-stabilizer) were checked
+and ruled out; this is as far as item 38b's scope goes, and it is item
+41's starting point, not its answer.
+
+Both findings stand on their own: fast-feed is deliberately not tuned to
+agree with the recorded run, and neither is real-timer -- this harness
+reports what the real pipeline does, not what would make a number match.
 
 USAGE
 -----
     python tools/replay_run.py <run_folder> [--json]
     python tools/replay_run.py --all [--json]
+    python tools/replay_run.py <run_folder> --real-timer [--json]  # item 38b, slow
 
 Exit codes: 0 all replayed runs reproduced their recorded loss pattern,
 1 a mismatch or a failed invariant, 2 bad input. **Exit 1 is the current
@@ -247,8 +262,39 @@ class _ReplayHost:
         return True
 
 
+def _replay_result(host: "_ReplayHost", stable_texts: list[str], ctl: Any) -> dict[str, Any]:
+    """Shared tail for both replay modes: read back what the real pipeline did."""
+    ledger = ctl.get_active_records()
+    commits = [
+        (p.get("canonical_utterance_id") or "", p.get("text") or "")
+        for p in host.published
+    ]
+    return {
+        "assembler_decisions": len(host.published),
+        "stable_commits": len(stable_texts),
+        "distinct_utterances": len({i for i, _ in commits if i}),
+        "ledger_records": len(ledger),
+        # Export is a pure downstream serialization of the ledger and
+        # measured 1:1 with it in all 6 replayable runs, so replay stops at
+        # the ledger rather than modelling a UI/export layer it would have
+        # to fake.
+        "export_lines": None,
+        "_commits": commits,
+        "_ledger_text": {
+            (r.get("metadata") or {}).get("canonical_utterance_id") or "": r.get("final_text") or ""
+            for r in ledger
+        },
+        "_export_text": None,
+    }
+
+
 def replay_events(ingress: list[dict[str, Any]], *, tag: str) -> dict[str, Any]:
-    """Feed ingress rows through the real pipeline; return the same numbers."""
+    """Feed ingress rows through the real pipeline as fast as Python allows.
+
+    No timer fires mid-stream -- see the module docstring's limitation note
+    and `replay_events_real_timer` below, which exists because this mode
+    measurably does not reproduce problem A.
+    """
     from unittest.mock import patch
 
     from alpha.transcription import canonical_transcript_ledger as ctl
@@ -293,28 +339,108 @@ def replay_events(ingress: list[dict[str, Any]], *, tag: str) -> dict[str, Any]:
         # instead. See the module docstring's limitation note.
         assembler.flush("stop_listening")
 
-    ledger = ctl.get_active_records()
-    commits = [
-        (p.get("canonical_utterance_id") or "", p.get("text") or "")
-        for p in host.published
-    ]
-    return {
-        "assembler_decisions": len(host.published),
-        "stable_commits": len(stable_texts),
-        "distinct_utterances": len({i for i, _ in commits if i}),
-        "ledger_records": len(ledger),
-        # Export is a pure downstream serialization of the ledger and
-        # measured 1:1 with it in all 6 replayable runs, so replay stops at
-        # the ledger rather than modelling a UI/export layer it would have
-        # to fake.
-        "export_lines": None,
-        "_commits": commits,
-        "_ledger_text": {
-            (r.get("metadata") or {}).get("canonical_utterance_id") or "": r.get("final_text") or ""
-            for r in ledger
-        },
-        "_export_text": None,
-    }
+    return _replay_result(host, stable_texts, ctl)
+
+
+def _recorded_gaps_s(ingress: list[dict[str, Any]]) -> list[float]:
+    """Real inter-arrival gaps in seconds, from each row's recorded `timestamp`.
+
+    Clamped to >= 0 -- recorded timestamps are expected monotonic, but a
+    replay tool must not raise or hang on a row that violates that rather
+    than surfacing it as a wrong result.
+    """
+    gaps: list[float] = []
+    for a, b in zip(ingress, ingress[1:]):
+        ta, tb = a.get("timestamp"), b.get("timestamp")
+        gaps.append(max(0.0, float(tb) - float(ta)) if ta is not None and tb is not None else 0.0)
+    return gaps
+
+
+def replay_events_real_timer(ingress: list[dict[str, Any]], *, tag: str) -> dict[str, Any]:
+    """Item 38b. Same pipeline as `replay_events`, driven by the real
+    `LanguagePipelineWorker` thread across real recorded wall-clock gaps
+    instead of feeding every row back-to-back.
+
+    Why this exists: `replay_events` measured 0/14 losses reproduced and the
+    commit counts it produced diverged outright from the recorded run (13 vs
+    29 decisions on one run). Item 38's docstring traced that to no timer
+    ever firing mid-stream. Whether a hold fires before the next fragment
+    arrives is what problem A's id-reuse depends on (see
+    `japanese_sentence_assembler.py`'s `_schedule_flush`/
+    `try_execute_continuity_hold`), and that is a real-elapsed-time
+    question -- SENTENCE_HOLD_MIN_MS/MAX_MS are 2000-3500ms, and the median
+    recorded gap between ingress rows is several seconds, so scaling the
+    waits down would silently change which side of the threshold most gaps
+    fall on. This mode is therefore real-time, on purpose: it takes roughly
+    as long as the original recording did (see `--all --real-timer`'s
+    printed total before it starts).
+
+    Uses the process-global `LanguagePipelineWorker` singleton via
+    `start_language_pipeline_worker()`/`stop_and_join()` -- the same pair
+    production calls at Start/Stop -- rather than constructing a private
+    instance, because the assembler resolves the worker through that same
+    singleton internally and cannot be handed a different one without
+    patching module state that production does not patch.
+    """
+    import time
+    from unittest.mock import patch
+
+    from alpha.transcription import canonical_transcript_ledger as ctl
+    from alpha.transcription.japanese_final_chunk_stabilizer import (
+        get_japanese_final_stabilizer,
+    )
+    from alpha.transcription.japanese_sentence_assembler import (
+        get_japanese_continuity_assembler,
+    )
+    from alpha.utils.language_pipeline_worker import (
+        get_language_pipeline_worker,
+        start_language_pipeline_worker,
+    )
+
+    host = _ReplayHost(session_id=f"replay-rt-{tag}", run_id=f"replay-rt-{tag}")
+    stabilizer = get_japanese_final_stabilizer(host)
+    stabilizer.set_accepting(True)
+    assembler = get_japanese_continuity_assembler(host)
+    gaps = _recorded_gaps_s(ingress)
+
+    stable_texts: list[str] = []
+
+    def _count_stable_commit(**kwargs: Any) -> str:
+        stable_texts.append(kwargs.get("stable_text"))
+        return f"replay-rt-stable-{len(stable_texts)}"
+
+    start_language_pipeline_worker()
+    try:
+        with patch(
+            "alpha.utils.transcript_evidence.log_stable_commit",
+            side_effect=_count_stable_commit,
+        ):
+            for i, row in enumerate(ingress):
+                speaker = row.get("speaker")
+                text = row.get("raw_text") or ""
+                meta = dict(row.get("metadata") or {})
+                try:
+                    stabilizer.ingest(int(speaker or 1), text, metadata=meta)
+                except Exception as exc:  # never swallow -- surface as a result
+                    return {
+                        "error": f"ingest_failed:{type(exc).__name__}:{exc}",
+                        "raw_event_id": row.get("raw_event_id"),
+                    }
+                if i < len(gaps):
+                    time.sleep(gaps[i])
+            # Same call production's Stop button makes; only what happened
+            # DURING ingestion (mid-stream real timer fires) differs from
+            # replay_events. See the class docstring's rationale.
+            assembler.flush("stop_listening")
+            # try_execute_continuity_hold's non-blocking try_acquire can lose
+            # a race to flush() above and reschedule itself 50ms out (see
+            # language_pipeline_worker.py); give it one window to land before
+            # reading back state, same margin _run_flush's own retry uses.
+            time.sleep(0.1)
+    finally:
+        get_language_pipeline_worker().stop_and_join(timeout_seconds=2.0)
+
+    return _replay_result(host, stable_texts, ctl)
 
 
 # --------------------------------------------------------------------------
@@ -370,7 +496,7 @@ def _dropped_content(
     return dropped
 
 
-def replay_run(run_folder: Path) -> dict[str, Any]:
+def replay_run(run_folder: Path, *, real_timer: bool = False) -> dict[str, Any]:
     rows = _load_jsonl(run_folder / "evidence_streams" / "provider_events.jsonl")
     ingress, excluded = partition_events(rows)
 
@@ -383,6 +509,7 @@ def replay_run(run_folder: Path) -> dict[str, Any]:
 
     result: dict[str, Any] = {
         "run": run_folder.name,
+        "mode": "real_timer" if real_timer else "fast_feed",
         "accounting": accounting,
         "replayable": bool(ingress),
     }
@@ -397,7 +524,15 @@ def replay_run(run_folder: Path) -> dict[str, Any]:
         return result
 
     rec = recorded_counts(run_folder)
-    rep = replay_events(ingress, tag=run_folder.name[-13:])
+    import time as _time
+
+    started = _time.monotonic()
+    if real_timer:
+        rep = replay_events_real_timer(ingress, tag=run_folder.name[-13:])
+        result["recorded_real_gap_total_s"] = round(sum(_recorded_gaps_s(ingress)), 1)
+    else:
+        rep = replay_events(ingress, tag=run_folder.name[-13:])
+    result["replay_wall_s"] = round(_time.monotonic() - started, 1)
     if "error" in rep:
         result.update(rep)
         return result
@@ -433,12 +568,14 @@ def replay_run(run_folder: Path) -> dict[str, Any]:
 
 
 def _print_human(res: dict[str, Any]) -> None:
-    print(f"\n=== {res['run']} ===")
+    print(f"\n=== {res['run']} [{res.get('mode', 'fast_feed')}] ===")
     acc = res["accounting"]
     print(
         f"  rows_read={acc['rows_read']} fed={acc['rows_fed']} "
         f"excluded={acc['rows_excluded']} invariant={'OK' if acc['invariant_holds'] else 'FAILED'}"
     )
+    if "replay_wall_s" in res:
+        print(f"  replay_wall_s={res['replay_wall_s']}")
     if res.get("error"):
         print(f"  ERROR: {res['error']}")
         return
@@ -481,6 +618,16 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument("run_folder", nargs="?", help="path to one troubleshooting/runs/<run>")
     parser.add_argument("--all", action="store_true", help="every run with provider ingress")
     parser.add_argument("--json", action="store_true", help="machine-readable output")
+    parser.add_argument(
+        "--real-timer",
+        action="store_true",
+        help=(
+            "item 38b: drive the real LanguagePipelineWorker across real "
+            "recorded wall-clock gaps instead of fast-feeding every row. "
+            "Real-time, on purpose (see replay_events_real_timer's "
+            "docstring) -- a single run can take several minutes."
+        ),
+    )
     args = parser.parse_args(argv)
 
     if args.all:
@@ -496,10 +643,17 @@ def main(argv: Optional[list[str]] = None) -> int:
         parser.print_usage(sys.stderr)
         return 2
 
+    if args.real_timer and not args.json:
+        print(
+            "--real-timer: replaying at real recorded speed, this will take "
+            "a while per run (see each run's provider_events.jsonl span).",
+            file=sys.stderr,
+        )
+
     results = []
     for folder in folders:
         try:
-            results.append(replay_run(folder))
+            results.append(replay_run(folder, real_timer=args.real_timer))
         except UnknownRowShape as exc:
             results.append({"run": folder.name, "error": f"unknown_row_shape: {exc}"})
 
