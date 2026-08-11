@@ -21,7 +21,7 @@ that campaign.** This file replaces its ordering and scope.
 1. **No architecture changes.** No rewrite, no controller redesign, no
    three-store consolidation, no capture-layer change. Those are real and
    necessary work, and they are deferred to after delivery
-   (`ROADMAP_V5.md`). Attempting them inside 2 weeks is the single most
+   (§6). Attempting them inside 2 weeks is the single most
    likely way to miss the date.
 2. **Never leave two authorities alive.** If a fix would mean the old
    path and the new path both running, stop and escalate to the human.
@@ -295,11 +295,28 @@ consolidation (item 32) · dual-channel capture · dead-code removal
 phrase-table cleanup · translation quality work beyond item 50 · the
 summary feature.
 
-All of it is in `ROADMAP_V5.md` for after delivery. **Dual-channel
-capture is the highest-value item there** — it makes speaker identity a
-fact rather than a guess and deletes most of the cross-speaker bug
-family. Cost impact is roughly $0.46 → $0.92 per audio hour; the reason
-to defer is the 2-week window, not the money.
+**This list is the post-delivery backlog** — there is no separate
+roadmap file, deliberately (see §9, 2026-08-11). Anything deferred gets
+one line here, so there is exactly one place to look.
+
+**Dual-channel capture is the highest-value item in it** — it makes
+speaker identity a fact rather than a guess and deletes most of the
+cross-speaker bug family. Cost impact is roughly $0.46 → $0.92 per audio
+hour; the reason to defer is the 2-week window, not the money.
+
+Also deferred here, added 2026-08-11:
+
+- **English replay coverage.** `tools/replay_run.py` is Japanese-only by
+  evidence, not choice: only `japanese_final_chunk_stabilizer.py` calls
+  `record_raw_deepgram_final` on true ingress, so all 10 recorded English
+  runs hold zero replayable rows. The `raw_deepgram_finals.jsonl`
+  fallback adapter stays **rejected** — a second input adapter is two
+  definitions of "replay input", which §0 rule 2 forbids. The real fix is
+  upstream: record genuine ingress for English too, one format for both
+  languages. Revisit only if items 44/48 turn out to need it.
+- **WER gap vs. raw Deepgram.** The real accuracy measure. Record it at
+  baseline and at delivery, but do not gate the client date on it —
+  improving it is post-delivery work.
 
 ---
 
@@ -319,9 +336,9 @@ sessions per direction:
 | 7 | Start→Stop→Start, 5 cycles | no degradation |
 | 8 | clean-machine install runs the full scenario | pass |
 
-Gate 5 in `ROADMAP_V5.md` (WER gap vs. raw Deepgram) is the real accuracy
-measure. Record it at baseline and at delivery, but do not gate the
-client date on it — improving it is post-delivery work.
+The WER gap vs. raw Deepgram is the real accuracy measure, and it is
+deliberately **not** in the table above — record it at baseline and at
+delivery, but do not gate the client date on it. See §6.
 
 ---
 
@@ -395,7 +412,7 @@ recommended (pending). `[gate]` = human approval required before coding.
 | 33s | **Scoped**: stop relabeled speaker feeding same-speaker extension | **Opus 5** | **SPRINT — day 6** `[gate]` |
 | 34 | `noise_fragment` threshold from evidence | — | SUPERSEDED by item 43 |
 | 28, 29 | Fixture capture + root-cause proof for problem A | — | ABSORBED into items 41, 42 |
-| 28a, 28b, 30, 31, 32, 33 (full), 35, 36, 37 | Controller rewrite, store consolidation, key redesign, dead code | Fable 5 / Opus 5 | DEFERRED — see `ROADMAP_V5.md` |
+| 28a, 28b, 30, 31, 32, 33 (full), 35, 36, 37 | Controller rewrite, store consolidation, key redesign, dead code | Fable 5 / Opus 5 | DEFERRED — see §6 |
 
 ### New items — this sprint
 
@@ -435,9 +452,9 @@ wrong.
 | 2026-08-11 | Opus 5 | **The decisions-vs-ledger delta used throughout §1/§5/§7 and the 2026-08-10 rows below is the wrong metric — retracted, not overwritten.** It over-counts (a genuine `revise` writes a second `stable_commits` row for an id that already has its record; that is not a loss) and under-counts (an overwritten id still has a ledger record, so the loss is invisible to it). Corrected per-run drops: `...155922` **1** (delta said 0), `...160130` **2** (said 1), `...160529` **2** (said 1), `...134815` **3** (said 6), `...155334` **6** (said 6), `...174516` **0** (said 0 — the only genuinely clean run). §1's evidence row, §5's Days 1–2 and Days 3–6 gates, and §7 gate 1 all rewritten. This is the third time on this project that a count-based read of evidence files was contradicted by driving the code — same shape as the item 20b retraction in `CANONICAL_KEY_FIELDS_AUDIT.md` §5b. |
 | 2026-08-11 | Opus 5 | **The harness's own first verdict was a false pass — recording it because it nearly shipped.** `_unreached_utterances` matched committed utterances to the ledger on `canonical_utterance_id` only, with a comment arguing text comparison would produce false positives. On that measure all 6 runs scored 0 losses and the tool exited 0, reporting "6 replayed, 6 reproduced." The id *did* reach the ledger — carrying the wrong text. An instrument built to find disappearing records was blind to the exact way they disappear. Fixed to condition 2 as approved (match on text **and** id) plus an independent export cross-check; `_dropped_content` now carries that reasoning in its docstring so it is not re-simplified later. |
 | 2026-08-11 | Opus 5 | **Decision 5b resolved: the loss does NOT reproduce under fast-feed.** Replay drops 0 of 14. The segmentation diverges outright — identical ingress produces 13 replayed commit decisions against 29 recorded on `...134815`, 19 vs 32 on `...155334`, 18 vs 36 on `...174516` — because no timer fires mid-stream, so the assembler mints a fresh id where the real run reused one, and the collision never occurs. Per condition 4 the harness was **not** adjusted to make the numbers agree. Timing is therefore a determining factor for problem A; opened item **38b** (real `LanguagePipelineWorker` scheduling) rather than retrofitting it into 38. Item 41 does not need 38b — 38's recorded-side measurement already localises the bug to id minting in the assembler. Items 44/48 do. |
-| 2026-08-11 | Opus 5 | **English replay coverage — closed, not reopened.** All 10 English runs record zero genuine-ingress rows (only `japanese_final_chunk_stabilizer.py` calls `record_raw_deepgram_final` on true ingress), so replay is Japanese-only by evidence rather than by choice. The `raw_deepgram_finals.jsonl` fallback adapter stays rejected — a second input adapter is two definitions of "replay input", which §0 rule 2 forbids. Logged to `ROADMAP_V5.md` as a candidate if items 44/48 later need English coverage. |
+| 2026-08-11 | Opus 5 | **English replay coverage — closed, not reopened.** All 10 English runs record zero genuine-ingress rows (only `japanese_final_chunk_stabilizer.py` calls `record_raw_deepgram_final` on true ingress), so replay is Japanese-only by evidence rather than by choice. The `raw_deepgram_finals.jsonl` fallback adapter stays rejected — a second input adapter is two definitions of "replay input", which §0 rule 2 forbids. Logged in **§6** as a candidate if items 44/48 later need English coverage. |
 | 2026-08-11 | Opus 5 | **The baseline holds at 7 names; one 8th name is intermittent. Recording the wrong intermediate conclusion too, because it is instructive.** First full-suite run of the session reported `Ran 354 tests … FAILED (failures=7, errors=2, skipped=2)` and this file was briefly edited to say §3's 5+2 baseline was stale. **That was wrong** — the very next full run, `Ran 364 tests … FAILED (failures=5, errors=2, skipped=2)`, produced exactly the 7 documented names. The difference is `test_task9_report.Issue3RealThreadIntegrationTest.test_inactivity_timeout_fallback_survives_immediate_real_stop_5x`, a real-thread timing test: two subtest iterations failed in run 1, none in run 2, and its module passes 9/9 tests in 3 runs out of 3 alone. It is flaky under full-suite load, not a regression, and not caused by this session (nothing in `tests/` imports `tools/replay_run.py`; the only other edits were markdown). **Lesson for future sessions: one deviating full-suite run is not evidence of a broken baseline — re-run before editing §3.** Test count is now 364 (354 + item 38's 10). The flake itself is not fixed here (§0 rule 3); stabilise or quarantine is a human call. |
-| 2026-08-11 | Opus 5 | **`ROADMAP_V5.md` did not exist.** §6 and item 38's decision 4 both refer to it as the post-delivery destination; nothing by that name was anywhere in the tree. Created it at repo root, seeded only with the deferrals §6 already names plus the English-replay entry — no new scope invented. Flagging rather than assuming: if a `ROADMAP_V5.md` exists on another machine, this one needs merging into it, not replacing it. |
+| 2026-08-11 | Opus 5 | **`ROADMAP_V5.md` did not exist; it was created, then deleted on the human's call. This file is the only plan.** §0 rule 1, §6, §7 and §8 all pointed at a `ROADMAP_V5.md` that was nowhere in the tree. It was created at repo root (commit `2d34a41`), and the human rejected that: the sprint follows `CLIENT_DELIVERY_SPRINT_v5.md` and nothing else. Removed, and every reference repointed to **§6**, which now *is* the post-delivery backlog — the deferrals it already listed, plus the English-replay entry and the WER-gap measure that had been routed to the missing file. Two authorities for "what is deferred" is the same mistake §0 rule 2 forbids for code; one list, in this file. |
 | 2026-08-10 | Opus 5 | **Item 38 condition 2 — the host path diverges from production; reporting before writing, as instructed.** Production: `stabilizer.ingest()` → `assembler.ingest()` → assembler posts a *deferred* flush via `LanguagePipelineWorker.schedule_flush(assembler, due_mono, generation, reason)`, executed by a background thread against wall-clock `due_mono`. `JapaneseTestHost` (test_task2c) deliberately bypasses that: its own docstring says timeout scenarios use "the assembler's synchronous `try_execute_continuity_hold` entry point **instead of real timers**", and tests call `assembler.flush(...)` by hand. So *when* a flush happens — which decides what the assembler batches into one commit — is production-timed but harness-manual. Whether problem A survives that change is unknown and is exactly what condition 4 says to report rather than tune around. |
 
 ---
