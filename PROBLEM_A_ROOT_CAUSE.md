@@ -12,7 +12,13 @@
 > never prevent it* — has been located and verified. §6 records both the
 > original gap and how it closed; nothing has been quietly rewritten.
 >
-> **Item 42 may proceed.** See §5 and §8.
+> **Item 42 landed 2026-08-12 — problem A is fixed.** The fix is *not* the one
+> §5/§8 recommended: pointing the gate at `final_revision_action` was driven
+> and proved insufficient on its own, because the authority is fail-closed to
+> `append` (no `speaker` key), so that gate would always mint a new id and turn
+> every genuine extension into a near-duplicate line. The landed fix requires a
+> revise to be **non-destructive by content** instead. See sprint §9
+> (2026-08-12) and `tests/test_problem_a_destructive_revise.py`.
 >
 > Location note: the item 41 prompt suggested `troubleshooting/problem_A_root_cause.md`.
 > `troubleshooting/` is gitignored (`Alpha_Live_Translator/.gitignore:32`), so

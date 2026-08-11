@@ -341,6 +341,35 @@ def _ends_with_safe_ne_phrase(segment: str) -> bool:
     return any(segment.endswith(ending) for ending in _SAFE_SENTENCE_NE_ENDINGS)
 
 
+def _revision_is_non_destructive(previous_text: str, candidate_text: str) -> bool:
+    """True when revising `previous_text` to `candidate_text` loses no words.
+
+    fixes CLIENT_DELIVERY_SPRINT_v5.md problem A (item 42; proof in
+    `PROBLEM_A_ROOT_CAUSE.md`). A ledger revise replaces `final_text` in place,
+    so it is only safe when the new text still carries the old one. Item 41
+    measured the discriminator across the whole recorded corpus and found it
+    exceptionless: a committed sentence is lost **iff** its
+    `canonical_utterance_id` is reused **and** the two texts are mutually
+    disjoint. Where the later text contained the earlier one the revise was
+    harmless -- 3 of the 13 reused ids were exactly that and lost nothing.
+
+    Containment is checked with whitespace removed so that spacing changes
+    introduced by the cleanup passes do not read as a rewrite. Punctuation is
+    deliberately NOT stripped: `。` and `、` carry sentence-boundary meaning in
+    Japanese, and treating a sentence-final form as equal to a continuing one
+    would let a genuine rewrite pass as an extension.
+
+    An empty previous text is safe to overwrite (there is nothing to lose).
+    """
+    prev = "".join((previous_text or "").split())
+    curr = "".join((candidate_text or "").split())
+    if not prev:
+        return True
+    if not curr:
+        return False
+    return prev in curr
+
+
 def _is_false_ne_tail_split(prefix: str, tail: str) -> bool:
     """Reject です+ね splits that break んですね / ですね."""
     tail = (tail or "").strip()
@@ -3909,7 +3938,51 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
                 # (revision_decision, above) is unchanged -- only who
                 # performs identity registration + the actual ledger commit
                 # changes.
-                proposed_action = "revise_previous" if update_previous_requested else "commit_new"
+                # fixes CLIENT_DELIVERY_SPRINT_v5.md problem A (item 42; proof
+                # in PROBLEM_A_ROOT_CAUSE.md). This gate used to read
+                # `update_previous_requested` alone. That variable is assigned
+                # once, from boundary-stabilizer signals, BEFORE
+                # decide_stable_revision_action runs, and is never recomputed:
+                # the `final_revision_action == "append"` branch above clears
+                # its four inputs but not the variable itself. So a candidate
+                # the revision authority had just judged to be a NEW sentence
+                # still reused the previous canonical_utterance_id, and the
+                # ledger's revise replaced final_text in place -- destroying
+                # the earlier sentence. 10 real sentences were lost that way
+                # across the recorded corpus.
+                #
+                # Pointing this gate at `final_revision_action` instead is not
+                # sufficient on its own: `previous_record` is built without a
+                # "speaker" key, so speakers_confirmed_same() is fail-closed and
+                # the authority returns "append" on every non-first commit
+                # (105 of 111 measured). Trusting it alone would turn every
+                # genuine extension into a second, near-duplicate line -- trading
+                # this data loss for visible duplication.
+                #
+                # So the revise must ALSO be non-destructive by content, which is
+                # the discriminator item 41 proved exceptionless: a revise whose
+                # new text still contains the old loses nothing. One authority
+                # decides here, on evidence available at the decision point.
+                previous_committed_text = str(
+                    self._last_final_output_text
+                    or (self._last_stable_commit or {}).get("text")
+                    or ""
+                )
+                revise_is_safe = _revision_is_non_destructive(previous_committed_text, cleaned)
+                if update_previous_requested and not revise_is_safe:
+                    jp_accuracy_log(
+                        "DESTRUCTIVE_REVISE_BLOCKED_NEW_UTTERANCE_ID",
+                        reason="candidate_does_not_contain_previous_committed_text",
+                        previous_text=previous_committed_text[:120],
+                        candidate_text=cleaned[:120],
+                        decision_reason=decision_reason,
+                        final_revision_action=final_revision_action,
+                    )
+                proposed_action = (
+                    "revise_previous"
+                    if (update_previous_requested and revise_is_safe)
+                    else "commit_new"
+                )
                 if proposed_action == "revise_previous" and self._current_canonical_utterance_id:
                     self._current_source_version += 1
                 else:
@@ -3952,6 +4025,14 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
                 metadata = dict(proposal_result.get("metadata") or metadata)
                 metadata["canonical_utterance_id"] = self._current_canonical_utterance_id
                 metadata["source_version"] = self._current_source_version
+                # Single authority (CLIENT_DELIVERY_SPRINT_v5.md §0 rule 2).
+                # `proposed_action` above is the ONLY place this path decides
+                # append-vs-revise; this line just relabels that one decision
+                # for the downstream metadata consumers (notably item 20b's
+                # `revision_target_id` guard just below). It is not a second
+                # opinion and cannot disagree with the gate -- before item 42
+                # it could, because the gate was driven by a stale pre-decision
+                # flag while this line claimed to carry the authority's verdict.
                 final_revision_action = "revise_previous" if proposed_action == "revise_previous" else "append"
                 record_id = proposal_result.get("record_id")
                 if record_id:
