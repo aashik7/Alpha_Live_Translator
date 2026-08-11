@@ -777,6 +777,12 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
         self._last_raw_stt_mono: float = 0.0
         self._last_ui_commit_mono: float = 0.0
         self._quarantine: list[dict[str, Any]] = []
+        # Item 43: fragments whose quarantine expired, waiting to be committed
+        # OUTSIDE the assembler lock. Never a discard queue -- see
+        # `_drain_quarantine_recovery`.
+        self._quarantine_recovery_pending: list[dict[str, Any]] = []
+        self._quarantine_recovered_count = 0
+        self._quarantine_recovery_draining = False
         self._last_reliable_speaker: Optional[int] = None
         self._last_buffer_speaker: Optional[int] = None
         self._dominant_speaker_for_current_japanese_session: Optional[int] = None
@@ -963,6 +969,8 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
             self._stable_merge_count = 0
             self._assembler_exception_count = 0
             self._quarantine_drop_count = 0
+            self._quarantine_recovered_count = 0
+            self._quarantine_recovery_pending = []
             self._business_phrase_protected_count = 0
             self._raw_mutation_count = 0
             self._force_translation_not_ready = False
@@ -1099,6 +1107,12 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
         raw = (text or "").strip()
         if not raw:
             return
+        # Item 43: commit any fragment whose quarantine expired. This is the
+        # first point after the worker's timer where the assembler lock is NOT
+        # held, which is what the recovery commit needs. Guarded against
+        # re-entry because the drain calls back into this method.
+        if not self._quarantine_recovery_draining and self._quarantine_recovery_pending:
+            self._drain_quarantine_recovery()
         if not already_cleaned:
             if detect_raw_stt_error_suspected(raw):
                 jp_accuracy_log("RAW_STT_ERROR_CANDIDATE", raw_text=raw)
@@ -1983,10 +1997,28 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
                     )
                     self._business_phrase_protected_count += 1
                     continue
+                # fixes CLIENT_DELIVERY_SPRINT_v5.md problem B (item 43). This
+                # used to discard `drop_text` outright, leaving only a log line.
+                # Measured across the recorded corpus: 4 distinct fragments were
+                # dropped this way and 3 of them were real Japanese speech
+                # (`寝れた、幸せ、`, `。忘れちゃうし、`, `最近また`) -- only a bare
+                # `、` was true noise. Item 34 (tune the threshold) was
+                # superseded precisely because that sample is far too small to
+                # tune on, so quarantine is made non-destructive instead: the
+                # fragment is queued for recovery and committed, flagged, rather
+                # than deleted.
+                #
+                # Queued, not committed inline: this runs with the assembler
+                # lock already held by language_pipeline_worker._run_quarantine_drop,
+                # and the commit path re-acquires that lock. `_drain_quarantine_recovery`
+                # does the committing outside the lock, the same shape
+                # flush_quarantine_on_stop already uses.
+                self._quarantine_recovery_pending.append(entry)
                 jp_accuracy_log(
-                    "NOISE_FRAGMENT_DROPPED",
+                    "NOISE_FRAGMENT_RECOVERY_QUEUED",
                     raw_text=drop_text,
                     age_s=round(age, 1),
+                    reason="quarantine_expired_recovering_not_dropping",
                 )
                 self._quarantine_drop_count += 1
             else:
@@ -1994,6 +2026,71 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
         self._quarantine = kept
         if self._quarantine:
             self._schedule_quarantine_drop(skip_valid_short=True)
+
+    def _quarantine_entry_has_committable_content(self, entry: dict[str, Any]) -> bool:
+        """True when this fragment carries text worth committing.
+
+        Item 43 makes quarantine non-destructive, but "commit everything"
+        cannot be taken literally: `accept_boundary_proposal` fails with
+        `"empty_text"` on blank text, and the assembler turns **any** proposal
+        failure into `self._assembler_commit_gate_failed`, which is cleared only
+        in `reset()`. So one punctuation-only fragment -- the corpus has exactly
+        one, a bare `、` -- would silently kill every remaining commit in the
+        session. Trading a one-fragment loss for a whole-session loss is not
+        what item 43 asks for.
+
+        A fragment therefore needs at least one non-punctuation, non-space
+        character to reach the commit path. Anything rejected here is still
+        logged explicitly by the caller, never dropped silently.
+        """
+        text = str(entry.get("text") or entry.get("raw") or "")
+        return bool(count_japanese_chars(text)) or any(ch.isalnum() for ch in text)
+
+    def _drain_quarantine_recovery(self) -> None:
+        """Commit fragments whose quarantine expired. MUST run unlocked.
+
+        fixes CLIENT_DELIVERY_SPRINT_v5.md problem B (item 43). Called from
+        `_ingest_safe`'s entry and from `flush_quarantine_on_stop`, both of
+        which are outside the assembler lock. `_ingest_safe` re-acquires that
+        lock, so calling this from `_drop_expired_quarantine_locked` -- which
+        the language pipeline worker invokes with the lock held -- would
+        deadlock. That is why expiry queues here instead of committing.
+        """
+        with self._lock:
+            pending = list(self._quarantine_recovery_pending)
+            self._quarantine_recovery_pending = []
+        if not pending:
+            return
+        self._quarantine_recovery_draining = True
+        try:
+            self._commit_recovered_quarantine_entries(pending)
+        finally:
+            self._quarantine_recovery_draining = False
+
+    def _commit_recovered_quarantine_entries(self, pending: list[dict[str, Any]]) -> None:
+        for entry in pending:
+            raw = str(entry.get("raw", entry.get("text", "")))
+            if not self._quarantine_entry_has_committable_content(entry):
+                # Explicit and distinct from the old silent NOISE_FRAGMENT_DROPPED
+                # so this stays visible in evidence. See the docstring above for
+                # why this one class cannot be committed.
+                jp_accuracy_log(
+                    "NOISE_FRAGMENT_NOT_COMMITTABLE",
+                    raw_text=raw,
+                    reason="no_word_characters_would_fail_empty_text_gate",
+                )
+                continue
+            self._ingest_safe(
+                int(entry.get("speaker") or 2),
+                str(entry.get("text", "")),
+                {"quarantine_recovered": True},
+                "quarantine_recovered",
+                already_cleaned=True,
+                raw_original=raw,
+                bypass_quarantine=True,
+            )
+            self._quarantine_recovered_count += 1
+            jp_accuracy_log("NOISE_FRAGMENT_RECOVERED_AND_COMMITTED", raw_text=raw)
 
     def _schedule_quarantine_drop(self, *, skip_valid_short: bool = False) -> None:
         if self._quarantine_drop_scheduled:
@@ -2533,7 +2630,16 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
         return None
 
     def flush_quarantine_on_stop(self, reason: str = "stop_listening") -> None:
-        """Commit valid short list terms; drop only true noise."""
+        """Commit every quarantined fragment that carries real content.
+
+        Item 43 made this non-destructive. It previously committed only "valid
+        short list terms" and discarded the rest, which is where 3 of the 4
+        real-speech fragments in the recorded corpus were lost. Stop is the last
+        chance quarantined text ever gets, so a drop here is permanent.
+        """
+        # Anything already queued by an expiry tick must land too -- otherwise a
+        # fragment that expired seconds before Stop would still be lost.
+        self._drain_quarantine_recovery()
         with self._lock:
             self._cancel_quarantine_timer()
             pending: list[dict[str, Any]] = []
@@ -2547,13 +2653,27 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
                         raw_text=raw,
                         reason=reason,
                     )
-                else:
+                elif self._quarantine_entry_has_committable_content(entry):
+                    # fixes problem B (item 43). This branch used to discard the
+                    # fragment with a bare NOISE_FRAGMENT_DROPPED. Stop is the
+                    # last chance any quarantined text ever gets, so a drop here
+                    # is permanent -- and 3 of the 4 fragments the corpus lost
+                    # this way were real speech. Commit it flagged instead.
+                    pending.append(entry)
                     jp_accuracy_log(
-                        "NOISE_FRAGMENT_DROPPED",
+                        "NOISE_FRAGMENT_RECOVERED_AT_STOP",
                         raw_text=raw,
                         reason=reason,
                     )
-                    self._short_valid_term_dropped_count += 0
+                else:
+                    # Explicit, and distinct from the old silent drop. See
+                    # `_quarantine_entry_has_committable_content` for why this
+                    # one class must not reach the commit path.
+                    jp_accuracy_log(
+                        "NOISE_FRAGMENT_NOT_COMMITTABLE",
+                        raw_text=raw,
+                        reason=f"{reason}:no_word_characters_would_fail_empty_text_gate",
+                    )
             self._quarantine.clear()
         for entry in pending:
             self._ingest_safe(
