@@ -39,8 +39,22 @@ from alpha.transcription.utterance_lifecycle import (  # noqa: E402
     _compare_tokens,
     _merge_lexical,
     _overlap_join,
+    _tail_resend_splice,
     should_use_utterance_lifecycle,
 )
+
+
+def _repeated_phrases(text: str, size: int = 4) -> list[str]:
+    """N-grams that occur more than once, well apart -- the duplication signal."""
+    words = text.lower().split()
+    seen: dict[str, int] = {}
+    repeats: list[str] = []
+    for i in range(len(words) - size + 1):
+        gram = " ".join(words[i : i + size])
+        if gram in seen and i - seen[gram] > size - 1:
+            repeats.append(gram)
+        seen[gram] = i
+    return repeats
 
 
 def _fold(chunks: list[str]) -> str:
@@ -160,6 +174,65 @@ class SlidingWindowOverlapTest(unittest.TestCase):
     def test_curr_fully_inside_prev_tail_adds_nothing(self):
         merged = _merge_lexical("I am very happy today", "happy today")
         self.assertEqual("I am very happy today", merged)
+
+
+class TailResendSpliceTest(unittest.TestCase):
+    """Once an utterance has accumulated, Deepgram re-sends only its most
+    recent span, revised and extended. Whole-against-whole comparison cannot
+    see that, and the shared run is not a clean suffix of the accumulator
+    either, so both earlier mechanisms miss it."""
+
+    def test_tail_resend_replaces_the_tail_instead_of_repeating_it(self):
+        prev = (
+            "Mhmm. Okay. Lower it. I'll lift it to the top. You lower it. "
+            "So even though you failed, positively, we're"
+        )
+        curr = "So even though you failed positively, we can do a couple of extra reps"
+        merged = _merge_lexical(prev, curr)
+        self.assertEqual([], _repeated_phrases(merged), f"still duplicating: {merged!r}")
+        self.assertIn("extra reps", merged, "new tail content was lost")
+        self.assertTrue(merged.startswith("Mhmm. Okay. Lower it."), "earlier text was lost")
+
+    def test_tail_resend_against_a_long_accumulator(self):
+        prev = (
+            "So I am mister Olympia, the best bodybuilder in the world, and I "
+            "didn't spend more than 4 hours a week lifting weights. Come on. "
+            "I spent more in a gym. Yeah."
+        )
+        curr = "I spent more in a gym lifting Yeah. But you didn't train with me."
+        merged = _merge_lexical(prev, curr)
+        self.assertEqual([], _repeated_phrases(merged), f"still duplicating: {merged!r}")
+        self.assertIn("train with me", merged)
+        self.assertIn("mister Olympia", merged)
+
+    def test_splice_can_never_discard_more_than_the_orphan_bound(self):
+        """The safety property the whole mechanism rests on: however long the
+        accumulator gets, a splice drops at most `max_orphan` tokens."""
+        prev = "one two three four five six seven eight nine ten"
+        # curr re-sends from "four" but prev has 5 tokens after that run's end
+        curr = "four five six completely different now"
+        self.assertIsNone(
+            _tail_resend_splice(
+                prev, curr, _compare_tokens(prev), _compare_tokens(curr), max_orphan=2
+            ),
+            "a run sitting too early in prev must not splice -- that would "
+            "discard unbounded text",
+        )
+
+    def test_short_coincidental_echo_does_not_splice(self):
+        """`min_run` is stricter here than for `_overlap_join` because this
+        step can drop text."""
+        prev = "we talked about the budget"
+        curr = "the budget was approved"
+        self.assertIsNone(
+            _tail_resend_splice(prev, curr, _compare_tokens(prev), _compare_tokens(curr))
+        )
+
+    def test_prefers_the_latest_occurrence_of_the_run(self):
+        prev = "go left then go right"
+        curr = "go right and stop"
+        merged = _merge_lexical(prev, curr)
+        self.assertEqual("go left then go right and stop", merged)
 
 
 class DisjointChunksStillConcatenateTest(unittest.TestCase):

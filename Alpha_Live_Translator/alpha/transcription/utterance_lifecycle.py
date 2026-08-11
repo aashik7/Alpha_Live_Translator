@@ -148,6 +148,54 @@ def _overlap_join(prev: str, curr: str, prev_tokens: list[str], curr_tokens: lis
     return None
 
 
+def _tail_resend_splice(
+    prev: str,
+    curr: str,
+    prev_tokens: list[str],
+    curr_tokens: list[str],
+    *,
+    min_run: int = 3,
+    max_orphan: int = 4,
+) -> Optional[str]:
+    """Splice a chunk that re-sends and revises the TAIL of a long accumulator.
+
+    fixes problem F, third shape. Once an utterance has accumulated, Deepgram
+    keeps re-sending only its most recent span, revised and extended:
+
+        accumulated: "...You lower it. So even though you failed, positively, we're"
+        next chunk:  "So even though you failed positively, we can do a couple of extra reps"
+
+    Whole-against-whole comparison cannot see this -- the shared run is a
+    small fraction of the accumulator, so the similarity gate scores under
+    threshold -- and `_overlap_join` cannot either, because the run is not a
+    clean suffix of `prev`: `prev` ends in a partial word (`"we're"`) that
+    `curr` revises away. Both fell through to concatenation, which is why
+    long lines still duplicated after the first two fixes.
+
+    So: find the longest run of `curr`'s leading tokens that appears
+    contiguously in `prev`, preferring the latest such position, and keep
+    everything in `prev` before it. `max_orphan` is the safety bound -- the
+    run must reach within that many tokens of `prev`'s end, so this can
+    never discard more than `max_orphan` tokens no matter how long the
+    accumulator is. `min_run` is stricter than `_overlap_join`'s because
+    this one can drop text, and a coincidental two-word echo must not.
+
+    Returns None when no qualifying run exists, leaving the caller's
+    concatenation untouched.
+    """
+    limit = min(len(curr_tokens), len(prev_tokens))
+    for k in range(limit, min_run - 1, -1):
+        head = curr_tokens[:k]
+        for i in range(len(prev_tokens) - k, -1, -1):  # latest occurrence first
+            if prev_tokens[i : i + k] != head:
+                continue
+            if len(prev_tokens) - (i + k) > max_orphan:
+                break  # this run sits too early in prev to be a tail re-send
+            kept = " ".join(prev.split()[:i]).strip()
+            return f"{kept} {curr}".strip() if kept else curr
+    return None
+
+
 def _merge_lexical(previous: str, current: str) -> str:
     """Merge two lexical chunks of the same utterance without hardcoding phrases."""
     prev = (previous or "").strip()
@@ -218,6 +266,13 @@ def _merge_lexical(previous: str, current: str) -> str:
             order_ratio = matched / min(len(prev_word_list), len(curr_word_list))
             if order_ratio >= 0.6:
                 return curr if len(curr_word_list) >= len(prev_word_list) else prev
+    # A chunk that re-sends and revises only the accumulator's tail. Placed
+    # after the similarity gate because it is the one step here that can
+    # discard text -- bounded to max_orphan tokens -- so the non-destructive
+    # checks get first refusal.
+    spliced = _tail_resend_splice(prev, curr, prev_word_list, curr_word_list)
+    if spliced is not None:
+        return spliced
     # Adjacent finalised chunks of one utterance (non-overlapping lexical spans).
     if prev.endswith((",", ";", ":")):
         return f"{prev} {curr}"
