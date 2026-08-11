@@ -146,9 +146,74 @@ asymmetry is fully accounted for by the nested/disjoint split.
 
 ---
 
-## 5. Phase 4 candidates and verdicts
+## 5. Phase 3 + 4 — the causal chain, positively evidenced
 
-_Fill in. See §6 step 4._
+### The controlled natural experiment (this is the core proof)
+
+Every 2nd-or-later `stable_commits` row on an already-used
+`canonical_utterance_id` was cross-referenced against its
+`STABLE_REVISION_DECISION` event in `logs/japanese_accuracy.log`:
+
+| texts disjoint? | `update_previous_requested` | `final_action` | count | loss? |
+|---|---|---|---|---|
+| **True** | **True** | `append` | **9** | **yes, all 9** |
+| False | False | `append` | 3 | no, all 3 |
+| True | (log match failed) | — | 2 | yes |
+
+`final_action` is **`append` in every single case** — with
+`decision_reason: speaker_boundary_forced_new_line`.
+`decide_stable_revision_action` *always correctly identified a new sentence*.
+The id was reused anyway, and reuse-with-loss happened **exactly** when
+`update_previous_requested` was `True`. The 3 rows where it was `False`
+reused the id harmlessly (nested text, genuine revision). Same code path,
+same run, differing in one variable, opposite outcomes — a control group.
+
+### The chain, by grep anchor (never line numbers)
+
+1. `update_previous_requested = bool(` — assigned **once**, from
+   boundary-stabilizer signals, *before* the decision function runs.
+   `grep -n "update_previous_requested\s*=" japanese_sentence_assembler.py`
+   returns exactly **one** assignment; every other hit is a keyword argument.
+   **It is never reassigned.**
+2. `revision_decision = decide_stable_revision_action` — the authority that
+   was specifically hardened by Batch 3 items 10/11/12/19/20c. Returns
+   `final_action="append"` for these.
+3. Anchor `proposed_action = "revise_previous" if update_previous_requested`
+   — **the id-mint gate reads the stale variable, not `final_revision_action`.**
+4. Anchor `final_revision_action = "revise_previous" if proposed_action ==` —
+   the correct verdict from step 2 is then **overwritten** by a value derived
+   from the stale variable. The right answer is computed, then discarded.
+5. The ledger keys on `canonical_utterance_id`; the second commit lands as
+   `applied_action="revise"` and replaces the first sentence's text.
+
+### Consequential finding for item 42 (not fixed here)
+
+Step 4's overwrite happens **before** the `revision_target_id` guard that
+item 20b installed (anchor: `metadata["revision_target_id"] = (`). That guard
+tests `final_revision_action == "revise_previous"` — i.e. it is now keyed off
+the corrupted value. **Item 20b's fix is silently undermined on this path.**
+
+### The four required facts
+
+- **(a) 1 loss on `...160529`** — exactly one duplicated id with disjoint text.
+- **(b) 08-08 volume** — 3 on `...134815` and 5 on `...155334`, matching the
+  disjoint-duplicate counts exactly. (`...174516` on 08-09 has zero, so §1's
+  "and 08-09" was already retracted in §9 on 2026-08-10 and stays retracted.)
+- **(c) English unaffected** — anchor `def should_use_japanese_final_stabilizer`
+  returns True only for `lang == "ja"` / `ja-*`. English never reaches this
+  file at all; it uses `utterance_lifecycle.py` (that path had its own
+  separate defect, problem F, fixed under item 51).
+- **(d) `coverage_ratio` read clean** — and the contradicting evidence was in
+  the same file. `export_coverage_report.json` on `...160529` records
+  `coverage_ratio: 1.0` and `coverage_passed: true`, while **in the same
+  file** `source_commit_coverage_ratio`, `lineage_coverage_ratio`,
+  `text_coverage_ratio` and `export_coverage_ratio` all read **0.9** — i.e.
+  9 of 10, precisely the lost commit. The gate keys on the one field that
+  compares canonical→final (both post-overwrite) and ignores the four that
+  compare commit→export. Additionally `stage_manifest.json` reports
+  `export_coverage_ratio: 1.0` for the same metric name that
+  `export_coverage_report.json` reports as 0.9 — an inconsistency worth its
+  own line in §9.
 
 ---
 
