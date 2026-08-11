@@ -20,6 +20,7 @@ identity is observed/assigned and commits happen, for both languages.
 from __future__ import annotations
 
 import json
+import string
 import threading
 import time
 import uuid
@@ -88,6 +89,65 @@ def _norm_text(text: str) -> str:
     return " ".join((text or "").strip().lower().split())
 
 
+def _compare_tokens(text: str) -> list[str]:
+    """Whitespace tokens with edge punctuation stripped, for COMPARISON ONLY.
+
+    fixes CLIENT_DELIVERY_SPRINT_v5.md problem F (item 51). `_norm_text`
+    only lowercases and collapses whitespace, so punctuation stays glued to
+    the word: `"olympia."` and `"olympia,"` compare as different tokens.
+    Deepgram routinely re-sends the same growing utterance with different
+    formatting (`"50 percent"` -> `"50%"`, `"mister"` -> `"Mr."`,
+    punctuation moving as the sentence resolves), and that glued
+    punctuation dropped the word-overlap score below its threshold on
+    exactly the pairs the threshold exists to catch -- so `_merge_lexical`
+    fell through to its concatenation branch and glued a reformatted
+    re-send onto the text it was meant to replace, compounding on every
+    tick. Measured on run `...20260811-182940`: 5 of 54 exported lines
+    carried 85.9% of the export's characters, the worst one 5039
+    characters from ~112 glued fragments.
+
+    Only edges are stripped, so `didn't` / `I'm` keep their apostrophes.
+    The returned tokens are never used to build output text -- callers
+    always emit the caller's original strings.
+    """
+    return [w for w in (t.strip(string.punctuation) for t in _norm_text(text).split()) if w]
+
+
+def _overlap_join(prev: str, curr: str, prev_tokens: list[str], curr_tokens: list[str]) -> Optional[str]:
+    """Join two adjacent chunks that share a boundary, without duplicating it.
+
+    fixes problem F, second half. The concatenation branch below is
+    documented as being for "non-overlapping lexical spans", but Deepgram
+    also emits a *sliding window* over continuous speech, where the next
+    chunk repeats the tail of the previous one:
+
+        "...the best bodybuilder in" + "bodybuilder in the world, and I didn't"
+
+    Concatenating those duplicates "bodybuilder in". This finds the longest
+    exact run of `k` consecutive tokens that is both a suffix of `prev` and
+    a prefix of `curr`, and appends only what follows it.
+
+    `k >= 2` is deliberate, not tuning: a single shared boundary word
+    ("the", "and") happens constantly between unrelated sentences, whereas
+    two *consecutive* matching tokens at the exact boundary do not. Returns
+    None when there is no such run, leaving the caller's existing
+    concatenation untouched -- so genuinely disjoint chunks are unaffected.
+    """
+    max_k = min(len(prev_tokens), len(curr_tokens))
+    for k in range(max_k, 1, -1):
+        if prev_tokens[-k:] != curr_tokens[:k]:
+            continue
+        if k == len(curr_tokens):
+            # curr adds nothing past the shared run.
+            return prev
+        # Re-split curr's ORIGINAL text so the appended remainder keeps its
+        # own formatting and punctuation; the token lists are comparison
+        # forms and must never be emitted.
+        remainder = " ".join(curr.split()[k:]).strip()
+        return f"{prev} {remainder}" if remainder else prev
+    return None
+
+
 def _merge_lexical(previous: str, current: str) -> str:
     """Merge two lexical chunks of the same utterance without hardcoding phrases."""
     prev = (previous or "").strip()
@@ -108,8 +168,27 @@ def _merge_lexical(previous: str, current: str) -> str:
         return curr
     if curr_n and curr_n in prev_n:
         return prev
-    prev_word_list = prev_n.split()
-    curr_word_list = curr_n.split()
+    # Compared with edge punctuation stripped -- see _compare_tokens.
+    prev_word_list = _compare_tokens(prev)
+    curr_word_list = _compare_tokens(curr)
+
+    # Adjacent chunks that overlap at the boundary -- join on the shared run
+    # rather than repeating it.
+    #
+    # Deliberately BEFORE the similarity gate below: an exact run of
+    # consecutive tokens shared between prev's tail and curr's head is
+    # literal evidence, and it must outrank a fuzzy score. Ordered the other
+    # way, a window that had slid forward carrying new tail content scored
+    # as "the same utterance re-said" and the gate returned whichever side
+    # was *longer* -- which is prev, because prev still holds the earlier
+    # text. That silently discarded curr's new tail (measured: it dropped
+    # "lifting weights. Come on." from the run `...182940` sequence). Silent
+    # content loss is strictly worse than the duplication of problem F, so
+    # the literal check runs first.
+    joined = _overlap_join(prev, curr, prev_word_list, curr_word_list)
+    if joined is not None:
+        return joined
+
     prev_words = set(prev_word_list)
     curr_words = set(curr_word_list)
     if prev_words and curr_words:
@@ -118,9 +197,25 @@ def _merge_lexical(previous: str, current: str) -> str:
             # Bare set overlap is order-blind: "cat sat mat" vs "mat sat cat"
             # score the same 100% overlap despite being different content.
             # Require the shared words to also appear in a compatible
-            # relative order (LCS-based ratio) before treating this as the
-            # same utterance re-said, not just an anagram of word choices.
-            order_ratio = SequenceMatcher(None, prev_word_list, curr_word_list).ratio()
+            # relative order before treating this as the same utterance
+            # re-said, not just an anagram of word choices.
+            #
+            # Measured as in-order matched tokens over the SHORTER side, the
+            # same asymmetric convention the set-overlap gate directly above
+            # already uses. This replaces `SequenceMatcher.ratio()`, which is
+            # symmetric (2*M/total) and so penalises length difference: a
+            # 4-token chunk against the 8-token growing version of itself
+            # scored 0.50 and was rejected, even though 3 of its 4 tokens
+            # matched in order. That rejection is the second half of problem
+            # F -- it sent "So I'm Mr. Olympia," + "So I'm mister Olympia,
+            # the best bodybuilder in" to the concatenation branch, which
+            # glued a re-send onto the text it was replacing. The 0.6
+            # threshold itself is unchanged; only the denominator is, so
+            # this stays as strict for equal-length pairs as it always was.
+            matched = sum(
+                b.size for b in SequenceMatcher(None, prev_word_list, curr_word_list).get_matching_blocks()
+            )
+            order_ratio = matched / min(len(prev_word_list), len(curr_word_list))
             if order_ratio >= 0.6:
                 return curr if len(curr_word_list) >= len(prev_word_list) else prev
     # Adjacent finalised chunks of one utterance (non-overlapping lexical spans).
