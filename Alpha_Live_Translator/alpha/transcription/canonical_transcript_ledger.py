@@ -338,6 +338,7 @@ def apply_decision(
                 incomplete_tail=incomplete_tail,
                 requested_action=requested,
                 transaction_id=txn_id,
+                source_version=meta.get("source_version"),
             )
             if result.get("ok"):
                 _remember_idempotency_unlocked(
@@ -492,6 +493,7 @@ def _revise_record_unlocked(
     incomplete_tail: bool = False,
     requested_action: str = "revise",
     transaction_id: str = "",
+    source_version: Optional[int] = None,
 ) -> dict[str, Any]:
     text = (final_text or assembler_text or "").strip()
     if not text:
@@ -502,6 +504,34 @@ def _revise_record_unlocked(
     target = _find_record_unlocked(target_record_id)
     if target is None or not target.get("active") or target.get("suppressed"):
         raise PipelineIntegrityError(f"revision target not active: {target_record_id}")
+
+    # fixes v4 item 26 -- the ledger had no staleness defence of its own.
+    # `target["final_text"] = text` below is an in-place overwrite, and version
+    # ordering was enforced only by callers. Problem A (item 41/42) showed what
+    # that costs when a caller gets it wrong: 10 real sentences destroyed.
+    #
+    # Deliberately an ORDERING guard, not a content guard. Item 42 already owns
+    # the "is this revision non-destructive?" question at the caller; duplicating
+    # that rule here would put two authorities on one decision (sprint §0 rule 2).
+    # This asks only "is this write older than what the record already holds?",
+    # which no caller can answer for the ledger.
+    #
+    # Absent/unparseable versions are allowed through: this must not start
+    # rejecting writes from callers that never supplied a version.
+    if source_version is not None:
+        try:
+            incoming = int(source_version)
+            existing = int((target.get("metadata") or {}).get("source_version") or 0)
+        except (TypeError, ValueError):
+            incoming = existing = 0
+        if existing and incoming and incoming < existing:
+            return {
+                "ok": False,
+                "reason": "stale_source_version",
+                "record_id": target_record_id,
+                "existing_source_version": existing,
+                "incoming_source_version": incoming,
+            }
 
     prev_text = str(target.get("final_text") or "")
     prev_hash = str(target.get("content_sha256") or _sha256_text(prev_text))

@@ -6,6 +6,7 @@ import threading
 import time
 from typing import Any, Optional
 
+from alpha.transcription.speaker_boundary_guard import speakers_confirmed_same
 from alpha.utils.lock_instrumentation import InstrumentedRLock
 
 _lock = InstrumentedRLock("transcript_snapshot_store")
@@ -76,6 +77,26 @@ def append_transcript_snapshot(
     return seg_id
 
 
+def _speaker_confirmed_same(active_speaker: Any, candidate_speaker: Any) -> bool:
+    """Fail-closed speaker match for the snapshot store (v4 item 24).
+
+    Normalises the unknown forms this codebase uses interchangeably (`None`,
+    `0`, `""`) to None before delegating, because `speakers_confirmed_same`
+    is fail-closed on None but would still read `0 == 0` as a confirmed
+    match -- the same trap item 22 hit in `utterance_lifecycle`.
+    """
+    def _known(value: Any) -> Any:
+        if value is None:
+            return None
+        try:
+            speaker = int(value)
+        except (TypeError, ValueError):
+            return None
+        return speaker or None
+
+    return speakers_confirmed_same(_known(active_speaker), _known(candidate_speaker))
+
+
 def revise_last_transcript_snapshot(
     *,
     stable_text: str,
@@ -98,6 +119,27 @@ def revise_last_transcript_snapshot(
                 timestamp=ts,
             )
         last = _segments[-1]
+        # fixes CLIENT_DELIVERY_SPRINT_v5.md problem C (v4 item 24). This
+        # function accepted `speaker` but never compared it -- the argument was
+        # only a fallback value when the caller passed none -- so it revised
+        # whatever the literal last row was, regardless of who spoke it. That
+        # is strictly weaker than `transcript_store`'s equivalent, which has
+        # filtered by speaker since TASK_2E_FINDINGS.md item 3.
+        #
+        # Same primitive and same fail-closed rule as
+        # `TranscriptStore.update_last_segment_if_active`: an unknown speaker on
+        # either side is never a confirmed match. A speaker change is a hard
+        # boundary, so the correct response is to start a new segment rather
+        # than overwrite another speaker's line.
+        if speaker is not None and not _speaker_confirmed_same(
+            last.get("speaker"), speaker
+        ):
+            return append_transcript_snapshot(
+                speaker=speaker,
+                stable_text=text,
+                commit_reason=commit_reason,
+                timestamp=ts,
+            )
         if last.get("status") == "suppressed":
             _segment_id_counter += 1
             seg_id = _segment_id_counter
