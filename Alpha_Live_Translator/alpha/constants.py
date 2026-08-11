@@ -66,9 +66,14 @@ AUDIO_TEMP_RETENTION_HOURS = 2
 AUDIO_TEMP_MAX_TOTAL_GB = 3
 AUDIO_TEMP_CHUNK_SECONDS = 60
 AUDIO_TEMP_INCLUDE_IN_UPLOAD_ZIP = False
-TEMP_AUDIO_RETENTION_ENABLED = True
+# 2026-08-11: disabled for item 40's reference-corpus recording, so the
+# 2h auto-delete cannot wipe it before the reference transcript is
+# written. Both flags must be False -- cleanup_old_audio_temp() only
+# skips when BOTH are off. Re-enable (True/True) once that recording is
+# captured and no longer needed raw.
+TEMP_AUDIO_RETENTION_ENABLED = False
 TEMP_AUDIO_RETENTION_HOURS = 2
-TEMP_AUDIO_AUTO_DELETE_ENABLED = True
+TEMP_AUDIO_AUTO_DELETE_ENABLED = False
 TEMP_AUDIO_INCLUDE_IN_UPLOAD_PACKAGE = False
 
 # Log rotation for JSONL / high-volume evidence
@@ -263,7 +268,22 @@ TRANSLATION_ENABLED = True
 TRANSLATION_PROVIDER = "deepl"
 TRANSLATE_STABLE_ONLY = True
 TRANSLATION_QUEUE_MAX_SIZE = 100
+# Item 44. A reconnect faster than this is not worth annotating -- the marker
+# would be noisier than the hole it describes. Longer gaps are real lost speech
+# and must be visible in the transcript, not silently stitched over.
+DG_GAP_MARKER_MIN_S = 2.0
+DG_GAP_MARKER_TEMPLATE = "[connection lost - approximately {seconds}s of audio not captured]"
+
 TRANSLATION_MAX_RETRIES = 2
+# Item 45. After this many CONSECUTIVE failed jobs (retries already exhausted),
+# stop calling DeepL for a cooldown instead of burning ~7s of retry+backoff on
+# every subsequent segment during an outage. Consecutive, not cumulative: a
+# single success closes the circuit.
+TRANSLATION_CIRCUIT_BREAK_AFTER = 3
+TRANSLATION_CIRCUIT_COOLDOWN_S = 30.0
+# Each re-open during a continuing outage doubles the cooldown, capped here, so
+# a long outage stops hammering the provider without ever refusing to recover.
+TRANSLATION_CIRCUIT_COOLDOWN_MAX_S = 300.0
 TRANSLATION_SHUTDOWN_TIMEOUT_SECONDS = 15.0
 
 # UI label retained for compatibility

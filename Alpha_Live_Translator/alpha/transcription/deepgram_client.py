@@ -28,6 +28,8 @@ from alpha.config import (
 )
 from alpha.audio.processing import ensure_deepgram_pcm_bytes, pcm_duration_ms
 from alpha.constants import (
+    DG_GAP_MARKER_MIN_S,
+    DG_GAP_MARKER_TEMPLATE,
     APP_CODENAME,
     APP_VERSION,
     AUTO_LANGUAGE_ENABLED,
@@ -2263,6 +2265,65 @@ class DeepgramClientMixin:
                 self._dg_reconnecting = True  # CHANGED: (fix 5)
             threading.Thread(target=self._reconnect_deepgram, daemon=True).start()
 
+    def deepgram_gap_seconds(self) -> float:
+        """How long the provider has been disconnected, 0.0 when connected.
+
+        Item 44. Read by `_mark_deepgram_gap_if_any` and available to the
+        status indicator (item 47).
+        """
+        started = float(getattr(self, "_dg_disconnected_at", 0.0) or 0.0)
+        if not started:
+            return 0.0
+        return max(0.0, time.time() - started)
+
+    def _mark_deepgram_gap_if_any(self) -> Optional[float]:
+        """Emit a visible marker for audio lost while Deepgram was down.
+
+        Item 44's "mark the gap visibly". Reconnect already backs off, buffers
+        and replays queued audio, but audio captured *while the socket was
+        down* is genuinely gone -- and a transcript that silently stitches
+        across that hole reads as continuous speech. A client cannot tell a
+        clean recording from one with a hole in it, which is exactly the
+        failure mode this item exists to prevent.
+
+        Returns the gap length in seconds when a marker was emitted, else None.
+        Never raises: a failure to annotate must not stop the reconnect.
+        """
+        gap_s = self.deepgram_gap_seconds()
+        self._dg_disconnected_at = 0.0
+        if gap_s < float(DG_GAP_MARKER_MIN_S):
+            return None
+        try:
+            from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+            jp_accuracy_log(
+                "DEEPGRAM_AUDIO_GAP_MARKED",
+                gap_seconds=round(gap_s, 1),
+                reason="provider_disconnected_audio_not_captured",
+            )
+        except Exception:
+            pass
+        try:
+            publisher = getattr(self, "_publish_final_transcript_segment", None)
+            if callable(publisher):
+                publisher(
+                    getattr(self, "_last_committed_speaker", 1) or 1,
+                    DG_GAP_MARKER_TEMPLATE.format(seconds=int(round(gap_s))),
+                    {
+                        "connection_gap_marker": True,
+                        "gap_seconds": round(gap_s, 1),
+                        "translation_eligible": False,
+                        "synthetic_record": True,
+                    },
+                    None,
+                    "deepgram_connection_gap",
+                )
+        except Exception:
+            # Annotating is best-effort; losing the marker must never break
+            # the reconnect that restores transcription.
+            pass
+        return gap_s
+
     def _reconnect_deepgram(self):
             """Reconnect to Deepgram with exponential backoff and audio replay."""
             try:
@@ -2292,6 +2353,13 @@ class DeepgramClientMixin:
 
                 url = self._build_deepgram_url()  # CHANGED: fresh URL on reconnect (fix 5)
                 print(f"[Reconnect] Connecting to Deepgram: {url}")  # CHANGED: (fix 5)
+                # Item 44: annotate the hole BEFORE the new socket starts
+                # producing transcript, so the marker lands in the right place
+                # in the transcript rather than after post-reconnect speech.
+                try:
+                    self._mark_deepgram_gap_if_any()
+                except Exception:
+                    pass
                 self._dg_awaiting_transcript_reset = True  # CHANGED: reset backoff after transcript (fix 5)
                 ws = _websocket().WebSocketApp(  # CHANGED: new WebSocket session (fix 5)
                     url,  # CHANGED: (fix 5)
@@ -2328,6 +2396,11 @@ class DeepgramClientMixin:
                 or not bool(getattr(self, "is_listening", False))
             )
             print(f"Deepgram closed: {code} {msg}")  # CHANGED: explicit close handler (fix 5)
+            # Item 44: start the gap clock on an UNEXPECTED close only. A
+            # user-requested Stop is not a gap -- annotating it would put a
+            # "connection lost" line at the end of every normal session.
+            if not stop_requested and not getattr(self, "_dg_disconnected_at", 0.0):
+                self._dg_disconnected_at = time.time()
             try:
                 from alpha.utils.async_debug_log import log_runtime_debug_event
                 from alpha.utils.freeze_guard_log import freeze_guard_log

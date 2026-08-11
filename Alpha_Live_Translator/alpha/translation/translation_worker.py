@@ -15,6 +15,9 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Set
 from alpha.constants import (
     TRANSLATION_ENABLED,
+    TRANSLATION_CIRCUIT_BREAK_AFTER,
+    TRANSLATION_CIRCUIT_COOLDOWN_MAX_S,
+    TRANSLATION_CIRCUIT_COOLDOWN_S,
     TRANSLATION_MAX_RETRIES,
     TRANSLATION_PROVIDER,
     TRANSLATION_QUEUE_MAX_SIZE,
@@ -153,6 +156,14 @@ class TranslationWorker:
         self._drain_complete = threading.Event()
         self._accepting = True
         self._quota_disabled = False
+        # Item 45 circuit breaker. `_quota_disabled` already handles the
+        # permanent case; this handles a *transient* outage, where every job
+        # would otherwise spend the full retry ladder (~7s) before failing.
+        # Consecutive failures only -- one success closes it.
+        self._consecutive_failures = 0
+        self._circuit_open_until = 0.0
+        self._circuit_cooldown_s = float(TRANSLATION_CIRCUIT_COOLDOWN_S)
+        self._circuit_open_count = 0
         self._thread: Optional[threading.Thread] = None
         self._client = client
         self._lock = threading.RLock()
@@ -221,6 +232,70 @@ class TranslationWorker:
     def status_message(self) -> str:
         with self._lock:
             return self._status_message
+
+    # ---- Item 45: transient-outage circuit breaker -----------------------
+    #
+    # Deliberately separate from `_quota_disabled`, which is permanent for the
+    # session and stops accepting work. This one never stops accepting and
+    # never blocks a transcript commit: it only short-circuits the *provider
+    # call*, so a segment fails fast and visibly instead of spending the full
+    # retry ladder on every job while the provider is down.
+
+    def circuit_is_open(self, *, now: Optional[float] = None) -> bool:
+        """True while the breaker is holding calls off. Not a permanent state."""
+        current = time.time() if now is None else now
+        with self._lock:
+            return current < self._circuit_open_until
+
+    @property
+    def degraded(self) -> bool:
+        """Visible degradation for item 47's status indicator."""
+        return self.circuit_is_open() or self._quota_disabled
+
+    def _record_translation_success(self) -> None:
+        with self._lock:
+            was_open = self._circuit_open_until > 0.0
+            self._consecutive_failures = 0
+            self._circuit_open_until = 0.0
+            self._circuit_cooldown_s = float(TRANSLATION_CIRCUIT_COOLDOWN_S)
+            if was_open:
+                self._status_message = "Translation recovered."
+                logger.info("DeepL circuit closed after a successful translation")
+
+    def _record_translation_failure(self, code: str, *, now: Optional[float] = None) -> bool:
+        """Count a failed job; open the breaker on the Nth consecutive one.
+
+        Returns True when this failure opened (or re-opened) the circuit.
+        """
+        current = time.time() if now is None else now
+        with self._lock:
+            self._consecutive_failures += 1
+            if self._consecutive_failures < int(TRANSLATION_CIRCUIT_BREAK_AFTER):
+                return False
+            if current < self._circuit_open_until:
+                return False
+            # Re-opening during a continuing outage backs further off, capped,
+            # so a long outage stops hammering the provider -- but the cooldown
+            # always expires, so recovery is never refused.
+            if self._circuit_open_count:
+                self._circuit_cooldown_s = min(
+                    self._circuit_cooldown_s * 2.0,
+                    float(TRANSLATION_CIRCUIT_COOLDOWN_MAX_S),
+                )
+            self._circuit_open_until = current + self._circuit_cooldown_s
+            self._circuit_open_count += 1
+            self._status_message = (
+                f"Translation degraded (provider failing, retrying in "
+                f"{int(self._circuit_cooldown_s)}s)."
+            )
+            logger.warning(
+                "DeepL circuit opened after %d consecutive failures (last=%s), "
+                "cooldown %.0fs",
+                self._consecutive_failures,
+                code,
+                self._circuit_cooldown_s,
+            )
+            return True
     @property
     def worker_stopped(self) -> bool:
         return self._thread is None or not self._thread.is_alive()
@@ -635,6 +710,17 @@ class TranslationWorker:
             pass
         retries = 0
         last_err = ""
+        # Item 45: while the breaker is open, skip the provider call rather
+        # than spending the full retry ladder (~7s) on a provider known to be
+        # down. The job still flows through the normal result/evidence path
+        # below -- deliberately not an early return, so counters, latency and
+        # the events file stay consistent with every other outcome. The
+        # transcript never waits on this either way.
+        circuit_skipped = self.circuit_is_open()
+        status = "failed"
+        translated = ""
+        if circuit_skipped:
+            last_err = "circuit_open"
         status = "failed"
         translated = ""
         original_hash = job.source_text_hash
@@ -667,7 +753,7 @@ class TranslationWorker:
             self._counters["requests_sent"] += 1
             self._counters["source_characters_sent"] += int(job.source_character_count)
         assert self._client is not None
-        while True:
+        while not circuit_skipped:
             try:
                 translated = self._client.translate_text(
                     job.source_text,
@@ -700,6 +786,13 @@ class TranslationWorker:
                 last_err = type(exc).__name__
                 status = "failed"
                 break
+        # Item 45: feed the outcome to the breaker. Quota is deliberately NOT
+        # counted here -- it already disables the worker permanently, and
+        # double-counting it would just open a circuit nobody will consult.
+        if status == "success":
+            self._record_translation_success()
+        elif status == "failed":
+            self._record_translation_failure(last_err or "unknown")
         provider_done = time.time()
         try:
             from alpha.utils import live_pipeline_profile as lpp
