@@ -1,0 +1,193 @@
+{
+  "app_version": "3.3.5.5.8.5.26.5.3",
+  "japanese_boundary_diagnosis_enabled": true,
+  "alpha_path": "troubleshooting\\runs\\v3.3.5.5.8.5.26.5.3-20260811-175628\\transcripts\\Alpha_output_FINAL.txt",
+  "reference_path": "..\\Alpha_Benchmark_References\\current_japanese_actual.txt",
+  "findings": [
+    {
+      "line_number": 5,
+      "previous_line": "Speaker: お待たせいたしました。また始めましょう。はね見てください、みんな。",
+      "current_line": "Speaker: 一です。N一やった。",
+      "next_line": "Speaker: JLPT、今月十二月にJLPTを受けた皆さん、お疲れ様でした。",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 19,
+      "previous_line": "Speaker: オッケー答えシェアしますよ。",
+      "current_line": "Speaker: 正解は、",
+      "next_line": "Speaker: 繁盛は店が人気があって、お客さんがたくさんで売上セールスがいいこと。これ繁盛するって言ます。お客さがたく来てセールスもたくさんあること。",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 29,
+      "previous_line": "Speaker: 二、まかないます三、あきないます。",
+      "current_line": "Speaker: 四潤います。はい。",
+      "next_line": "Speaker: スキンケアの話です。はい、行きましょう。",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 32,
+      "previous_line": "Speaker: 正解はねみんな四番です。四番。",
+      "current_line": "Speaker: 潤います。",
+      "next_line": "Speaker: 潤うは水分、水の量が増えてしっとりすることしっとりというのは水の量が多いということです。いいですか。",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 38,
+      "previous_line": "Speaker: まかなうは何か金などがかかるものを私がカバーするということ。",
+      "current_line": "Speaker: まかないます。",
+      "next_line": "Speaker: 書き換えます。これは商売、商品の商ですね。",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 42,
+      "previous_line": "Speaker: 今は持ち金が何々だからあまり買い物はできない。",
+      "current_line": "Speaker: 今は持ち金が何々だから、あまり買い物はできない。はい行きます。一、泊。二、しゅうす。三、手拍四、手薄す。いきましょう。",
+      "next_line": "Speaker: ケー。これはみんなでるるるっていう、あれオッケー。",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 50,
+      "previous_line": "Speaker: 我が社の一大イベントが何々四くスタートしました。",
+      "current_line": "Speaker: 我が社の一大イベントが何々しくスタートしました。行こう。一、花々しく。",
+      "next_line": "Speaker: 四、創造しく。はい。",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 51,
+      "previous_line": "Speaker: 我が社の一大イベントが何々しくスタートしました。行こう。一、花々しく。",
+      "current_line": "Speaker: 四、創造しく。はい。",
+      "next_line": "Speaker: 二おもしく。三ものしく。",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 53,
+      "previous_line": "Speaker: 二おもしく。三ものしく。",
+      "current_line": "Speaker: はい、行くよ。でん。",
+      "next_line": "Speaker: 華々しくですね。",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 54,
+      "previous_line": "Speaker: はい、行くよ。でん。",
+      "current_line": "Speaker: 華々しくですね。",
+      "next_line": "Speaker: 華々しいというのは、印象的で、派手で素晴らしく見える様子。",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 62,
+      "previous_line": "Speaker: 創造しいっていうのは、にぎやかすぎる、うるさすぎるっていうネガティブな意味です。騒々しい。なんか騒々しいな、パーティーかな、みたいな。",
+      "current_line": "Speaker: 感じ。はい、次GO。",
+      "next_line": "Speaker: 話がちょっと逸れてきたから、んに戻りましょう。",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 64,
+      "previous_line": "Speaker: 話がちょっと逸れてきたから、んに戻りましょう。",
+      "current_line": "Speaker: 話がちょっとそれてきたからに戻りましょう。はい。一、元筋。二、元金。三、本筋。四、本節。はい。",
+      "next_line": "Speaker: けい、いきましょう。これはみんなりん、本筋ですね。",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 71,
+      "previous_line": "Speaker: 来月のクリスマスコンサートでピアノの何々をすることになった。",
+      "current_line": "Speaker: 来月のクリスマスコンサートでピアノの分をすることになった。一伴奏。二、搬送。三、本筋四、本節。はい。",
+      "next_line": "Speaker: オッケーです。行きます。でん。",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 74,
+      "previous_line": "Speaker: 伴走です伴走はメロディーを引き立てるためのこの音楽のバックグラウンド、背景部分ですね。",
+      "current_line": "Speaker: かな。メロディーを引き立てるための音楽のが伴奏です。ピアノの伴奏に合わせて歌手が歌を歌うとかね。ですか。、じゃあラストです、みんながんばろう。",
+      "next_line": "Speaker: 離着陸の際はベルトを埋てください。、なんですか。",
+      "pattern_id": "midline_punctuation_artifact",
+      "severity": "medium",
+      "likely_cause": "punctuation_merge",
+      "recommendation": "audit_only"
+    },
+    {
+      "line_number": 75,
+      "previous_line": "Speaker: かな。メロディーを引き立てるための音楽のが伴奏です。ピアノの伴奏に合わせて歌手が歌を歌うとかね。ですか。、じゃあラストです、みんながんばろう。",
+      "current_line": "Speaker: 離着陸の際はベルトを埋てください。、なんですか。",
+      "next_line": "Speaker: 未着陸の際はシートベルトを何々ください。一。絡めて。二締めて。はめて。緩めてはい、行きましょう。これは、でるでん。",
+      "pattern_id": "midline_punctuation_artifact",
+      "severity": "medium",
+      "likely_cause": "punctuation_merge",
+      "recommendation": "audit_only"
+    },
+    {
+      "line_number": 86,
+      "previous_line": "Speaker: お腹大きくなっちゃったから、もう苦しい、ベルト苦しいな、ちょっと。",
+      "current_line": "Speaker: ベルト緩めようですね。オッケー?いいかな。、じゃあ皆さん、今日のテストはここまでです。",
+      "next_line": "Speaker: のN1第一回のN一レッスン。漢字語彙練習。",
+      "pattern_id": "midline_punctuation_artifact",
+      "severity": "medium",
+      "likely_cause": "punctuation_merge",
+      "recommendation": "audit_only"
+    },
+    {
+      "line_number": 88,
+      "previous_line": "Speaker: のN1第一回のN一レッスン。漢字語彙練習。",
+      "current_line": "Speaker: どうでしたか。このレベルの意味とか漢字脈、コンテキスト全部セットで理解すること大切ですね。、じゃあ皆さん、このチャンネル登録がまだの人登録とそれからいつも通りいいねお願いします。",
+      "next_line": "Speaker: パトレオンからのサポートもぜひお願いします。では今日のレッスンはここまでです。",
+      "pattern_id": "midline_punctuation_artifact",
+      "severity": "medium",
+      "likely_cause": "punctuation_merge",
+      "recommendation": "audit_only"
+    }
+  ],
+  "total_boundary_risks": 17,
+  "leading_fragment_count": 0,
+  "glue_risk_count": 0,
+  "punctuation_artifact_count": 4,
+  "duplicate_continuation_count": 4,
+  "assembler_candidate_count": 4,
+  "raw_stt_likely_count": 9,
+  "needs_reference_count": 9,
+  "generated_at": "2026-08-11T18:53:18",
+  "report_type": "boundary_error_report",
+  "alpha_sha256": "7cacfd61177c5dd0d354ec512d408e1383e93e2b3b506ced28924795f19e0614",
+  "alpha_size_bytes": 9197,
+  "reference_sha256": "35deba664dd71c4a78d52f33a4d10e4edcb0987db65352df40474bc01197cf8d",
+  "reference_size_bytes": 8891,
+  "latest_live_run_id": "live-v3.3.5.5.8.5.26.5.3-20260811-182940-e2e429ae"
+}

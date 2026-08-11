@@ -1,0 +1,603 @@
+{
+  "app_version": "3.3.5.5.8.5.26.5.3",
+  "japanese_boundary_diagnosis_enabled": true,
+  "alpha_path": "troubleshooting\\runs\\v3.3.5.5.8.5.26.5.3-20260811-182940\\transcripts\\Alpha_output_FINAL.txt",
+  "reference_path": "..\\Alpha_Benchmark_References\\current_english_actual.txt",
+  "findings": [
+    {
+      "line_number": 1,
+      "previous_line": "",
+      "current_line": "Speaker: So I'm mister Olympia. So I'm Mr. Olympia, So I'm mister Olympia, the best bodybuilder in, So I'm Mr. Olympia, the best, bodybuilder in the world, and I didn't, bodybuilder in the world, and I didn't spend more than 4, bodybuilder in the world, and I didn't spend more than 4 hours a week, bodybuilder in the world, and I didn't spend more than 4 hours a week lifting weights. bodybuilder in the world, and I didn't spend more than 4 hours a week lifting weights. Come on. I spent more, I spent more in the gym than Yeah. I spent more in the gym you didn't train, I spent more in the gym you didn't train with me. After 0.5 an, I spent more in the gym you didn't train with me. After 0.5 an hour, you wanna go home. I spent more in the gym you didn't train with me. After 0.5 an hour, you wanna go home. Muscle growth is, I spent more in the gym you didn't train with me. After 0.5 an hour, you wanna go home. Muscle growth is a reaction to, I spent more in the gym you didn't train with me. After 0.5 hour, you wanna go home. Muscle growth is a reaction to stress. You're lifting, I spent more in the gym you didn't train with me. After 0.5 an hour, you wanna go home. Muscle growth is a reaction to stress. You're lifting weights, you're putting, You're lifting weights, you're putting stress on the muscle, You're lifting weights, you're putting stress on the muscle that's not used to, the, You're lifting weights, you're putting stress on the muscle that's not used to. The lifting of the weight, whichever, You're lifting weights, you're putting stress on the muscle that's not used to. The lifting of the weight, whichever 1 is, thinking about. This is, thinking about. This is the weakest part of the, thinking about. This is the weakest part of the movement. Nothing will, thinking about. This is the weakest part of the movement. Nothing will change. Because why, thinking about. This is the weakest part of the movement. Nothing will change. Because why? Your body wants, to keep status, to keep status quo. to keep status quo. Health Lab. You could do",
+      "next_line": "Speaker: You could do, let's say, a set. Well, it's below your capacity. Let's say you could do 8 rep. Say you could do 8 rep. You could do, Say you could do 8 rep. You could do 10 reps with, Let's say you could do 8 rep. You could do 10 reps with with a certain weight. Say you could do 8 rep. You could do 10 reps with with a certain weight. Yeah. Yeah. But you still, Yeah. But you stop at 7 or 8. Yeah. But you stop at 7 or 8. You don't go to, Yeah. But you stop at 7 or 8, you don't go to 10 or 11, Yeah. But you stop at 7 or 8. You don't go to 10 or 11. Yeah. But you stop at 7 or 8, you don't go to 10 or 11. You go 7 or, You go 7 or 8. It's not enough in, You go 7 or 8. There's not enough intensity. Oh, yeah. But, You go 7 or 8. There's not enough intensity. Oh, yeah. But I do more volume. You go 7 or 8. There's not enough intensity. Oh, yeah. But I do more volume. It's not enough intensity. Mhmm. You know you, Mhmm. You know, you could do this Mike, Mhmm. You know, you could do this Mike Mensch used to use an, You know, you could do this Mike Mensch used to use an analogy which I like, you, You know, you could do this Mike Mensch used to use an analogy which I like, you know. It's like if you have a, It's like if you have a stick of dynamite and, It's like if you have a stick of dynamite and you hit it with a pen, It's like if you have a stick of dynamite and you hit it with a pencil, it doesn't go off, right? It's like if you have a stick of dynamite and you hit it with a pencil, it doesn't go off. Right? Yeah. Why? The, Yeah. Why? The impact is not enough. Yeah. Why? The impact is not enough. The intensity is not, Yeah. Why? The impact is not enough. The intensity is not enough. Yeah. Why? The impact is not enough. The intensity is not enough. Yeah. So if you tap, Yeah. So if you tap the dynamite with, Yeah. So if you tap the dynamite with a pencil and it, Yeah. So if you tap the dynamite with a pencil and it doesn't go off, if you, if you tap it the 2nd, if you tap it the 2nd time and the 3rd, if you tap it the 2nd time and the 3rd time and the 1, if you tap it the 2nd time and the 3rd time and the 100th time will, if you tap it the 2nd time and the 3rd time and the 100th time, will it go off? No. Because the intense, No. Because intensity is not enough. But, No. Because intensity is not enough. But you hit it 1 time with, No. Because intensity is not enough. But you hit it 1 time with a hammer Yeah. It fall, No. Because intensity is not enough. But you hit it 1 time with a hammer Yeah. Boom. Message, sent. Job done. sent. Job done. So my, sent. Job done. So my trend",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 2,
+      "previous_line": "Speaker: So I'm mister Olympia. So I'm Mr. Olympia, So I'm mister Olympia, the best bodybuilder in, So I'm Mr. Olympia, the best, bodybuilder in the world, and I didn't, bodybuilder in the world, and I didn't spend more than 4, bodybuilder in the world, and I didn't spend more than 4 hours a week, bodybuilder in the world, and I didn't spend more than 4 hours a week lifting weights. bodybuilder in the world, and I didn't spend more than 4 hours a week lifting weights. Come on. I spent more, I spent more in the gym than Yeah. I spent more in the gym you didn't train, I spent more in the gym you didn't train with me. After 0.5 an, I spent more in the gym you didn't train with me. After 0.5 an hour, you wanna go home. I spent more in the gym you didn't train with me. After 0.5 an hour, you wanna go home. Muscle growth is, I spent more in the gym you didn't train with me. After 0.5 an hour, you wanna go home. Muscle growth is a reaction to, I spent more in the gym you didn't train with me. After 0.5 hour, you wanna go home. Muscle growth is a reaction to stress. You're lifting, I spent more in the gym you didn't train with me. After 0.5 an hour, you wanna go home. Muscle growth is a reaction to stress. You're lifting weights, you're putting, You're lifting weights, you're putting stress on the muscle, You're lifting weights, you're putting stress on the muscle that's not used to, the, You're lifting weights, you're putting stress on the muscle that's not used to. The lifting of the weight, whichever, You're lifting weights, you're putting stress on the muscle that's not used to. The lifting of the weight, whichever 1 is, thinking about. This is, thinking about. This is the weakest part of the, thinking about. This is the weakest part of the movement. Nothing will, thinking about. This is the weakest part of the movement. Nothing will change. Because why, thinking about. This is the weakest part of the movement. Nothing will change. Because why? Your body wants, to keep status, to keep status quo. to keep status quo. Health Lab. You could do",
+      "current_line": "Speaker: You could do, let's say, a set. Well, it's below your capacity. Let's say you could do 8 rep. Say you could do 8 rep. You could do, Say you could do 8 rep. You could do 10 reps with, Let's say you could do 8 rep. You could do 10 reps with with a certain weight. Say you could do 8 rep. You could do 10 reps with with a certain weight. Yeah. Yeah. But you still, Yeah. But you stop at 7 or 8. Yeah. But you stop at 7 or 8. You don't go to, Yeah. But you stop at 7 or 8, you don't go to 10 or 11, Yeah. But you stop at 7 or 8. You don't go to 10 or 11. Yeah. But you stop at 7 or 8, you don't go to 10 or 11. You go 7 or, You go 7 or 8. It's not enough in, You go 7 or 8. There's not enough intensity. Oh, yeah. But, You go 7 or 8. There's not enough intensity. Oh, yeah. But I do more volume. You go 7 or 8. There's not enough intensity. Oh, yeah. But I do more volume. It's not enough intensity. Mhmm. You know you, Mhmm. You know, you could do this Mike, Mhmm. You know, you could do this Mike Mensch used to use an, You know, you could do this Mike Mensch used to use an analogy which I like, you, You know, you could do this Mike Mensch used to use an analogy which I like, you know. It's like if you have a, It's like if you have a stick of dynamite and, It's like if you have a stick of dynamite and you hit it with a pen, It's like if you have a stick of dynamite and you hit it with a pencil, it doesn't go off, right? It's like if you have a stick of dynamite and you hit it with a pencil, it doesn't go off. Right? Yeah. Why? The, Yeah. Why? The impact is not enough. Yeah. Why? The impact is not enough. The intensity is not, Yeah. Why? The impact is not enough. The intensity is not enough. Yeah. Why? The impact is not enough. The intensity is not enough. Yeah. So if you tap, Yeah. So if you tap the dynamite with, Yeah. So if you tap the dynamite with a pencil and it, Yeah. So if you tap the dynamite with a pencil and it doesn't go off, if you, if you tap it the 2nd, if you tap it the 2nd time and the 3rd, if you tap it the 2nd time and the 3rd time and the 1, if you tap it the 2nd time and the 3rd time and the 100th time will, if you tap it the 2nd time and the 3rd time and the 100th time, will it go off? No. Because the intense, No. Because intensity is not enough. But, No. Because intensity is not enough. But you hit it 1 time with, No. Because intensity is not enough. But you hit it 1 time with a hammer Yeah. It fall, No. Because intensity is not enough. But you hit it 1 time with a hammer Yeah. Boom. Message, sent. Job done. sent. Job done. So my, sent. Job done. So my trend",
+      "next_line": "Speaker: when I start",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 3,
+      "previous_line": "Speaker: You could do, let's say, a set. Well, it's below your capacity. Let's say you could do 8 rep. Say you could do 8 rep. You could do, Say you could do 8 rep. You could do 10 reps with, Let's say you could do 8 rep. You could do 10 reps with with a certain weight. Say you could do 8 rep. You could do 10 reps with with a certain weight. Yeah. Yeah. But you still, Yeah. But you stop at 7 or 8. Yeah. But you stop at 7 or 8. You don't go to, Yeah. But you stop at 7 or 8, you don't go to 10 or 11, Yeah. But you stop at 7 or 8. You don't go to 10 or 11. Yeah. But you stop at 7 or 8, you don't go to 10 or 11. You go 7 or, You go 7 or 8. It's not enough in, You go 7 or 8. There's not enough intensity. Oh, yeah. But, You go 7 or 8. There's not enough intensity. Oh, yeah. But I do more volume. You go 7 or 8. There's not enough intensity. Oh, yeah. But I do more volume. It's not enough intensity. Mhmm. You know you, Mhmm. You know, you could do this Mike, Mhmm. You know, you could do this Mike Mensch used to use an, You know, you could do this Mike Mensch used to use an analogy which I like, you, You know, you could do this Mike Mensch used to use an analogy which I like, you know. It's like if you have a, It's like if you have a stick of dynamite and, It's like if you have a stick of dynamite and you hit it with a pen, It's like if you have a stick of dynamite and you hit it with a pencil, it doesn't go off, right? It's like if you have a stick of dynamite and you hit it with a pencil, it doesn't go off. Right? Yeah. Why? The, Yeah. Why? The impact is not enough. Yeah. Why? The impact is not enough. The intensity is not, Yeah. Why? The impact is not enough. The intensity is not enough. Yeah. Why? The impact is not enough. The intensity is not enough. Yeah. So if you tap, Yeah. So if you tap the dynamite with, Yeah. So if you tap the dynamite with a pencil and it, Yeah. So if you tap the dynamite with a pencil and it doesn't go off, if you, if you tap it the 2nd, if you tap it the 2nd time and the 3rd, if you tap it the 2nd time and the 3rd time and the 1, if you tap it the 2nd time and the 3rd time and the 100th time will, if you tap it the 2nd time and the 3rd time and the 100th time, will it go off? No. Because the intense, No. Because intensity is not enough. But, No. Because intensity is not enough. But you hit it 1 time with, No. Because intensity is not enough. But you hit it 1 time with a hammer Yeah. It fall, No. Because intensity is not enough. But you hit it 1 time with a hammer Yeah. Boom. Message, sent. Job done. sent. Job done. So my, sent. Job done. So my trend",
+      "current_line": "Speaker: when I start",
+      "next_line": "Speaker: So I'm",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 4,
+      "previous_line": "Speaker: when I start",
+      "current_line": "Speaker: So I'm",
+      "next_line": "Speaker: and I didn't spend more than, lifting, lifting Come on.",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 5,
+      "previous_line": "Speaker: So I'm",
+      "current_line": "Speaker: and I didn't spend more than, lifting, lifting Come on.",
+      "next_line": "Speaker: Had got",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 6,
+      "previous_line": "Speaker: and I didn't spend more than, lifting, lifting Come on.",
+      "current_line": "Speaker: Had got",
+      "next_line": "Speaker: You, Okay. Okay. Go home.",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 7,
+      "previous_line": "Speaker: Had got",
+      "current_line": "Speaker: You, Okay. Okay. Go home.",
+      "next_line": "Speaker: When you go when",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 8,
+      "previous_line": "Speaker: You, Okay. Okay. Go home.",
+      "current_line": "Speaker: When you go when",
+      "next_line": "Speaker: Yeah. From, Yeah, from this",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 9,
+      "previous_line": "Speaker: When you go when",
+      "current_line": "Speaker: Yeah. From, Yeah, from this",
+      "next_line": "Speaker: Yeah,",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 10,
+      "previous_line": "Speaker: Yeah. From, Yeah, from this",
+      "current_line": "Speaker: Yeah,",
+      "next_line": "Speaker: Let's continue.",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 11,
+      "previous_line": "Speaker: Yeah,",
+      "current_line": "Speaker: Let's continue.",
+      "next_line": "Speaker: So, okay. I'm, So okay. I'm gonna take you to the",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 12,
+      "previous_line": "Speaker: Let's continue.",
+      "current_line": "Speaker: So, okay. I'm, So okay. I'm gonna take you to the",
+      "next_line": "Speaker: Just schedule, Okay?",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 13,
+      "previous_line": "Speaker: So, okay. I'm, So okay. I'm gonna take you to the",
+      "current_line": "Speaker: Just schedule, Okay?",
+      "next_line": "Speaker: We're warming up now. Okay. Let's go to, Let's let's, let's let's do incline.",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 14,
+      "previous_line": "Speaker: Just schedule, Okay?",
+      "current_line": "Speaker: We're warming up now. Okay. Let's go to, Let's let's, let's let's do incline.",
+      "next_line": "Speaker: 8 rep.",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 15,
+      "previous_line": "Speaker: We're warming up now. Okay. Let's go to, Let's let's, let's let's do incline.",
+      "current_line": "Speaker: 8 rep.",
+      "next_line": "Speaker: 8 reps with maximum",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 16,
+      "previous_line": "Speaker: 8 rep.",
+      "current_line": "Speaker: 8 reps with maximum",
+      "next_line": "Speaker: Okay. Easy. 50 percent, Okay. Easy. 50%. Easy. 50% of, Easy. 50% of this 50, Easy. 50% of this 50 estimate, maximum.",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 17,
+      "previous_line": "Speaker: 8 reps with maximum",
+      "current_line": "Speaker: Okay. Easy. 50 percent, Okay. Easy. 50%. Easy. 50% of, Easy. 50% of this 50, Easy. 50% of this 50 estimate, maximum.",
+      "next_line": "Speaker: Of",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 18,
+      "previous_line": "Speaker: Okay. Easy. 50 percent, Okay. Easy. 50%. Easy. 50% of, Easy. 50% of this 50, Easy. 50% of this 50 estimate, maximum.",
+      "current_line": "Speaker: Of",
+      "next_line": "Speaker: Minute, minute and 0.5. We don't now with our",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 19,
+      "previous_line": "Speaker: Of",
+      "current_line": "Speaker: Minute, minute and 0.5. We don't now with our",
+      "next_line": "Speaker: Mhmm. There",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 20,
+      "previous_line": "Speaker: Minute, minute and 0.5. We don't now with our",
+      "current_line": "Speaker: Mhmm. There",
+      "next_line": "Speaker: His prefer Yeah. It's prepper Yeah. Okay. Now we're gonna take the",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 21,
+      "previous_line": "Speaker: Mhmm. There",
+      "current_line": "Speaker: His prefer Yeah. It's prepper Yeah. Okay. Now we're gonna take the",
+      "next_line": "Speaker: Yeah. I'm gonna be close to the, and I'm gonna",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 22,
+      "previous_line": "Speaker: His prefer Yeah. It's prepper Yeah. Okay. Now we're gonna take the",
+      "current_line": "Speaker: Yeah. I'm gonna be close to the, and I'm gonna",
+      "next_line": "Speaker: and I'm gonna shut",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 23,
+      "previous_line": "Speaker: Yeah. I'm gonna be close to the, and I'm gonna",
+      "current_line": "Speaker: and I'm gonna shut",
+      "next_line": "Speaker: to come, to complete, To complete Then I was like, Micah, come on. To complete Then I was like, oh, come on. 1 more. 1 and you're gonna, To complete Then I was like, oh, come on. 1 more. 1 And you're gonna, again, give your maximum effort, but it's failing. To complete Then I was like, oh, come on. 1 more. 1 And you're gonna again give your maximum effort but it's failing, it's failing. To complete Then I was like, oh, come on. 1 more. 1 And you're gonna again give your maximum effort but it's failing, it's failing, but I help you a little, To complete Then I was like, oh, come on. 1 more. 1 And you're gonna again give your maximum effort but it's failing, it's failing. But I help you a little bit. So we're going just, To complete Then I was like, oh, come on. 1 more. 1 And you're gonna again give your maximum effort but it's failing. It's failing. But I help you a little bit. So we're going just fast failure. Yeah? To complete Then I was like, oh, come on. 1 more. 1 And you're gonna again give your maximum effort but it's failing, it's failing. But I help you a little bit. So we're going just fast failure. Yeah? Then you put the, To complete Then I was like, oh, come on. 1 more. 1 And you're gonna again give your maximum effort but it's failing, it's failing. But I help you a little bit. So we're going just fast failure. Yeah? Then you put the weight down. To complete Then I was like, oh, come on. 1 more. 1 And you're gonna again give your maximum effort but it's failing, it's failing. But I help you a little bit. So we're going just fast failure. Yeah? Then you put the weight down. Okay. To complete Then I was like, oh, come on. 1 more. 1 And you're gonna again give your maximum effort but it's failing, it's failing. But I help you a little bit. So we're going just fast failure, yeah? Then you put the weight down. Okay. We finish with this exercise. To complete Then I was like, oh, come on. 1 more. 1 And you're gonna again give your maximum effort but it's failing, it's failing. But I help you a little bit. So we're going just fast failure. Yeah? Then you put the weight down. Okay. We finish with this exercise. To complete Then I was like, oh, come on. 1 more. 1 And you're gonna again give your maximum effort but it's failing, it's failing. But I help you a little bit. So we're going just fast failure. Yeah? Then you put the weight down. Okay. We finished with this exercise. Now we go to a 2nd, To complete Then I was like, oh, come on. 1 more. 1 And you're gonna again give your maximum effort but it's failing, it's failing. But I help you a little bit. So we're going just fast failure. Yeah? Then you put the weight down. Okay. We finished with this exercise. Now we go to a 2nd machine press. We all, To complete Then I was like, oh, come on. 1 more. 1 And you're gonna again give your maximum effort but it's failing, it's failing. But I help you a little bit. So we're going just fast failure. Yeah? Then you put the weight down. Okay. We finished with this exercise. Now we go to a 2nd machine press. We already warmed up all the muscles in the but",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 24,
+      "previous_line": "Speaker: and I'm gonna shut",
+      "current_line": "Speaker: to come, to complete, To complete Then I was like, Micah, come on. To complete Then I was like, oh, come on. 1 more. 1 and you're gonna, To complete Then I was like, oh, come on. 1 more. 1 And you're gonna, again, give your maximum effort, but it's failing. To complete Then I was like, oh, come on. 1 more. 1 And you're gonna again give your maximum effort but it's failing, it's failing. To complete Then I was like, oh, come on. 1 more. 1 And you're gonna again give your maximum effort but it's failing, it's failing, but I help you a little, To complete Then I was like, oh, come on. 1 more. 1 And you're gonna again give your maximum effort but it's failing, it's failing. But I help you a little bit. So we're going just, To complete Then I was like, oh, come on. 1 more. 1 And you're gonna again give your maximum effort but it's failing. It's failing. But I help you a little bit. So we're going just fast failure. Yeah? To complete Then I was like, oh, come on. 1 more. 1 And you're gonna again give your maximum effort but it's failing, it's failing. But I help you a little bit. So we're going just fast failure. Yeah? Then you put the, To complete Then I was like, oh, come on. 1 more. 1 And you're gonna again give your maximum effort but it's failing, it's failing. But I help you a little bit. So we're going just fast failure. Yeah? Then you put the weight down. To complete Then I was like, oh, come on. 1 more. 1 And you're gonna again give your maximum effort but it's failing, it's failing. But I help you a little bit. So we're going just fast failure. Yeah? Then you put the weight down. Okay. To complete Then I was like, oh, come on. 1 more. 1 And you're gonna again give your maximum effort but it's failing, it's failing. But I help you a little bit. So we're going just fast failure, yeah? Then you put the weight down. Okay. We finish with this exercise. To complete Then I was like, oh, come on. 1 more. 1 And you're gonna again give your maximum effort but it's failing, it's failing. But I help you a little bit. So we're going just fast failure. Yeah? Then you put the weight down. Okay. We finish with this exercise. To complete Then I was like, oh, come on. 1 more. 1 And you're gonna again give your maximum effort but it's failing, it's failing. But I help you a little bit. So we're going just fast failure. Yeah? Then you put the weight down. Okay. We finished with this exercise. Now we go to a 2nd, To complete Then I was like, oh, come on. 1 more. 1 And you're gonna again give your maximum effort but it's failing, it's failing. But I help you a little bit. So we're going just fast failure. Yeah? Then you put the weight down. Okay. We finished with this exercise. Now we go to a 2nd machine press. We all, To complete Then I was like, oh, come on. 1 more. 1 And you're gonna again give your maximum effort but it's failing, it's failing. But I help you a little bit. So we're going just fast failure. Yeah? Then you put the weight down. Okay. We finished with this exercise. Now we go to a 2nd machine press. We already warmed up all the muscles in the but",
+      "next_line": "Speaker: To complete Then I was like, oh, come on. 1 more. 1 And you're gonna again give your maximum effort but it's failing, it's failing. But I help you a little bit. So we're going just fast failure. Yeah? Then you put the weight down. Okay. We finished with this exercise. Now we go to a 2nd machine press. We already warmed up all the in the but it's a different",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 25,
+      "previous_line": "Speaker: to come, to complete, To complete Then I was like, Micah, come on. To complete Then I was like, oh, come on. 1 more. 1 and you're gonna, To complete Then I was like, oh, come on. 1 more. 1 And you're gonna, again, give your maximum effort, but it's failing. To complete Then I was like, oh, come on. 1 more. 1 And you're gonna again give your maximum effort but it's failing, it's failing. To complete Then I was like, oh, come on. 1 more. 1 And you're gonna again give your maximum effort but it's failing, it's failing, but I help you a little, To complete Then I was like, oh, come on. 1 more. 1 And you're gonna again give your maximum effort but it's failing, it's failing. But I help you a little bit. So we're going just, To complete Then I was like, oh, come on. 1 more. 1 And you're gonna again give your maximum effort but it's failing. It's failing. But I help you a little bit. So we're going just fast failure. Yeah? To complete Then I was like, oh, come on. 1 more. 1 And you're gonna again give your maximum effort but it's failing, it's failing. But I help you a little bit. So we're going just fast failure. Yeah? Then you put the, To complete Then I was like, oh, come on. 1 more. 1 And you're gonna again give your maximum effort but it's failing, it's failing. But I help you a little bit. So we're going just fast failure. Yeah? Then you put the weight down. To complete Then I was like, oh, come on. 1 more. 1 And you're gonna again give your maximum effort but it's failing, it's failing. But I help you a little bit. So we're going just fast failure. Yeah? Then you put the weight down. Okay. To complete Then I was like, oh, come on. 1 more. 1 And you're gonna again give your maximum effort but it's failing, it's failing. But I help you a little bit. So we're going just fast failure, yeah? Then you put the weight down. Okay. We finish with this exercise. To complete Then I was like, oh, come on. 1 more. 1 And you're gonna again give your maximum effort but it's failing, it's failing. But I help you a little bit. So we're going just fast failure. Yeah? Then you put the weight down. Okay. We finish with this exercise. To complete Then I was like, oh, come on. 1 more. 1 And you're gonna again give your maximum effort but it's failing, it's failing. But I help you a little bit. So we're going just fast failure. Yeah? Then you put the weight down. Okay. We finished with this exercise. Now we go to a 2nd, To complete Then I was like, oh, come on. 1 more. 1 And you're gonna again give your maximum effort but it's failing, it's failing. But I help you a little bit. So we're going just fast failure. Yeah? Then you put the weight down. Okay. We finished with this exercise. Now we go to a 2nd machine press. We all, To complete Then I was like, oh, come on. 1 more. 1 And you're gonna again give your maximum effort but it's failing, it's failing. But I help you a little bit. So we're going just fast failure. Yeah? Then you put the weight down. Okay. We finished with this exercise. Now we go to a 2nd machine press. We already warmed up all the muscles in the but",
+      "current_line": "Speaker: To complete Then I was like, oh, come on. 1 more. 1 And you're gonna again give your maximum effort but it's failing, it's failing. But I help you a little bit. So we're going just fast failure. Yeah? Then you put the weight down. Okay. We finished with this exercise. Now we go to a 2nd machine press. We already warmed up all the in the but it's a different",
+      "next_line": "Speaker: Yeah. We're just",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 26,
+      "previous_line": "Speaker: To complete Then I was like, oh, come on. 1 more. 1 And you're gonna again give your maximum effort but it's failing, it's failing. But I help you a little bit. So we're going just fast failure. Yeah? Then you put the weight down. Okay. We finished with this exercise. Now we go to a 2nd machine press. We already warmed up all the in the but it's a different",
+      "current_line": "Speaker: Yeah. We're just",
+      "next_line": "Speaker: this time, you're on a Yeah. Like the free",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 27,
+      "previous_line": "Speaker: Yeah. We're just",
+      "current_line": "Speaker: this time, you're on a Yeah. Like the free",
+      "next_line": "Speaker: this",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 28,
+      "previous_line": "Speaker: this time, you're on a Yeah. Like the free",
+      "current_line": "Speaker: this",
+      "next_line": "Speaker: To this point I can't, To this point can I help you a little bit?",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 28,
+      "previous_line": "Speaker: this time, you're on a Yeah. Like the free",
+      "current_line": "Speaker: this",
+      "next_line": "Speaker: To this point I can't, To this point can I help you a little bit?",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 29,
+      "previous_line": "Speaker: this",
+      "current_line": "Speaker: To this point I can't, To this point can I help you a little bit?",
+      "next_line": "Speaker: And you lower it down. And you lower it down because we have 3, Of strength in the, Of strength in an exercise. Of strength in an exercise. At the Pushing we only have, Of strength in an exercise. At the pushing we only have 2 because there's no, Of strength in an exercise. At the pushing we only have 2 because there's no reason it's at the top.",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 30,
+      "previous_line": "Speaker: To this point I can't, To this point can I help you a little bit?",
+      "current_line": "Speaker: And you lower it down. And you lower it down because we have 3, Of strength in the, Of strength in an exercise. Of strength in an exercise. At the Pushing we only have, Of strength in an exercise. At the pushing we only have 2 because there's no, Of strength in an exercise. At the pushing we only have 2 because there's no reason it's at the top.",
+      "next_line": "Speaker: Okay. Yeah.",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 31,
+      "previous_line": "Speaker: And you lower it down. And you lower it down because we have 3, Of strength in the, Of strength in an exercise. Of strength in an exercise. At the Pushing we only have, Of strength in an exercise. At the pushing we only have 2 because there's no, Of strength in an exercise. At the pushing we only have 2 because there's no reason it's at the top.",
+      "current_line": "Speaker: Okay. Yeah.",
+      "next_line": "Speaker: Mhmm. Because, I got it. I got you.",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 32,
+      "previous_line": "Speaker: Okay. Yeah.",
+      "current_line": "Speaker: Mhmm. Because, I got it. I got you.",
+      "next_line": "Speaker: Because",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 33,
+      "previous_line": "Speaker: Mhmm. Because, I got it. I got you.",
+      "current_line": "Speaker: Because",
+      "next_line": "Speaker: More explosive? Slow it down. More explosive? Slow it. Why? Because we're, More explosive? Slow it. Why? Because we're trying to we're trying to, More explosive? Slow it. Why? Because we're trying to we're trying to text this part of the movement. Yeah. So you, Yeah. So you failed here, but I can, Yeah. So you failed here, but I can get the weight and lift it so, Yeah. So you failed here, but I can get the weight and lift it to the top? Yeah. So you failed here, but I can get the weight and lift it to the top? Mhmm. Okay. Lower it. Lower it. I'll lift it to the top. You, Lower it. I'll lift it to the top. You lower it. Lower it. I'll lift it to the top, you lower it. So even though you've failed, Lower it. I'll lift it to the top, you lower it. So even though you failed, So even though you failed positively, we can do, So even though you failed positively, we can do a couple of extra reps, So even though you failed positively, we can do a couple of extra reps, maybe negatives. And I, So we've gone past, So we've gone past failure now? Yeah. And I love that. So we've gone past failure now? Yeah. We don't do, And I love that. So we've gone past failure now? Yeah. We don't do sets. Yeah. Move, And I love that. So we've gone past failure now? Yeah. Don't do yourself. Yeah. Move on. If you can lift, Yeah. Move on. If you can lift whatever, Move on. If you can lift whatever, let's say, 20, Move on. If you can lift whatever, let's say, 20 kilos for 8 reps, If you can lift whatever, let's say 20 kilos for 8 reps, you can go to the gym, you can go to the gym for the rest of your life, you can go to the gym for the rest of your life and do, this weight for 8, this weight for 8 reps and nothing will, this weight for 8 reps and nothing will change. this weight for 8 reps and nothing will change. Yeah. Nothing will change. Yeah. Nothing will change, because, Yeah. Nothing will change. Because why? Yeah. Nothing will change. Because why? Your body wants to, Yeah. Nothing will change. Because why? Your body wants to keep status quo. You know, it wants, You know, it wants to keep balance. It, You know, it wants to keep balance. It doesn't want to build, You know, it wants to keep balance. It doesn't want to build excessive amounts of, You know, it wants to keep balance. It doesn't want to build excessive amounts of muscle. You've got to, You've got to and after the 1st year, You've got to and after the 1st year in the gym or the year, You've got to And after the 1st year in the gym or the year and 0.5, this is my, observation. I see people, observation. I see people that go to the gym. They make, observation. I see people that go to the gym. They make some progress for the 1st, observation. I see people that go to the gym, they make some progress for the 1st year, observation. I see people that go to the gym, they make some progress for the 1st year because somebody's not used to, but somebody's not used to it, yeah? but somebody's not used to it, yeah? Yeah. So, but somebody's not used to it, yeah? Yeah. So even though training is a bit, but somebody's not used to it, yeah? Yeah. So even though training is a bit ineffectual, if you've never done a push, if you've never done a push up, if you've never done a push up, if you do 10 push ups, if you've never done a push up, if you do 10 push ups, it will work. Yeah. if you've never done a push up, if you do 10 push ups, it will work. Yeah. But pretty soon, Yeah. But pretty soon you're doing, Yeah. But pretty soon you're doing 15 and 20, Yeah. But pretty soon you're doing 15 and 20 and it's not really working, Yeah. But pretty soon you're doing 15 and 20 and it's not really working anymore. So you gotta be, So you gotta be always pushing it and always, So you gotta be always pushing it and always progressive. This, So you gotta be always pushing it and always progressive. This type of training I, type of training I will do for about 6, type of training I will do for about 6 weeks and then I will do, type of training I will do for about 6 weeks and then I will do maybe 2 weeks lighter, type of training I will do for about 6 weeks and then I will do maybe 2 weeks lighter training. maybe 2 weeks lighter training. This is a guideline, maybe 2 weeks lighter training. This is a guideline because you have to listen to your, you have to listen to your body, but 6 weeks of, you have to listen to your body, but 6 weeks of all our training, because you have to listen to your body. 6 weeks of all our training, getting 1 more rep, getting 1 more rep, getting, getting 1 more rep, getting stronger, going up, getting 1 more rep, getting stronger, going up, going up, you get to, kind of reach a plateau. kind of reach a plateau. You know? Mhmm. And then, kind of reach a plateau. You know? Mhmm. And then you go back down, and, kind of reach a plateau. You know? Mhmm. And then you go back down and train light within a, kind of reach a plateau. You know? Mhmm. And then you go back down. Train light within your capacity, you'll",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 34,
+      "previous_line": "Speaker: Because",
+      "current_line": "Speaker: More explosive? Slow it down. More explosive? Slow it. Why? Because we're, More explosive? Slow it. Why? Because we're trying to we're trying to, More explosive? Slow it. Why? Because we're trying to we're trying to text this part of the movement. Yeah. So you, Yeah. So you failed here, but I can, Yeah. So you failed here, but I can get the weight and lift it so, Yeah. So you failed here, but I can get the weight and lift it to the top? Yeah. So you failed here, but I can get the weight and lift it to the top? Mhmm. Okay. Lower it. Lower it. I'll lift it to the top. You, Lower it. I'll lift it to the top. You lower it. Lower it. I'll lift it to the top, you lower it. So even though you've failed, Lower it. I'll lift it to the top, you lower it. So even though you failed, So even though you failed positively, we can do, So even though you failed positively, we can do a couple of extra reps, So even though you failed positively, we can do a couple of extra reps, maybe negatives. And I, So we've gone past, So we've gone past failure now? Yeah. And I love that. So we've gone past failure now? Yeah. We don't do, And I love that. So we've gone past failure now? Yeah. We don't do sets. Yeah. Move, And I love that. So we've gone past failure now? Yeah. Don't do yourself. Yeah. Move on. If you can lift, Yeah. Move on. If you can lift whatever, Move on. If you can lift whatever, let's say, 20, Move on. If you can lift whatever, let's say, 20 kilos for 8 reps, If you can lift whatever, let's say 20 kilos for 8 reps, you can go to the gym, you can go to the gym for the rest of your life, you can go to the gym for the rest of your life and do, this weight for 8, this weight for 8 reps and nothing will, this weight for 8 reps and nothing will change. this weight for 8 reps and nothing will change. Yeah. Nothing will change. Yeah. Nothing will change, because, Yeah. Nothing will change. Because why? Yeah. Nothing will change. Because why? Your body wants to, Yeah. Nothing will change. Because why? Your body wants to keep status quo. You know, it wants, You know, it wants to keep balance. It, You know, it wants to keep balance. It doesn't want to build, You know, it wants to keep balance. It doesn't want to build excessive amounts of, You know, it wants to keep balance. It doesn't want to build excessive amounts of muscle. You've got to, You've got to and after the 1st year, You've got to and after the 1st year in the gym or the year, You've got to And after the 1st year in the gym or the year and 0.5, this is my, observation. I see people, observation. I see people that go to the gym. They make, observation. I see people that go to the gym. They make some progress for the 1st, observation. I see people that go to the gym, they make some progress for the 1st year, observation. I see people that go to the gym, they make some progress for the 1st year because somebody's not used to, but somebody's not used to it, yeah? but somebody's not used to it, yeah? Yeah. So, but somebody's not used to it, yeah? Yeah. So even though training is a bit, but somebody's not used to it, yeah? Yeah. So even though training is a bit ineffectual, if you've never done a push, if you've never done a push up, if you've never done a push up, if you do 10 push ups, if you've never done a push up, if you do 10 push ups, it will work. Yeah. if you've never done a push up, if you do 10 push ups, it will work. Yeah. But pretty soon, Yeah. But pretty soon you're doing, Yeah. But pretty soon you're doing 15 and 20, Yeah. But pretty soon you're doing 15 and 20 and it's not really working, Yeah. But pretty soon you're doing 15 and 20 and it's not really working anymore. So you gotta be, So you gotta be always pushing it and always, So you gotta be always pushing it and always progressive. This, So you gotta be always pushing it and always progressive. This type of training I, type of training I will do for about 6, type of training I will do for about 6 weeks and then I will do, type of training I will do for about 6 weeks and then I will do maybe 2 weeks lighter, type of training I will do for about 6 weeks and then I will do maybe 2 weeks lighter training. maybe 2 weeks lighter training. This is a guideline, maybe 2 weeks lighter training. This is a guideline because you have to listen to your, you have to listen to your body, but 6 weeks of, you have to listen to your body, but 6 weeks of all our training, because you have to listen to your body. 6 weeks of all our training, getting 1 more rep, getting 1 more rep, getting, getting 1 more rep, getting stronger, going up, getting 1 more rep, getting stronger, going up, going up, you get to, kind of reach a plateau. kind of reach a plateau. You know? Mhmm. And then, kind of reach a plateau. You know? Mhmm. And then you go back down, and, kind of reach a plateau. You know? Mhmm. And then you go back down and train light within a, kind of reach a plateau. You know? Mhmm. And then you go back down. Train light within your capacity, you'll",
+      "next_line": "Speaker: Yeah. Then",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 35,
+      "previous_line": "Speaker: More explosive? Slow it down. More explosive? Slow it. Why? Because we're, More explosive? Slow it. Why? Because we're trying to we're trying to, More explosive? Slow it. Why? Because we're trying to we're trying to text this part of the movement. Yeah. So you, Yeah. So you failed here, but I can, Yeah. So you failed here, but I can get the weight and lift it so, Yeah. So you failed here, but I can get the weight and lift it to the top? Yeah. So you failed here, but I can get the weight and lift it to the top? Mhmm. Okay. Lower it. Lower it. I'll lift it to the top. You, Lower it. I'll lift it to the top. You lower it. Lower it. I'll lift it to the top, you lower it. So even though you've failed, Lower it. I'll lift it to the top, you lower it. So even though you failed, So even though you failed positively, we can do, So even though you failed positively, we can do a couple of extra reps, So even though you failed positively, we can do a couple of extra reps, maybe negatives. And I, So we've gone past, So we've gone past failure now? Yeah. And I love that. So we've gone past failure now? Yeah. We don't do, And I love that. So we've gone past failure now? Yeah. We don't do sets. Yeah. Move, And I love that. So we've gone past failure now? Yeah. Don't do yourself. Yeah. Move on. If you can lift, Yeah. Move on. If you can lift whatever, Move on. If you can lift whatever, let's say, 20, Move on. If you can lift whatever, let's say, 20 kilos for 8 reps, If you can lift whatever, let's say 20 kilos for 8 reps, you can go to the gym, you can go to the gym for the rest of your life, you can go to the gym for the rest of your life and do, this weight for 8, this weight for 8 reps and nothing will, this weight for 8 reps and nothing will change. this weight for 8 reps and nothing will change. Yeah. Nothing will change. Yeah. Nothing will change, because, Yeah. Nothing will change. Because why? Yeah. Nothing will change. Because why? Your body wants to, Yeah. Nothing will change. Because why? Your body wants to keep status quo. You know, it wants, You know, it wants to keep balance. It, You know, it wants to keep balance. It doesn't want to build, You know, it wants to keep balance. It doesn't want to build excessive amounts of, You know, it wants to keep balance. It doesn't want to build excessive amounts of muscle. You've got to, You've got to and after the 1st year, You've got to and after the 1st year in the gym or the year, You've got to And after the 1st year in the gym or the year and 0.5, this is my, observation. I see people, observation. I see people that go to the gym. They make, observation. I see people that go to the gym. They make some progress for the 1st, observation. I see people that go to the gym, they make some progress for the 1st year, observation. I see people that go to the gym, they make some progress for the 1st year because somebody's not used to, but somebody's not used to it, yeah? but somebody's not used to it, yeah? Yeah. So, but somebody's not used to it, yeah? Yeah. So even though training is a bit, but somebody's not used to it, yeah? Yeah. So even though training is a bit ineffectual, if you've never done a push, if you've never done a push up, if you've never done a push up, if you do 10 push ups, if you've never done a push up, if you do 10 push ups, it will work. Yeah. if you've never done a push up, if you do 10 push ups, it will work. Yeah. But pretty soon, Yeah. But pretty soon you're doing, Yeah. But pretty soon you're doing 15 and 20, Yeah. But pretty soon you're doing 15 and 20 and it's not really working, Yeah. But pretty soon you're doing 15 and 20 and it's not really working anymore. So you gotta be, So you gotta be always pushing it and always, So you gotta be always pushing it and always progressive. This, So you gotta be always pushing it and always progressive. This type of training I, type of training I will do for about 6, type of training I will do for about 6 weeks and then I will do, type of training I will do for about 6 weeks and then I will do maybe 2 weeks lighter, type of training I will do for about 6 weeks and then I will do maybe 2 weeks lighter training. maybe 2 weeks lighter training. This is a guideline, maybe 2 weeks lighter training. This is a guideline because you have to listen to your, you have to listen to your body, but 6 weeks of, you have to listen to your body, but 6 weeks of all our training, because you have to listen to your body. 6 weeks of all our training, getting 1 more rep, getting 1 more rep, getting, getting 1 more rep, getting stronger, going up, getting 1 more rep, getting stronger, going up, going up, you get to, kind of reach a plateau. kind of reach a plateau. You know? Mhmm. And then, kind of reach a plateau. You know? Mhmm. And then you go back down, and, kind of reach a plateau. You know? Mhmm. And then you go back down and train light within a, kind of reach a plateau. You know? Mhmm. And then you go back down. Train light within your capacity, you'll",
+      "current_line": "Speaker: Yeah. Then",
+      "next_line": "Speaker: Yeah. So",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 36,
+      "previous_line": "Speaker: Yeah. Then",
+      "current_line": "Speaker: Yeah. So",
+      "next_line": "Speaker: Take a day off.",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 36,
+      "previous_line": "Speaker: Yeah. Then",
+      "current_line": "Speaker: Yeah. So",
+      "next_line": "Speaker: Take a day off.",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 37,
+      "previous_line": "Speaker: Yeah. So",
+      "current_line": "Speaker: Take a day off.",
+      "next_line": "Speaker: Shoulder strike. Push.",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 38,
+      "previous_line": "Speaker: Take a day off.",
+      "current_line": "Speaker: Shoulder strike. Push.",
+      "next_line": "Speaker: Shoulders try. Push. Chest and 1 thing I",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 39,
+      "previous_line": "Speaker: Shoulder strike. Push.",
+      "current_line": "Speaker: Shoulders try. Push. Chest and 1 thing I",
+      "next_line": "Speaker: And 1st",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 39,
+      "previous_line": "Speaker: Shoulder strike. Push.",
+      "current_line": "Speaker: Shoulders try. Push. Chest and 1 thing I",
+      "next_line": "Speaker: And 1st",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 40,
+      "previous_line": "Speaker: Shoulders try. Push. Chest and 1 thing I",
+      "current_line": "Speaker: And 1st",
+      "next_line": "Speaker: step",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 41,
+      "previous_line": "Speaker: And 1st",
+      "current_line": "Speaker: step",
+      "next_line": "Speaker: A new train, and you train hard, You cannot, you cannot train more than, you cannot train more than 3 or 4 times a week. you cannot train more than 3 or 4 times a week. You won't recover. you cannot train more than 3 or 4 times a week. You won't recover. So what you have is, recover. So what you have is professional bodybuilders take, recover. So what you have is professional bodybuilders take steroids and they train, recover. So what you have is professional bodybuilders take steroids and they train 6 times a week. It's not, It's not ideal, It's not ideal. It's, It's not ideal. It's too much. It's not ideal, isn't too much but they can recover, But they can recover the health, But they can recover the help that they get from the, But they can recover the help that they get from the from the steroids. But they can recover the help that they get from the steroids to recover. And if, steroids to recover. And if you're not taking steroids, steroids to recover. And if you're not taking steroids, which I don't, steroids to recover. And if you're not taking steroids, which I don't recommend, unless you, unless you're, unless you're gonna have some bit ambitious, unless you're gonna have some ambition to really compete, unless you, you know, have some ambition to really compete at a good level, maybe, at a good level, maybe. You're not gonna, at a good level, maybe. You're not gonna recover. Try to do, at a good level, maybe. You're not gonna recover. Try to do Ronnie Coleman's training. at a good level, maybe, you're not gonna recover. Try to do Ronnie Coleman's training. at a good level, maybe. You're not gonna recover. Try to do Ronnie Coleman's training. See what happens. You get small. You'll get small, but you will not recover from, You'll get small, but you will not recover from the stress. You're",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 42,
+      "previous_line": "Speaker: step",
+      "current_line": "Speaker: A new train, and you train hard, You cannot, you cannot train more than, you cannot train more than 3 or 4 times a week. you cannot train more than 3 or 4 times a week. You won't recover. you cannot train more than 3 or 4 times a week. You won't recover. So what you have is, recover. So what you have is professional bodybuilders take, recover. So what you have is professional bodybuilders take steroids and they train, recover. So what you have is professional bodybuilders take steroids and they train 6 times a week. It's not, It's not ideal, It's not ideal. It's, It's not ideal. It's too much. It's not ideal, isn't too much but they can recover, But they can recover the health, But they can recover the help that they get from the, But they can recover the help that they get from the from the steroids. But they can recover the help that they get from the steroids to recover. And if, steroids to recover. And if you're not taking steroids, steroids to recover. And if you're not taking steroids, which I don't, steroids to recover. And if you're not taking steroids, which I don't recommend, unless you, unless you're, unless you're gonna have some bit ambitious, unless you're gonna have some ambition to really compete, unless you, you know, have some ambition to really compete at a good level, maybe, at a good level, maybe. You're not gonna, at a good level, maybe. You're not gonna recover. Try to do, at a good level, maybe. You're not gonna recover. Try to do Ronnie Coleman's training. at a good level, maybe, you're not gonna recover. Try to do Ronnie Coleman's training. at a good level, maybe. You're not gonna recover. Try to do Ronnie Coleman's training. See what happens. You get small. You'll get small, but you will not recover from, You'll get small, but you will not recover from the stress. You're",
+      "next_line": "Speaker: Oh, yeah.",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 43,
+      "previous_line": "Speaker: A new train, and you train hard, You cannot, you cannot train more than, you cannot train more than 3 or 4 times a week. you cannot train more than 3 or 4 times a week. You won't recover. you cannot train more than 3 or 4 times a week. You won't recover. So what you have is, recover. So what you have is professional bodybuilders take, recover. So what you have is professional bodybuilders take steroids and they train, recover. So what you have is professional bodybuilders take steroids and they train 6 times a week. It's not, It's not ideal, It's not ideal. It's, It's not ideal. It's too much. It's not ideal, isn't too much but they can recover, But they can recover the health, But they can recover the help that they get from the, But they can recover the help that they get from the from the steroids. But they can recover the help that they get from the steroids to recover. And if, steroids to recover. And if you're not taking steroids, steroids to recover. And if you're not taking steroids, which I don't, steroids to recover. And if you're not taking steroids, which I don't recommend, unless you, unless you're, unless you're gonna have some bit ambitious, unless you're gonna have some ambition to really compete, unless you, you know, have some ambition to really compete at a good level, maybe, at a good level, maybe. You're not gonna, at a good level, maybe. You're not gonna recover. Try to do, at a good level, maybe. You're not gonna recover. Try to do Ronnie Coleman's training. at a good level, maybe, you're not gonna recover. Try to do Ronnie Coleman's training. at a good level, maybe. You're not gonna recover. Try to do Ronnie Coleman's training. See what happens. You get small. You'll get small, but you will not recover from, You'll get small, but you will not recover from the stress. You're",
+      "current_line": "Speaker: Oh, yeah.",
+      "next_line": "Speaker: Can't do",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 44,
+      "previous_line": "Speaker: Oh, yeah.",
+      "current_line": "Speaker: Can't do",
+      "next_line": "Speaker: Can't do that. And you can see",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 45,
+      "previous_line": "Speaker: Can't do",
+      "current_line": "Speaker: Can't do that. And you can see",
+      "next_line": "Speaker: 7 sets. Yeah. We did 3 sets. 2 and 2. 2 and 2. Yeah. That's, 2 and 2. Yeah. That's it.",
+      "pattern_id": "duplicate_continuation",
+      "severity": "medium",
+      "likely_cause": "assembler_boundary",
+      "recommendation": "assembler_candidate"
+    },
+    {
+      "line_number": 45,
+      "previous_line": "Speaker: Can't do",
+      "current_line": "Speaker: Can't do that. And you can see",
+      "next_line": "Speaker: 7 sets. Yeah. We did 3 sets. 2 and 2. 2 and 2. Yeah. That's, 2 and 2. Yeah. That's it.",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 46,
+      "previous_line": "Speaker: Can't do that. And you can see",
+      "current_line": "Speaker: 7 sets. Yeah. We did 3 sets. 2 and 2. 2 and 2. Yeah. That's, 2 and 2. Yeah. That's it.",
+      "next_line": "Speaker: Okay. Okay? Shall, Okay. Okay. Shoulders",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 47,
+      "previous_line": "Speaker: 7 sets. Yeah. We did 3 sets. 2 and 2. 2 and 2. Yeah. That's, 2 and 2. Yeah. That's it.",
+      "current_line": "Speaker: Okay. Okay? Shall, Okay. Okay. Shoulders",
+      "next_line": "Speaker: naturals.",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 48,
+      "previous_line": "Speaker: Okay. Okay? Shall, Okay. Okay. Shoulders",
+      "current_line": "Speaker: naturals.",
+      "next_line": "Speaker: 2 to 3 naturals,",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 49,
+      "previous_line": "Speaker: naturals.",
+      "current_line": "Speaker: 2 to 3 naturals,",
+      "next_line": "Speaker: Chest, shoulders, tricep.",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 50,
+      "previous_line": "Speaker: 2 to 3 naturals,",
+      "current_line": "Speaker: Chest, shoulders, tricep.",
+      "next_line": "Speaker: Couple of",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 51,
+      "previous_line": "Speaker: Chest, shoulders, tricep.",
+      "current_line": "Speaker: Couple of",
+      "next_line": "Speaker: Couple of",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 52,
+      "previous_line": "Speaker: Couple of",
+      "current_line": "Speaker: Couple of",
+      "next_line": "Speaker: with a close",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 53,
+      "previous_line": "Speaker: Couple of",
+      "current_line": "Speaker: with a close",
+      "next_line": "Speaker: 2 extra, to exercise. to exercise. To exercise, you said? To exercise?",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    },
+    {
+      "line_number": 54,
+      "previous_line": "Speaker: with a close",
+      "current_line": "Speaker: 2 extra, to exercise. to exercise. To exercise, you said? To exercise?",
+      "next_line": "",
+      "pattern_id": "too_short_unstable_line",
+      "severity": "low",
+      "likely_cause": "raw_stt",
+      "recommendation": "needs_reference"
+    }
+  ],
+  "total_boundary_risks": 58,
+  "leading_fragment_count": 0,
+  "glue_risk_count": 0,
+  "punctuation_artifact_count": 0,
+  "duplicate_continuation_count": 4,
+  "assembler_candidate_count": 4,
+  "raw_stt_likely_count": 54,
+  "needs_reference_count": 54,
+  "generated_at": "2026-08-11T18:53:46",
+  "report_type": "boundary_error_report",
+  "alpha_sha256": "c93ad8fad5883b30765477c4efba85ade3f515e5ddd8da9b751db5883035e046",
+  "alpha_size_bytes": 17128,
+  "reference_sha256": "f1c3b75d38c692a5897ca7552b037ff944d065350477fb86dbb2f89915569d07",
+  "reference_size_bytes": 10417,
+  "latest_live_run_id": "live-v3.3.5.5.8.5.26.5.3-20260811-182940-e2e429ae"
+}
