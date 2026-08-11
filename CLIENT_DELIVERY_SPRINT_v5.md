@@ -48,7 +48,7 @@ observed). Full suite: **354 tests**, baseline **5 failures + 2 errors +
 
 | | Problem | Evidence |
 |---|---|---|
-| **A** | Japanese sentences committed by the assembler never reach the canonical ledger — they exist in `stable_commits.jsonl` and are absent from both the ledger and the final export | `Bug_Report.md` §4.1. Run `...20260807-160529`: 10 `commit_new` decisions, 10 rows, **9** ledger records. Reproduced at higher volume on 08-08 and 08-09 |
+| **A** | Japanese sentences committed by the assembler are **overwritten in the canonical ledger by a later, textually unrelated commit that reuses the same `canonical_utterance_id`** — they exist in `stable_commits.jsonl` and are absent from the final export | Measured 2026-08-11 by `tools/replay_run.py` on all 6 replayable runs: **14 dropped sentences, 505 characters, 14/14 confirmed absent from `Alpha_output_FINAL.txt`**, every one `overwritten_by_id_collision`. Per run: `...155922` 1, `...160130` 2, `...160529` 2, `...134815` 3, `...155334` 6, `...174516` 0. Supersedes the decisions-vs-ledger delta this row used to cite — see §9 (2026-08-11) |
 | **B** | Real speech quarantined as `noise_fragment` and never recovered | `Bug_Report.md` §4.2. 2 of 2 quarantine events ever recorded were misclassified real Japanese speech; 0 recovered |
 | **C** | Two speakers' turns can merge into one line | v4 items 22, 23, 33 / audit §2.2, §2.3, §3.1 |
 | **D** | No behaviour defined for network drop, DeepL quota exhaustion, device change, or invalid credentials | Not covered by any of v4's 37 items |
@@ -89,8 +89,18 @@ SKIP_TK_INTEGRATION_TESTS=1 "<repo_root>/.venv/Scripts/python.exe" -m unittest d
 
 There is no pytest in this venv; `unittest discover` is the only runner.
 
-**Baseline:** 354 tests, 5 failures + 2 errors + 2 skipped. Same 7 names
-every run. Any change to that set means you broke something.
+**Baseline:** **364 tests** (was 354; item 38 added 10), 5 failures + 2
+errors + 2 skipped. Same 7 names. Any change to that set means you broke
+something.
+
+**One caveat, added 2026-08-11.** The 7 names are the *stable* set, but
+an 8th can appear:
+`test_task9_report…test_inactivity_timeout_fallback_survives_immediate_real_stop_5x`
+is a real-thread timing test that failed two subtest iterations in one
+full-suite run and passed the next, and passes 3 runs out of 3 when its
+module runs alone. It is **intermittent, not a regression** — if it is
+the only new name, re-run before concluding anything. Any *other* new
+name is real. See §9.
 
 **Venv:** `<repo_root>\.venv\Scripts\python.exe`. The bare system python
 will fail with `ModuleNotFoundError`. If the venv reports
@@ -166,28 +176,65 @@ other 21 carry no genuine provider ingress (10 have the file but only
 post-lifecycle re-emissions, 11 lack the file). All 6 are Japanese —
 English sessions record no raw ingress by design.
 
-Gate is therefore a content requirement, not a count: **all 6 runs with
-genuine provider ingress replay, and those 6 must include
-`...20260807-160529` and the two 08-08 higher-volume reproduction runs
-(`...20260808-134815`, `...20260808-155334`).** All three are present.
-Baseline numbers written into §9.
+Gate is therefore a content requirement, not a count: **all 6 Japanese
+runs with genuine provider ingress replay** — `...20260807-155922`,
+`...20260807-160130`, `...20260807-160529`, `...20260808-134815`,
+`...20260808-155334`, `...20260809-174516` — **and the recorded-side
+loss measurement lands on all 6.** Measured 2026-08-11:
+
+| Run | ingress fed | commits | dropped sentences |
+|---|---|---|---|
+| `...155922` | 3 | 3 | 1 |
+| `...160130` | 11 | 4 | 2 |
+| `...160529` | 25 | 10 | 2 |
+| `...134815` | 50 | 29 | 3 |
+| `...155334` | 71 | 32 | 6 |
+| `...174516` | 82 | 36 | 0 |
+
+~~"Loss pattern present: 160529 (−1), 134815 (−6), 155334 (−6). Zero loss:
+155922, 174516."~~ — **superseded 2026-08-11 before it was written in.**
+Those figures are the decisions-minus-ledger delta, which both
+over-counts (a genuine `revise` is not a loss) and under-counts (an
+overwritten id still has a ledger record). `...155922` was not zero-loss;
+`...174516` is the only genuinely clean run. See §9.
+
+**Replay does not reproduce any of the 14 losses** — that is a finding
+under condition 4, not a gate failure. See §9 and item 38b.
 
 ### Days 3–6 (Aug 12–15) · Content integrity — items 41, 42, 43, 22, 23, 33s
 
 The bugs that lose the client's words.
 
 - **41** prove problem A's root cause against the fixture — **Fable 5,
-  `/effort xhigh`**
-- **42** fix it: an assembler commit either lands in the ledger or fails
-  loudly with the text in the log — never silently dropped — **Fable 5**
+  `/effort xhigh`**. Item 38 already localised it: the assembler commits
+  two textually disjoint sentences under one `canonical_utterance_id`,
+  the ledger keys on that id, and the second commit overwrites the
+  first. 41's job is now to prove *why the id is reused* — read the id
+  minting site in the assembler, not the ledger write. **Fast-feed
+  replay does not reproduce this** (decision 5b resolved, §9), so drive
+  the assembler under real `LanguagePipelineWorker` timing or from the
+  recorded commit stream directly; do not expect `replay_run.py` to
+  show it.
+- **42** fix it: a commit that is not a revision of its target must
+  never land on that target's id — no silent overwrite. An overwrite
+  that is genuinely wanted must be a containment/extension of what it
+  replaces, or it fails loudly with both texts in the log — **Fable 5**
 - **43** make quarantine non-destructive — **Opus 5**
 - **22, 23** speaker fail-open and Case B cross-speaker merge — **Opus 5**
 - **33s** scoped: stop the relabeled speaker feeding the
   same-speaker-extension check — **Opus 5**
 
-**Gate:** run `...20260807-160529` replays with assembler decisions ==
-ledger records == export lines. Zero cross-speaker merges on the
-reference corpus.
+**Gate:** ~~run `...20260807-160529` replays with assembler decisions ==
+ledger records == export lines~~ — **wrong equality, corrected
+2026-08-11.** A genuine `revise` makes decisions exceed ledger records
+legitimately (10 vs 9 on that run is one revision, not one loss), and an
+overwritten id still produces a ledger record, so that equality is both
+too strict and blind to the actual bug.
+
+Replacement gate: **`tools/replay_run.py --all` reports 0 dropped
+sentences on the recorded side of all 6 runs** (currently 14), each drop
+independently confirmed against the export. Zero cross-speaker merges on
+the reference corpus.
 
 ### Days 7–9 (Aug 16–18) · Resilience — items 44, 45, 46, 47, 48
 
@@ -263,7 +310,7 @@ sessions per direction:
 
 | # | Gate | Target |
 |---|---|---|
-| 1 | assembler decisions == ledger records == export lines | equal, 3 runs |
+| 1 | committed sentences dropped before the export (`replay_run.py`, recorded side) | 0, 3 runs |
 | 2 | exact-duplicate lines in export | 0 |
 | 3 | canonical records without a translation | 0 |
 | 4 | lines containing two speakers' turns | 0 |
@@ -354,7 +401,8 @@ recommended (pending). `[gate]` = human approval required before coding.
 
 | Item | What | Model | Day | Status |
 |---|---|---|---|---|
-| 38 | `tools/replay_run.py` — replay a recorded run's `provider_events.jsonl` headlessly, diff against its FINAL export | **Opus 5** | 1–2 | **INVESTIGATED, BLOCKED** — design approved with 5 conditions; conditions 1 and 2 both returned findings that change the design. Three decisions needed before coding, see §9 (2026-08-10 rows) |
+| 38 | `tools/replay_run.py` — replay a recorded run's `provider_events.jsonl` headlessly, diff against its FINAL export | **Opus 5** | 1–2 | **DONE** — gate resolved 2026-08-11, all 5 conditions met. Tests `tests/test_replay_run_verdict.py` (10). Recorded-side measurement is the deliverable and it proved problem A's mechanism (id collision, 14 sentences, 505 chars, 14/14 confirmed absent from export). Replay side does **not** reproduce it — finding under condition 4, carried to item 38b |
+| 38b | Real-timer replay: drive the assembler through `LanguagePipelineWorker` scheduling instead of fast-feed, so timing-dependent losses reproduce | **Opus 5** | — | **TODO — scope before starting.** Opened by decision 5b. Not required for item 41 (38's recorded-side measurement already gives it the target); required before `replay_run.py` can serve items 44/48 |
 | 39 | `tools/score_run.py` — pass/fail on the §7 gates plus latency percentiles | **Sonnet 5** | 2 | TODO |
 | 40 | Reference corpus: 10 min ja + 10 min en, hand-written expected transcript, baseline recorded | **Sonnet 5** | 2 | TODO |
 | 41 | Prove problem A's root cause against run `...20260807-160529` — prove, do not assume | **Fable 5** `xhigh` | 3–4 | TODO |
@@ -383,6 +431,13 @@ wrong.
 | 2026-08-10 | Opus 5 | **Correct discriminator, verified across 462 rows / 16 runs: `metadata.raw_deepgram_text` presence (equivalently `confidence is not None`).** Perfectly bimodal — 242 rows have both, 220 have neither, **zero mixed**. The 220 are assembler commit re-emissions: `_publish_final_transcript_segment` also calls `record_raw_deepgram_final`, and the Japanese assembler publishes through it carrying lifecycle metadata. `canonical_finalize.py`'s comment claiming provider_events "can never carry a synthetic row" is true only of the `synthetic_record`/`synthetic_lineage` flags — assembler output that is not flagged synthetic does reach the file. |
 | 2026-08-10 | Opus 5 | **Coverage is 6 runs, not 27 or 16.** English sessions record **zero** genuine ingress: only `japanese_final_chunk_stabilizer.py` calls `record_raw_deepgram_final` on true ingress, so an en run's provider_events contains re-emissions only (confirmed: all 10 en runs have 0 ingress rows **and** 0 `stable_commits`). Replay from this input is Japanese-only. The 6: `...160529` (25 ingress), `...155922` (3), `...160130` (11), `...134815` (50), `...155334` (71), `...174516` (82). Excluded 11 runs with no provider_events.jsonl: `_pending`, `...132428`, `...160518`, `...160519`, `...160528`, `...134809`, `...155841`, `...173845`, `...192450`, `...192501`, `...192502`. Excluded 10 more that have the file but no ingress (all en): `...132429`, `...132635`, `...150958`, `...153955`, `...160352`, `...133236`, `...155842`, `...173846`, `...192516`, `...134258`. |
 | 2026-08-10 | Opus 5 | **§1's "reproduced at higher volume on 08-08 and 08-09" is half wrong.** Measured stable_commits vs ledger records on every run that has an assembler stream: `...160130` 4/3 (−1), `...160529` 10/9 (−1), `...134815` 29/23 (**−6**), `...155334` 32/26 (**−6**), `...155922` 3/3 (0), `...174516` 36/36 (**0**). 08-08 reproduces at volume as claimed. **08-09 does not reproduce at all** — the only 08-09 run with an assembler stream is clean. There is no 08-09 reproduction run to include in the gate. |
+| 2026-08-11 | Opus 5 | **Item 38 gate resolved; harness run. Problem A's mechanism is proven and it is not what §1 said it was.** §1 claimed committed sentences "never reach the canonical ledger." They reach it. The assembler commits two **textually disjoint** sentences under one `canonical_utterance_id`; the ledger keys on that id, so the second commit lands as a revision of the first and the first sentence's words are overwritten. Example, run `...160529`, id `jp-utt-19dbf8832ec0`: commit 1 `ですよ。違いますねでやっぱりこっちにいると日本の行事の…` (47 ch), commit 2 `だろう楽しい雰囲気とかも…` (121 ch) — unrelated text, one ledger record, and commit 1 is absent from `Alpha_output_FINAL.txt`. Totals across the 6 replayable runs: **14 dropped sentences, 505 characters, 14/14 independently confirmed absent from the export.** |
+| 2026-08-11 | Opus 5 | **The decisions-vs-ledger delta used throughout §1/§5/§7 and the 2026-08-10 rows below is the wrong metric — retracted, not overwritten.** It over-counts (a genuine `revise` writes a second `stable_commits` row for an id that already has its record; that is not a loss) and under-counts (an overwritten id still has a ledger record, so the loss is invisible to it). Corrected per-run drops: `...155922` **1** (delta said 0), `...160130` **2** (said 1), `...160529` **2** (said 1), `...134815` **3** (said 6), `...155334` **6** (said 6), `...174516` **0** (said 0 — the only genuinely clean run). §1's evidence row, §5's Days 1–2 and Days 3–6 gates, and §7 gate 1 all rewritten. This is the third time on this project that a count-based read of evidence files was contradicted by driving the code — same shape as the item 20b retraction in `CANONICAL_KEY_FIELDS_AUDIT.md` §5b. |
+| 2026-08-11 | Opus 5 | **The harness's own first verdict was a false pass — recording it because it nearly shipped.** `_unreached_utterances` matched committed utterances to the ledger on `canonical_utterance_id` only, with a comment arguing text comparison would produce false positives. On that measure all 6 runs scored 0 losses and the tool exited 0, reporting "6 replayed, 6 reproduced." The id *did* reach the ledger — carrying the wrong text. An instrument built to find disappearing records was blind to the exact way they disappear. Fixed to condition 2 as approved (match on text **and** id) plus an independent export cross-check; `_dropped_content` now carries that reasoning in its docstring so it is not re-simplified later. |
+| 2026-08-11 | Opus 5 | **Decision 5b resolved: the loss does NOT reproduce under fast-feed.** Replay drops 0 of 14. The segmentation diverges outright — identical ingress produces 13 replayed commit decisions against 29 recorded on `...134815`, 19 vs 32 on `...155334`, 18 vs 36 on `...174516` — because no timer fires mid-stream, so the assembler mints a fresh id where the real run reused one, and the collision never occurs. Per condition 4 the harness was **not** adjusted to make the numbers agree. Timing is therefore a determining factor for problem A; opened item **38b** (real `LanguagePipelineWorker` scheduling) rather than retrofitting it into 38. Item 41 does not need 38b — 38's recorded-side measurement already localises the bug to id minting in the assembler. Items 44/48 do. |
+| 2026-08-11 | Opus 5 | **English replay coverage — closed, not reopened.** All 10 English runs record zero genuine-ingress rows (only `japanese_final_chunk_stabilizer.py` calls `record_raw_deepgram_final` on true ingress), so replay is Japanese-only by evidence rather than by choice. The `raw_deepgram_finals.jsonl` fallback adapter stays rejected — a second input adapter is two definitions of "replay input", which §0 rule 2 forbids. Logged to `ROADMAP_V5.md` as a candidate if items 44/48 later need English coverage. |
+| 2026-08-11 | Opus 5 | **The baseline holds at 7 names; one 8th name is intermittent. Recording the wrong intermediate conclusion too, because it is instructive.** First full-suite run of the session reported `Ran 354 tests … FAILED (failures=7, errors=2, skipped=2)` and this file was briefly edited to say §3's 5+2 baseline was stale. **That was wrong** — the very next full run, `Ran 364 tests … FAILED (failures=5, errors=2, skipped=2)`, produced exactly the 7 documented names. The difference is `test_task9_report.Issue3RealThreadIntegrationTest.test_inactivity_timeout_fallback_survives_immediate_real_stop_5x`, a real-thread timing test: two subtest iterations failed in run 1, none in run 2, and its module passes 9/9 tests in 3 runs out of 3 alone. It is flaky under full-suite load, not a regression, and not caused by this session (nothing in `tests/` imports `tools/replay_run.py`; the only other edits were markdown). **Lesson for future sessions: one deviating full-suite run is not evidence of a broken baseline — re-run before editing §3.** Test count is now 364 (354 + item 38's 10). The flake itself is not fixed here (§0 rule 3); stabilise or quarantine is a human call. |
+| 2026-08-11 | Opus 5 | **`ROADMAP_V5.md` did not exist.** §6 and item 38's decision 4 both refer to it as the post-delivery destination; nothing by that name was anywhere in the tree. Created it at repo root, seeded only with the deferrals §6 already names plus the English-replay entry — no new scope invented. Flagging rather than assuming: if a `ROADMAP_V5.md` exists on another machine, this one needs merging into it, not replacing it. |
 | 2026-08-10 | Opus 5 | **Item 38 condition 2 — the host path diverges from production; reporting before writing, as instructed.** Production: `stabilizer.ingest()` → `assembler.ingest()` → assembler posts a *deferred* flush via `LanguagePipelineWorker.schedule_flush(assembler, due_mono, generation, reason)`, executed by a background thread against wall-clock `due_mono`. `JapaneseTestHost` (test_task2c) deliberately bypasses that: its own docstring says timeout scenarios use "the assembler's synchronous `try_execute_continuity_hold` entry point **instead of real timers**", and tests call `assembler.flush(...)` by hand. So *when* a flush happens — which decides what the assembler batches into one commit — is production-timed but harness-manual. Whether problem A survives that change is unknown and is exactly what condition 4 says to report rather than tune around. |
 
 ---
