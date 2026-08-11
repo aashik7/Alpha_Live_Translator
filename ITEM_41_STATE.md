@@ -75,9 +75,74 @@ falsify it properly, and kill the alternatives with quoted evidence.
 
 ---
 
-## 4. Phase 1 + 2 findings
+## 4. Phase 1 + 2 findings (done 2026-08-11)
 
-_Fill in as gathered. See §6 step 1-2._
+### Phase 1 — four populations, run `...20260807-160529`
+
+| | population | source artifact | count |
+|---|---|---|---|
+| P1 | assembler commit decisions | `logs/japanese_accuracy.log`, `STABLE_JAPANESE_COMMIT` events | **10** |
+| P2 | stable commit rows | `transcripts/stable_commits.jsonl` (`stable_commit_id` present) | **10** |
+| P3 | canonical ledger records | `evidence_streams/canonical_commits.jsonl` | **9** |
+| P4 | FINAL export lines | `transcripts/Alpha_output_FINAL.txt` (non-blank) | **9** |
+
+**10 / 10 / 9 reproduces numerically.** But the framing behind it is wrong:
+
+- **ids in P2 but NOT in P3: NONE.** Zero records failed to reach the ledger.
+- P2's 10 rows carry only **9 distinct** `canonical_utterance_id`s.
+  `jp-utt-19dbf8832ec0` appears **twice**.
+
+So the "missing 10th record" is a **duplicate id**, not a missing record.
+§1's original claim ("never reach the canonical ledger") is falsified —
+already corrected in the sprint file by item 38.
+
+### Phase 2 — the authoritative join key and the true loss count
+
+Join key is `canonical_utterance_id` (`assembler_metadata.canonical_utterance_id`
+in `stable_commits.jsonl`, top-level in `canonical_commits.jsonl`) — verified,
+not assumed: it is the only key present in both populations and it is what the
+ledger keys on.
+
+**TRUE LOSS COUNT = 10 across the 6 runs, not 14.** Two independent classes of
+false positive were found in item 38's own `_dropped_content` detector, both
+confirmed by reading the export directly:
+
+1. **Leading-punctuation stripping.** `jp-utt-f8bf3bbf9fb2` (`...160529`):
+   stable text `。その人形を…` (42 ch), ledger text `その人形を…` (41 ch) — a
+   cleanup step dropped the leading `。`. The text **is** in the export.
+2. **Text correction.** `jp-utt-453c4fd9c80f` (`...155334`): stable
+   `…悲しいなっいう自分が…`, export `…悲しいなっていう自分が…` — a
+   business-accuracy correction inserted `て`. The text **is** in the export.
+
+Neither is content loss. The detector's whitespace-only normalisation cannot
+see either. **Logged, not fixed — fixing it means editing a `.py`, which
+item 41 forbids.** Carry to §9 of the sprint file.
+
+### The exact rule, and it is exceptionless
+
+Measured with a correction-tolerant test (best-match ratio against every export
+line plus a distinctive mid-sentence probe):
+
+> A sentence is lost **if and only if** its `canonical_utterance_id` is carried
+> by more than one `stable_commits` row **and** those rows' texts are mutually
+> disjoint (not nested). The **earliest** row's text is the one lost; the last
+> row's text survives.
+
+Per-run confirmation — dup ids, of which legitimately nested, losses:
+
+| run | stable | dup ids | nested (legit) | disjoint | **losses** |
+|---|---|---|---|---|---|
+| `...155922` | 3 | 0 | 0 | 0 | **0** |
+| `...160130` | 4 | 1 | 0 | 1 | **1** |
+| `...160529` | 10 | 1 | 0 | 1 | **1** |
+| `...134815` | 29 | 5 | 2 | 3 | **3** |
+| `...155334` | 32 | 5 | 0 | 5 | **5** |
+| `...174516` | 36 | 0 | 0 | 0 | **0** |
+
+Every lost row scored 0.16–0.36 best-match against the export with its probe
+absent; every surviving row scored 0.89–0.97 with its probe present. There is
+no grey zone and no unexplained loss. The earlier "dup-id count ≠ loss count"
+asymmetry is fully accounted for by the nested/disjoint split.
 
 ---
 
