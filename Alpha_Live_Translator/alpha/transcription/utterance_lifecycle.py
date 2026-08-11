@@ -26,6 +26,8 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from difflib import SequenceMatcher
+
+from alpha.transcription.speaker_boundary_guard import speakers_confirmed_same
 from pathlib import Path
 from typing import Any, Callable, Optional
 
@@ -194,6 +196,28 @@ def _tail_resend_splice(
             kept = " ".join(prev.split()[:i]).strip()
             return f"{kept} {curr}".strip() if kept else curr
     return None
+
+
+def _known_speaker(value: Any) -> Optional[int]:
+    """Normalise a speaker label to `None` when it is not actually known.
+
+    fixes CLIENT_DELIVERY_SPRINT_v5.md problem C (item 22). Callers pass `0`,
+    `None` and `""` interchangeably for "no speaker identified", and the old
+    comparison coerced every one of them to `1`, so two *unidentified* speakers
+    compared equal and their turns merged into a single line.
+
+    `speakers_confirmed_same` is fail-closed on `None` but would still read
+    `0 == 0` as a confirmed match, so the unknown forms have to collapse to
+    `None` here before it is called -- swapping the call in without this would
+    leave the `0` case fail-open.
+    """
+    if value is None:
+        return None
+    try:
+        speaker = int(value)
+    except (TypeError, ValueError):
+        return None
+    return speaker if speaker else None
 
 
 def _merge_lexical(previous: str, current: str) -> str:
@@ -1294,7 +1318,18 @@ class UtteranceLifecycleOwner:
                     hold=True,
                     speech_final=False,
                     source=source,
-                    force_new=not same_active and active is not None and active.committed,
+                    # fixes problem C (item 23). This was
+                    # `not same_active and active is not None and active.committed`,
+                    # so a candidate that was NOT compatible -- a different
+                    # speaker or a different channel -- still merged into the
+                    # active utterance whenever that utterance happened to be
+                    # uncommitted, which is the normal state for a held final
+                    # chunk. Case C directly below has always gated correctly
+                    # (it merges only when `same_active or active is None or
+                    # not active.text.strip()`); Case B is now aligned to it, so
+                    # an incompatible candidate starts its own utterance
+                    # regardless of whether the active one has committed yet.
+                    force_new=active is not None and (active.committed or not same_active),
                 )
                 self._stats["hold_final_chunks"] += 1
                 self._arm_timeout_locked()
@@ -1403,7 +1438,16 @@ class UtteranceLifecycleOwner:
             return False
         if active.session_id and self._session_id and active.session_id != self._session_id:
             return False
-        if int(active.speaker or 1) != int(speaker or 1):
+        # fixes problem C (item 22). This was
+        # `int(active.speaker or 1) != int(speaker or 1)`, which coerced every
+        # unknown speaker to 1 -- so two *unidentified* speakers compared equal
+        # and one speaker's turn merged into another's line. Fail-closed now:
+        # an unknown speaker on either side is never a confirmed match, which
+        # is the same primitive already used by the boundary stabilizer, the
+        # transcript store and the stable-revision decision.
+        if not speakers_confirmed_same(
+            _known_speaker(active.speaker), _known_speaker(speaker)
+        ):
             return False
         if not _channel_matches_exactly(active.channel, channel):
             # fixes TASK_1A_FINDINGS.md Pattern 2: _channels_compatible() treated

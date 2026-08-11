@@ -3545,6 +3545,21 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
         except Exception:
             suppress_early = False
 
+        # fixes CLIENT_DELIVERY_SPRINT_v5.md problem C (item 33s, scoped).
+        # `_resolve_output_speaker` is a *display* stabiliser: when speaker
+        # evidence is weak it relabels this segment to the previous/dominant
+        # speaker so the transcript does not flicker between speakers. One of
+        # its own lock reasons is `_looks_like_speaker_continuation_tail`, i.e.
+        # "this text reads like a continuation" -- so feeding its output into
+        # the boundary decision closes a loop: the text looks like a
+        # continuation, therefore the speaker is relabelled to match the
+        # previous one, therefore the speakers "agree", therefore it is treated
+        # as the same speaker's continuation. The relabel would be
+        # manufacturing the very agreement the guard is supposed to test for.
+        #
+        # So keep the raw label for boundary decisions and use the stabilised
+        # one only for output. See `candidate_speaker=boundary_speaker` below.
+        boundary_speaker = int(speaker or 0) or None
         speaker = self._resolve_output_speaker(
             speaker,
             metadata,
@@ -3822,10 +3837,18 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
             revision_decision = decide_stable_revision_action(
                 previous_record=previous_record,
                 candidate_text=cleaned,
-                # fixes TASK_2C_REPORT.md: thread the resolved speaker
-                # through so the speaker-boundary guard (checked before any
-                # extends-previous rule) has a real value to compare.
-                candidate_speaker=speaker,
+                # fixes TASK_2C_REPORT.md: thread a real speaker value through
+                # so the speaker-boundary guard (checked before any
+                # extends-previous rule) has something to compare.
+                #
+                # Item 33s narrows *which* value: the raw provider label, not
+                # `_resolve_output_speaker`'s display-stabilised one. The
+                # stabiliser relabels toward the previous speaker when evidence
+                # is weak -- partly *because* the text looks like a
+                # continuation -- so passing its output here would let the
+                # relabel manufacture the same-speaker agreement this guard
+                # exists to test. See `boundary_speaker` above.
+                candidate_speaker=boundary_speaker,
                 update_previous_requested=update_previous_requested,
                 candidate_raw_event_ids=candidate_raw_event_ids,
                 candidate_metadata=metadata,
