@@ -1,0 +1,143 @@
+# Item 41 — problem A root cause — live working state
+
+**Resume point.** If you are a new session picking this up: read this file,
+then continue from the first unchecked box in §6. Delete this file in the
+commit that closes item 41.
+
+Authoritative context is `CLIENT_DELIVERY_SPRINT_v5.md` (§1 row A, §8 item
+41, §9). This file is working state only, not a second authority.
+
+---
+
+## 1. Approval and scope
+
+Human approved item 41 on 2026-08-11 and asked for it to be carried to
+completion. **Item 41 is investigation only** — the deliverable is a
+written, falsified proof of problem A's root cause plus a reproducible
+fixture. **Item 42 is the fix and is human-gated: do not start it**, no
+matter how obvious the cause looks.
+
+Hard constraints (from the item 41 prompt, still binding):
+- **Do not modify any `.py` file.** Not a debug print, not a comment. If
+  the fixture cannot be built without touching `.py`, stop and ask.
+- No architecture changes, no drive-by fixes (log in §9 and move on).
+- Locate code with grep anchors, never line numbers.
+- Derive the repo root from the working directory; never hardcode it.
+- Cannot run the app — everything comes from `troubleshooting/runs/`.
+
+---
+
+## 2. Orientation result (done 2026-08-11)
+
+- Repo root: derived from cwd, contains both `CLIENT_DELIVERY_SPRINT_v5.md`
+  and `Alpha_Live_Translator/`. Confirmed.
+- Target run: `Alpha_Live_Translator/troubleshooting/runs/v3.3.5.5.8.5.26.5.3-20260807-160529`
+- **Baseline: 410 tests, 5 failures + 2 errors + 2 skipped, the same 7
+  names.** The item 41 prompt expects 354 — **the prompt is stale, the repo
+  is fine.** 354 + 10 (item 38) + 4 (38b) + 17 (39) + 25 (51) = 410, and the
+  7 failing names are unchanged. Not a stop condition.
+- **`tools/replay_run.py` (item 38) exists and works.** Used throughout.
+
+## 3. What items 38/38b already established — do NOT re-derive
+
+Item 41 does not start from zero. Already proven and committed:
+
+- **Problem A's mechanism is an id collision, not a failed ledger write.**
+  The assembler commits two *textually disjoint* sentences under one
+  `canonical_utterance_id`; the ledger keys on that id, so the second lands
+  as a revision of the first and the first sentence's words never reach the
+  export. Commit `2d34a41`.
+- **§1's original wording ("never reach the canonical ledger") is already
+  corrected** in the sprint file. Records *do* reach it, then get
+  overwritten.
+- **The 10/10/9 framing is a misleading metric.** 10 stable rows resolve to
+  9 *distinct* utterance ids → 9 ledger records → 9 export lines. Nothing
+  "failed to arrive". Real loss on this run is **2 sentences**, both
+  `overwritten_by_id_collision`, both confirmed absent from the export.
+- **Timing is NOT the mechanism.** Real-timer replay (item 38b, `--real-timer`)
+  fixes decision-count divergence but still reproduces 0 of 14 losses.
+  Commit `960f907`.
+- **The leading candidate**, cross-validated against
+  `logs/japanese_accuracy.log`'s `STABLE_REVISION_DECISION` events on 12 of
+  13 observed id-reuse events across all 6 runs:
+  `japanese_sentence_assembler.py` computes `update_previous_requested`
+  (grep anchor: `update_previous_requested = bool(`) from boundary-stabilizer
+  signals *before* `decide_stable_revision_action` runs. When that function
+  returns `final_revision_action == "append"` (correctly: a new disjoint
+  sentence), the code resets `stable_layer_update_previous` /
+  `post_update_previous` and clears `metadata["boundary_should_revise"]` —
+  but **never reassigns `update_previous_requested` itself**. The id-mint
+  gate (grep anchor: `proposed_action = "revise_previous" if update_previous_requested`)
+  reads that stale variable rather than `final_revision_action`.
+
+**This is a lead, not a proof.** Item 41's real remaining work is Phase 4:
+falsify it properly, and kill the alternatives with quoted evidence.
+
+---
+
+## 4. Phase 1 + 2 findings
+
+_Fill in as gathered. See §6 step 1-2._
+
+---
+
+## 5. Phase 4 candidates and verdicts
+
+_Fill in. See §6 step 4._
+
+---
+
+## 6. Checklist — resume from the first unchecked box
+
+- [x] **0. Orientation** — baseline, tooling, run path. Done, see §2.
+- [x] **1. Phase 1 — four populations, independently derived.** P1 assembler
+      `commit_new` decisions, P2 `stable_commits.jsonl` rows, P3 canonical
+      ledger records, P4 FINAL export lines. Record the exact reproducible
+      command for each. State whether 10/10/9 reproduces **and** whether that
+      framing is meaningful (see §3 — it is not).
+- [x] **2. Phase 2 — identify the lost records.** Authoritative join key
+      (verify, do not assume it is `canonical_utterance_id`), the actual
+      Japanese text, session position, and what distinguishes them from the
+      survivors.
+- [x] **3. Phase 3 — hop-by-hop trace**, grep anchors only, from "assembler
+      emits commit_new" to "record exists in ledger". Every early return,
+      swallow, guard, dedup, id-space conversion. Mark Japanese-only vs
+      shared-with-English hops.
+- [x] **4. Phase 4 — falsify.** ≥4 candidates (dedup/containment false
+      positive, id-space mismatch, swallowed exception, race/ordering, plus
+      any Phase 3 suggests). Predictions written BEFORE checking. Kill with
+      quoted evidence. Survivor must explain all four of: the loss in
+      `...160529`; the higher-volume 08-08 reproductions; why English does
+      not show it; why `coverage_ratio` read clean. **If ≥2 survive, say so
+      — do not pick the likelier one.**
+- [x] **5. Phase 5 — fixture.** Minimal, deterministic, headless, committed.
+      Must fail NOW against unfixed code for the proven reason. **Not** the
+      fix's regression test. No `.py` edits — fixture goes in `tests/` or
+      `troubleshooting/` as a new file, which is allowed (new file ≠
+      modifying existing `.py`). If that reading is wrong, ask.
+- [x] **6. Phase 6 — write-up** at `troubleshooting/problem_A_root_cause.md`
+      (check that directory's existing naming convention first). Contents per
+      the prompt §9, including **what item 42 must be careful of** re: §0
+      rule 2 (two authorities alive).
+- [x] **7. Update sprint file** §8 (item 41 status, model = Opus 5) and §9.
+- [x] **8. Commit** — docs + fixture only, **zero `.py` changes** — and
+      delete this file in that commit.
+
+---
+
+## 7. Facts established — do not re-derive
+
+- Baseline 410 / 5F + 2E + 2S / 7 stable names. Venv at
+  `<repo_root>/.venv/Scripts/python.exe`, `unittest discover` only, no pytest.
+- 6 replayable Japanese runs: `...160529`, `...155922`, `...160130`,
+  `...134815`, `...155334`, `...174516`. English runs record zero genuine
+  provider ingress by design, so they cannot be replayed.
+- Per-run dropped-sentence counts (item 38, `tools/replay_run.py`):
+  `...155922` 1, `...160130` 2, `...160529` 2, `...134815` 3, `...155334` 6,
+  `...174516` 0. Total 14, all `overwritten_by_id_collision`, 14/14 absent
+  from their exports.
+- `logs/japanese_accuracy.log` is **pipe-delimited** (`timestamp | {json}`),
+  not plain JSONL. A naive `json.loads(line)` fails on every line.
+- Local uncommitted, deliberate, leave alone: `alpha/constants.py` has
+  `TEMP_AUDIO_RETENTION_ENABLED` / `TEMP_AUDIO_AUTO_DELETE_ENABLED` set
+  `False` at the user's request so live-test audio is not auto-deleted.
