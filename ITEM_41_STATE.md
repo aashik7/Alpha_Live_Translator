@@ -1,8 +1,20 @@
 # Item 41 — problem A root cause — live working state
 
-**Resume point.** If you are a new session picking this up: read this file,
-then continue from the first unchecked box in §6. Delete this file in the
-commit that closes item 41.
+> **STATUS 2026-08-11: item 41 delivered its verdict — ROOT CAUSE STRONGLY
+> INDICATED, NOT PROVEN.** Full write-up: `PROBLEM_A_ROOT_CAUSE.md` (repo
+> root). Phases 1–4 and 6 are done; **Phase 5 (fixture) FAILED** — no
+> deterministic reproduction exists, which item 41 §10 names as a
+> stop-and-report outcome rather than a failure to work around.
+>
+> **This file is deliberately NOT deleted.** There is a concrete next step
+> that needs human approval first (§8 below), and a falsification workflow
+> was still running when the write-up was committed (§9).
+>
+> **Do not start item 42 on this.** It cannot satisfy sprint §4 step 5
+> ("prove the test catches the bug") while no reproduction exists.
+
+**Resume point.** If you are a new session picking this up: read
+`PROBLEM_A_ROOT_CAUSE.md` first, then §8 and §9 of this file.
 
 Authoritative context is `CLIENT_DELIVERY_SPRINT_v5.md` (§1 row A, §8 item
 41, §9). This file is working state only, not a second authority.
@@ -250,8 +262,45 @@ the corrupted value. **Item 20b's fix is silently undermined on this path.**
       the prompt §9, including **what item 42 must be careful of** re: §0
       rule 2 (two authorities alive).
 - [x] **7. Update sprint file** §8 (item 41 status, model = Opus 5) and §9.
-- [x] **8. Commit** — docs + fixture only, **zero `.py` changes** — and
-      delete this file in that commit.
+- [x] **8. Commit** — docs only, **zero `.py` changes** (verified:
+      `git status --porcelain | grep '\.py$'` shows only the pre-existing
+      retention-flag change in `constants.py`, which predates item 41 and was
+      deliberately left unstaged).
+
+---
+
+## 8. The one open next step — needs human approval
+
+Phase 5 failed because **two independent harnesses now cannot reproduce
+problem A**: item 38b's real-timer replay (0 of the losses) and item 41's
+direct `_route_stable_publish` drive (id reused but nothing lost on same
+speaker; two distinct ids on a speaker change). The mechanism depends on live
+state neither reconstructs.
+
+**Proposed next step:** add temporary logging of `update_previous_requested`
+and `proposed_action` at the id-mint gate (anchor:
+`proposed_action = "revise_previous" if update_previous_requested`), then have
+the human run one live Japanese session. That would turn the current
+correlation (9/9 vs 3/3) into a direct causal record.
+
+**This requires editing a `.py`, which item 41 forbids — so it must be
+approved before anyone attempts it.** Candidate hidden conditions to look for:
+boundary-stabilizer internal state, `_last_stable_commit` lineage, and the
+point at which `_current_canonical_utterance_id` is reset.
+
+## 9. Background falsification workflow
+
+A 6-candidate adversarial falsification workflow was launched and was still
+on its trace agent when the write-up was committed. Its findings, if it
+completed, land in:
+
+`~/.claude/projects/C--Users-islamm-.../subagents/workflows/wf_c3020b85-040/`
+(`journal.jsonl` records each agent's return value.)
+
+The candidate verdicts in `PROBLEM_A_ROOT_CAUSE.md` §4 were reached
+independently of it, from direct evidence. If the workflow's output survives,
+treat it as a **cross-check**, not as the source — and if it contradicts §4,
+re-open the question rather than averaging the two.
 
 ---
 
