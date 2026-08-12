@@ -29,6 +29,8 @@ from alpha.config import (
 from alpha.audio.processing import ensure_deepgram_pcm_bytes, pcm_duration_ms
 from alpha.constants import (
     DG_GAP_MARKER_MIN_S,
+    DG_WS_PING_INTERVAL_S,
+    DG_WS_PING_TIMEOUT_S,
     DG_GAP_MARKER_TEMPLATE,
     APP_CODENAME,
     APP_VERSION,
@@ -2370,7 +2372,10 @@ class DeepgramClientMixin:
                     on_close=self._deepgram_on_close,  # CHANGED: (fix 5)
                 )  # CHANGED: (fix 5)
                 self._dg_ws = ws  # CHANGED: (fix 5)
-                ws.run_forever()  # CHANGED: blocking reconnect in daemon thread (fix 5)
+                ws.run_forever(
+                    ping_interval=DG_WS_PING_INTERVAL_S,
+                    ping_timeout=DG_WS_PING_TIMEOUT_S,
+                )  # CHANGED: blocking reconnect in daemon thread (fix 5)
             except Exception as exc:
                 print(f"[Reconnect] Deepgram reconnect error: {exc}")  # CHANGED: (fix 5)
             finally:
@@ -2806,7 +2811,10 @@ class DeepgramClientMixin:
                     on_close=self._deepgram_on_close,  # CHANGED: reconnect on close (fix 5)
                 )
                 self._dg_ws = ws
-                ws.run_forever()
+                ws.run_forever(
+                    ping_interval=DG_WS_PING_INTERVAL_S,
+                    ping_timeout=DG_WS_PING_TIMEOUT_S,
+                )
             except Exception as exc:
                 print(f"Deepgram connection error: {exc}")
 

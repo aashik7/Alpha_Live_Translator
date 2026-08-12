@@ -271,6 +271,22 @@ TRANSLATION_QUEUE_MAX_SIZE = 100
 # Item 44. A reconnect faster than this is not worth annotating -- the marker
 # would be noisier than the hole it describes. Longer gaps are real lost speech
 # and must be visible in the transcript, not silently stitched over.
+# Item 44 (reopened 2026-08-12 after a live network-drop test). websocket-client
+# blocks in run_forever() forever on a silently-dropped TCP connection -- a WiFi
+# drop sends no FIN, so on_close never fires and the whole reconnect chain
+# (backoff, replay buffer, single-flight lock) is never invoked. Measured on run
+# ...20260812-095935: 411 audio chunks discarded, zero reconnect events, app
+# alive but transcription dead until Stop.
+#
+# ping_interval makes the library send a WebSocket PING; if no PONG arrives
+# within ping_timeout it raises and closes, which is what fires on_close and
+# starts the reconnect. 10/5 detects a dead socket within ~15s -- fast enough
+# that a listener notices the gap marker rather than a silent freeze, and well
+# inside Deepgram's own idle tolerance. ping_timeout MUST stay < ping_interval
+# or websocket-client rejects it at runtime.
+DG_WS_PING_INTERVAL_S = 10
+DG_WS_PING_TIMEOUT_S = 5
+
 DG_GAP_MARKER_MIN_S = 2.0
 DG_GAP_MARKER_TEMPLATE = "[connection lost - approximately {seconds}s of audio not captured]"
 
