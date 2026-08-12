@@ -20,6 +20,7 @@ identity is observed/assigned and commits happen, for both languages.
 from __future__ import annotations
 
 import json
+import re
 import string
 import threading
 import time
@@ -72,6 +73,21 @@ _TIMING_OVERLAP_MIN_S = 0.05
 _PREMATURE_COMMIT_REASONS = frozenset(
     {"inactivity_timeout_fallback", "extend_then_commit"}
 )
+
+# Commit reasons after which a re-sent tail must NOT be stripped from the next
+# utterance. A provider disconnect is the case that matters: the words after
+# the hole are not a continuation of the words before it, so an apparent
+# overlap there is coincidence, not the provider repeating itself.
+_HARD_BOUNDARY_COMMIT_REASONS = frozenset({"provider_disconnected"})
+
+# A sentence terminator, allowing for a closing quote or bracket after it.
+_SENTENCE_TERMINATED = re.compile(r'[.!?]["\')\]]*\s*$')
+
+
+def _ends_a_sentence(text: str) -> bool:
+    return bool(_SENTENCE_TERMINATED.search((text or "").rstrip()))
+
+
 
 # Fallback inactivity commit (ms). Uses existing meeting-buffer scale; does not
 # change Deepgram endpointing configuration.
@@ -271,6 +287,63 @@ def _boundary_token_collapse(
         return None  # leading whitespace token is not the first comparison token
     remainder = " ".join(curr_parts[1:]).strip()
     return f"{prev} {remainder}" if remainder else prev
+
+
+def _strip_committed_tail_prefix(
+    committed_text: str,
+    lexical: str,
+    *,
+    min_run: int = 3,
+) -> Optional[str]:
+    """Drop the head of a new utterance that repeats the tail already committed.
+
+    fixes CLIENT_DELIVERY_SPRINT_v5.md item 66. When a commit lands mid-sentence
+    -- which `utterance_end` and `speech_final` both do, because they mean
+    *speech* paused, not that a *sentence* finished -- the provider's next
+    window re-sends the span it just sent. `_merge_lexical`'s overlap machinery
+    (`_overlap_join`, `_tail_resend_splice`) only ever runs WITHIN one active
+    utterance, so once the previous one is committed nothing dedupes across the
+    boundary and the tail is stored twice, in two records.
+
+    Measured on run `...20260812-161651`, 5 of 7 exported records:
+
+        [5] "...in Duterte, he writes openly, I never considered"
+        [6] "he writes openly, I never considered him an impostor at all"
+
+    This removes only the leading run that is provably a suffix of the text
+    already committed, so nothing is lost -- those words are in the previous
+    record, verbatim. `min_run=3` matches `_tail_resend_splice`'s bound: this
+    can discard text, and a coincidental one- or two-word echo across a genuine
+    utterance boundary ("...thank you." / "You are welcome") must not trigger
+    it.
+
+    Deliberately NOT solved by extending the committed record instead. That was
+    tried and measured: routing these through `_extend_committed_locked`
+    produces the correct merged text in the lifecycle and the store, but the
+    canonical write is skipped as `already_committed`, so the LEDGER keeps the
+    truncated record -- and the export reads the ledger. Truncating the export
+    is worse than the duplication being fixed. Stripping the new utterance's
+    prefix revises nothing and cannot reach the ledger's existing records.
+
+    Returns the trimmed text, or None when there is no qualifying overlap.
+    """
+    prev_tokens = _compare_tokens(committed_text)
+    curr_parts = (lexical or "").split()
+    curr_tokens = _compare_tokens(lexical)
+    if len(prev_tokens) < min_run or len(curr_tokens) < min_run:
+        return None
+    limit = min(len(prev_tokens), len(curr_tokens))
+    for k in range(limit, min_run - 1, -1):
+        if prev_tokens[-k:] != curr_tokens[:k]:
+            continue
+        # Align the comparison tokens back onto the original whitespace tokens
+        # before cutting, rather than assuming they index the same -- edge
+        # punctuation is stripped for comparison and empty tokens are dropped.
+        if _compare_tokens(" ".join(curr_parts[:k])) != curr_tokens[:k]:
+            return None
+        remainder = " ".join(curr_parts[k:]).strip()
+        return remainder or None
+    return None
 
 
 def _known_speaker(value: Any) -> Optional[int]:
@@ -568,6 +641,7 @@ class UtteranceLifecycleOwner:
             "supersessions": 0,
             "sentence_boundary_flushes": 0,
             "in_flight_commits": 0,
+            "resent_tails_trimmed": 0,
         }
 
     # ------------------------------------------------------------------
@@ -1704,6 +1778,50 @@ class UtteranceLifecycleOwner:
                 pass
         return related
 
+    def _trim_resent_tail_locked(
+        self, lexical: str, *, channel: Any, speaker: Any
+    ) -> str:
+        """Item 66: drop a head that repeats the previously committed tail.
+
+        Only fires when the previous record is genuinely the thing this text
+        continues: same channel, same confirmed speaker, and not committed at a
+        hard boundary. A provider disconnect is excluded because the words on
+        either side of the hole are unrelated, so an apparent overlap there is
+        coincidence rather than the provider repeating itself.
+
+        Returns `lexical` unchanged whenever anything is uncertain -- this can
+        remove text, so every gate fails closed.
+        """
+        prev = self._last_committed
+        if prev is None or not prev.committed or not (lexical or "").strip():
+            return lexical
+        if str(prev.commit_reason or "") in _HARD_BOUNDARY_COMMIT_REASONS:
+            return lexical
+        if not _channel_matches_exactly(prev.channel, channel):
+            return lexical
+        if not speakers_confirmed_same(
+            _known_speaker(prev.speaker), _known_speaker(speaker)
+        ):
+            return lexical
+        trimmed = _strip_committed_tail_prefix(prev.text, lexical)
+        if trimmed is None or trimmed == lexical:
+            return lexical
+        self._stats["resent_tails_trimmed"] += 1
+        try:
+            from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+            jp_accuracy_log(
+                "RESENT_TAIL_TRIMMED",
+                reason="head_duplicated_previously_committed_tail",
+                session_id=self._session_id,
+                canonical_utterance_id=prev.utterance_id,
+                prev_commit_reason=str(prev.commit_reason or ""),
+                removed_preview=(lexical or "")[: max(0, len(lexical) - len(trimmed))][:120],
+            )
+        except Exception:
+            pass
+        return trimmed
+
     def _is_premature_continuation_locked(
         self,
         *,
@@ -1794,6 +1912,14 @@ class UtteranceLifecycleOwner:
         previous_text = active.text if active else ""
 
         if force_new or active is None or active.committed:
+            # Item 66: a commit that landed mid-sentence is followed by the
+            # provider re-sending that span. The previous utterance is already
+            # committed, so `_merge_lexical`'s overlap machinery never sees it
+            # and the tail ends up stored in two records. Trim it here, at the
+            # one point a new utterance inherits text straight from the wire.
+            lexical = self._trim_resent_tail_locked(
+                lexical, channel=channel, speaker=speaker
+            )
             self._seq += 1
             uid = f"U-{self._seq}"
             active = ActiveUtterance(
