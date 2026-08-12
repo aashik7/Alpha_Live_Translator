@@ -82,6 +82,48 @@ def _websocket():
     return websocket
 
 
+def _keepalive_websocket_app_class():
+    """`WebSocketApp` whose ping thread cannot crash the app on disconnect.
+
+    Item 44, fourth correction, and this one was self-inflicted. Passing
+    `ping_interval` (the keepalive that finally made dropped sockets
+    detectable) makes websocket-client start a `_send_ping` thread. In 1.6.0
+    that thread's whole body is
+
+        if self.stop_ping.wait(self.ping_interval) or ...
+        while not self.stop_ping.wait(self.ping_interval) and ...
+
+    with no guard, while `stop_ping` is `None` until `_start_ping_thread`
+    assigns it and is torn down around it. On live run
+    `...20260812-150116` that raced during the WiFi drop and raised
+    `AttributeError: 'NoneType' object has no attribute 'wait'` in
+    `Thread-6 (_send_ping)`. Nothing catches it -- it is a bare thread -- so it
+    reached the app's thread excepthook, fired `CRASH_HOOK_TRIGGERED` /
+    `UNHANDLED_EXCEPTION_CAPTURED` at 15:03:50, and the run was recorded
+    `status: crashed` with a partial output written.
+
+    There was no ping thread before the keepalive, so this failure mode
+    arrived with it. The override is deliberately narrow: it swallows the
+    AttributeError **only** when `stop_ping` is actually gone, which is
+    precisely the teardown race, and re-raises anything else so a genuine bug
+    in this thread still surfaces. A ping thread that exits during teardown is
+    correct behaviour -- there is nothing left to ping.
+    """
+    websocket = _websocket()
+    base = websocket.WebSocketApp
+
+    class _KeepaliveWebSocketApp(base):
+        def _send_ping(self, *args, **kwargs):
+            try:
+                return super()._send_ping(*args, **kwargs)
+            except AttributeError:
+                if getattr(self, "stop_ping", None) is not None:
+                    raise  # a real AttributeError, not the teardown race
+                return None
+
+    return _KeepaliveWebSocketApp
+
+
 def _diag_text_preview(text: str, max_len: int = 160) -> str:
     limit = LOG_PREVIEW_MAX_CHARS if PERFORMANCE_SAFE_LOGGING else max_len
     return (text or "")[:limit]
@@ -2406,7 +2448,7 @@ class DeepgramClientMixin:
                     url = self._build_deepgram_url()  # CHANGED: fresh URL on reconnect (fix 5)
                     print(f"[Reconnect] Connecting to Deepgram: {url}")  # CHANGED: (fix 5)
                     self._dg_awaiting_transcript_reset = True  # CHANGED: reset backoff after transcript (fix 5)
-                    ws = _websocket().WebSocketApp(  # CHANGED: new WebSocket session (fix 5)
+                    ws = _keepalive_websocket_app_class()(  # CHANGED: new WebSocket session (fix 5)
                         url,  # CHANGED: (fix 5)
                         header={"Authorization": f"Token {DEEPGRAM_API_KEY}"},  # CHANGED: (fix 5)
                         on_message=self._deepgram_on_message,  # CHANGED: (fix 5)
@@ -2849,7 +2891,7 @@ class DeepgramClientMixin:
             except Exception:
                 pass
             try:
-                ws = _websocket().WebSocketApp(
+                ws = _keepalive_websocket_app_class()(
                     url,
                     header={"Authorization": f"Token {DEEPGRAM_API_KEY}"},
                     on_message=self._deepgram_on_message,
