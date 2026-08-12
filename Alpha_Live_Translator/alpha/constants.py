@@ -290,6 +290,27 @@ DG_WS_PING_TIMEOUT_S = 5
 DG_GAP_MARKER_MIN_S = 2.0
 DG_GAP_MARKER_TEMPLATE = "[connection lost - approximately {seconds}s of audio not captured]"
 
+# Item 65's English sentence-boundary flush -- OFF until the loss below is
+# understood. The flush itself works: on run ...20260812-142447 it fired 8
+# times, each publishing a finished sentence block instead of letting one
+# utterance grow to thousands of characters. But only 1 of the 9 committed
+# utterances reached the canonical ledger and the export -- and the survivor is
+# the ONE commit that did not come from the flush (it came from the
+# pre-existing inactivity_timeout_fallback path). 4218 characters of real
+# speech were published and never exported.
+#
+# What is ruled out, by driving the real code with that run's real metadata
+# rather than reading logs: `decide_transcript_action` returns "add" for all 9
+# (no skip), `_display_transcript_item` stores all 9, and the flush publishes
+# MORE records than the old path, not fewer. What is NOT yet explained is where
+# the 8 die between `transcript_events_posted: 10` and the single canonical
+# record. Nothing in the run logs says, because the skip branch is silent.
+#
+# Long lines are ugly; losing 89% of a client's transcript is not shippable.
+# This project's own rule is that silent content loss outranks duplication, so
+# the flush stays off until the gap is explained. Item 65 is reopened.
+ENGLISH_SENTENCE_FLUSH_ENABLED = False
+
 TRANSLATION_MAX_RETRIES = 2
 # Item 45. After this many CONSECUTIVE failed jobs (retries already exhausted),
 # stop calling DeepL for a cooldown instead of burning ~7s of retry+backoff on

@@ -102,6 +102,29 @@ class DeepLClient:
             name = type(exc).__name__
             msg = str(exc)
             low = msg.lower()
+            # A dropped network is the most retryable failure there is, and it
+            # was being classified as permanent. `deepl.ConnectionException`
+            # subclasses `DeepLException`, so it fell through to the
+            # `retryable=False` branch below and the job was marked
+            # `permanently_failed` with `retry_count: 0` -- no backoff, no
+            # second chance, translation simply gone for that line. Measured on
+            # run `...20260812-142447`: the one and only translation request
+            # was issued at 14:30:01, during the WiFi drop, and died there;
+            # `failed_translations: 1`, `successful_translations: 0`.
+            #
+            # Checked on the exception TYPE first, before the message-substring
+            # rules below. Those are broad -- `"auth" in low` matches any
+            # message that merely contains "auth" -- so a connection error
+            # whose text happens to mention authorization would otherwise be
+            # classified permanent again.
+            if name in (
+                "ConnectionException",
+                "ConnectionError",
+                "ConnectTimeout",
+                "ReadTimeout",
+                "Timeout",
+            ) or "connection" in low:
+                raise DeepLError(msg, code="connection_failed", retryable=True) from exc
             # Map common DeepL SDK / HTTP failures
             if "429" in msg or "too many requests" in low:
                 raise DeepLError(msg, code="http_429", retryable=True) from exc

@@ -44,11 +44,13 @@ published, or abandoned?), which a pure-function test cannot settle.
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from alpha import constants  # noqa: E402
 from alpha.transcription.utterance_lifecycle import (  # noqa: E402
     _PREMATURE_COMMIT_REASONS,
     _audio_spans_overlap,
@@ -148,7 +150,20 @@ class _Recorder:
 
 
 class SentenceBoundaryFlushTest(unittest.TestCase):
-    """Item 65 -- driven through the real lifecycle, not the helper."""
+    """Item 65 -- driven through the real lifecycle, not the helper.
+
+    REOPENED 2026-08-12. The flush is gated OFF by
+    `ENGLISH_SENTENCE_FLUSH_ENABLED`: on live run `...142447` it fired 8 times
+    and only 1 of the 9 committed utterances reached the export -- the one
+    commit that did NOT come from the flush. These tests force the flag on so
+    the mechanism stays pinned while it is disabled in production; the class
+    below pins that production default.
+    """
+
+    def setUp(self):
+        patcher = patch.object(constants, "ENGLISH_SENTENCE_FLUSH_ENABLED", True)
+        patcher.start()
+        self.addCleanup(patcher.stop)
 
     def _lifecycle(self):
         recorder = _Recorder()
@@ -220,6 +235,38 @@ class SentenceBoundaryFlushTest(unittest.TestCase):
         self._final(life, "First sentence is complete.", start=0.0, end=2.0, event_id="e1")
         self._final(life, "Second sentence starts here.", start=2.1, end=4.0, event_id="e2")
         self.assertEqual(life.stats().get("sentence_boundary_flushes"), 1)
+
+
+class FlushIsDisabledInProductionTest(unittest.TestCase):
+    """The gate itself -- item 65 reopened.
+
+    Pinned as a test rather than left to the constant alone so that re-enabling
+    the flush cannot happen by accident: turning it on must fail here first,
+    which is the prompt to re-read why it was turned off.
+    """
+
+    def test_flag_defaults_off(self):
+        self.assertFalse(
+            constants.ENGLISH_SENTENCE_FLUSH_ENABLED,
+            "item 65's flush lost 8 of 9 utterances on run ...142447 -- do not "
+            "re-enable until that loss is explained",
+        )
+
+    def test_no_flush_happens_with_the_production_default(self):
+        recorder = _Recorder()
+        life = UtteranceLifecycleOwner(on_commit=recorder)
+        life.reset_for_session("session-default")
+        for i, (text, start, end) in enumerate(
+            [("First sentence is complete.", 0.0, 2.0),
+             ("Second sentence starts here.", 2.1, 4.0)], 1
+        ):
+            life.on_final_chunk(
+                text=text, speaker=1, channel=0, start=start, end=end,
+                is_final=True, speech_final=False, event_id=f"d{i}",
+                metadata={"start_time": start, "end_time": end},
+            )
+        self.assertEqual(recorder.commits, [])
+        self.assertEqual(life.stats().get("sentence_boundary_flushes"), 0)
 
 
 if __name__ == "__main__":

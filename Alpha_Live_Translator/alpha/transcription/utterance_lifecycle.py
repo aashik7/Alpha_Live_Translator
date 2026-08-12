@@ -2010,6 +2010,19 @@ class UtteranceLifecycleOwner:
         let the very next chunk extend the flushed record and glue the line
         back together.
         """
+        # Gated OFF by default -- see ENGLISH_SENTENCE_FLUSH_ENABLED in
+        # constants.py. The flush fires correctly, but on run
+        # ...20260812-142447 only 1 of the 9 utterances it committed reached
+        # the export, and the survivor was the one commit that did NOT come
+        # from here. Until that is explained, the long-line problem is the
+        # lesser evil.
+        try:
+            from alpha.constants import ENGLISH_SENTENCE_FLUSH_ENABLED
+
+            if not ENGLISH_SENTENCE_FLUSH_ENABLED:
+                return False
+        except Exception:
+            return False  # fail closed: no flag, no flush
         active = self._active
         if active is None or active.committed:
             return False

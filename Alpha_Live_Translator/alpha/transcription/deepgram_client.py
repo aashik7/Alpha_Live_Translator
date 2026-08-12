@@ -2123,6 +2123,19 @@ class DeepgramClientMixin:
     def _deepgram_on_open(self, ws):
             """Start streaming queued audio to Deepgram when the socket opens."""
             print("Nova-3 connected — streaming audio to Deepgram")
+            # Item 44, second correction. The gap marker used to be emitted in
+            # `_reconnect_deepgram` just before `run_forever`, i.e. before the
+            # socket was known to connect -- so on run `...20260812-142447` it
+            # reported `gap_seconds: 2.6` for an outage that actually lasted 45
+            # seconds, and cleared the clock so the later, longer truth could
+            # never be recorded. Marking here instead means it fires exactly
+            # once per outage, when the connection is genuinely back, carrying
+            # the real duration. On the very first connect of a session
+            # `_dg_disconnected_at` is 0, so this returns without marking.
+            try:
+                self._mark_deepgram_gap_if_any()
+            except Exception:
+                pass
             try:
                 from alpha.utils.multidomain_gate_evidence import record_lifecycle_event
 
@@ -2327,57 +2340,91 @@ class DeepgramClientMixin:
         return gap_s
 
     def _reconnect_deepgram(self):
-            """Reconnect to Deepgram with exponential backoff and audio replay."""
+            """Reconnect to Deepgram with exponential backoff and audio replay.
+
+            Item 44, third correction -- this used to make exactly ONE attempt.
+            `_schedule_reconnect` is single-flight on `_dg_reconnecting`, and
+            `websocket-client` invokes `on_close` from *inside* `run_forever`.
+            So when an attempt failed because the network was still down, the
+            `_deepgram_on_close` -> `_schedule_reconnect()` retry signal arrived
+            while `_dg_reconnecting` was still True and was dropped on the
+            floor; the `finally` then cleared the flag with nobody left to call
+            again. One failed attempt killed transcription for the rest of the
+            session. Measured on run `...20260812-142447`: WiFi dropped at
+            14:30:00 and returned at 14:30:45, one reconnect ran at 14:30:03,
+            and the app never transcribed again -- 217 audio chunks discarded,
+            the last commit at 14:30:01, session ended `failed`.
+
+            Retrying is therefore the loop's own job, not the close handler's.
+            `run_forever` returning at all means the socket is down (it either
+            never opened or has just dropped), so every return is a reason to
+            try again until Stop. Backoff still doubles to
+            DG_RECONNECT_BACKOFF_MAX_S, so a long outage costs a bounded number
+            of attempts, and `_schedule_reconnect`'s guard stays correct: while
+            this loop is alive it IS the reconnect.
+            """
             try:
-                buffered = []  # CHANGED: snapshot queued audio before reconnect (fix 5)
-                if self._audio_q is not None:  # CHANGED: (fix 5)
-                    while True:  # CHANGED: (fix 5)
+                while self.is_listening and not self._stop_event.is_set():
+                  # Per-attempt, NOT around the loop: an exception in one
+                  # attempt must not end the retrying, which is the same shape
+                  # as the bug this loop exists to fix.
+                  try:
+                    buffered = []  # CHANGED: snapshot queued audio before reconnect (fix 5)
+                    if self._audio_q is not None:  # CHANGED: (fix 5)
+                        while True:  # CHANGED: (fix 5)
+                            try:
+                                buffered.append(self._audio_q.get_nowait())  # CHANGED: (fix 5)
+                            except queue.Empty:  # CHANGED: (fix 5)
+                                break  # CHANGED: (fix 5)
+                    if buffered:
+                        # Only replace the buffer when this attempt actually
+                        # drained something: a failed attempt must not wipe the
+                        # audio a previous one already captured.
+                        self._dg_replay_buffer = buffered  # CHANGED: replay on next on_open (fix 5)
+
+                    # Floor of 1s: the loop now runs until Stop, so a backoff
+                    # that ever reached 0 would spin the CPU forever instead of
+                    # retrying. Matches the documented 1.0 start value.
+                    wait_s = min(
+                        max(float(self._dg_backoff_seconds or 0.0), 1.0),
+                        DG_RECONNECT_BACKOFF_MAX_S,
+                    )  # CHANGED: backoff cap (fix 5)
+                    print(f"[Reconnect] Waiting {wait_s:.0f}s before reconnect (backoff)")  # CHANGED: (fix 5)
+                    time.sleep(wait_s)  # CHANGED: exponential backoff delay (fix 5)
+                    self._dg_backoff_seconds = min(wait_s * 2, DG_RECONNECT_BACKOFF_MAX_S)  # CHANGED: (fix 5)
+
+                    if not self.is_listening or self._stop_event.is_set():  # CHANGED: (fix 5)
+                        return
+
+                    if self._dg_ws is not None:  # CHANGED: close stale socket (fix 5)
                         try:
-                            buffered.append(self._audio_q.get_nowait())  # CHANGED: (fix 5)
-                        except queue.Empty:  # CHANGED: (fix 5)
-                            break  # CHANGED: (fix 5)
-                self._dg_replay_buffer = buffered  # CHANGED: replay on next on_open (fix 5)
+                            self._dg_ws.close()  # CHANGED: (fix 5)
+                        except Exception:
+                            pass  # CHANGED: (fix 5)
+                        self._dg_ws = None  # CHANGED: (fix 5)
 
-                wait_s = min(self._dg_backoff_seconds, DG_RECONNECT_BACKOFF_MAX_S)  # CHANGED: backoff cap (fix 5)
-                print(f"[Reconnect] Waiting {wait_s:.0f}s before reconnect (backoff)")  # CHANGED: (fix 5)
-                time.sleep(wait_s)  # CHANGED: exponential backoff delay (fix 5)
-                self._dg_backoff_seconds = min(self._dg_backoff_seconds * 2, DG_RECONNECT_BACKOFF_MAX_S)  # CHANGED: (fix 5)
-
-                if not self.is_listening or self._stop_event.is_set():  # CHANGED: (fix 5)
-                    return
-
-                if self._dg_ws is not None:  # CHANGED: close stale socket (fix 5)
-                    try:
-                        self._dg_ws.close()  # CHANGED: (fix 5)
-                    except Exception:
-                        pass  # CHANGED: (fix 5)
-                    self._dg_ws = None  # CHANGED: (fix 5)
-
-                url = self._build_deepgram_url()  # CHANGED: fresh URL on reconnect (fix 5)
-                print(f"[Reconnect] Connecting to Deepgram: {url}")  # CHANGED: (fix 5)
-                # Item 44: annotate the hole BEFORE the new socket starts
-                # producing transcript, so the marker lands in the right place
-                # in the transcript rather than after post-reconnect speech.
-                try:
-                    self._mark_deepgram_gap_if_any()
-                except Exception:
-                    pass
-                self._dg_awaiting_transcript_reset = True  # CHANGED: reset backoff after transcript (fix 5)
-                ws = _websocket().WebSocketApp(  # CHANGED: new WebSocket session (fix 5)
-                    url,  # CHANGED: (fix 5)
-                    header={"Authorization": f"Token {DEEPGRAM_API_KEY}"},  # CHANGED: (fix 5)
-                    on_message=self._deepgram_on_message,  # CHANGED: (fix 5)
-                    on_open=self._deepgram_on_open,  # CHANGED: (fix 5)
-                    on_error=self._deepgram_on_error,  # CHANGED: (fix 5)
-                    on_close=self._deepgram_on_close,  # CHANGED: (fix 5)
-                )  # CHANGED: (fix 5)
-                self._dg_ws = ws  # CHANGED: (fix 5)
-                ws.run_forever(
-                    ping_interval=DG_WS_PING_INTERVAL_S,
-                    ping_timeout=DG_WS_PING_TIMEOUT_S,
-                )  # CHANGED: blocking reconnect in daemon thread (fix 5)
+                    url = self._build_deepgram_url()  # CHANGED: fresh URL on reconnect (fix 5)
+                    print(f"[Reconnect] Connecting to Deepgram: {url}")  # CHANGED: (fix 5)
+                    self._dg_awaiting_transcript_reset = True  # CHANGED: reset backoff after transcript (fix 5)
+                    ws = _websocket().WebSocketApp(  # CHANGED: new WebSocket session (fix 5)
+                        url,  # CHANGED: (fix 5)
+                        header={"Authorization": f"Token {DEEPGRAM_API_KEY}"},  # CHANGED: (fix 5)
+                        on_message=self._deepgram_on_message,  # CHANGED: (fix 5)
+                        on_open=self._deepgram_on_open,  # CHANGED: (fix 5)
+                        on_error=self._deepgram_on_error,  # CHANGED: (fix 5)
+                        on_close=self._deepgram_on_close,  # CHANGED: (fix 5)
+                    )  # CHANGED: (fix 5)
+                    self._dg_ws = ws  # CHANGED: (fix 5)
+                    ws.run_forever(
+                        ping_interval=DG_WS_PING_INTERVAL_S,
+                        ping_timeout=DG_WS_PING_TIMEOUT_S,
+                    )  # CHANGED: blocking reconnect in daemon thread (fix 5)
+                    # run_forever returned: the socket is down again. Loop.
+                  except Exception as exc:
+                    print(f"[Reconnect] Deepgram reconnect attempt failed: {exc}")
+                    # fall through to the next attempt rather than giving up
             except Exception as exc:
-                print(f"[Reconnect] Deepgram reconnect error: {exc}")  # CHANGED: (fix 5)
+                print(f"[Reconnect] Deepgram reconnect loop error: {exc}")  # CHANGED: (fix 5)
             finally:
                 with self._dg_reconnect_lock:  # CHANGED: release reconnect lock (fix 5)
                     self._dg_reconnecting = False
