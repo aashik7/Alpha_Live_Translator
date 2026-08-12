@@ -1833,6 +1833,14 @@ class DeepgramClientMixin:
                     segment_text = prepared
             if metadata:
                 queue_item.update(metadata)
+                # Defence in depth for item 65-flush. This function only ever
+                # publishes FINAL segments -- it sets `is_final: True` above --
+                # but the blanket `update(metadata)` happily overwrites that
+                # with a stale `False` carried on the triggering event's
+                # metadata, and `_display_transcript_item` then drops the item
+                # silently before any commit. Re-assert it rather than trusting
+                # every upstream metadata producer to leave it alone.
+                queue_item["is_final"] = True
             if commit_reason:
                 queue_item["stabilizer_reason"] = commit_reason
             if hasattr(self, "publish_transcript_event"):

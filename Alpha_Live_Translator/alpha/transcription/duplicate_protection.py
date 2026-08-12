@@ -223,6 +223,31 @@ class DuplicateProtectionMixin:
         self._ensure_stability_state()
 
         if item.get("is_final") is False:
+            # Item 65-flush: this return discarded 8 of 9 committed utterances
+            # on run ...20260812-142447 and said nothing anywhere, which is the
+            # only reason the cause took three sessions to find. The drop
+            # itself is correct -- interims must not reach the store -- but an
+            # item carrying a commit reason is NOT an interim, it is a commit
+            # whose is_final was clobbered upstream, and that must be visible.
+            if item.get("lifecycle_commit_reason") or item.get("stabilizer_reason"):
+                try:
+                    from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+                    jp_accuracy_log(
+                        "COMMITTED_SEGMENT_DROPPED_AS_INTERIM",
+                        reason="is_final_false_on_a_committed_segment",
+                        commit_reason=str(
+                            item.get("lifecycle_commit_reason")
+                            or item.get("stabilizer_reason")
+                            or ""
+                        ),
+                        canonical_utterance_id=str(
+                            item.get("canonical_utterance_id") or ""
+                        ),
+                        text_preview=str(item.get("text") or "")[:120],
+                    )
+                except Exception:
+                    pass
             return
 
         speaker_num = item.get("speaker", 1)

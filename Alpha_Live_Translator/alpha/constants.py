@@ -290,26 +290,29 @@ DG_WS_PING_TIMEOUT_S = 5
 DG_GAP_MARKER_MIN_S = 2.0
 DG_GAP_MARKER_TEMPLATE = "[connection lost - approximately {seconds}s of audio not captured]"
 
-# Item 65's English sentence-boundary flush -- OFF until the loss below is
-# understood. The flush itself works: on run ...20260812-142447 it fired 8
-# times, each publishing a finished sentence block instead of letting one
-# utterance grow to thousands of characters. But only 1 of the 9 committed
-# utterances reached the canonical ledger and the export -- and the survivor is
-# the ONE commit that did not come from the flush (it came from the
-# pre-existing inactivity_timeout_fallback path). 4218 characters of real
-# speech were published and never exported.
+# Item 65's English sentence-boundary flush. Back ON 2026-08-12, once the loss
+# that disabled it was traced to a cause outside the flush itself.
 #
-# What is ruled out, by driving the real code with that run's real metadata
-# rather than reading logs: `decide_transcript_action` returns "add" for all 9
-# (no skip), `_display_transcript_item` stores all 9, and the flush publishes
-# MORE records than the old path, not fewer. What is NOT yet explained is where
-# the 8 die between `transcript_events_posted: 10` and the single canonical
-# record. Nothing in the run logs says, because the skip branch is silent.
+# The flush was never the defect. On run ...20260812-142447 it fired 8 times
+# and only 1 of the 9 committed utterances reached the export -- but the
+# survivor was the ONE commit that did NOT come from the flush. The difference
+# between them was a single field: all 8 flush commits carried
+# `is_final: False`, the survivor carried `is_final: None`, and
+# `_display_transcript_item` opens with `if item.get("is_final") is False:
+# return`. `None` passes that identity check; `False` does not.
 #
-# Long lines are ugly; losing 89% of a client's transcript is not shippable.
-# This project's own rule is that silent content loss outranks duplication, so
-# the flush stays off until the gap is explained. Item 65 is reopened.
-ENGLISH_SENTENCE_FLUSH_ENABLED = False
+# `_commit_locked` builds its metadata by spreading the TRIGGERING event's
+# metadata last, so a commit raised while handling a chunk whose metadata said
+# `is_final: False` inherited it; `_publish_final_transcript_segment`'s
+# `queue_item.update(metadata)` then overwrote the `is_final: True` it had just
+# set. Evidence: 10 publishes, `PIPELINE_COMMIT_TRANSACTION_STARTED: 1`, and
+# nothing logged, because that return is silent.
+#
+# That bug was never specific to this flush -- ANY commit raised while handling
+# an event with `is_final: False` was discarded the same way. The flush only
+# made it frequent enough to notice. Fixed in three places (the commit's own
+# metadata, the publish path, and a log on the drop), so this is safe to run.
+ENGLISH_SENTENCE_FLUSH_ENABLED = True
 
 TRANSLATION_MAX_RETRIES = 2
 # Item 45. After this many CONSECUTIVE failed jobs (retries already exhausted),

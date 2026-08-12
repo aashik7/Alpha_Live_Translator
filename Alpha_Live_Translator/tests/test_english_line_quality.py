@@ -237,22 +237,21 @@ class SentenceBoundaryFlushTest(unittest.TestCase):
         self.assertEqual(life.stats().get("sentence_boundary_flushes"), 1)
 
 
-class FlushIsDisabledInProductionTest(unittest.TestCase):
-    """The gate itself -- item 65 reopened.
+class FlushIsEnabledInProductionTest(unittest.TestCase):
+    """Item 65's flush is ON again as of 2026-08-12.
 
-    Pinned as a test rather than left to the constant alone so that re-enabling
-    the flush cannot happen by accident: turning it on must fail here first,
-    which is the prompt to re-read why it was turned off.
+    It was disabled after run ...142447 lost 8 of 9 committed utterances. The
+    cause turned out to be outside the flush: every flush commit carried
+    `is_final: False` inherited from its triggering event, and
+    `_display_transcript_item` drops those silently. The survivor was the one
+    commit whose metadata had no `is_final` key at all. See
+    tests/test_committed_segment_is_final.py.
     """
 
-    def test_flag_defaults_off(self):
-        self.assertFalse(
-            constants.ENGLISH_SENTENCE_FLUSH_ENABLED,
-            "item 65's flush lost 8 of 9 utterances on run ...142447 -- do not "
-            "re-enable until that loss is explained",
-        )
+    def test_flag_defaults_on(self):
+        self.assertTrue(constants.ENGLISH_SENTENCE_FLUSH_ENABLED)
 
-    def test_no_flush_happens_with_the_production_default(self):
+    def test_a_finished_sentence_commits_with_the_production_default(self):
         recorder = _Recorder()
         life = UtteranceLifecycleOwner(on_commit=recorder)
         life.reset_for_session("session-default")
@@ -265,8 +264,8 @@ class FlushIsDisabledInProductionTest(unittest.TestCase):
                 is_final=True, speech_final=False, event_id=f"d{i}",
                 metadata={"start_time": start, "end_time": end},
             )
-        self.assertEqual(recorder.commits, [])
-        self.assertEqual(life.stats().get("sentence_boundary_flushes"), 0)
+        self.assertEqual(recorder.commits, ["First sentence is complete."])
+        self.assertEqual(life.stats().get("sentence_boundary_flushes"), 1)
 
 
 if __name__ == "__main__":

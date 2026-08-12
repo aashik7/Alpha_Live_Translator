@@ -2534,6 +2534,32 @@ class UtteranceLifecycleOwner:
                 def _default(dec: LifecycleDecision) -> None:
                     meta = dict(dec.metadata or {})
                     meta["speech_final"] = True
+                    # A committed utterance IS final -- say so explicitly.
+                    #
+                    # This is item 65-flush's root cause. `_commit_locked`
+                    # builds its metadata by spreading the TRIGGERING event's
+                    # metadata last, so a commit raised while handling a chunk
+                    # whose metadata carried `is_final: False` inherits that
+                    # False. It then reaches
+                    # `_publish_final_transcript_segment`, whose
+                    # `queue_item.update(metadata)` overwrites the `is_final:
+                    # True` it had just set, and `_display_transcript_item`
+                    # opens with `if item.get("is_final") is False: return` --
+                    # a silent drop, before the canonical commit, with nothing
+                    # logged anywhere.
+                    #
+                    # Measured on run `...20260812-142447`: all 8
+                    # `sentence_boundary_flush` commits carried
+                    # `is_final: False` and were dropped; the single survivor
+                    # was the `inactivity_timeout_fallback` commit, whose
+                    # metadata had no `is_final` key at all, so the `is False`
+                    # identity check let `None` through. 10 publishes,
+                    # `PIPELINE_COMMIT_TRANSACTION_STARTED: 1`.
+                    #
+                    # Not specific to the flush: ANY commit triggered while
+                    # handling an event with `is_final: False` was silently
+                    # discarded. The flush only made it frequent enough to see.
+                    meta["is_final"] = True
                     meta["canonical_utterance_id"] = dec.utterance_id
                     meta["source_version"] = dec.version
                     meta["lifecycle_decision"] = dec.decision
