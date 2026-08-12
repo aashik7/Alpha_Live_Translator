@@ -567,6 +567,7 @@ class UtteranceLifecycleOwner:
             "timeout_commits": 0,
             "supersessions": 0,
             "sentence_boundary_flushes": 0,
+            "in_flight_commits": 0,
         }
 
     # ------------------------------------------------------------------
@@ -1076,6 +1077,55 @@ class UtteranceLifecycleOwner:
         finally:
             # fixes BUG-F: publish only after self._lock (acquired inside
             # _ingest) has been released.
+            self._drain_pending_emits_unlocked()
+
+    def commit_in_flight(
+        self, *, reason: str = "provider_disconnected"
+    ) -> Optional[LifecycleDecision]:
+        """Commit the utterance that was still open when the provider dropped.
+
+        Item 44's third requirement -- "commit in-flight" -- which was never
+        implemented. Measured by driving this class: an utterance in progress
+        when the socket dies is neither merged into the post-reconnect text nor
+        committed. The next final arrives with the provider's restarted clock,
+        `_timing_compatible` correctly rejects it as a continuation, and
+        `_apply_active_update_locked`'s `force_new` branch then REPLACES
+        `self._active` outright. The old text is dropped with no commit, no log
+        and no trace -- every reconnect silently loses whatever was spoken but
+        not yet committed before the drop.
+
+        Committing here also puts it in the right place: this runs on the
+        unexpected close, so the pre-drop speech lands BEFORE the gap marker
+        that `_deepgram_on_open` emits, and post-reconnect speech starts its own
+        utterance after it. That is the order item 44's own title asks for --
+        commit in-flight, then mark the gap.
+
+        Returns the commit decision, or None when there was nothing in flight
+        (no active utterance, already committed, or empty text) -- all of which
+        are normal and silent.
+
+        The reason is deliberately absent from `_PREMATURE_COMMIT_REASONS`: a
+        provider disconnect is a hard boundary, and letting the first
+        post-reconnect chunk extend this record would glue speech from either
+        side of the hole into one line.
+        """
+        try:
+            with self._lock:
+                active = self._active
+                if active is None or active.committed or not (active.text or "").strip():
+                    return None
+                decision = self._commit_locked(
+                    reason=reason,
+                    event_id=f"disconnect-{time.time_ns()}",
+                    metadata={"commit_in_flight": True, "disconnect_reason": reason},
+                    decision_name=COMMIT_ACTIVE,
+                )
+            if decision.should_commit:
+                self._stats["in_flight_commits"] = (
+                    self._stats.get("in_flight_commits", 0) + 1
+                )
+            return decision
+        finally:
             self._drain_pending_emits_unlocked()
 
     def on_utterance_end(

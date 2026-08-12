@@ -2503,6 +2503,37 @@ class DeepgramClientMixin:
             # "connection lost" line at the end of every normal session.
             if not stop_requested and not getattr(self, "_dg_disconnected_at", 0.0):
                 self._dg_disconnected_at = time.time()
+                # Item 44, "commit in-flight". Do this on the FIRST unexpected
+                # close of an outage, before anything else: an utterance still
+                # open when the socket dies is otherwise dropped outright --
+                # the next final arrives on the provider's restarted clock,
+                # `_timing_compatible` rejects it as a continuation, and the
+                # `force_new` branch replaces the active utterance without ever
+                # committing it. Committing here also gets the order right,
+                # putting pre-drop speech ahead of the gap marker that
+                # `_deepgram_on_open` emits once the connection is back.
+                try:
+                    from alpha.constants import UTTERANCE_LIFECYCLE_ENABLED
+                    from alpha.transcription.utterance_lifecycle import (
+                        get_utterance_lifecycle,
+                        should_use_utterance_lifecycle,
+                    )
+
+                    if UTTERANCE_LIFECYCLE_ENABLED and should_use_utterance_lifecycle(self):
+                        get_utterance_lifecycle(self).commit_in_flight(
+                            reason="provider_disconnected"
+                        )
+                except Exception as exc:
+                    # Never let this block the reconnect it precedes.
+                    try:
+                        from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+                        jp_accuracy_log(
+                            "IN_FLIGHT_COMMIT_ON_DISCONNECT_FAILED",
+                            reason=f"{type(exc).__name__}:{exc}",
+                        )
+                    except Exception:
+                        pass
             try:
                 from alpha.utils.async_debug_log import log_runtime_debug_event
                 from alpha.utils.freeze_guard_log import freeze_guard_log
