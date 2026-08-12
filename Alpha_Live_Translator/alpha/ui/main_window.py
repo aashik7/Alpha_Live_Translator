@@ -6164,7 +6164,14 @@ class AlphaApp(
 
         if is_finalizing and DEBUG_DIAGNOSTICS:
             print("[STOP] committing final transcript during finalize")
-        DuplicateProtectionMixin._display_transcript_item(self, item)
+        # fixes item 62. This call discarded its return value, so a
+        # "retry_pending" verdict never reached the handler in
+        # _flush_transcript_ui_batch -- the item was DROPPED instead of
+        # retried, silently, on the Japanese path only. The English path
+        # has always honoured it.
+        _dp_result = DuplicateProtectionMixin._display_transcript_item(self, item)
+        if _dp_result == "retry_pending":
+            return _dp_result
         store_count_after = self._diag_store_segment_count()
         if store_count_after == store_count_before:
             if dup_action == "skip":

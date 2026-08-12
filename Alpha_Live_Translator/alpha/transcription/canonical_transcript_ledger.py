@@ -24,6 +24,7 @@ _ledger_generation = 0
 _mutation_sequence = 0
 _records: list[dict[str, Any]] = []
 _history: list[dict[str, Any]] = []
+_LEDGER_DISABLED_WARNED = False
 _idempotency_index: dict[str, dict[str, Any]] = {}
 _frozen_snapshot: Optional[dict[str, Any]] = None
 _frozen = False
@@ -218,6 +219,25 @@ def apply_decision(
 ) -> dict[str, Any]:
     """Apply one authoritative ledger mutation from a finalized revision decision."""
     if not CANONICAL_TRANSCRIPT_LEDGER_ENABLED:
+        # fixes item 61. This reports success while writing nothing. It returns
+        # no `record_id`, so callers do not mistake it for a stored record --
+        # that part is sound. What was missing is any signal at all that the
+        # canonical ledger, which the FINAL export is built from, is switched
+        # off: a run could complete "successfully" with an empty transcript and
+        # nothing anywhere would say why. Warn once per process.
+        global _LEDGER_DISABLED_WARNED
+        if not _LEDGER_DISABLED_WARNED:
+            _LEDGER_DISABLED_WARNED = True
+            try:
+                from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+                jp_accuracy_log(
+                    "CANONICAL_LEDGER_DISABLED_NO_RECORDS_WILL_BE_WRITTEN",
+                    reason="CANONICAL_TRANSCRIPT_LEDGER_ENABLED is False",
+                    consequence="final export will be empty; commits report ok with no record_id",
+                )
+            except Exception:
+                pass
         return {"ok": True, "skipped": True, "applied_action": applied_action}
 
     txn_id = transaction_id or f"txn-{uuid.uuid4().hex[:12]}"

@@ -833,6 +833,9 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
         self._stable_hold_generation: int = 0
         self._stop_boundary_active: bool = False
         self._assembler_exception_recovery_buffer: Optional[dict[str, Any]] = None
+        # item 60: which utterance the commit gate tripped on, so the gate
+        # scopes to that utterance instead of latching for the whole session.
+        self._commit_gate_failed_utterance_id = ""
         self._punctuation_start_count: int = 0
         self._short_fragment_count: int = 0
         self._incomplete_tail_hold_count: int = 0
@@ -963,6 +966,7 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
             self._stable_hold_generation = 0
             self._stop_boundary_active = False
             self._assembler_exception_recovery_buffer = None
+            self._commit_gate_failed_utterance_id = ""
             self._punctuation_start_count = 0
             self._short_fragment_count = 0
             self._incomplete_tail_hold_count = 0
@@ -1216,14 +1220,33 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
                 fragment_preview=fragment[:80],
                 upstream_reason=upstream_reason,
             )
+            # fixes item 63. `_assembler_exception_recovery_buffer` was
+            # WRITE-ONLY: grep showed an init, a reset and this one write, and
+            # not a single read anywhere in the codebase. Every fragment stashed
+            # here was therefore guaranteed lost -- the name promised recovery
+            # that no code performed.
+            #
+            # Queue it for the same replay path item 43 built for expired
+            # quarantine rather than inventing a second mechanism: stash under
+            # the lock, commit outside it (this runs on the ingest thread with
+            # the lock held around the buffer reset), re-entrancy guarded.
             with self._lock:
-                self._assembler_exception_recovery_buffer = {
+                entry = {
                     "speaker": speaker,
                     "text": fragment,
                     "metadata": dict(metadata or {}),
                     "upstream_reason": upstream_reason,
                     "exception": f"{type(exc).__name__}: {exc}",
                 }
+                self._assembler_exception_recovery_buffer = entry
+                self._quarantine_recovery_pending.append(
+                    {"speaker": speaker, "text": fragment, "raw": fragment}
+                )
+            jp_accuracy_log(
+                "ASSEMBLER_EXCEPTION_FRAGMENT_QUEUED_FOR_RECOVERY",
+                fragment_preview=fragment[:80],
+                reason="was_write_only_before_item_63",
+            )
             jp_accuracy_log(
                 "ASSEMBLER_EXCEPTION_FRAGMENT_RECOVERED",
                 fragment_preview=fragment[:80],
@@ -3516,12 +3539,37 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
         host = self._host
         is_stop_incomplete = stop_incomplete or reason == "stop_flush_incomplete_tail"
         if self._assembler_commit_gate_failed:
+            # fixes item 60. This gate was set at three sites and cleared at
+            # exactly ONE -- inside `reset()` -- so a single failed proposal
+            # silently discarded EVERY remaining commit of the session. Nothing
+            # surfaced it: the run still reported `completed`. It has never
+            # fired in the recorded corpus, which is precisely why it would go
+            # unnoticed the first time it does.
+            #
+            # The gate's integrity purpose is real and is kept: do not keep
+            # committing into a transaction that has already broken. But that
+            # concern is scoped to the utterance that broke, not to the rest of
+            # the session -- a NEW utterance is a clean slate. So the gate now
+            # clears itself when the utterance changes, the same
+            # degrade-then-recover shape as item 45's circuit breaker, instead
+            # of latching until `reset()`.
+            gate_utterance = str(self._commit_gate_failed_utterance_id or "")
+            current_utterance = str(self._current_canonical_utterance_id or "")
+            if gate_utterance and current_utterance == gate_utterance:
+                jp_accuracy_log(
+                    "ASSEMBLER_COMMIT_GATE_FAILED_REJECT",
+                    reason=reason,
+                    text_preview=(text or "")[:80],
+                    gate_utterance_id=gate_utterance,
+                )
+                return
+            self._assembler_commit_gate_failed = False
+            self._commit_gate_failed_utterance_id = ""
             jp_accuracy_log(
-                "ASSEMBLER_COMMIT_GATE_FAILED_REJECT",
+                "ASSEMBLER_COMMIT_GATE_CLEARED_NEW_UTTERANCE",
                 reason=reason,
-                text_preview=(text or "")[:80],
+                previous_gate_utterance_id=gate_utterance,
             )
-            return
         metadata = dict(metadata or {})
         if _is_synthetic_stop_only_ingress(
             metadata,
@@ -4023,6 +4071,7 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
                 )
                 if not pipeline_txn.success:
                     self._assembler_commit_gate_failed = True
+                    self._commit_gate_failed_utterance_id = str(self._current_canonical_utterance_id or "")
                     jp_accuracy_log(
                         "ASSEMBLER_COMMIT_GATE_FAILED",
                         failure_reason=pipeline_txn.failure_reason,
@@ -4158,6 +4207,7 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
                 )
                 if not proposal_result.get("success"):
                     self._assembler_commit_gate_failed = True
+                    self._commit_gate_failed_utterance_id = str(self._current_canonical_utterance_id or "")
                     jp_accuracy_log(
                         "ASSEMBLER_COMMIT_GATE_FAILED",
                         failure_reason=proposal_result.get("reason"),
@@ -4207,6 +4257,7 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
                 post_update_previous = stable_layer_update_previous
         except Exception as exc:
             self._assembler_commit_gate_failed = True
+            self._commit_gate_failed_utterance_id = str(self._current_canonical_utterance_id or "")
             jp_accuracy_log(
                 "ASSEMBLER_COMMIT_GATE_FAILED",
                 failure_reason=f"{type(exc).__name__}:{exc}",
