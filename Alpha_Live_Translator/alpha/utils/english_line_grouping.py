@@ -119,6 +119,48 @@ def group_sentences_into_lines(
     return [line for line in lines if line]
 
 
+# Deliberately NOT implemented: folding a short line into the one before it.
+# It looked like the answer to the user's "random short paragraph", but it
+# breaks his actual rule -- merging "One. Two. Three." with "Four. Five. Six."
+# yields a six-sentence line, and his own example's first line is 13 words, so
+# short lines are correct when the sentences are short. The rule is sentence
+# count plus the word budget; nothing else.
+
+# Immediate repeats that are real English, not disfluency. Everything else that
+# repeats back-to-back with no punctuation between is a stutter.
+_LEGITIMATE_DOUBLES = frozenset({"that", "had", "have", "no", "very", "really"})
+_IMMEDIATE_REPEAT = re.compile(r"\b(\w+)(\s+)\1\b", re.IGNORECASE)
+
+
+def collapse_stutters(text: str) -> str:
+    """Remove immediate word repeats that are speech disfluency.
+
+    The user's second complaint: "repeated words". These are NOT item 64's
+    merge-seam duplicates -- run `...161651` has zero of those -- they are the
+    speaker genuinely stuttering ("I I", "he he", "on on"), transcribed
+    faithfully by Deepgram inside a single payload.
+
+    Applied to the READABLE copy only, never to a canonical record or evidence
+    file: the provider said what it said, and the audit trail must keep it.
+    Repeats separated by punctuation ("Yes, yes") are left alone -- that is
+    emphasis, not a stutter -- as are the handful of doubles that are ordinary
+    English ("the food that that arrived", "he had had enough").
+    """
+    def _sub(match: "re.Match[str]") -> str:
+        word = match.group(1)
+        if word.lower() in _LEGITIMATE_DOUBLES:
+            return match.group(0)
+        return word
+
+    previous = None
+    current = text or ""
+    while current != previous:  # "I I I" needs more than one pass
+        previous = current
+        current = _IMMEDIATE_REPEAT.sub(_sub, current)
+    return current
+
+
+
 def text_is_preserved(original: str, lines: list[str]) -> bool:
     """True when regrouping changed only whitespace, never the words.
 

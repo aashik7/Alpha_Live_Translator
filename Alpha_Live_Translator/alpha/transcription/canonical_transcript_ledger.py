@@ -860,7 +860,32 @@ def serialize_export_payload(snapshot: Optional[dict[str, Any]] = None) -> dict[
             continue
         from alpha.utils.ui_speaker_label import format_ui_speaker_line
 
-        lines.append(format_ui_speaker_line(text))
+        # Item 65. One canonical record can hold an entire monologue -- run
+        # ...20260812-161651 exported a single 286-word, 17-sentence line --
+        # so its text is regrouped into readable 2-3 sentence blocks here,
+        # where the export body is built. `lines` stays 1:1 with `record_ids`
+        # (one ENTRY per record, that entry simply carrying its blocks) so
+        # every downstream coverage gate that pairs the two lists is
+        # unaffected; only the rendered body gains newlines.
+        #
+        # Regrouping is pure formatting and fails closed to the original text,
+        # so this cannot drop a word from the export -- unlike item 65's
+        # commit-side attempt, which is still disabled for exactly that reason.
+        entry = format_ui_speaker_line(text)
+        try:
+            from alpha.utils.english_line_grouping import (
+                collapse_stutters,
+                group_sentences_into_lines,
+                text_is_preserved,
+            )
+
+            readable = collapse_stutters(text)
+            blocks = group_sentences_into_lines(readable)
+            if len(blocks) > 1 and text_is_preserved(readable, blocks):
+                entry = "\n".join(format_ui_speaker_line(b) for b in blocks)
+        except Exception:
+            pass
+        lines.append(entry)
         record_ids.append(str(rec.get("record_id")))
     body = "\n".join(lines)
     if body and not body.endswith("\n"):

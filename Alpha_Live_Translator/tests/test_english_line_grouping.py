@@ -31,6 +31,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from alpha.summary.transcript_store import TranscriptStore  # noqa: E402
 from alpha.utils.english_line_grouping import (  # noqa: E402
     ENGLISH_LINE_MAX_SENTENCES,
+    collapse_stutters,
     group_sentences_into_lines,
     split_sentences,
     text_is_preserved,
@@ -156,6 +157,52 @@ class StoreRendersGroupedLinesTest(unittest.TestCase):
             l.split(":", 1)[1] for l in store.get_clean_text().splitlines() if ":" in l
         )
         self.assertEqual(rendered.split(), USER_EXAMPLE.split())
+
+
+class StutterCollapseTest(unittest.TestCase):
+    """The user's "repeated words". NOT item 64's seam duplicates -- run
+    ...161651 has zero of those. These are the speaker stuttering, transcribed
+    faithfully inside one payload, and they are removed from the READABLE copy
+    only."""
+
+    def test_repeated_pronoun_collapses(self):
+        self.assertEqual(collapse_stutters("he he he writes openly"), "he writes openly")
+
+    def test_repeated_preposition_collapses(self):
+        self.assertEqual(collapse_stutters("While in in Duterte"), "While in Duterte")
+
+    def test_legitimate_doubles_survive(self):
+        for phrase in ("the food that that arrived", "he had had enough"):
+            self.assertEqual(collapse_stutters(phrase), phrase)
+
+    def test_punctuated_repetition_is_emphasis_not_stutter(self):
+        self.assertEqual(collapse_stutters("Yes, yes indeed"), "Yes, yes indeed")
+
+    def test_case_is_not_a_loophole(self):
+        self.assertEqual(collapse_stutters("The the meeting"), "The meeting")
+
+    def test_empty_input(self):
+        self.assertEqual(collapse_stutters(""), "")
+
+
+class ShortLinesAreCorrectTest(unittest.TestCase):
+    """The user's "random short and long paragraph" is NOT a bug to fold away.
+
+    Folding a short line into the previous one was tried and reverted: it turns
+    "One. Two. Three." + "Four. Five. Six." into a six-sentence line, breaking
+    the max-3 rule. His own first line is 13 words, so a short line is the
+    correct output when the sentences are short.
+    """
+
+    def test_short_sentences_still_produce_short_lines(self):
+        self.assertEqual(
+            group_sentences_into_lines("Yes. Okay. Sure. Right. Fine. Good."),
+            ["Yes. Okay. Sure.", "Right. Fine. Good."],
+        )
+
+    def test_a_long_line_is_never_produced_by_merging(self):
+        for line in group_sentences_into_lines("A. B. C. D. E. F. G. H. I."):
+            self.assertLessEqual(line.count("."), ENGLISH_LINE_MAX_SENTENCES)
 
 
 if __name__ == "__main__":

@@ -299,10 +299,14 @@ class TranscriptStore:
             return [text]  # unknown or non-English: never regroup
         try:
             from alpha.utils.english_line_grouping import (
+                collapse_stutters,
                 group_sentences_into_lines,
                 text_is_preserved,
             )
 
+            # Readable copy only -- the canonical record keeps what the
+            # provider actually said.
+            text = collapse_stutters(text)
             parts = group_sentences_into_lines(text)
             # Fail closed to the original: a formatter must never be the reason
             # a word goes missing from the transcript.
