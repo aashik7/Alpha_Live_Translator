@@ -198,6 +198,81 @@ def _tail_resend_splice(
     return None
 
 
+def _audio_spans_overlap(
+    prev_start: float,
+    prev_end: float,
+    cand_start: float,
+    cand_end: float,
+) -> bool:
+    """True when the candidate re-sends audio the active utterance already covers.
+
+    This is the evidence `_boundary_token_collapse` needs and the reason it is
+    safe. Deepgram emits both *continuations* (the next span of speech) and
+    *re-sends* (a window that slides back over audio it already transcribed),
+    and from text alone the two are indistinguishable at a one-token seam. The
+    audio clock is not ambiguous: a re-send starts before the active utterance
+    ended, a continuation does not.
+
+    Requires a real overlap of at least `_TIMING_OVERLAP_MIN_S` rather than any
+    `cand_start < prev_end`, so float noise on two spans that merely abut
+    cannot read as a re-send. Missing timing (either side negative) returns
+    False -- fail closed, because the caller uses this to authorise dropping a
+    token.
+    """
+    if prev_end < 0 or cand_start < 0:
+        return False
+    return (prev_end - cand_start) >= _TIMING_OVERLAP_MIN_S
+
+
+def _boundary_token_collapse(
+    prev: str,
+    curr: str,
+    prev_tokens: list[str],
+    curr_tokens: list[str],
+) -> Optional[str]:
+    """Join a seam whose overlap is a single token, without repeating it.
+
+    fixes CLIENT_DELIVERY_SPRINT_v5.md item 64. `_overlap_join` deliberately
+    requires `k >= 2`, and `_tail_resend_splice` requires `min_run=3`, so a
+    re-send that overlaps by exactly ONE token matches neither and falls
+    through to the concatenation branch below -- which, when `prev` does not
+    end in punctuation, joins with `f"{prev}, {curr}"`. That comma is the
+    fingerprint: measured against the human reference transcript for run
+    `...20260812-095935`, the source says "other schools of Muslim", "heretics
+    have attributed" and "objectively claiming the falsehood", while the export
+    says "schools, schools", "have, have" and "Claiming, Claiming". All three
+    reproduce exactly by calling `_merge_lexical` on the two spans.
+
+    The k=1 case is NOT symmetric with k>=2 and must not simply relax that
+    threshold: a single shared boundary token is genuinely ambiguous, because
+    English really does double words across a clause boundary ("He said that"
+    + "that was fine", "the food I had" + "had gone cold"). Collapsing those
+    silently deletes a spoken word, which this module treats as strictly worse
+    than the duplication it is fixing (see `_merge_lexical`'s note on the
+    ordering of `_overlap_join`). So the caller only passes
+    `audio_overlaps=True` when the two spans overlap on the audio clock, which
+    a re-send does and a continuation does not. With no timing, this never
+    runs.
+
+    Returns None unless the seam token matches on both sides *and* `curr`'s
+    leading whitespace token corresponds to that comparison token -- token
+    lists are punctuation-stripped and drop tokens that empty out, so the
+    alignment is checked rather than assumed. Emits the callers' original
+    strings; comparison forms are never output.
+    """
+    if not prev_tokens or not curr_tokens:
+        return None
+    if prev_tokens[-1] != curr_tokens[0]:
+        return None
+    curr_parts = curr.split()
+    if not curr_parts:
+        return None
+    if _compare_tokens(curr_parts[0])[:1] != curr_tokens[:1]:
+        return None  # leading whitespace token is not the first comparison token
+    remainder = " ".join(curr_parts[1:]).strip()
+    return f"{prev} {remainder}" if remainder else prev
+
+
 def _known_speaker(value: Any) -> Optional[int]:
     """Normalise a speaker label to `None` when it is not actually known.
 
@@ -220,8 +295,16 @@ def _known_speaker(value: Any) -> Optional[int]:
     return speaker if speaker else None
 
 
-def _merge_lexical(previous: str, current: str) -> str:
-    """Merge two lexical chunks of the same utterance without hardcoding phrases."""
+def _merge_lexical(previous: str, current: str, *, audio_overlaps: bool = False) -> str:
+    """Merge two lexical chunks of the same utterance without hardcoding phrases.
+
+    `audio_overlaps` says the two spans overlap on the audio clock, i.e. the
+    caller has evidence that `current` re-sends audio `previous` already
+    covers. It only unlocks `_boundary_token_collapse` (item 64); every other
+    branch behaves identically either way. Defaults False so any caller
+    without timing keeps the old behaviour rather than silently gaining the
+    ability to drop a token.
+    """
     prev = (previous or "").strip()
     curr = (current or "").strip()
     if not prev:
@@ -297,6 +380,14 @@ def _merge_lexical(previous: str, current: str) -> str:
     spliced = _tail_resend_splice(prev, curr, prev_word_list, curr_word_list)
     if spliced is not None:
         return spliced
+    # A re-send overlapping by exactly one token -- below both thresholds
+    # above, so without this it reaches the concatenation branch and the
+    # shared token is emitted twice. Gated on audio-clock evidence; see
+    # _boundary_token_collapse.
+    if audio_overlaps:
+        collapsed = _boundary_token_collapse(prev, curr, prev_word_list, curr_word_list)
+        if collapsed is not None:
+            return collapsed
     # Adjacent finalised chunks of one utterance (non-overlapping lexical spans).
     if prev.endswith((",", ";", ":")):
         return f"{prev} {curr}"
@@ -475,6 +566,7 @@ class UtteranceLifecycleOwner:
             "utterance_end_dedup": 0,
             "timeout_commits": 0,
             "supersessions": 0,
+            "sentence_boundary_flushes": 0,
         }
 
     # ------------------------------------------------------------------
@@ -1714,7 +1806,41 @@ class UtteranceLifecycleOwner:
                 )
                 return d
 
-            merged = _merge_lexical(previous_text, lexical)
+            merged = _merge_lexical(
+                previous_text,
+                lexical,
+                audio_overlaps=_audio_spans_overlap(
+                    active.start_time, active.end_time, cand_start, cand_end
+                ),
+            )
+            # item 65: a sentence that ended is a boundary, not a place to keep
+            # appending. Only fires when the merge above was a *pure* append
+            # across a sentence terminator, so every revision, overlap-join and
+            # tail-splice path is untouched -- and it publishes the finished
+            # text rather than discarding it, so nothing is lost either way.
+            if self._flush_sentence_boundary_locked(
+                previous_text=previous_text,
+                lexical=lexical,
+                merged=merged,
+                event_id=event_id,
+                metadata=metadata,
+            ):
+                return self._apply_active_update_locked(
+                    lexical=lexical,
+                    speaker=speaker,
+                    channel=channel,
+                    cand_start=cand_start,
+                    cand_end=cand_end,
+                    event_id=event_id,
+                    metadata=metadata,
+                    deepgram_request_id=deepgram_request_id,
+                    state=state,
+                    hold=hold,
+                    speech_final=speech_final,
+                    source=source,
+                    force_new=True,
+                    emit_interim=emit_interim,
+                )
             if _norm_text(merged) != curr_n and _norm_text(merged) != prev_n:
                 decision = EXTEND_ACTIVE
                 reason = "extend_active_adjacent_chunk"
@@ -1842,6 +1968,68 @@ class UtteranceLifecycleOwner:
         if emit_interim:
             self._emit_interim(d)
         return d
+
+    def _flush_sentence_boundary_locked(
+        self,
+        *,
+        previous_text: str,
+        lexical: str,
+        merged: str,
+        event_id: str,
+        metadata: dict[str, Any],
+    ) -> bool:
+        """Commit the active utterance when a finished sentence meets new speech.
+
+        fixes CLIENT_DELIVERY_SPRINT_v5.md item 65. English has no boundary
+        stabilizer -- Japanese gets its sentence boundaries from
+        japanese_sentence_assembler.py, English relies entirely on Deepgram's
+        `speech_final`, which for continuous speech never arrives. Deepgram was
+        configured correctly for run `...20260812-095935` (endpointing=1200,
+        utterance_end_ms=1500); a podcast speaker simply never paused 1.2s, so
+        one utterance absorbed 45 seconds of audio across 187 revisions and
+        exported as a single 2445-character line holding 25 sentences. 16 of
+        that run's 41 exported lines were over 400 characters.
+
+        The trigger is deliberately the narrowest one that describes the
+        accumulation: `merged` is EXACTLY `previous_text` + " " + `lexical`,
+        which only `_merge_lexical`'s `prev[-1:] in ".!?"` branch produces. Any
+        revision, `_overlap_join`, `_tail_resend_splice` or similarity result
+        differs from that string and is left alone -- so this cannot split an
+        utterance mid-revision, and it cannot fire where the text is still
+        being corrected.
+
+        Returns True only when the active utterance was actually committed and
+        published. If `_commit_locked` refuses (no active, already committed,
+        identity rejected) this returns False and the caller extends as before:
+        the alternative -- starting a new utterance while the old one is still
+        live and uncommitted -- would abandon its text.
+
+        The commit reason is intentionally absent from `_PREMATURE_COMMIT_REASONS`.
+        A sentence terminator from `smart_format` is a confident boundary, not
+        this module guessing an utterance ended; treating it as premature would
+        let the very next chunk extend the flushed record and glue the line
+        back together.
+        """
+        active = self._active
+        if active is None or active.committed:
+            return False
+        prev = (previous_text or "").rstrip()
+        if not prev or not (lexical or "").strip():
+            return False
+        if prev[-1] not in ".!?":
+            return False
+        if merged != f"{prev} {(lexical or '').strip()}":
+            return False
+        commit = self._commit_locked(
+            reason="sentence_boundary_flush",
+            event_id=event_id,
+            metadata=metadata,
+            decision_name=COMMIT_ACTIVE,
+        )
+        if not commit.should_commit:
+            return False
+        self._stats["sentence_boundary_flushes"] += 1
+        return True
 
     def _commit_locked(
         self,
@@ -2139,7 +2327,13 @@ class UtteranceLifecycleOwner:
             # fall through to normal Case B/C handling, which preserves the
             # text as its own (unmerged, but not lost) utterance.
             return None
-        merged_text = _merge_lexical(prev.text, lexical)
+        merged_text = _merge_lexical(
+            prev.text,
+            lexical,
+            audio_overlaps=_audio_spans_overlap(
+                prev.start_time, prev.end_time, cand_start, cand_end
+            ),
+        )
         self._seq += 1
         uid = str(target_utterance_id or prev.utterance_id)  # keep same canonical identity
         active = ActiveUtterance(
