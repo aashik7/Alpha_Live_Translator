@@ -66,11 +66,40 @@ class DeepLClient:
         # Key present is enough for readiness UI; Translator is created on first translate.
         return bool(self._api_key) and self._init_error is None
 
+    @staticmethod
+    def _provider_supports_context() -> bool:
+        """Does the installed deepl SDK accept `context`? Detected, not assumed.
+
+        Item 50. `context` arrived in deepl-python 1.17; this project currently
+        pins 1.30.0, which has it. But passing an unknown keyword to an older
+        SDK raises `TypeError`, and `translate_text`'s error mapper classifies
+        an unrecognised exception as `retryable=False` -- so a downgrade would
+        turn every translation into a permanent failure rather than degrading.
+        Checking the signature once removes that whole class of outcome.
+        """
+        cached = getattr(DeepLClient, "_context_supported_cache", None)
+        if cached is not None:
+            return bool(cached)
+        supported = False
+        try:
+            import inspect
+
+            import deepl  # type: ignore
+
+            supported = "context" in inspect.signature(
+                deepl.Translator.translate_text
+            ).parameters
+        except Exception:
+            supported = False
+        DeepLClient._context_supported_cache = supported
+        return supported
+
     def translate_text(
         self,
         text: str,
         source_lang: str,
         target_lang: str,
+        context: str = "",
     ) -> str:
         self._ensure_translator()
         if self._translator is None:
@@ -87,11 +116,19 @@ class DeepLClient:
         try:
             import deepl  # type: ignore
 
-            result = self._translator.translate_text(
-                cleaned,
-                source_lang=source_lang,
-                target_lang=target_lang,
-            )
+            # Item 50: `context` gives DeepL the preceding lines so it can
+            # resolve pronouns, honorifics and topic across an utterance
+            # boundary -- which matters here because a meeting transcript is
+            # translated line by line, each line stripped of everything said
+            # before it. DeepL neither translates nor bills the context; it
+            # only reads it. Passed as a keyword ONLY when the installed SDK
+            # accepts it, and omitted entirely when empty so behaviour is
+            # byte-identical to before for any caller that supplies none.
+            kwargs = {"source_lang": source_lang, "target_lang": target_lang}
+            hint = (context or "").strip()
+            if hint and self._provider_supports_context():
+                kwargs["context"] = hint
+            result = self._translator.translate_text(cleaned, **kwargs)
             translated = str(getattr(result, "text", "") or "").strip()
             if not translated:
                 raise DeepLError("DeepL returned empty text.", code="empty_result", retryable=False)

@@ -18,6 +18,8 @@ from alpha.constants import (
     TRANSLATION_CIRCUIT_BREAK_AFTER,
     TRANSLATION_CIRCUIT_COOLDOWN_MAX_S,
     TRANSLATION_CIRCUIT_COOLDOWN_S,
+    TRANSLATION_CONTEXT_LINES,
+    TRANSLATION_CONTEXT_MAX_CHARS,
     TRANSLATION_MAX_RETRIES,
     TRANSLATION_PROVIDER,
     TRANSLATION_QUEUE_MAX_SIZE,
@@ -187,6 +189,8 @@ class TranslationWorker:
         self._held: Dict[int, TranslationResult] = {}  # keyed by translation_sequence
         self._latest_version_by_utterance: Dict[str, int] = {}
         self._revision_events: List[Dict[str, Any]] = []
+        # Item 50: (source_language, text) tail used to build DeepL `context`.
+        self._recent_source_lines: List[tuple] = []
         self._max_queue_depth = 0
         self._status_message = ""
         self._unfinished_sequences: List[int] = []
@@ -664,6 +668,94 @@ class TranslationWorker:
         self._write_summary(summary)
         return summary
 
+    def _client_accepts_context(self) -> bool:
+        """Does THIS client's `translate_text` take a `context` keyword?
+
+        Item 50, and the reason this check exists at all: `translate_text`'s
+        signature is a contract other code implements, not just DeepLClient's
+        own method. Five implementations in this repo -- test doubles and
+        `tools/validate_utterance_revision_repair.py` -- accept only
+        `(text, source_lang, target_lang)`. Passing `context` to those raises
+        TypeError inside the worker's translate loop, which fails the job and
+        DROPS the translation; `test_task3c_acceptance_gate`'s "final Japanese
+        line's translation must not be dropped on Stop" caught exactly that.
+
+        So the keyword is offered only to clients that declare it. An older or
+        third-party client keeps working untouched, which is the behaviour a
+        quality improvement like context must not trade away.
+        """
+        cached = getattr(self, "_context_kwarg_supported", None)
+        if cached is not None:
+            return bool(cached)
+        supported = False
+        try:
+            import inspect
+
+            params = inspect.signature(self._client.translate_text).parameters
+            supported = "context" in params or any(
+                p.kind is inspect.Parameter.VAR_KEYWORD for p in params.values()
+            )
+        except Exception:
+            supported = False
+        self._context_kwarg_supported = supported
+        return supported
+
+    def _translation_context(self, source_language: str) -> str:
+        """The last few source lines, as background for the current one.
+
+        Item 50. Each line is sent to DeepL alone, stripped of everything said
+        before it, so pronouns, honorifics and topic have nothing to resolve
+        against -- the usual symptom on the JA side is formality flipping
+        between adjacent lines. DeepL reads `context` without translating or
+        billing it.
+
+        Only lines in the SAME source language are offered: mixing a Japanese
+        line into the context of an English one would be noise at best. Bounded
+        by both a line count and a character cap, because this grows for the
+        length of the session and an unbounded string here would be sent on
+        every single request.
+
+        Never raises and never blocks: context is an optimisation, and failing
+        to build it must not cost a translation.
+        """
+        try:
+            lang = str(source_language or "").strip().upper()
+            with self._lock:
+                recent = [
+                    text
+                    for text_lang, text in self._recent_source_lines
+                    if text_lang == lang
+                ][-TRANSLATION_CONTEXT_LINES:]
+            if not recent:
+                return ""
+            joined = " ".join(recent).strip()
+            if len(joined) > TRANSLATION_CONTEXT_MAX_CHARS:
+                joined = joined[-TRANSLATION_CONTEXT_MAX_CHARS:]
+            return joined
+        except Exception:
+            return ""
+
+    def _remember_source_line(self, source_language: str, text: str) -> None:
+        """Keep the tail of what has been translated, for the next request."""
+        try:
+            cleaned = (text or "").strip()
+            if not cleaned:
+                return
+            lang = str(source_language or "").strip().upper()
+            with self._lock:
+                self._recent_source_lines.append((lang, cleaned))
+                # Keep a little more than TRANSLATION_CONTEXT_LINES so the
+                # per-language filter above still has something to choose from
+                # in a bilingual session, but never let this grow with session
+                # length.
+                excess = len(self._recent_source_lines) - (
+                    TRANSLATION_CONTEXT_LINES * 4
+                )
+                if excess > 0:
+                    del self._recent_source_lines[:excess]
+        except Exception:
+            pass
+
     def _run(self) -> None:
         while True:
             if self._stop.is_set() and self._queue.empty() and self._in_flight == 0:
@@ -755,16 +847,26 @@ class TranslationWorker:
         assert self._client is not None
         while not circuit_skipped:
             try:
+                translate_kwargs = {
+                    "source_lang": job.source_language,
+                    "target_lang": target_lang,
+                }
+                if self._client_accepts_context():
+                    hint = self._translation_context(job.source_language)
+                    if hint:
+                        translate_kwargs["context"] = hint
                 translated = self._client.translate_text(
-                    job.source_text,
-                    source_lang=job.source_language,
-                    target_lang=target_lang,
+                    job.source_text, **translate_kwargs
                 )
                 if _sha256_text(job.source_text) != original_hash:
                     with self._lock:
                         self._counters["source_transcript_modifications"] += 1
                 status = "success"
                 last_err = ""
+                # Item 50: remember AFTER a successful translation, so a line
+                # that never reached the provider cannot pollute the context of
+                # the next one.
+                self._remember_source_line(job.source_language, job.source_text)
                 break
             except DeepLError as exc:
                 last_err = exc.code

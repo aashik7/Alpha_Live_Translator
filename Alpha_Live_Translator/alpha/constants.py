@@ -314,6 +314,16 @@ DG_GAP_MARKER_TEMPLATE = "[connection lost - approximately {seconds}s of audio n
 # metadata, the publish path, and a log on the drop), so this is safe to run.
 ENGLISH_SENTENCE_FLUSH_ENABLED = True
 
+# Item 50: how much preceding transcript to offer DeepL as `context`. DeepL
+# reads it to resolve pronouns, honorifics and topic across a line boundary,
+# and neither translates nor bills it -- so the only real cost is request size,
+# which is what these two bounds cap. 3 lines matches the item's own wording;
+# the character cap is the backstop, because a single accumulated English
+# utterance has been measured at 2342 characters and three of those would
+# dominate the request.
+TRANSLATION_CONTEXT_LINES = 3
+TRANSLATION_CONTEXT_MAX_CHARS = 900
+
 TRANSLATION_MAX_RETRIES = 2
 # Item 45. After this many CONSECUTIVE failed jobs (retries already exhausted),
 # stop calling DeepL for a cooldown instead of burning ~7s of retry+backoff on
