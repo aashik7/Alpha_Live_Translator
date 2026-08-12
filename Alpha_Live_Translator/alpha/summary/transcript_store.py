@@ -264,14 +264,53 @@ class TranscriptStore:
             return list(self._segments)
 
     def get_clean_text(self) -> str:
-        """Return canonical transcript text for copy/export (one segment per line)."""
+        """Return canonical transcript text for copy/export.
+
+        One segment per line, EXCEPT on the English path, where a segment is
+        regrouped into 2-3 sentence lines first -- see
+        `alpha/utils/english_line_grouping.py` and sprint item 65. English has
+        no sentence boundary of its own, so a single committed utterance can
+        hold an entire monologue: live run `...20260812-154956` produced one
+        line of 2342 characters / 27 sentences. Splitting happens here, at the
+        one place the readable transcript is built, rather than by committing
+        more often -- the commit-side attempt (`73ae8b2`) lost 8 of 9
+        utterances before reaching the export. Regrouping text cannot lose a
+        word.
+
+        Japanese is deliberately untouched: it has its own boundary strategy in
+        the assembler, and English sentence terminators do not describe it.
+        """
         from alpha.utils.ui_speaker_label import format_ui_speaker_line
 
         lines = []
         with self._lock:
-            for segment in self._segments:
-                lines.append(format_ui_speaker_line(segment.text))
+            segments = list(self._segments)
+        for segment in segments:
+            for part in self._readable_parts(segment):
+                lines.append(format_ui_speaker_line(part))
         return "\n".join(lines)
+
+    @staticmethod
+    def _readable_parts(segment) -> list:
+        """Segment text as one or more readable lines (English only)."""
+        text = getattr(segment, "text", "") or ""
+        language = str(getattr(segment, "source_language", "") or "").lower()
+        if not language.startswith("en"):
+            return [text]  # unknown or non-English: never regroup
+        try:
+            from alpha.utils.english_line_grouping import (
+                group_sentences_into_lines,
+                text_is_preserved,
+            )
+
+            parts = group_sentences_into_lines(text)
+            # Fail closed to the original: a formatter must never be the reason
+            # a word goes missing from the transcript.
+            if parts and text_is_preserved(text, parts):
+                return parts
+        except Exception:
+            pass
+        return [text]
 
     def get_plain_text(self) -> str:
         """Backward-compatible alias for get_clean_text."""
