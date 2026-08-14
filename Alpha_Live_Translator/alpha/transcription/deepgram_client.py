@@ -2368,6 +2368,21 @@ class DeepgramClientMixin:
             )
         except Exception:
             pass
+        # Item 67: tell the export authority as well as the live UI. The
+        # publish below reaches the TranscriptStore, which is what the UI and
+        # copy/export read -- but `Alpha output.txt` is built from the frozen
+        # canonical ledger, and this marker can never become a ledger record
+        # (synthetic, no `source_raw_event_ids`, and RAW_EVENT_LINEAGE_REQUIRED
+        # is a rule worth keeping). So the ledger is told separately and
+        # renders it at export time.
+        try:
+            from alpha.transcription.canonical_transcript_ledger import (
+                record_connection_gap,
+            )
+
+            record_connection_gap(seconds=gap_s)
+        except Exception:
+            pass
         try:
             publisher = getattr(self, "_publish_final_transcript_segment", None)
             if callable(publisher):

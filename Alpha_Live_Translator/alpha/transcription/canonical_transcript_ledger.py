@@ -29,6 +29,22 @@ _idempotency_index: dict[str, dict[str, Any]] = {}
 _frozen_snapshot: Optional[dict[str, Any]] = None
 _frozen = False
 
+# Item 67: connection gaps, kept beside the ledger rather than inside it.
+#
+# The "[connection lost - approximately Ns of audio not captured]" marker is
+# synthetic and carries no `source_raw_event_ids`, and RAW_EVENT_LINEAGE_REQUIRED
+# means every canonical RECORD must trace to a real provider event -- so the
+# marker cannot become one without weakening that rule. It reached the live UI
+# store but never `Alpha output.txt`, which is built from this ledger, so the
+# exported transcript read as continuous speech across a 31-second hole.
+#
+# Recorded here instead: this module is already run-scoped (`reset_for_run`)
+# and already owns the export, so the marker needs no new lifecycle. It is
+# rendered into the export body by `serialize_export_payload`, which keeps
+# `lines` 1:1 with `record_ids` by prepending the marker to the entry of the
+# record that follows it.
+_connection_gaps: list[dict[str, Any]] = []
+
 
 def _now() -> float:
     return time.time()
@@ -48,7 +64,7 @@ def _jp_log(event: str, **fields: Any) -> None:
 
 
 def reset_for_run(run_id: str) -> None:
-    global _run_id, _sequence, _ledger_generation, _mutation_sequence, _records, _history, _idempotency_index, _frozen_snapshot, _frozen
+    global _run_id, _sequence, _ledger_generation, _mutation_sequence, _records, _history, _idempotency_index, _frozen_snapshot, _frozen, _connection_gaps
     with _lock:
         _run_id = run_id or ""
         _sequence = 0
@@ -59,6 +75,7 @@ def reset_for_run(run_id: str) -> None:
         _idempotency_index = {}
         _frozen_snapshot = None
         _frozen = False
+        _connection_gaps.clear()
     _jp_log("CANONICAL_LEDGER_RESET", run_id=run_id, ledger_generation=_ledger_generation)
 
 
@@ -848,12 +865,45 @@ def is_frozen() -> bool:
         return _frozen
 
 
+def _format_connection_gap_line(gap: dict[str, Any]) -> str:
+    """The marker exactly as the live UI shows it, so the two agree. Item 67."""
+    from alpha.constants import DG_GAP_MARKER_TEMPLATE
+
+    return DG_GAP_MARKER_TEMPLATE.format(seconds=int(round(float(gap.get("seconds") or 0.0))))
+
+
+def record_connection_gap(*, seconds: float, at: float | None = None) -> None:
+    """Note a provider outage so the export can show it. Item 67.
+
+    Called from `_mark_deepgram_gap_if_any` when the connection comes back,
+    with the real outage length. Never raises: failing to annotate a gap must
+    not disturb the reconnect that just succeeded.
+    """
+    try:
+        gap = float(seconds or 0.0)
+        if gap <= 0:
+            return
+        with _lock:
+            _connection_gaps.append(
+                {"at": float(at if at is not None else _now()), "seconds": gap}
+            )
+    except Exception:
+        pass
+
+
+def get_connection_gaps() -> list[dict[str, Any]]:
+    with _lock:
+        return [dict(g) for g in _connection_gaps]
+
+
 def serialize_export_payload(snapshot: Optional[dict[str, Any]] = None) -> dict[str, Any]:
     snap = snapshot or get_frozen_snapshot()
     if not snap:
         raise PipelineIntegrityError("no frozen ledger snapshot for export")
     lines = []
     record_ids = []
+    # Item 67: outages to annotate, oldest first, consumed as records pass them.
+    pending_gaps = sorted(get_connection_gaps(), key=lambda g: g.get("at", 0.0))
     for rec in snap.get("records") or []:
         text = str(rec.get("final_text") or rec.get("assembler_text") or "").strip()
         if not text:
@@ -885,8 +935,26 @@ def serialize_export_payload(snapshot: Optional[dict[str, Any]] = None) -> dict[
                 entry = "\n".join(format_ui_speaker_line(b) for b in blocks)
         except Exception:
             pass
+        # Item 67: any outage that happened BEFORE this record was committed
+        # belongs above it. Prepended into this record's own entry rather than
+        # appended as a line of its own, so `lines` stays 1:1 with
+        # `record_ids` -- every downstream coverage gate pairs those two lists
+        # by index, and inserting a standalone line would shift them apart.
+        created_at = float(rec.get("created_at") or 0.0)
+        while pending_gaps and created_at and pending_gaps[0].get("at", 0.0) <= created_at:
+            gap = pending_gaps.pop(0)
+            entry = _format_connection_gap_line(gap) + "\n" + entry
         lines.append(entry)
         record_ids.append(str(rec.get("record_id")))
+    if pending_gaps and lines:
+        # An outage after the last commit -- for example a drop the session
+        # never recovered enough speech from. It still has to be visible, so it
+        # goes at the end rather than being dropped for having no record after
+        # it.
+        lines[-1] = lines[-1] + "\n" + "\n".join(
+            _format_connection_gap_line(g) for g in pending_gaps
+        )
+        pending_gaps = []
     body = "\n".join(lines)
     if body and not body.endswith("\n"):
         body += "\n"

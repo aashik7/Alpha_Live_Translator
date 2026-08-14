@@ -66,14 +66,19 @@ AUDIO_TEMP_RETENTION_HOURS = 2
 AUDIO_TEMP_MAX_TOTAL_GB = 3
 AUDIO_TEMP_CHUNK_SECONDS = 60
 AUDIO_TEMP_INCLUDE_IN_UPLOAD_ZIP = False
-# 2026-08-11: disabled for item 40's reference-corpus recording, so the
-# 2h auto-delete cannot wipe it before the reference transcript is
-# written. Both flags must be False -- cleanup_old_audio_temp() only
-# skips when BOTH are off. Re-enable (True/True) once that recording is
-# captured and no longer needed raw.
-TEMP_AUDIO_RETENTION_ENABLED = False
+# Restored to True on 2026-08-14 at the user's request, ahead of delivery.
+#
+# They were set False on 2026-08-11 so the 2h auto-delete could not wipe item
+# 40's reference-corpus recording before the reference transcript was written.
+# That recording is long captured, and leaving them off ships an app that never
+# cleans up after itself: the 99-minute run alone left **662 MB** of WAV in
+# `audio_temp`, and a client running daily meetings would simply accumulate it.
+#
+# Both flags must agree -- `cleanup_old_audio_temp()` only skips when BOTH are
+# off, so setting one without the other silently keeps retention disabled.
+TEMP_AUDIO_RETENTION_ENABLED = True
 TEMP_AUDIO_RETENTION_HOURS = 2
-TEMP_AUDIO_AUTO_DELETE_ENABLED = False
+TEMP_AUDIO_AUTO_DELETE_ENABLED = True
 TEMP_AUDIO_INCLUDE_IN_UPLOAD_PACKAGE = False
 
 # Log rotation for JSONL / high-volume evidence
