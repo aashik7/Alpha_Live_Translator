@@ -112,7 +112,7 @@ class ThroughTheLifecycleTest(unittest.TestCase):
     PRE = "1, While in Duterte, he writes openly, I never considered"
     POST = "he writes openly, I never considered him an impostor at all"
 
-    def _run(self, *, prev_reason_speech_final=True, speaker2=1):
+    def _run(self, *, prev_reason_speech_final=True, speaker2=1, cand_start=13.5):
         rec = _Recorder()
         life = ul.UtteranceLifecycleOwner(on_commit=rec)
         life.reset_for_session("sess-66")
@@ -122,9 +122,9 @@ class ThroughTheLifecycleTest(unittest.TestCase):
             metadata={"start_time": 10.0, "end_time": 14.0},
         )
         life.on_final_chunk(
-            text=self.POST, speaker=speaker2, channel=0, start=13.5, end=17.0,
+            text=self.POST, speaker=speaker2, channel=0, start=cand_start, end=17.0,
             is_final=True, speech_final=False, event_id="b1",
-            metadata={"start_time": 13.5, "end_time": 17.0},
+            metadata={"start_time": cand_start, "end_time": 17.0},
         )
         life.on_utterance_end(event_id="end", channel=0)
         return life, rec
@@ -148,11 +148,64 @@ class ThroughTheLifecycleTest(unittest.TestCase):
         life, _ = self._run()
         self.assertEqual(life.stats().get("resent_tails_trimmed"), 1)
 
-    def test_a_different_speaker_is_never_trimmed(self):
-        """A speaker change is a hard boundary; an overlap there is coincidence."""
-        life, rec = self._run(speaker2=2)
+    def test_a_different_speaker_with_no_audio_overlap_is_never_trimmed(self):
+        """Problem C's guard. A genuine speaker change does not produce
+        overlapping audio, so with the spans disjoint the speaker gate is the
+        only rule and must refuse.
+
+        `cand_start=14.5` matters: the original version of this test used 13.5,
+        which OVERLAPS the previous span, so once overlapping audio became an
+        accepted alternative to the speaker match it was asserting the opposite
+        of what it describes."""
+        life, rec = self._run(speaker2=2, cand_start=14.5)
         self.assertEqual(life.stats().get("resent_tails_trimmed"), 0)
         self.assertIn(self.POST, rec.commits)
+
+
+class DiarizationArtifactIsStillTrimmedTest(unittest.TestCase):
+    """Live run ...20260814-101813 records [4]/[5].
+
+    They share the re-sent run "and the number 1 thing", but the provider
+    labelled them speaker 2 and speaker 1, so the same-speaker gate refused and
+    the duplicate reached the export. Their audio spans were 131.56-138.24 and
+    136.32-160.48 -- overlapping by ~1.9s, i.e. the same audio arriving twice,
+    which makes the label disagreement a diarization artifact rather than two
+    people. Overlapping audio is therefore accepted as an alternative to the
+    speaker match, exactly as item 64 already does.
+    """
+
+    PRE = "many, many things there. Bone strength, and the number 1 thing"
+    POST = "And the number 1 thing that I hear from people is, I don't really have time"
+
+    def _run(self, *, cand_start):
+        rec = _Recorder()
+        life = ul.UtteranceLifecycleOwner(on_commit=rec)
+        life.reset_for_session("sess-66-diar")
+        life.on_final_chunk(
+            text=self.PRE, speaker=2, channel=0, start=131.56, end=138.24,
+            is_final=True, speech_final=True, event_id="a1",
+            metadata={"start_time": 131.56, "end_time": 138.24},
+        )
+        life.on_final_chunk(
+            text=self.POST, speaker=1, channel=0, start=cand_start, end=160.48,
+            is_final=True, speech_final=False, event_id="b1",
+            metadata={"start_time": cand_start, "end_time": 160.48},
+        )
+        life.on_utterance_end(event_id="end", channel=0)
+        return life, rec
+
+    def test_overlapping_audio_trims_despite_the_speaker_label(self):
+        life, rec = self._run(cand_start=136.32)   # the real value
+        self.assertEqual(life.stats().get("resent_tails_trimmed"), 1)
+        joined = " ".join(rec.commits)
+        self.assertEqual(joined.lower().count("the number 1 thing"), 1)
+
+    def test_a_real_speaker_change_is_still_protected(self):
+        """No audio overlap means the speaker gate is the only rule, and it
+        must still refuse -- this is problem C's guard."""
+        life, rec = self._run(cand_start=139.00)   # starts after PRE ended
+        self.assertEqual(life.stats().get("resent_tails_trimmed"), 0)
+        self.assertTrue(any(c.startswith("And the number 1 thing") for c in rec.commits))
 
 
 class DisconnectIsNeverTrimmedTest(unittest.TestCase):

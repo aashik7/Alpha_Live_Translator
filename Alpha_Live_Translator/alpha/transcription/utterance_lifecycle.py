@@ -1779,7 +1779,13 @@ class UtteranceLifecycleOwner:
         return related
 
     def _trim_resent_tail_locked(
-        self, lexical: str, *, channel: Any, speaker: Any
+        self,
+        lexical: str,
+        *,
+        channel: Any,
+        speaker: Any,
+        cand_start: float = -1.0,
+        cand_end: float = -1.0,
     ) -> str:
         """Item 66: drop a head that repeats the previously committed tail.
 
@@ -1799,9 +1805,28 @@ class UtteranceLifecycleOwner:
             return lexical
         if not _channel_matches_exactly(prev.channel, channel):
             return lexical
-        if not speakers_confirmed_same(
+        # Same speaker, OR the two spans overlap on the audio clock. The second
+        # is what live run `...20260814-101813` needed: records [4] and [5]
+        # share the re-sent run "and the number 1 thing", but the provider
+        # labelled them speaker 2 and speaker 1, so the speaker gate alone
+        # refused and the duplicate survived into the export. Their audio spans
+        # were 131.56-138.24 and 136.32-160.48 -- overlapping by ~1.9s, which
+        # is the same audio arriving twice, so the label disagreement is a
+        # diarization artifact rather than two people talking.
+        #
+        # Deliberately an OR, not a replacement: overlapping audio is stronger
+        # evidence than a speaker label here, and it is the same discriminator
+        # item 64 already relies on. A genuine speaker change does NOT produce
+        # overlapping spans, so this cannot reopen problem C's cross-speaker
+        # merging -- items 22/23/24's guard stays the sole rule whenever timing
+        # is absent, which is when it fails closed.
+        same_speaker = speakers_confirmed_same(
             _known_speaker(prev.speaker), _known_speaker(speaker)
-        ):
+        )
+        overlapping_audio = _audio_spans_overlap(
+            prev.start_time, prev.end_time, cand_start, cand_end
+        )
+        if not same_speaker and not overlapping_audio:
             return lexical
         trimmed = _strip_committed_tail_prefix(prev.text, lexical)
         if trimmed is None or trimmed == lexical:
@@ -1918,7 +1943,11 @@ class UtteranceLifecycleOwner:
             # and the tail ends up stored in two records. Trim it here, at the
             # one point a new utterance inherits text straight from the wire.
             lexical = self._trim_resent_tail_locked(
-                lexical, channel=channel, speaker=speaker
+                lexical,
+                channel=channel,
+                speaker=speaker,
+                cand_start=cand_start,
+                cand_end=cand_end,
             )
             self._seq += 1
             uid = f"U-{self._seq}"
