@@ -53,9 +53,16 @@ _chunk_buffers: dict[str, bytearray] = {
 }
 _stream_sequences: dict[str, int] = {"mixed": 0, "system": 0, "mic": 0}
 _stream_mono_start: dict[str, float | None] = {"mixed": None, "system": None, "mic": None}
-# Item 48: an open run of consecutive SOURCE_SILENCE packets per stream,
+# Item 48: the open run of consecutive same-classification packets per stream,
 # collapsed into ONE manifest entry instead of one entry per 20 ms packet.
-_silence_runs: dict[str, dict] = {}
+_packet_runs: dict[str, dict] = {}
+
+# Classifications routine enough to aggregate. UNKNOWN and CAPTURE_GAP are
+# anomalies -- they are rare and each occurrence is the forensic signal -- so
+# they stay as individual entries.
+_COLLAPSIBLE_CLASSIFICATIONS = frozenset(
+    {PACKET_SOURCE_SILENCE, PACKET_SOURCE_SILENT_PACKET, PACKET_ACTIVE}
+)
 _started = False
 _writer_thread: threading.Thread | None = None
 _retention_queue: queue.Queue[dict[str, Any] | None] = queue.Queue(maxsize=_RETENTION_QUEUE_MAX)
@@ -304,22 +311,27 @@ def ingest_audio_chunk(
             pass
 
 
-def _flush_silence_run_locked(key: str) -> None:
-    """Emit the open silence run for one stream as a single manifest entry.
+def _flush_packet_run_locked(key: str) -> None:
+    """Emit the open run for one stream as a single manifest entry.
 
     Item 48. Caller must hold `_lock`.
     """
-    run = _silence_runs.pop(key, None)
+    run = _packet_runs.pop(key, None)
     if not run:
         return
     _manifest.setdefault("packets", []).append(run)
 
 
-def _flush_all_silence_runs() -> None:
-    """Close every open silence run -- called before the manifest is written."""
+def _flush_all_packet_runs() -> None:
+    """Close every open run -- called before the manifest is written."""
     with _lock:
-        for key in list(_silence_runs.keys()):
-            _flush_silence_run_locked(key)
+        for key in list(_packet_runs.keys()):
+            _flush_packet_run_locked(key)
+
+
+# Back-compat aliases: the silence-only names shipped in 11339a6.
+_flush_silence_run_locked = _flush_packet_run_locked
+_flush_all_silence_runs = _flush_all_packet_runs
 
 
 def _ingest_audio_chunk_impl(
@@ -411,12 +423,17 @@ def _ingest_audio_chunk_impl(
         # The previous bound (`> 200000` keep last `100000`) also discarded the
         # first half of a session with nothing recorded to say so. Runs carry an
         # explicit count, so nothing is silently lost.
-        if classification == PACKET_SOURCE_SILENCE:
-            run = _silence_runs.get(key)
+        if classification in _COLLAPSIBLE_CLASSIFICATIONS:
+            run = _packet_runs.get(key)
+            if run is not None and run.get("packet_classification") != classification:
+                # The classification changed for this stream -- close the run so
+                # the boundary between silence and speech stays visible.
+                _flush_packet_run_locked(key)
+                run = None
             if run is None:
-                _silence_runs[key] = {
+                _packet_runs[key] = {
                     "stream_type": key,
-                    "packet_classification": PACKET_SOURCE_SILENCE,
+                    "packet_classification": classification,
                     "collapsed_run": True,
                     "packet_count": 1,
                     "first_sequence_number": seq,
@@ -448,9 +465,9 @@ def _ingest_audio_chunk_impl(
                 if retained_frames != packet_entry["source_frame_count"]:
                     run["all_frames_retained"] = False
         else:
-            # A non-silence packet ends any open run for this stream, so the
-            # manifest keeps them in true chronological order.
-            _flush_silence_run_locked(key)
+            # UNKNOWN / CAPTURE_GAP: an anomaly, kept per-occurrence, and it
+            # also ends any open run so ordering stays chronological.
+            _flush_packet_run_locked(key)
             _manifest.setdefault("packets", []).append(packet_entry)
 
         # Backstop only -- with silence collapsed this should never be reached
@@ -703,7 +720,7 @@ def _write_manifest() -> None:
     # Item 48: close any open silence run first, so a manifest written mid-run
     # (this is called on every chunk) already contains the silence up to now
     # rather than losing the tail of the current run.
-    _flush_all_silence_runs()
+    _flush_all_packet_runs()
 
     manifest_path = get_audio_temp_path("audio_manifest")
     summary_path = get_audio_temp_path("audio_temp_summary")
@@ -852,7 +869,7 @@ def reset_audio_temp_session() -> None:
         }
         _stream_sequences = {"mixed": 0, "system": 0, "mic": 0}
         _stream_mono_start = {"mixed": None, "system": None, "mic": None}
-        _silence_runs.clear()
+        _packet_runs.clear()
         _retention_drop_count = 0
         _retention_error_count = 0
     # Drain queue (including any prior poison pill) so a subsequent start does
