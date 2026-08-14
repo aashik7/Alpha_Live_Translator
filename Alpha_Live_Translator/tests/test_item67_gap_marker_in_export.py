@@ -98,7 +98,7 @@ class GapMarkerReachesTheExportTest(unittest.TestCase):
         self.assertIn("connection lost", text)
         self.assertLess(text.index("Only line."), text.index("connection lost"))
 
-    def test_several_gaps_all_appear(self):
+    def test_gaps_separated_by_speech_stay_separate(self):
         self._add("One.", 100.0, "U1")
         ledger.record_connection_gap(seconds=10.0, at=105.0)
         self._add("Two.", 110.0, "U2")
@@ -108,6 +108,83 @@ class GapMarkerReachesTheExportTest(unittest.TestCase):
         self.assertEqual(text.count("connection lost"), 2)
         self.assertIn("approximately 10s", text)
         self.assertIn("approximately 20s", text)
+
+
+class SeveralGapsOnOneRecordTest(unittest.TestCase):
+    """Two defects with one cause, both caught by review before shipping.
+
+    Emitting each outage as its own line produced them in REVERSE chronological
+    order, because each was prepended in turn and the newest ended up on top.
+    And two outages of the same rounded length with no speech between them
+    render identical adjacent lines, which `sweep_residual_duplicates` then
+    collapses to one -- silently understating how much audio was lost.
+
+    Summing is also the truthful presentation: with no committed speech between
+    them, consecutive drops are one hole and its size is the total.
+    """
+
+    def setUp(self):
+        ledger.reset_for_run("item-67-multi")
+
+    def _add(self, text, created_at, uid):
+        ledger.apply_decision(
+            speaker=1, assembler_text=text, final_text=text,
+            requested_action="append", applied_action="append",
+            source_raw_event_ids=[f"raw-{uid}"], commit_reason="utterance_end",
+            metadata={
+                "session_id": "s", "channel_index": 0,
+                "canonical_utterance_id": uid, "source_version": 1,
+            },
+        )
+        ledger._records[-1]["created_at"] = created_at
+
+    def _export(self):
+        return ledger.serialize_export_payload({"records": ledger._records})
+
+    def _text(self):
+        return self._export()["text"]
+
+    def test_two_gaps_on_one_record_report_the_total(self):
+        self._add("Before.", 100.0, "U1")
+        ledger.record_connection_gap(seconds=10.0, at=105.0)
+        ledger.record_connection_gap(seconds=40.0, at=115.0)
+        self._add("After.", 150.0, "U2")
+        text = self._text()
+        self.assertEqual(text.count("connection lost"), 1)
+        self.assertIn("approximately 50s", text)
+
+    def test_two_identical_gaps_are_not_lost_to_deduplication(self):
+        """Separate identical lines would be collapsed by the export sweep."""
+        from alpha.transcription.final_output_cleanup import sweep_residual_duplicates
+
+        self._add("Before.", 100.0, "U1")
+        ledger.record_connection_gap(seconds=31.0, at=105.0)
+        ledger.record_connection_gap(seconds=31.0, at=115.0)
+        self._add("After.", 150.0, "U2")
+        text = self._text()
+        self.assertIn("approximately 62s", text)
+        body = [l for l in text.splitlines() if l.strip()]
+        survived, _ = sweep_residual_duplicates(body)
+        self.assertEqual(sum(1 for l in survived if "connection lost" in l), 1)
+
+    def test_the_marker_survives_export_punctuation_cleanup(self):
+        from alpha.constants import DG_GAP_MARKER_TEMPLATE
+        from alpha.transcription.final_output_cleanup import (
+            cleanup_punctuation_artifacts,
+        )
+
+        marker = DG_GAP_MARKER_TEMPLATE.format(seconds=31)
+        cleaned, changed = cleanup_punctuation_artifacts(marker)
+        self.assertEqual(cleaned, marker)
+        self.assertFalse(changed)
+
+    def test_several_trailing_gaps_are_merged_too(self):
+        self._add("Only line.", 100.0, "U1")
+        ledger.record_connection_gap(seconds=12.0, at=200.0)
+        ledger.record_connection_gap(seconds=18.0, at=210.0)
+        text = self._text()
+        self.assertEqual(text.count("connection lost"), 1)
+        self.assertIn("approximately 30s", text)
 
     def test_no_gap_leaves_the_export_untouched(self):
         """Behaviour must be byte-identical for a session with no outage."""

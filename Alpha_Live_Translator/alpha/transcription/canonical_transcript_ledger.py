@@ -865,6 +865,25 @@ def is_frozen() -> bool:
         return _frozen
 
 
+def _merge_gaps(gaps: list[dict[str, Any]]) -> dict[str, Any]:
+    """Fold every outage landing on the same record into one marker. Item 67.
+
+    Two problems, one cause. Emitting them as separate lines produced them in
+    REVERSE chronological order, because each was prepended in turn -- the
+    newest ended up on top. And two outages of the same rounded length with no
+    speech between them render identical adjacent lines, which
+    `sweep_residual_duplicates` then collapses to one, silently understating
+    how much audio was lost.
+
+    Summing is also the more truthful presentation: with no committed speech
+    between them, consecutive drops are one hole in the transcript, and its
+    size is the total.
+    """
+    total = sum(float(g.get("seconds") or 0.0) for g in gaps)
+    earliest = min((float(g.get("at") or 0.0) for g in gaps), default=0.0)
+    return {"at": earliest, "seconds": total}
+
+
 def _format_connection_gap_line(gap: dict[str, Any]) -> str:
     """The marker exactly as the live UI shows it, so the two agree. Item 67."""
     from alpha.constants import DG_GAP_MARKER_TEMPLATE
@@ -941,9 +960,11 @@ def serialize_export_payload(snapshot: Optional[dict[str, Any]] = None) -> dict[
         # `record_ids` -- every downstream coverage gate pairs those two lists
         # by index, and inserting a standalone line would shift them apart.
         created_at = float(rec.get("created_at") or 0.0)
+        due = []
         while pending_gaps and created_at and pending_gaps[0].get("at", 0.0) <= created_at:
-            gap = pending_gaps.pop(0)
-            entry = _format_connection_gap_line(gap) + "\n" + entry
+            due.append(pending_gaps.pop(0))
+        if due:
+            entry = _format_connection_gap_line(_merge_gaps(due)) + "\n" + entry
         lines.append(entry)
         record_ids.append(str(rec.get("record_id")))
     if pending_gaps and lines:
@@ -951,9 +972,7 @@ def serialize_export_payload(snapshot: Optional[dict[str, Any]] = None) -> dict[
         # never recovered enough speech from. It still has to be visible, so it
         # goes at the end rather than being dropped for having no record after
         # it.
-        lines[-1] = lines[-1] + "\n" + "\n".join(
-            _format_connection_gap_line(g) for g in pending_gaps
-        )
+        lines[-1] = lines[-1] + "\n" + _format_connection_gap_line(_merge_gaps(pending_gaps))
         pending_gaps = []
     body = "\n".join(lines)
     if body and not body.endswith("\n"):
