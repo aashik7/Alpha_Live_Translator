@@ -2018,6 +2018,28 @@ class UtteranceLifecycleOwner:
                     active.start_time, active.end_time, cand_start, cand_end
                 ),
             )
+            # Item 66, second half. Trimming only when the utterance is
+            # CREATED is not durable: Deepgram re-sends its window
+            # cumulatively, so the very next chunk arrives carrying the head we
+            # just removed, `_merge_lexical` takes it wholesale, and the
+            # duplicate is back. Measured on run `...20260814-112633`:
+            # `RESENT_TAIL_TRIMMED` fired for `"The 3rd 1"`, yet the exported
+            # record still began with it, because that utterance went on to
+            # source_version 8.
+            #
+            # Re-applying the trim after every merge fixes it and is
+            # idempotent: `_strip_committed_tail_prefix` only matches at the
+            # HEAD, so once the head is gone it returns None and nothing
+            # changes, while a cumulative re-send that reintroduces it is
+            # trimmed again. A later, mid-text recurrence of the same words is
+            # never touched.
+            merged = self._trim_resent_tail_locked(
+                merged,
+                channel=channel,
+                speaker=speaker,
+                cand_start=cand_start,
+                cand_end=cand_end,
+            )
             # item 65: a sentence that ended is a boundary, not a place to keep
             # appending. Only fires when the merge above was a *pure* append
             # across a sentence terminator, so every revision, overlap-join and
