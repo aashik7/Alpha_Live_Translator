@@ -4490,8 +4490,27 @@ class AlphaApp(
         lines: list[str] = []
         for seg in window:
             text = (getattr(seg, "text", "") or "").strip()
-            if text:
-                lines.append(f"{self._ui_speaker_label_text()}{text}")
+            if not text:
+                continue
+            # Item 65 reached copy/export and `Alpha output.txt`, but NOT this
+            # pane -- the one actually watched during a meeting, which kept
+            # rendering each committed segment as one raw paragraph. Item 69
+            # grouped the live *interim* preview; this is its committed
+            # counterpart, so a settled line and the preview above it now read
+            # the same way instead of the text reflowing the moment it commits.
+            #
+            # Reuses the store's `_readable_parts`, which is memoised per
+            # segment, so a bounded 500-segment window costs no extra
+            # derivation on the UI thread. It falls back to the raw text on any
+            # failure, and returns [text] unchanged for non-English.
+            try:
+                parts = self.transcript_store._readable_parts(seg)
+            except Exception:
+                parts = [text]
+            for part in parts or [text]:
+                part = (part or "").strip()
+                if part:
+                    lines.append(f"{self._ui_speaker_label_text()}{part}")
         content = "\n".join(lines)
         if content.strip():
             # Guard: refuse accidental full-history unbounded rewrite path.

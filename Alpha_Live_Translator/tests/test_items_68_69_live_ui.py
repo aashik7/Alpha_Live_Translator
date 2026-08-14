@@ -37,6 +37,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from alpha import constants  # noqa: E402
+from alpha.summary.transcript_store import TranscriptStore  # noqa: E402
 from alpha.ui.main_window import AlphaApp  # noqa: E402
 
 
@@ -162,6 +163,84 @@ class PendingPlaceholderIsHiddenTest(unittest.TestCase):
         not to the mark."""
         src = inspect.getsource(AlphaApp._clear_translation_loading_item)
         self.assertIn("box.insert(tk.END, cleaned", src)
+
+
+class LivePaneGroupsCommittedSegmentsTest(unittest.TestCase):
+    """Item 65 reached copy/export and Alpha output.txt but not this pane.
+
+    `_render_transcript_from_store_now` rendered `seg.text` raw, so the pane
+    watched during a meeting still showed one paragraph per committed segment
+    while the interim preview above it (item 69) was already grouped -- the
+    text visibly reflowed the moment it committed.
+
+    Reuses `TranscriptStore._readable_parts`, which is memoised per segment, so
+    the bounded window costs no extra derivation on the UI thread.
+    """
+
+    PARA = (
+        "This is the first sentence of the block. Here is a second sentence "
+        "that follows on. And a third one that closes it. Then a fourth begins "
+        "another thought entirely. A fifth carries it further still."
+    )
+
+    def _host(self, count, language="en"):
+        class Box:
+            def __init__(self):
+                self.text = ""
+
+            def configure(self, **_kw):
+                pass
+
+            def insert(self, _index, value):
+                self.text += value
+
+            def see(self, *_a):
+                pass
+
+        class Host:
+            _render_transcript_from_store_now = (
+                AlphaApp._render_transcript_from_store_now
+            )
+
+            def __init__(self):
+                self.initial_verse_box = Box()
+                self.transcript_store = TranscriptStore()
+                self._transcript_render_job = None
+                self._displayed_segment_count = 0
+
+            def _ui_speaker_label_text(self):
+                return "Speaker: "
+
+            def _insert_formatted_text(self, box, content):
+                box.insert("end", content)
+
+        host = Host()
+        for _ in range(count):
+            host.transcript_store.add_segment(
+                speaker=1, text=self.PARA, source_language=language
+            )
+        return host
+
+    def _rendered_lines(self, host):
+        host._render_transcript_from_store_now()
+        return [l for l in host.initial_verse_box.text.splitlines() if l.strip()]
+
+    def test_a_committed_paragraph_is_split_in_the_pane(self):
+        lines = self._rendered_lines(self._host(1))
+        self.assertGreater(len(lines), 1, "pane still renders one raw paragraph")
+
+    def test_no_word_is_lost_in_the_pane(self):
+        lines = self._rendered_lines(self._host(1))
+        rendered = " ".join(l.split(":", 1)[1] for l in lines)
+        self.assertEqual(rendered.split(), self.PARA.split())
+
+    def test_japanese_is_left_alone_in_the_pane(self):
+        host = self._host(1, language="ja")
+        self.assertEqual(len(self._rendered_lines(host)), 1)
+
+    def test_every_line_carries_a_speaker_label(self):
+        for line in self._rendered_lines(self._host(3)):
+            self.assertTrue(line.startswith("Speaker"), line)
 
 
 if __name__ == "__main__":
