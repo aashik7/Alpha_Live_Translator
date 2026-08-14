@@ -37,6 +37,9 @@ PACKET_ACTIVE = "ACTIVE"
 
 _NEAR_ZERO_ABS = 50  # int16 near-zero threshold for SOURCE_SILENCE classification
 _RETENTION_QUEUE_MAX = 256
+# Item 48: backstop on manifest packet entries. With silence collapsed a
+# 99-minute session produces a few thousand, so this is a runaway guard only.
+_PACKET_ENTRY_LIMIT = 40000
 _SAMPLE_RATE = 16000
 _CHANNELS = 1
 _SAMPLE_WIDTH = 2
@@ -50,6 +53,9 @@ _chunk_buffers: dict[str, bytearray] = {
 }
 _stream_sequences: dict[str, int] = {"mixed": 0, "system": 0, "mic": 0}
 _stream_mono_start: dict[str, float | None] = {"mixed": None, "system": None, "mic": None}
+# Item 48: an open run of consecutive SOURCE_SILENCE packets per stream,
+# collapsed into ONE manifest entry instead of one entry per 20 ms packet.
+_silence_runs: dict[str, dict] = {}
 _started = False
 _writer_thread: threading.Thread | None = None
 _retention_queue: queue.Queue[dict[str, Any] | None] = queue.Queue(maxsize=_RETENTION_QUEUE_MAX)
@@ -298,6 +304,24 @@ def ingest_audio_chunk(
             pass
 
 
+def _flush_silence_run_locked(key: str) -> None:
+    """Emit the open silence run for one stream as a single manifest entry.
+
+    Item 48. Caller must hold `_lock`.
+    """
+    run = _silence_runs.pop(key, None)
+    if not run:
+        return
+    _manifest.setdefault("packets", []).append(run)
+
+
+def _flush_all_silence_runs() -> None:
+    """Close every open silence run -- called before the manifest is written."""
+    with _lock:
+        for key in list(_silence_runs.keys()):
+            _flush_silence_run_locked(key)
+
+
 def _ingest_audio_chunk_impl(
     pcm_bytes: bytes | None,
     *,
@@ -351,7 +375,9 @@ def _ingest_audio_chunk_impl(
             _stream_mono_start[key] = end_mono
         meta = _run_metadata()
         packet_entry = {
-            "run_id": meta.get("run_id", ""),
+            # `run_id` intentionally omitted: it is on the manifest root and
+            # repeating a 51-character string per packet cost ~9.8 MB on the
+            # 99-minute run alone.
             "stream_type": key,
             "sequence_number": seq,
             "monotonic_start": start_mono,
@@ -367,10 +393,75 @@ def _ingest_audio_chunk_impl(
             "packet_classification": classification,
             "sha256": _sha256_bytes(data) if data else "",
         }
-        _manifest.setdefault("packets", []).append(packet_entry)
-        # Cap packet log growth (bounded evidence).
-        if len(_manifest["packets"]) > 200000:
-            _manifest["packets"] = _manifest["packets"][-100000:]
+        # Item 48. Measured on the 99-minute run `...20260814-114309`:
+        # `audio_manifest.json` reached **117 MB**, of which `packets` was 95 MB
+        # across 193,675 entries -- and **191,579 of those (98.9%) were
+        # SOURCE_SILENCE with `retained_frame_count == source_frame_count`**, so
+        # each one proved only that nothing was dropped. Serialising that list
+        # is also the most likely cause of the run's 498 MB peak RSS against a
+        # 272 MB steady state.
+        #
+        # Consecutive silence on one stream is therefore collapsed into a single
+        # run entry carrying the counts, the frame/byte totals and the time
+        # span. That preserves exactly what this file exists to prove -- this
+        # app is called "Preserve Real Silence"; the evidence is that silence
+        # was RETAINED, not that it was retained 191,579 separate times -- while
+        # ACTIVE packets keep full per-packet fidelity.
+        #
+        # The previous bound (`> 200000` keep last `100000`) also discarded the
+        # first half of a session with nothing recorded to say so. Runs carry an
+        # explicit count, so nothing is silently lost.
+        if classification == PACKET_SOURCE_SILENCE:
+            run = _silence_runs.get(key)
+            if run is None:
+                _silence_runs[key] = {
+                    "stream_type": key,
+                    "packet_classification": PACKET_SOURCE_SILENCE,
+                    "collapsed_run": True,
+                    "packet_count": 1,
+                    "first_sequence_number": seq,
+                    "last_sequence_number": seq,
+                    "monotonic_start": start_mono,
+                    "monotonic_end": packet_entry["monotonic_end"],
+                    "wall_start": wall_now,
+                    "wall_end": packet_entry["wall_end"],
+                    "source_frame_count": packet_entry["source_frame_count"],
+                    "retained_frame_count": retained_frames,
+                    "byte_count": len(data),
+                    "sample_rate": _SAMPLE_RATE,
+                    "channels": _CHANNELS,
+                    "encoding": "pcm_s16le",
+                    "all_frames_retained": (
+                        retained_frames == packet_entry["source_frame_count"]
+                    ),
+                }
+            else:
+                run["packet_count"] += 1
+                run["last_sequence_number"] = seq
+                run["monotonic_end"] = packet_entry["monotonic_end"]
+                run["wall_end"] = packet_entry["wall_end"]
+                run["source_frame_count"] += packet_entry["source_frame_count"]
+                run["retained_frame_count"] += retained_frames
+                run["byte_count"] += len(data)
+                # One dropped frame anywhere in the run flips this false, so the
+                # aggregate can never claim more than the packets did.
+                if retained_frames != packet_entry["source_frame_count"]:
+                    run["all_frames_retained"] = False
+        else:
+            # A non-silence packet ends any open run for this stream, so the
+            # manifest keeps them in true chronological order.
+            _flush_silence_run_locked(key)
+            _manifest.setdefault("packets", []).append(packet_entry)
+
+        # Backstop only -- with silence collapsed this should never be reached
+        # in a normal session. Records what it dropped rather than doing it
+        # quietly.
+        if len(_manifest["packets"]) > _PACKET_ENTRY_LIMIT:
+            dropped = len(_manifest["packets"]) - (_PACKET_ENTRY_LIMIT // 2)
+            _manifest["packets"] = _manifest["packets"][-(_PACKET_ENTRY_LIMIT // 2):]
+            _manifest["packet_entries_dropped"] = int(
+                _manifest.get("packet_entries_dropped", 0)
+            ) + dropped
 
         if data:
             _chunk_buffers[key].extend(data)
@@ -609,6 +700,11 @@ def _enforce_size_limit_locked() -> None:
 def _write_manifest() -> None:
     from alpha.utils.troubleshooting_paths import get_audio_temp_path
 
+    # Item 48: close any open silence run first, so a manifest written mid-run
+    # (this is called on every chunk) already contains the silence up to now
+    # rather than losing the tail of the current run.
+    _flush_all_silence_runs()
+
     manifest_path = get_audio_temp_path("audio_manifest")
     summary_path = get_audio_temp_path("audio_temp_summary")
     with _lock:
@@ -756,6 +852,7 @@ def reset_audio_temp_session() -> None:
         }
         _stream_sequences = {"mixed": 0, "system": 0, "mic": 0}
         _stream_mono_start = {"mixed": None, "system": None, "mic": None}
+        _silence_runs.clear()
         _retention_drop_count = 0
         _retention_error_count = 0
     # Drain queue (including any prior poison pill) so a subsequent start does
