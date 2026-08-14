@@ -125,6 +125,103 @@ class AbbreviationsAreNotBoundariesTest(unittest.TestCase):
         self.assertEqual(lines, ["It grew 3.5 percent. That is good."])
 
 
+class SentenceSplitterCaseSensitivityTest(unittest.TestCase):
+    """`re.IGNORECASE` on `\b[A-Z]` made it match ANY single letter.
+
+    A sentence ending in a one-letter word -- "I take vitamin a." -- was read
+    as an initial, so the boundary after it was never taken and two sentences
+    merged into one line. Real initials and abbreviations must still be
+    protected, which is why the two patterns are now separate rather than one
+    case-insensitive alternation.
+    """
+
+    def test_a_lone_lowercase_letter_is_not_an_initial(self):
+        from alpha.utils.english_line_grouping import _is_abbreviation_or_initial
+
+        self.assertFalse(_is_abbreviation_or_initial("vitamin a"))
+
+    def test_a_real_initial_is_still_protected(self):
+        """The candidate ends just BEFORE the boundary period, so an initial
+        looks like "...J", not "...J."."""
+        from alpha.utils.english_line_grouping import _is_abbreviation_or_initial
+
+        self.assertTrue(_is_abbreviation_or_initial("Tolkien, J"))
+
+    def test_a_capital_with_its_own_period_is_not_an_initial(self):
+        """Otherwise "A. B. C." stops splitting entirely."""
+        from alpha.utils.english_line_grouping import _is_abbreviation_or_initial
+
+        self.assertFalse(_is_abbreviation_or_initial("A."))
+
+    def test_abbreviations_stay_case_insensitive(self):
+        from alpha.utils.english_line_grouping import _is_abbreviation_or_initial
+
+        for form in ("Dr", "dr", "PROF", "etc"):
+            self.assertTrue(_is_abbreviation_or_initial(form), form)
+
+    def test_titles_still_do_not_split(self):
+        self.assertEqual(
+            group_sentences_into_lines("Dr. Smith arrived. He was late."),
+            ["Dr. Smith arrived. He was late."],
+        )
+
+
+class NumbersAreNotStuttersTest(unittest.TestCase):
+    """Collapsing a repeated digit changes a NUMBER rather than removing a
+    stumble. "1 1" and "8 8" appear in real transcripts as list items or as a
+    decimal the provider split."""
+
+    def test_repeated_digits_survive(self):
+        for phrase in ("8 8 percent", "1 1 of them", "chapter 3 3 begins"):
+            self.assertEqual(collapse_stutters(phrase), phrase)
+
+    def test_words_are_still_collapsed(self):
+        self.assertEqual(collapse_stutters("he he writes"), "he writes")
+
+    def test_alphanumeric_tokens_survive(self):
+        self.assertEqual(collapse_stutters("room 4b 4b now"), "room 4b 4b now")
+
+
+class ReadableLinesAreMemoisedTest(unittest.TestCase):
+    """`get_clean_text` runs on every UI render and re-derived every segment.
+
+    Measured before: 14.9 ms at 20 segments, 29.0 at 160, 62.0 at 320, against
+    `UI_QUEUE_TIME_BUDGET_MS = 10`. The 99-minute run logged 162
+    `UI_EVENT_DRAIN_TIME_BUDGET_EXCEEDED` events.
+    """
+
+    def test_repeated_renders_reuse_the_cache(self):
+        store = TranscriptStore()
+        store.add_segment(speaker=1, text=USER_EXAMPLE, source_language="en")
+        first = store.get_clean_text()
+        segment = store.get_all()[0]
+        self.assertIsNotNone(getattr(segment, "_readable_cache", None))
+        self.assertEqual(store.get_clean_text(), first)
+
+    def test_an_in_place_revision_invalidates_it(self):
+        """`update_last_segment_if_active` rewrites text in place, so caching
+        on identity alone would keep serving the pre-revision lines."""
+        store = TranscriptStore()
+        store.add_segment(speaker=1, text="First one. Second one.", source_language="en")
+        before = store.get_clean_text()
+        store.update_last_segment_if_active(1, "Totally different now. Second thing.")
+        after = store.get_clean_text()
+        self.assertNotEqual(before, after)
+        self.assertIn("Totally different now.", after)
+
+    def test_rendering_many_segments_stays_cheap(self):
+        import time
+
+        store = TranscriptStore()
+        for _ in range(300):
+            store.add_segment(speaker=1, text=USER_EXAMPLE, source_language="en")
+        store.get_clean_text()
+        started = time.perf_counter()
+        store.get_clean_text()
+        elapsed_ms = (time.perf_counter() - started) * 1000
+        self.assertLess(elapsed_ms, 25.0, f"{elapsed_ms:.1f} ms per render at 300 segments")
+
+
 class StoreRendersGroupedLinesTest(unittest.TestCase):
     """Wired where the readable transcript is actually built."""
 

@@ -292,8 +292,34 @@ class TranscriptStore:
 
     @staticmethod
     def _readable_parts(segment) -> list:
-        """Segment text as one or more readable lines (English only)."""
+        """Segment text as one or more readable lines (English only).
+
+        Memoised on the segment. `get_clean_text` runs on every UI render and
+        re-derived every segment each time, so the cost grew with the session
+        while only the newest segment could have changed: measured 14.9 ms at
+        20 segments, 29.0 ms at 160, 62.0 ms at 320 -- against
+        `UI_QUEUE_TIME_BUDGET_MS = 10`. The 99-minute run
+        `...20260814-114309` logged 162 `UI_EVENT_DRAIN_TIME_BUDGET_EXCEEDED`
+        events with 160 records; a 3-hour meeting would spend ~100 ms per
+        render regrouping text that had not changed.
+
+        Keyed on the text itself rather than just presence, because
+        `update_last_segment_if_active` rewrites a segment in place -- caching
+        on identity alone would keep serving the pre-revision lines.
+        """
         text = getattr(segment, "text", "") or ""
+        cached = getattr(segment, "_readable_cache", None)
+        if cached is not None and cached[0] == text:
+            return cached[1]
+        parts = TranscriptStore._build_readable_parts(segment, text)
+        try:
+            segment._readable_cache = (text, parts)
+        except Exception:
+            pass  # frozen/slotted segment: correctness is unaffected
+        return parts
+
+    @staticmethod
+    def _build_readable_parts(segment, text: str) -> list:
         language = str(getattr(segment, "source_language", "") or "").lower()
         if not language.startswith("en"):
             return [text]  # unknown or non-English: never regroup

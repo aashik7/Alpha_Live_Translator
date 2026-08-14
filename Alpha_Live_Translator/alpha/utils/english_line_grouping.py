@@ -55,10 +55,23 @@ _SENTENCE_END = re.compile(r'(?<=[.!?])(?=["\')\]]*\s)')
 # Terminators that do NOT end a sentence: an initial ("J. R. R.") or a common
 # abbreviation. Kept to the short list that actually appears in meeting speech;
 # a wrong split here only mis-groups a line, it never loses text.
-_NOT_A_SENTENCE_END = re.compile(
-    r"(?:\b[A-Z]|\b(?:Mr|Mrs|Ms|Dr|Prof|St|Jr|Sr|vs|etc|e\.g|i\.e|approx|No)\.?)\s*$",
+# Two patterns, because they need different case sensitivity. Folding them into
+# one `re.IGNORECASE` alternation made `\b[A-Z]` match ANY single letter, so a
+# sentence ending in a one-letter word -- "I take vitamin a. Then I slept." --
+# was read as an initial and the boundary after it was never taken.
+# No trailing `\.?` here, deliberately: the candidate ends just BEFORE the
+# boundary period, so an initial looks like "...J" and not "...J.". Adding the
+# optional period made "A." itself an initial, which stopped "A. B. C." from
+# splitting at all -- caught by test_a_long_line_is_never_produced_by_merging.
+_INITIAL_LETTER = re.compile(r"\b[A-Z]\s*$")
+_ABBREVIATION = re.compile(
+    r"\b(?:Mr|Mrs|Ms|Dr|Prof|St|Jr|Sr|vs|etc|e\.g|i\.e|approx|No)\.?\s*$",
     re.IGNORECASE,
 )
+
+
+def _is_abbreviation_or_initial(text: str) -> bool:
+    return bool(_INITIAL_LETTER.search(text) or _ABBREVIATION.search(text))
 
 
 def split_sentences(text: str) -> list[str]:
@@ -75,7 +88,7 @@ def split_sentences(text: str) -> list[str]:
     for match in _SENTENCE_END.finditer(raw):
         cut = match.start()
         candidate = raw[start:cut]
-        if _NOT_A_SENTENCE_END.search(candidate):
+        if _is_abbreviation_or_initial(candidate):
             continue  # an initial or abbreviation, not a boundary
         pieces.append(raw[start:cut])
         start = cut
@@ -149,6 +162,12 @@ def collapse_stutters(text: str) -> str:
     def _sub(match: "re.Match[str]") -> str:
         word = match.group(1)
         if word.lower() in _LEGITIMATE_DOUBLES:
+            return match.group(0)
+        if any(ch.isdigit() for ch in word):
+            # "1 1" and "8 8" occur in real transcripts as list items, or as a
+            # decimal the provider split ("1.1"). Collapsing a digit changes a
+            # NUMBER rather than removing a stumble: words get stuttered,
+            # figures are data.
             return match.group(0)
         return word
 
