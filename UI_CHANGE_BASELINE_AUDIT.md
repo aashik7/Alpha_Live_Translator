@@ -27,9 +27,11 @@ frozen above, and to fix it where it does not.
 - **The 7 failing tests in §7.2 are pre-existing.** They fail on the frozen
   baseline too. Do not investigate them, do not fix them, do not count them as
   regressions. An 8th distinct failing name IS a regression.
-- **`test_task9_report` is a documented load-flake.** If it appears, run it
-  alone 4 times before concluding anything. It fails ~3/4 in isolation both
-  with and without changes.
+- **`test_task9_report` is a documented load-flake and is the one allowed
+  exception to the rule above.** It is not in §7.2's list because it does not
+  appear on every run. If it appears, run it alone 4 times before concluding
+  anything; it fails ~3/4 in isolation both with and without changes. Any
+  *other* name outside §7.2 is a regression.
 - **Do not trust the UI's appearance as evidence.** Several defects in this
   project looked correct on screen and were losing data. Always check the
   exported files in `troubleshooting/runs/<run>/`.
@@ -50,11 +52,17 @@ frozen above, and to fix it where it does not.
 | Python | 3.14, venv at `.venv/` in repo root |
 | Test runner | `unittest` only — **there is no pytest in this venv** |
 
-Restore the baseline at any time with:
+To compare against the baseline, check it out **into a separate worktree**:
 
 ```bash
-git stash && git checkout ac25308
+git worktree add ../alpha-baseline ac25308
 ```
+
+**Do not `git checkout ac25308` in the working tree.** This file did not exist
+at `ac25308` (it was added afterwards in `b2f65d4`), so checking it out deletes
+the instructions you are reading, and it detaches HEAD — work committed there is
+easy to lose. The worktree gives you both versions side by side. Remove it with
+`git worktree remove ../alpha-baseline` when done.
 
 ---
 
@@ -152,7 +160,8 @@ segments against a `UI_QUEUE_TIME_BUDGET_MS` of 10.
 
 ### C8 — Every UI-visible transcript path must group English text
 
-Three paths render transcript text. All three must group:
+**Four** paths render transcript text. All four must group — checking three and
+declaring C8 PASS is how this bug survived the first time:
 
 | Path | File | Function |
 |---|---|---|
@@ -177,6 +186,17 @@ and every path falls back to the raw text on any failure.
 ---
 
 ## 4. Function-by-function contract
+
+**The line numbers below are `ac25308` positions and a UI redesign is precisely
+what invalidates them.** They are navigation hints for the baseline worktree,
+never identity. Locate every symbol by name:
+
+```bash
+grep -n "def _render_transcript_from_store_now" Alpha_Live_Translator/alpha/ui/main_window.py
+```
+
+If a function is **gone** rather than moved, that is a finding, not a stale
+anchor — say which contract it carried and where the new code carries it.
 
 ### 4.1 `alpha/ui/main_window.py`
 
@@ -315,9 +335,10 @@ def check(cid, cond, detail=""):
     ok &= bool(cond)
     print(f"  {cid}: {'PASS' if cond else 'FAIL'} {detail if not cond else ''}")
 
-# C2 / C8 - the live pane must group committed segments
+# C8 - the live pane must group committed segments
 src = inspect.getsource(AlphaApp._render_transcript_from_store_now)
 check("C8 live pane groups", "_readable_parts" in src)
+# C6 - the pane render stays bounded
 check("C6 render cap", "MAX_RENDERED_UI_SEGMENTS" in src)
 # C3 - is_final re-assert after the blanket metadata update
 pub = inspect.getsource(dc.DeepgramClientMixin._publish_final_transcript_segment)
@@ -329,9 +350,32 @@ check("C7 cache keyed on text", "cached[0] == text" in rp)
 # C5 - gap marker never becomes a record
 L.reset_for_run("contract"); L.record_connection_gap(seconds=31.0, at=1.0)
 check("C5 marker is not a record", len(L._records) == 0)
-# C9 / C10 - Japanese untouched, no word lost
+# C9 - Japanese is never regrouped by English rules
 s = TranscriptStore(); s.add_segment(speaker=1, text="これは一です。これは二です。これは三です。", source_language="ja")
 check("C9 japanese untouched", len([l for l in s.get_clean_text().splitlines() if l.strip()]) == 1)
+# C10 - grouping loses no word, on the user's own pinned example
+from alpha.utils.english_line_grouping import group_sentences_into_lines, text_is_preserved
+EX = ("My name is Tariqul. I am from Bangladesh. I am a software developer. "
+      "Currently I am working on Wicresoft Japan as a System Engineer. I have a dream "
+      "to chase so I work so hard night and day. I live in Tokyo Japan right now. "
+      "I use Bus and Train for come to office and it takes more than an hour to reach office.")
+parts = group_sentences_into_lines(EX)
+check("C10 no word lost", text_is_preserved(EX, parts))
+check("C10 user example is 3 lines", len(parts) == 3, f"got {len(parts)}")
+# C4 - one entry per canonical record, even with a gap marker embedded
+L.reset_for_run("contract-c4")
+for i, t in enumerate(("One.", "Two."), 1):
+    L.apply_decision(speaker=1, assembler_text=t, final_text=t, requested_action="append",
+                     applied_action="append", source_raw_event_ids=[f"raw-{i}"],
+                     commit_reason="utterance_end",
+                     metadata={"session_id": "s", "channel_index": 0,
+                               "canonical_utterance_id": f"U{i}", "source_version": 1})
+    if i == 1:
+        L.record_connection_gap(seconds=31.0, at=1.0)
+p = L.serialize_export_payload({"records": L._records})
+check("C4 lines 1:1 record_ids", len(p["lines"]) == len(p["record_ids"]) == 2,
+      f'{len(p["lines"])} lines vs {len(p["record_ids"])} record_ids')
+check("C4 gap is embedded, not a line", "connection lost" in p["text"])
 # flags
 for name, want in [("TRANSLATION_PENDING_PLACEHOLDER_VISIBLE", False),
                    ("INTERIM_PREVIEW_LINE_GROUPING_ENABLED", True),
@@ -358,7 +402,7 @@ for _ in range(320):
     s.add_segment(speaker=1, text=PARA, source_language="en")
 s.get_clean_text()
 t = time.perf_counter(); s.get_clean_text(); ms = (time.perf_counter() - t) * 1000
-print(f"get_clean_text at 320 segments: {ms:.2f} ms   (baseline 3.3 ms; FAIL if > 25 ms)")
+print(f"get_clean_text at 320 segments: {ms:.2f} ms   (baseline 1.4-3.3 ms; FAIL if > 25 ms)")
 PY
 ```
 
@@ -389,12 +433,19 @@ Run **one** session, about 6 minutes:
 
 ```bash
 cd "C:/Users/islamm/Documents/Tariqul/Alpha_Translator V 1.0/Alpha_Live_Translator/troubleshooting/runs" && "../../../.venv/Scripts/python.exe" - <<'PY'
-import json, re, glob, os
+import json, re, glob, os, sys
 from pathlib import Path
-R = Path(sorted(glob.glob("*/"), key=os.path.getmtime)[-1].rstrip("/"))
-m = json.loads((R / "RUN_MANIFEST.json").read_text(encoding="utf-8"))
-log = (R / "logs/japanese_accuracy.log").read_text(encoding="utf-8", errors="replace")
-n = lambda f: len([l for l in (R / f).read_text(encoding="utf-8").splitlines() if l.strip()]) if (R / f).exists() else 0
+# Every read below is guarded: a UI change that breaks the pipeline produces a
+# run with MISSING files, and an analyser that crashes on those tells you
+# nothing about the failure you are trying to diagnose.
+runs = sorted(glob.glob("*/"), key=os.path.getmtime)
+if not runs:
+    sys.exit("no runs found - did the session write to troubleshooting/runs/ ?")
+R = Path(runs[-1].rstrip("/"))
+rd = lambda f, d="": (R / f).read_text(encoding="utf-8", errors="replace") if (R / f).exists() else d
+m = json.loads(rd("RUN_MANIFEST.json", "{}") or "{}")
+log = rd("logs/japanese_accuracy.log")
+n = lambda f: len([l for l in rd(f).splitlines() if l.strip()])
 print("run:", R.name, "| status:", m.get("final_status"), "| stop_failed:", m.get("stop_finalize_failed"))
 for ev in ("CRASH_HOOK_TRIGGERED", "THREAD_EXCEPTION_CAPTURED",
            "COMMITTED_SEGMENT_DROPPED_AS_INTERIM", "UI_FULL_REWRITE_BLOCKED",
@@ -403,7 +454,9 @@ for ev in ("CRASH_HOOK_TRIGGERED", "THREAD_EXCEPTION_CAPTURED",
     print(f"  {ev}: {len(re.findall(ev, log))}")
 pub, canon, exp = n("evidence_streams/provider_events.jsonl"), n("evidence_streams/canonical_commits.jsonl"), n("transcripts/final_export_records.jsonl")
 print(f"  pipeline: {pub} publishes -> {canon} canonical -> {exp} exported")
-recs = [json.loads(l) for l in (R / "transcripts/final_export_records.jsonl").read_text(encoding="utf-8").splitlines() if l.strip()]
+recs = [json.loads(l) for l in rd("transcripts/final_export_records.jsonl").splitlines() if l.strip()]
+if not recs:
+    sys.exit("  *** NO EXPORTED RECORDS - the export path is broken. Stop and fix this. ***")
 dup = 0
 for i in range(len(recs) - 1):
     a, b = recs[i]["text"].split(), recs[i + 1]["text"].split()
@@ -411,13 +464,15 @@ for i in range(len(recs) - 1):
         if [w.lower().strip(".,") for w in a[-k:]] == [w.lower().strip(".,") for w in b[:k]]:
             dup += 1; break
 print(f"  cross-record duplications: {dup}   (MUST be 0)")
-txt = (R / "transcripts/Alpha output.txt").read_text(encoding="utf-8", errors="replace")
+txt = rd("transcripts/Alpha output.txt")
 lines = [l for l in txt.splitlines() if l.strip()]
-w = [len(l.split()) for l in lines]
-print(f"  readable: {len(recs)} records -> {len(lines)} lines, median {sorted(w)[len(w)//2]} words")
+w = sorted(len(l.split()) for l in lines)
+med = w[len(w) // 2] if w else 0
+print(f"  readable: {len(recs)} records -> {len(lines)} lines, median {med} words"
+      + ("   *** EMPTY EXPORT ***" if not lines else ""))
 print(f"  hourglass rows in export: {txt.count(chr(0x23F3))}   (MUST be 0)")
 print(f"  gap marker in export: {'YES' if 'connection lost' in txt else 'NO  <-- FAIL if WiFi was dropped'}")
-ts = json.loads((R / "translation/translation_summary.json").read_text(encoding="utf-8"))
+ts = json.loads(rd("translation/translation_summary.json", "{}") or "{}")
 print(f"  translation: {ts.get('successful_translations')}/{ts.get('STABLE_TRANSLATION_JOBS_ACCEPTED')} ok, failed={ts.get('failed_translations')}")
 man = R / "audio_temp/audio_manifest.json"
 if man.exists():
@@ -448,7 +503,7 @@ Measured on the frozen commit. **The new UI must match or beat every row.**
 | gap marker accuracy | 30.7 s for a ~32 s drop | `154956` | absent, or off by > 20% |
 | memory after warm-up | +13.5 MB over 74 min | `114309` | steady growth |
 | queue depths | **0** at all snapshots | `114309` | sustained > 0 |
-| `get_clean_text` @320 segs | **3.3 ms** | §7.4 | > 25 ms |
+| `get_clean_text` @320 segs | **1.4–3.3 ms** | §7.4 | > 25 ms |
 
 Reference runs are in `Alpha_Live_Translator/troubleshooting/runs/`:
 `v3.3.5.5.8.5.26.5.3-20260814-114309` (99 min), `-155844` (8 min),
