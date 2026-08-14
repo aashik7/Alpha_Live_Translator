@@ -321,6 +321,23 @@ ENGLISH_SENTENCE_FLUSH_ENABLED = True
 # the character cap is the backstop, because a single accumulated English
 # utterance has been measured at 2342 characters and three of those would
 # dominate the request.
+# Item 68: show the "Speaker: … ⏳" pending row in the translation pane?
+# Measured on the user's `Translation - en.txt`: 6 real translation blocks and 6
+# placeholder rows -- half the pane was placeholders. The row is purely a
+# progress hint: the completed translation is appended at tk.END regardless, and
+# ordering comes from the worker's translation_sequence buffer, not from this
+# row's position. Its Tk mark IS deleted on completion, so when this is False
+# the mark is not set either -- a dangling mark at "end" would sit BEFORE the
+# next appended line and that delete would remove a real translation.
+TRANSLATION_PENDING_PLACEHOLDER_VISIBLE = False
+
+# Item 69: group the live interim preview into readable lines instead of one
+# growing paragraph. The user's `Live Transcript - en.txt` has 283 UI lines of
+# which only 5 are committed, and the ⏳ preview grew past 2000 characters
+# before settling. Display-only; the preview is deleted and rewritten on every
+# tick, so this cannot affect committed text.
+INTERIM_PREVIEW_LINE_GROUPING_ENABLED = True
+
 TRANSLATION_CONTEXT_LINES = 3
 TRANSLATION_CONTEXT_MAX_CHARS = 900
 

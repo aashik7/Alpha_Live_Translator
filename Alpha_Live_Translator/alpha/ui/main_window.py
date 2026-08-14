@@ -35,6 +35,8 @@ from alpha.config import (
     has_deepl_api_key,
 )
 from alpha.constants import (
+    INTERIM_PREVIEW_LINE_GROUPING_ENABLED,
+    TRANSLATION_PENDING_PLACEHOLDER_VISIBLE,
     APP_CODENAME,
     APP_VERSION,
     AUTO_LANGUAGE_ENABLED,
@@ -1327,6 +1329,41 @@ class AlphaApp(
         if scrollbar is not None:
             self.check_scrollbar_visibility(box, scrollbar)
 
+    def _interim_preview_lines(self, interim_text: str):
+        """The live preview, split into readable lines. Item 69.
+
+        Yields (text, is_last) so only the final line carries the hourglass --
+        the earlier lines have settled enough to read, and repeating the glyph
+        on each one reads as several pending utterances rather than one.
+
+        English only, and it falls back to a single line on ANY failure: a
+        preview that renders is always better than one that raises on the UI
+        thread.
+        """
+        text = (interim_text or "").strip()
+        if not text:
+            return
+        try:
+            if not INTERIM_PREVIEW_LINE_GROUPING_ENABLED:
+                raise RuntimeError("grouping disabled")
+            lang = str(getattr(self, "_listen_language", "") or "").lower()
+            if not lang:
+                lang = str(self.source_language.get() or "").lower()
+            if not lang.startswith("en"):
+                raise RuntimeError("non-english preview")
+            from alpha.utils.english_line_grouping import (
+                group_sentences_into_lines,
+                text_is_preserved,
+            )
+
+            parts = group_sentences_into_lines(text)
+            if not parts or not text_is_preserved(text, parts):
+                raise RuntimeError("grouping would change the preview text")
+        except Exception:
+            parts = [text]
+        for index, part in enumerate(parts):
+            yield part, index == len(parts) - 1
+
     def _remove_interim_line_from_display(self):
         box = self._transcript_box()
         if box is None:
@@ -1640,8 +1677,18 @@ class AlphaApp(
             self._clear_text_placeholder(box)
         tag = self._speaker_tag(speaker)
         box.mark_set("interim_anchor", "end")
-        box.insert("end", self._ui_speaker_label_text(), tag)
-        box.insert("end", interim_text + " ⏳\n", "body")
+        # Item 69: the preview is one growing paragraph -- measured past 2000
+        # characters before it settles. Render it as readable 2-3 sentence
+        # lines instead. Display-only and inherently safe: the whole preview is
+        # deleted (`interim_anchor` -> `end`) and rewritten on every tick, so
+        # several lines are removed together and no committed text is touched.
+        for _preview_line, _is_last in self._interim_preview_lines(interim_text):
+            box.insert("end", self._ui_speaker_label_text(), tag)
+            box.insert(
+                "end",
+                _preview_line + (" ⏳\n" if _is_last else "\n"),
+                "body",
+            )
         box.configure(state="disabled")
         box.see(tk.END)
         self._interim_log(
@@ -7127,17 +7174,29 @@ class AlphaApp(
             self._translation_loading_items = registry
         if int(segment_id) in registry:
             return
-        self._clear_text_placeholder(box)
-        box.configure(state="normal")
         mark_name = f"tr_load_{int(segment_id)}"
-        try:
-            box.mark_set(mark_name, "end")
-        except Exception:
-            pass
-        label = self._ui_speaker_label_text()
-        box.insert(tk.END, label)
-        box.insert(tk.END, "… ⏳\n", "body")
-        box.configure(state="disabled")
+        # Item 68: the pending row is a progress hint only. The completed
+        # translation is appended at tk.END regardless of where this row sat,
+        # and ordering comes from the worker's translation_sequence buffer, so
+        # hiding it cannot reorder anything.
+        #
+        # The MARK is skipped along with the text, deliberately. A mark left at
+        # "end" with nothing under it ends up positioned before the next
+        # appended line, and this row's removal path deletes
+        # `mark -> mark lineend + 1 chars` -- which would then delete a real
+        # translation. Both removal sites already guard with `box.compare(...)`
+        # inside `except Exception`, so an absent mark is a no-op there.
+        if TRANSLATION_PENDING_PLACEHOLDER_VISIBLE:
+            self._clear_text_placeholder(box)
+            box.configure(state="normal")
+            try:
+                box.mark_set(mark_name, "end")
+            except Exception:
+                pass
+            label = self._ui_speaker_label_text()
+            box.insert(tk.END, label)
+            box.insert(tk.END, "… ⏳\n", "body")
+            box.configure(state="disabled")
         registry[int(segment_id)] = {
             "mark": mark_name,
             "session_id": session_id,
