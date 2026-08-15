@@ -147,8 +147,25 @@ beside the ledger and rendered at export.
 The pane renders only the last 500 segments. The store keeps everything, and
 copy/export read the store, not the pane.
 
-**Check:** a redesigned pane must still cap its render and must not become the
-source of truth for copy/export.
+**The cap counts LOGICAL lines, and assumes one per segment.** `main_window.py`
+trims with `box.delete("1.0", "2.0")` executed once per excess **segment**, while
+`_displayed_segment_count` increments by exactly 1 per segment. That arithmetic
+holds only because `_insert_speaker_segment_line` emits exactly one logical line.
+
+Verified on Tcl/Tk 8.6.15, because the distinction decides what is safe to change:
+
+- Word wrap creates **display** lines, not logical lines. A wrapped paragraph
+  spanning 169 display lines is removed by a **single** `delete("1.0","2.0")`.
+  So font family, font size and pane width **cannot** break this arithmetic.
+- A two-logical-line entry does break it: 3 lines → one delete → 2 lines, i.e.
+  half the entry survives as an orphan at the top of the pane.
+- These tag options add **zero** logical lines and are therefore safe:
+  `spacing1/2/3`, `lmargin1/2`, `rmargin`, `lmargincolor`, `background`, `font`,
+  `foreground`, `tabs`.
+
+**Check:** a redesigned pane must still cap its render, must not become the
+source of truth for copy/export, and must not emit more than one logical line
+per segment unless the trim is changed to match.
 
 ### C7 — `_readable_parts` memoisation must key on TEXT, not identity
 
@@ -165,13 +182,27 @@ declaring C8 PASS is how this bug survived the first time:
 
 | Path | File | Function |
 |---|---|---|
-| Live pane (committed) | `main_window.py:4473` | `_render_transcript_from_store_now` |
+| Live pane (store re-render) | `main_window.py:4473` | `_render_transcript_from_store_now` |
+| Live pane (incremental commit) | `main_window.py:1396` | `_insert_speaker_segment_line` |
 | Live pane (interim ⏳) | `main_window.py:1332` | `_interim_preview_lines` |
 | Copy / export text | `transcript_store.py:283` | `get_clean_text` |
 | `Alpha output.txt` | `canonical_transcript_ledger.py` | `serialize_export_payload` |
 
-**This is the exact bug found on 2026-08-14:** the first path rendered raw text
+**This is the exact bug found on 2026-08-14:** one path rendered raw text
 while the others grouped, so text visibly reflowed the moment it committed.
+
+> **⚠ 2026-08-15 — this table was wrong and the count is now five, not four.**
+> `_insert_speaker_segment_line` was missing from the original list. It inserts
+> `(text or "").strip()` with **no** `_readable_parts` call, and
+> `duplicate_protection.py:707-723` routes every *translation-eligible* commit to
+> it via `_on_store_segment_added` / `_on_store_segment_updated` — never to the
+> grouped renderer, which is reached only on the `not translation_eligible`
+> branch (`:705`) or when neither hook exists (`:724`). On that reading the live
+> pane does **not** group on the normal commit path, and item 69 is not closed.
+>
+> **Traced by reading, not executed.** Per `CLAUDE.md`'s verification rule this
+> must be reproduced by driving the real commit path before being treated as
+> either confirmed or dismissed. Do that before trusting any C8 PASS below.
 
 ### C9 — Japanese must never be regrouped by English rules
 
@@ -320,6 +351,14 @@ FAIL:  test_phase_constants_match_spec        (test_stop_finalize_v3_2_3)
 
 ### 7.3 Contract smoke test (paste and run)
 
+> **⚠ On the frozen baseline this now reports one FAIL, and that is correct.**
+> `C8 _insert_speaker_segment_line groups: FAIL` is the defect described in the
+> C8 warning above, surfaced by the corrected check. Until it is fixed and
+> verified, treat **one** C8 FAIL as the known baseline and any *additional*
+> FAIL as your regression. The earlier version of this block printed
+> `ALL CONTRACTS PASS` against the same code, because it inspected only the
+> store re-render.
+
 ```bash
 cd "C:/Users/islamm/Documents/Tariqul/Alpha_Translator V 1.0/Alpha_Live_Translator" && "../.venv/Scripts/python.exe" - <<'PY'
 import sys, inspect; sys.path.insert(0, ".")
@@ -335,11 +374,24 @@ def check(cid, cond, detail=""):
     ok &= bool(cond)
     print(f"  {cid}: {'PASS' if cond else 'FAIL'} {detail if not cond else ''}")
 
-# C8 - the live pane must group committed segments
-src = inspect.getsource(AlphaApp._render_transcript_from_store_now)
-check("C8 live pane groups", "_readable_parts" in src)
+# C8 - EVERY function that writes transcript text must group, not just the
+# store re-render. The original check inspected only _render_transcript_from_
+# store_now and therefore printed PASS while the incremental commit path
+# rendered raw. Naming each writer explicitly also makes a rename fail loudly
+# instead of passing vacuously.
+TRANSCRIPT_WRITERS = ["_render_transcript_from_store_now", "_insert_speaker_segment_line"]
+for _name in TRANSCRIPT_WRITERS:
+    _fn = getattr(AlphaApp, _name, None)
+    check(f"C8 {_name} exists", _fn is not None, "renamed or removed")
+    if _fn is not None:
+        check(f"C8 {_name} groups", "_readable_parts" in inspect.getsource(_fn))
 # C6 - the pane render stays bounded
+src = inspect.getsource(AlphaApp._render_transcript_from_store_now)
 check("C6 render cap", "MAX_RENDERED_UI_SEGMENTS" in src)
+# C6 - one logical line per segment, which is what the trim arithmetic assumes
+_ins = inspect.getsource(AlphaApp._insert_speaker_segment_line)
+check("C6 one newline per segment", _ins.count(chr(92) + "n") == 1,
+      f"found {_ins.count(chr(92) + 'n')} newlines; trim assumes exactly 1")
 # C3 - is_final re-assert after the blanket metadata update
 pub = inspect.getsource(dc.DeepgramClientMixin._publish_final_transcript_segment)
 u = pub.index("queue_item.update(metadata)")
