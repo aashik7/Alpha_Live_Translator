@@ -746,10 +746,17 @@ def write_final_alpha_output_from_snapshot(host: Any = None) -> Optional[Path]:
     rows: list = []
     snapshot_id = ""
     source_name = "frozen_ledger"
+    unattached_gap_line = ""
     if snap:
         try:
             payload = serialize_export_payload(snap)
             text = str(payload.get("text") or "")
+            # Item 72: a connection outage with no record to attach it to. Held
+            # aside rather than merged into `text` here, because the
+            # `if not text.strip()` fallback below is real content recovery --
+            # letting the marker satisfy it would export the marker instead of
+            # speech the store still had. Prepended after that fallback runs.
+            unattached_gap_line = str(payload.get("unattached_gap_line") or "")
             snapshot_id = str(snap.get("snapshot_id") or "")
             rows = build_final_export_record_rows(snap, run_id=identity.run_id)
             consistency = validate_internal_consistency()
@@ -781,6 +788,15 @@ def write_final_alpha_output_from_snapshot(host: Any = None) -> Optional[Path]:
         rows = []
         if not snapshot_id:
             snapshot_id = f"fallback-{source_name}"
+
+    # Item 72: now that recovery has had its turn, say why the export looks the
+    # way it does. Prepended whether or not recovery found anything -- an outage
+    # is equally worth stating above recovered text as above nothing at all --
+    # and it is the ONLY thing that distinguishes "the network died" from "the
+    # session recorded nothing", which is otherwise invisible to whoever opens
+    # the file.
+    if unattached_gap_line:
+        text = unattached_gap_line + "\n" + text if text.strip() else unattached_gap_line + "\n"
 
     final_source_segment_count = len([ln for ln in (text or "").splitlines() if ln.strip()])
     final_source_character_count = len((text or "").strip())

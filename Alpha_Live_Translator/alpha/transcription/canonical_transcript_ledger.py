@@ -967,12 +967,31 @@ def serialize_export_payload(snapshot: Optional[dict[str, Any]] = None) -> dict[
             entry = _format_connection_gap_line(_merge_gaps(due)) + "\n" + entry
         lines.append(entry)
         record_ids.append(str(rec.get("record_id")))
+    # Item 72: an outage with no record to attach it to. Returned as its own
+    # field rather than folded into `text`, for two reasons.
+    #
+    # `lines` and `record_ids` must stay 1:1 -- every downstream coverage gate
+    # pairs them by index -- so the marker cannot become a `lines` entry when
+    # there is no record to pair it with.
+    #
+    # And `text` must stay EMPTY here. `run_artifacts.py`'s
+    # `if not text.strip(): text, source_name = _committed_final_source_text(host)`
+    # is a real content-recovery fallback: it reaches for the transcript
+    # snapshot, the host's committed text and the transcript store in turn.
+    # Returning a non-empty marker string would satisfy that check and silently
+    # switch the recovery off, exporting the marker INSTEAD of speech that was
+    # still recoverable. The caller prepends this line after its own fallback
+    # has resolved, so the marker explains the export without ever replacing it.
+    unattached_gap_line = ""
     if pending_gaps and lines:
         # An outage after the last commit -- for example a drop the session
         # never recovered enough speech from. It still has to be visible, so it
         # goes at the end rather than being dropped for having no record after
         # it.
         lines[-1] = lines[-1] + "\n" + _format_connection_gap_line(_merge_gaps(pending_gaps))
+        pending_gaps = []
+    elif pending_gaps:
+        unattached_gap_line = _format_connection_gap_line(_merge_gaps(pending_gaps))
         pending_gaps = []
     body = "\n".join(lines)
     if body and not body.endswith("\n"):
@@ -981,6 +1000,10 @@ def serialize_export_payload(snapshot: Optional[dict[str, Any]] = None) -> dict[
         "lines": lines,
         "text": body,
         "record_ids": record_ids,
+        # Item 72. Non-empty only when outages exist and NO record does, so the
+        # caller can explain an otherwise unexplained empty export. Never part
+        # of `lines`/`record_ids`, never part of `text` -- see the note above.
+        "unattached_gap_line": unattached_gap_line,
         "speaker_distribution": dict(snap.get("speaker_distribution") or {}),
         "snapshot_id": snap.get("snapshot_id"),
         "snapshot_sha256": snap.get("snapshot_sha256"),
