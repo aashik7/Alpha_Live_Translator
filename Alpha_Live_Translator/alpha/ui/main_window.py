@@ -6361,6 +6361,42 @@ class AlphaApp(
         speech_final = item.get("speech_final")
 
         if item.get("is_final") is False:
+            # Item 70 prerequisite. `duplicate_protection._display_transcript_item`
+            # already logs COMMITTED_SEGMENT_DROPPED_AS_INTERIM for exactly this
+            # case (item 65's 8-of-9 loss), but that copy is UNREACHABLE for it:
+            # this method is the entry point every UI batch goes through
+            # (`_flush_transcript_ui_batch` -> here), and this bare return fires
+            # first -- the mixin's logged copy is only reached further down, at
+            # the `DuplicateProtectionMixin._display_transcript_item(self, item)`
+            # call. `tests/test_committed_segment_is_final.py` could not see the
+            # gap because it binds the mixin method onto a bare host, so it
+            # never executes this line.
+            #
+            # The drop itself stays correct -- interims must not reach the store
+            # -- but an item carrying a commit reason is not an interim, it is a
+            # commit whose is_final was clobbered upstream. Item 70 raises the
+            # flush rate, so this path must stop being silent BEFORE it carries
+            # more traffic.
+            if item.get("lifecycle_commit_reason") or item.get("stabilizer_reason"):
+                try:
+                    from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+                    jp_accuracy_log(
+                        "COMMITTED_SEGMENT_DROPPED_AS_INTERIM",
+                        reason="is_final_false_on_a_committed_segment",
+                        gate="main_window._display_transcript_item",
+                        commit_reason=str(
+                            item.get("lifecycle_commit_reason")
+                            or item.get("stabilizer_reason")
+                            or ""
+                        ),
+                        canonical_utterance_id=str(
+                            item.get("canonical_utterance_id") or ""
+                        ),
+                        text_preview=str(item.get("text") or "")[:120],
+                    )
+                except Exception:
+                    pass
             return
         if not self._should_accept_transcript_commit():
             if is_finalizing:

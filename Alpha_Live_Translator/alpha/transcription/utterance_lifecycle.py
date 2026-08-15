@@ -2045,15 +2045,22 @@ class UtteranceLifecycleOwner:
             # across a sentence terminator, so every revision, overlap-join and
             # tail-splice path is untouched -- and it publishes the finished
             # text rather than discarding it, so nothing is lost either way.
-            if self._flush_sentence_boundary_locked(
+            flushed, flush_tail = self._flush_sentence_boundary_locked(
                 previous_text=previous_text,
                 lexical=lexical,
                 merged=merged,
                 event_id=event_id,
                 metadata=metadata,
-            ):
+            )
+            if flushed:
+                # Item 70: `flush_tail`, not `lexical`. In the pure-append case
+                # the two are the same. In the cumulative-resend case `lexical`
+                # is the WHOLE re-sent window -- it still contains the sentence
+                # just committed -- so starting the new utterance from it would
+                # duplicate that sentence into the next record. The flush
+                # returns only the portion past the committed text.
                 return self._apply_active_update_locked(
-                    lexical=lexical,
+                    lexical=flush_tail,
                     speaker=speaker,
                     channel=channel,
                     cand_start=cand_start,
@@ -2204,7 +2211,7 @@ class UtteranceLifecycleOwner:
         merged: str,
         event_id: str,
         metadata: dict[str, Any],
-    ) -> bool:
+    ) -> tuple[bool, str]:
         """Commit the active utterance when a finished sentence meets new speech.
 
         fixes CLIENT_DELIVERY_SPRINT_v5.md item 65. English has no boundary
@@ -2247,19 +2254,89 @@ class UtteranceLifecycleOwner:
             from alpha.constants import ENGLISH_SENTENCE_FLUSH_ENABLED
 
             if not ENGLISH_SENTENCE_FLUSH_ENABLED:
-                return False
+                return (False, "")
         except Exception:
-            return False  # fail closed: no flag, no flush
+            return (False, "")  # fail closed: no flag, no flush
         active = self._active
         if active is None or active.committed:
-            return False
+            return (False, "")
         prev = (previous_text or "").rstrip()
-        if not prev or not (lexical or "").strip():
-            return False
+        curr = (lexical or "").strip()
+        if not prev or not curr:
+            return (False, "")
         if prev[-1] not in ".!?":
-            return False
-        if merged != f"{prev} {(lexical or '').strip()}":
-            return False
+            return (False, "")
+        # Item 70. Two deliveries of the SAME event -- a finished sentence
+        # meeting new speech -- and until now only the first was recognised.
+        #
+        #   pure append      merged == prev + " " + curr   (_merge_lexical's
+        #                                                   prev[-1] in ".!?" branch)
+        #   cumulative       merged == curr, and curr already contains prev
+        #                                                   (_merge_lexical's
+        #                                                   curr_n.startswith(prev_n)
+        #                                                   branch, line ~391)
+        #
+        # Deepgram re-sends its window cumulatively, so the second shape is the
+        # common one and the flush never fired on it. Measured on run
+        # ...20260814-114309 (98 min English): 160 commits at a mean
+        # source_version of 29.8 -- about 30 merges per committed line -- 921
+        # sentences committed but only 115 flushes, so roughly one boundary in
+        # eight was caught. 57 of 160 records exceeded 400 characters, the
+        # longest 1556. The flush was firing on 72% of LINES while missing ~88%
+        # of BOUNDARIES, which is why item 65's long-line symptom survived it.
+        #
+        # Both shapes reduce to the same property, which is also the safety
+        # guarantee: `merged` starts with `prev` EXACTLY -- byte-for-byte, not
+        # normalised -- and adds something after it. Verbatim survival is what
+        # proves the sentence is settled: if Deepgram were still correcting it,
+        # re-punctuating "Hello there." to "Hello, there.", `merged` would not
+        # start with `prev` and this returns False. That is the original
+        # docstring's "cannot fire while the text is being corrected"
+        # guarantee, now stated as the actual test rather than as a
+        # side-effect of the pure-append equality.
+        #
+        # PURE APPEND ONLY. Item 70 attempted to widen this to the cumulative
+        # re-send shape as well (`prev in curr`, i.e. the provider re-sent the
+        # finished sentence intact and moved past it). Adversarial review
+        # before shipping found the widening both broken and pointless, and
+        # all three findings are reproducible -- see §9 and
+        # `tests/test_item70_cumulative_sentence_flush.py`:
+        #
+        #   DUPLICATION. After a flush, the next cumulative window carries the
+        #   committed sentence back in, and the only defence -- item 66's
+        #   `_strip_committed_tail_prefix(min_run=3)` -- fails closed below 3
+        #   tokens. `"Hello there."` was committed, then committed again
+        #   inside `"Hello there. How are you doing?"`. Short acknowledgements
+        #   are the most common sentence type in meeting speech.
+        #
+        #   CONTENT LOSS. The flush tail is handed to `_trim_resent_tail_locked`
+        #   via `force_new=True`, which is written for a window the provider
+        #   RE-SENT. The tail provably is not that, so an ordinary anadiplosis
+        #   ("...the bottom line. The bottom line is simple.") had "The bottom
+        #   line" deleted outright.
+        #
+        #   AND IT DID NOT HELP. On a replay of run ...20260814-114309 the
+        #   longest record was unchanged at 2084 chars and records over 400
+        #   went 59 -> 60. Averages improved only because the denominator grew.
+        #
+        # The reason is structural: **68% of Deepgram's finals do not end on a
+        # terminator**, so the boundary usually sits in the MIDDLE of the
+        # accumulated text while this gate tests `prev[-1]`. Cutting the long
+        # lines needs a split at an INTERIOR terminator -- a different change,
+        # filed as item 70 rather than smuggled in here.
+        if merged != f"{prev} {curr}":
+            return (False, "")
+        tail = merged[len(prev):].strip()
+        if not tail:
+            return (False, "")
+        # Kept from the item 70 work even though the append equality already
+        # implies both: the flush must be a pure SPLIT of `merged`, never a
+        # rewrite. Whatever text would have been committed as one record is
+        # committed as two with no character added, dropped or moved. Stated
+        # as a precondition so any future widening inherits it instead of
+        # having to rediscover it.
+        if not merged.startswith(prev) or f"{prev} {tail}" != merged:
+            return (False, "")
         commit = self._commit_locked(
             reason="sentence_boundary_flush",
             event_id=event_id,
@@ -2267,9 +2344,15 @@ class UtteranceLifecycleOwner:
             decision_name=COMMIT_ACTIVE,
         )
         if not commit.should_commit:
-            return False
+            return (False, "")
         self._stats["sentence_boundary_flushes"] += 1
-        return True
+        # `tail`, computed above, is what `merged` holds PAST the committed
+        # sentence -- never `curr`. For a pure append the two are the same
+        # string. For a cumulative re-send they are not: `curr` is the whole
+        # re-sent window and still contains the sentence just committed, so
+        # starting the next utterance from it would duplicate that sentence
+        # into the next record.
+        return (True, tail)
 
     def _commit_locked(
         self,
