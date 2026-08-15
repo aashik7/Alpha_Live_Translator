@@ -41,8 +41,10 @@ that campaign.** This file replaces its ordering and scope.
 jobs 31/31 and 12/12, zero duplicate submissions, watchdog firing down
 from 83% to 2–3%, Start-button freeze gone (8.8 s → 0.0 s), and the
 revise path working for the first time (was 0 of 138 commits, now
-observed). Full suite: **354 tests**, baseline **5 failures + 2 errors +
-2 skipped**, same 7 names throughout — those 7 predate this engagement.
+observed). Full suite at that point: 354 tests, 5 failures + 2 errors +
+2 skipped, same 7 names throughout — those 7 predate this engagement.
+**Current suite is 674 tests** with the same 7 names; see §3 for the
+authoritative baseline, which is the number to check against.
 
 **What is still genuinely broken.** F was found 2026-08-11 via the first
 real live-audio test this sprint has had (item 40) and is **more severe
@@ -98,10 +100,19 @@ SKIP_TK_INTEGRATION_TESTS=1 "<repo_root>/.venv/Scripts/python.exe" -m unittest d
 
 There is no pytest in this venv; `unittest discover` is the only runner.
 
-**Baseline:** **489 tests** (was 354; items 38/38b/39 added 31, item 51 added
-25, item 42 added 11, item 43 added 8, items 22/23/33s added 13, items 44/45
-added 14, items 46/47 added 17, v4 items 24/26 added 8, items 60-63 added 8), 5 failures + 2 errors + 2 skipped. Same 7 names. Any change to that
-set means you broke something.
+**Baseline:** **674 tests**, **5 failures + 2 errors**, same 7 names.
+Any change to that set means you broke something. (Was 354 at sprint
+start; the growth is this sprint's own regression tests. Do not treat an
+increase as suspicious — treat a change to the 7 *names* as suspicious.)
+
+**Skips are 2 or 3, and that is expected.** Two are permanent — a Tk
+display test and an obsolete pre-hotfix module. The third,
+`test_english_line_grouping…test_words_survive_the_real_2342_character_line`,
+`skipTest`s itself when run `...20260812-154956` is not on disk. Retention
+has since deleted that run (43 recorded runs are down to 11), so it now
+skips. **Verified 2026-08-15, not a regression** — but note the test's
+guarantee disappears silently with the evidence, so do not read its pass
+as ongoing coverage.
 
 **One caveat, added 2026-08-11.** The 7 names are the *stable* set, but
 an 8th can appear:
@@ -144,8 +155,9 @@ Carried from v4 §3, with two amendments marked **[v5]**.
    original bug would. Restore, confirm it passes. **This step is not
    optional** — it caught a genuinely wrong test in item 14.
 6. **VERIFY NO REGRESSION.** Full suite. Baseline must be exactly the
-   same 7 names, skips still 2. **[v5]** Also run `tools/score_run.py`
-   (item 39) against the reference runs.
+   same 7 names; skips 2 or 3 (see §3 — the third is data-dependent).
+   **[v5]** Also run `tools/score_run.py` (item 39) against the
+   reference runs.
 7. **COMMIT.** One fix per commit, revertable on its own.
 8. **UPDATE §8 AND §9 BEFORE ENDING YOUR TURN.** Commit hash, date, what
    the fix actually was, test file, model used. If you completed only
@@ -467,12 +479,13 @@ recommended (pending). `[gate]` = human approval required before coding.
 | 69 | Live interim preview line is unbounded | **Opus 5** | — | **DONE 2026-08-14.** `_interim_preview_lines` reuses `english_line_grouping`, yielding `(text, is_last)` so only the final line carries the ⏳. English only; falls back to a single line on ANY failure, because this runs on the UI thread. Inherently safe: the preview is deleted `interim_anchor` → `end` and rewritten every tick |
 | 70 | English text settles too rarely for a live meeting (~1 committed line per minute) | **Opus 5** | — | **OPEN — highest risk, do LAST.** Same commit-timing area that cost item 65 its 8-of-9 loss. Root cause: Deepgram sends CUMULATIVE growing text, so `_flush_sentence_boundary_locked` (which only fires on a pure append) rarely triggers; growth arrives through the REPLACE path instead. Any fix must be driven through the real canonical ledger, not just the lifecycle — the store and the ledger can disagree silently |
 | 71 | UI layout: translation to the right, meeting summary behind a button, button repositioning | **Opus 5** | — | **OPEN — awaiting the user's detailed spec.** `show_meeting_summary` is already a button command (`main_window.py:8819`), so most of the wiring exists. **Trap:** do NOT lazily create the summary widget — background threads and stop/finalize reference widgets by attribute, and a missing one raises on a non-UI thread (the shape that escalated the `_send_ping` crash). Create eagerly, hide with `grid_remove()`. Only 2 test files touch Tk and both are skipped, so this is live-test-only |
+| 72 | Connection-gap markers are dropped when a session commits no record | **Sonnet 5** | — | **OPEN, filed 2026-08-15 by review of item 67.** `canonical_transcript_ledger.serialize_export_payload`, `grep: if pending_gaps and lines:`. The trailing-gap branch requires a non-empty `lines`, so a session whose network died before anything committed exports an empty file rather than the marker. Proven against the real function (see §9). Small and self-contained; the fix is to emit the merged marker as its own entry when there is no record to attach it to — but `lines` must stay 1:1 with `record_ids` (every downstream coverage gate pairs them by index), so a standalone marker line needs a matching placeholder id or a separate field, not a bare append |
 | 48 | 60-min stability: bounded queues, ledger memory, Tk rendered-line cap with full history retained | **Opus 5** | 8–9 | **CLOSED 2026-08-14, all four requirements verified.** **Queues** zero at all 197 snapshots of the 99-min run. **Ledger memory** plateaued (+13.5 MB across the last 74 min). **Tk rendered-line cap** already existed and was verified: `MAX_RENDERED_UI_SEGMENTS = 500` with a 100 ms debounce and the store as authoritative history. **Manifest bounded**: 117 MB → **0.263 MB** on run `...20260814-155844`, 354 entries for 71,181 packets (201x), and a local test reconciled every collapsed run's `retained_frame_count` against the WAV frames on disk exactly (7,592,640 per stream x3) with 24/24 chunk sha256 verified |
 | 64 | English merge emits a one-token re-send twice (`utterance_lifecycle.py` `_merge_lexical`) | **Opus 5** | — | **DONE 2026-08-12.** `_overlap_join` needs k>=2 and `_tail_resend_splice` needs min_run=3, so a window sliding back by exactly ONE token matched neither and hit the `f"{prev}, {curr}"` branch. Verified against the human reference for run `...095935`: reference "other schools of Muslim", "heretics have attributed", "objectively claiming"; export "schools, schools", "have, have", "Claiming, Claiming" — all three reproduce by calling `_merge_lexical` directly. New `_boundary_token_collapse`, gated on `_audio_spans_overlap` so it only fires where the two spans overlap on the audio clock (a re-send) and never on a continuation ("He said that" + "that was fine" keeps both). Tests `tests/test_english_line_quality.py` |
 | 65 | English has no sentence boundary: unreadable wall-of-text lines | **Opus 5** | — | **CLOSED 2026-08-12.** Two halves. (a) Readable grouping into 2-3 sentence lines (`english_line_grouping.py`), wired into `TranscriptStore.get_clean_text` AND `serialize_export_payload`. (b) **The flush is back ON** — its record loss was never the flush's fault. Root cause: every flush commit inherited `is_final: False` from its triggering event and `_display_transcript_item` opens with `if item.get("is_final") is False: return`. The lone survivor on run `...142447` had `is_final: None`, which passes that identity check. Fixed at three layers; flush re-enabled |
 | 66 | English commits land mid-sentence, and the provider re-sends the committed tail | **Opus 5** | — | **FIXED 2026-08-12, widened 2026-08-14.** `_strip_committed_tail_prefix` (min_run=3) trims the NEW utterance's head; revises nothing, so the ledger is untouched. Live run `...20260814-101813` showed one survivor: records [4]/[5] shared `"and the number 1 thing"` but were labelled speaker 2 and speaker 1, so the same-speaker gate refused — while their audio spans (131.56-138.24, 136.32-160.48) **overlapped by ~1.9s**, i.e. one span arriving twice. Overlapping audio is now accepted as an ALTERNATIVE to the speaker match (same discriminator as item 64); a genuine speaker change produces no overlap, so problem C's guard is intact |
 | 49 | Clean-machine install verification | **Sonnet 5** | 11 | TODO |
-| 50 | DeepL `context` parameter — previous 2–3 committed lines, unbilled | **Sonnet 5** | 12 | OPTIONAL |
+| 50 | DeepL `context` parameter — previous 2–3 committed lines, unbilled | **Sonnet 5** | 12 | **DONE `3514999`** — status was still "OPTIONAL" until 2026-08-15; the work had already shipped. Both halves are wired: `translation_worker` keeps a `(source_language, text)` tail, builds the hint, and remembers a line only **after** a successful translation, so a line that never reached the provider cannot pollute the next one's context. Guarded twice on capability — `DeepLClient._provider_supports_context()` inspects the installed SDK's signature, and the worker re-checks its own client — because passing an unknown kwarg to an older SDK raises `TypeError`, which the error mapper would classify `retryable=False` and turn every translation into a permanent failure |
 | 51 | Fix problem F: English commits self-concatenate on reformatting variants, slid windows and tail re-sends (`utterance_lifecycle.py` `_merge_lexical`) | **Opus 5** | — | **DONE 2026-08-11, confirmed on a second live run.** Gate approved before implementation. Four changes, all inside `_merge_lexical`: edge-punctuation-insensitive token comparison; exact boundary-run join placed *before* the fuzzy gate; order gate measured over the shorter side; bounded tail-resend splice. Both 0.6 thresholds unchanged. Tests `test_utterance_lifecycle_merge_lexical.py` (25). **Measured on the same 364 real input chunks: repeated 4-word phrases 935 → 9, and 8 of those 9 occur in the reference transcript itself (real speech, not merge duplication).** Live export: 17074 → 6288 chars, longest line 5039 → 1580 |
 
 ---
@@ -635,6 +648,8 @@ wrong.
 
 | 2026-08-14 | Opus 5 | **11b-LT PASSED.** Run `...20260814-165109`: spoke, paused ~10 s, Stop. The final sentence survived into the export, `incomplete_stop_tail.txt` is empty and nothing was suppressed. The only imperfections are STT ("LT" → "l t.", "11b" → "11 b"), not pipeline loss. |
 | 2026-08-14 | Opus 5 | **Reviewing item 67 found two defects in it, one cause, before any live run hit them.** Emitting each outage as its own line prepended them in turn, so **multiple gaps before one record came out in REVERSE chronological order** (10 s + 40 s rendered 40 s above 10 s). And two outages of the same rounded length with no speech between them render **identical adjacent lines, which `sweep_residual_duplicates` collapses to one** — verified by driving the real sweep: 2 markers in, 1 out. That would have silently understated lost audio in exactly the flaky-connection case the marker exists for. |
+| 2026-08-15 | Sonnet 5 | **Audit: §1/§3/§4's baseline was three revisions stale, and item 50's status was wrong.** §3 claimed 489 tests / 2 skipped; the real suite is **674 / 5F / 2E**, same 7 names. Skips are 2 or 3: the third (`test_english_line_grouping…test_words_survive_the_real_2342_character_line`) `skipTest`s itself when run `...20260812-154956` is absent, and retention has since deleted it (43 runs → 11). **Not a regression — but the test's guarantee vanishes silently with its evidence**, so its pass must not be read as ongoing coverage. Item 50 was still marked OPTIONAL although `3514999` had shipped it; corrected in §8 with what was actually built. |
+| 2026-08-15 | Sonnet 5 | **NOT FIXED — a hole in item 67, found by review, not by a run.** `serialize_export_payload`'s trailing-gap branch is `if pending_gaps and lines:`. When a session has connection gaps but **no exportable record**, `lines` is empty, the branch is skipped, and every gap is dropped with no trace. Driven through the real function: with one record, body = `[connection lost - approximately 45s of audio not captured]\nSpeaker: hello there`; with **zero** records and the same gap, body = `''`. Reachable exactly when it matters most — the network dies before anything commits, the user presses Stop, and the client is handed a blank file with no indication the connection ever failed, which is the scenario items 44/67 exist for. Left unfixed per §0 rule 3 (no drive-by); needs its own item. |
 | 2026-08-14 | Opus 5 | **Both fixed by merging gaps that land on the same record into one marker carrying the total** — which is also the more truthful rendering: with no committed speech between them, consecutive drops are ONE hole in the transcript and its size is the sum. 10 s + 40 s now reads 50 s; two 31 s drops read 62 s; gaps separated by real speech stay separate. Also verified against the export pipeline rather than assumed: `cleanup_punctuation_artifacts` leaves the marker byte-identical, `build_final_export_record_rows` reads `snap["records"]` so the marker never enters a canonical record or its `content_sha256`, and `lines` stays 1:1 with `record_ids`. Suite 670 → 674. |
 
 ---
