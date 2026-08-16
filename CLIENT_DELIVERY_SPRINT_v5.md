@@ -481,11 +481,12 @@ recommended (pending). `[gate]` = human approval required before coding.
 | 70 | *(original description, superseded — kept per §4 step 1)* | — | — | ~~Root cause: Deepgram sends CUMULATIVE growing text, so `_flush_sentence_boundary_locked` (which only fires on a pure append) rarely triggers; growth arrives through the REPLACE path instead~~ |
 | 71 | UI layout: translation to the right, meeting summary behind a button, button repositioning | **Opus 5** | — | **OPEN — awaiting the user's detailed spec.** `show_meeting_summary` is already a button command (`main_window.py:8819`), so most of the wiring exists. **Trap:** do NOT lazily create the summary widget — background threads and stop/finalize reference widgets by attribute, and a missing one raises on a non-UI thread (the shape that escalated the `_send_ping` crash). Create eagerly, hide with `grid_remove()`. Only 2 test files touch Tk and both are skipped, so this is live-test-only |
 | 72 | Connection-gap markers are dropped when a session commits no record | **Sonnet 5** | — | **OPEN, filed 2026-08-15 by review of item 67.** `canonical_transcript_ledger.serialize_export_payload`, `grep: if pending_gaps and lines:`. The trailing-gap branch requires a non-empty `lines`, so a session whose network died before anything committed exports an empty file rather than the marker. Proven against the real function (see §9). Small and self-contained; the fix is to emit the merged marker as its own entry when there is no record to attach it to — but `lines` must stay 1:1 with `record_ids` (every downstream coverage gate pairs them by index), so a standalone marker line needs a matching placeholder id or a separate field, not a bare append **DONE `df1ecc1`.** Separate field `unattached_gap_line`; the caller prepends it. A second constraint was found while implementing and decided the shape: `text` must stay **empty**, because `run_artifacts.py`'s `if not text.strip(): text, source_name = _committed_final_source_text(host)` is real content recovery (snapshot → host → transcript store). Returning the marker as `text` would satisfy that check and silently switch recovery OFF, exporting a one-line marker in place of speech the store still held — a reporting fix turning into content loss. `lines`/`record_ids` both stay empty, so the 1:1 pairing is untouched. Tests: `tests/test_item72_unattached_gap_marker.py` (9), one of which pins `text == ""` specifically so a future simplification cannot reintroduce the bypass; 5 fail pre-fix |
+| 73 | Audio capture follows the Windows default output device, with no picker | **Opus 5** | — | **OPEN, filed 2026-08-16 while scoping item 49.** `alpha/audio/wasapi.py:33` calls `get_default_wasapi_loopback()`; there is no device selection anywhere. The app captures whatever Windows currently has as default output, so on a laptop with a headset, dock or Bluetooth it captures whichever was last selected, and **changing device mid-meeting silently moves the capture source** — no error, no marker, just wrong or silent audio. §1's problem **D** listed "device change" beside network drop, quota and credentials; 44/45/46 covered those three and this one was never picked up. **Independent of item 49's delivery mechanism — it will bite on any machine that is not the development one**, so it is arguably a bigger delivery risk than packaging. Minimum viable fix: detect that the default device changed mid-session and surface it the way item 47's status indicator surfaces connection state; a full picker is more than delivery needs |
 | 48 | 60-min stability: bounded queues, ledger memory, Tk rendered-line cap with full history retained | **Opus 5** | 8–9 | **CLOSED 2026-08-14, all four requirements verified.** **Queues** zero at all 197 snapshots of the 99-min run. **Ledger memory** plateaued (+13.5 MB across the last 74 min). **Tk rendered-line cap** already existed and was verified: `MAX_RENDERED_UI_SEGMENTS = 500` with a 100 ms debounce and the store as authoritative history. **Manifest bounded**: 117 MB → **0.263 MB** on run `...20260814-155844`, 354 entries for 71,181 packets (201x), and a local test reconciled every collapsed run's `retained_frame_count` against the WAV frames on disk exactly (7,592,640 per stream x3) with 24/24 chunk sha256 verified |
 | 64 | English merge emits a one-token re-send twice (`utterance_lifecycle.py` `_merge_lexical`) | **Opus 5** | — | **DONE 2026-08-12.** `_overlap_join` needs k>=2 and `_tail_resend_splice` needs min_run=3, so a window sliding back by exactly ONE token matched neither and hit the `f"{prev}, {curr}"` branch. Verified against the human reference for run `...095935`: reference "other schools of Muslim", "heretics have attributed", "objectively claiming"; export "schools, schools", "have, have", "Claiming, Claiming" — all three reproduce by calling `_merge_lexical` directly. New `_boundary_token_collapse`, gated on `_audio_spans_overlap` so it only fires where the two spans overlap on the audio clock (a re-send) and never on a continuation ("He said that" + "that was fine" keeps both). Tests `tests/test_english_line_quality.py` |
 | 65 | English has no sentence boundary: unreadable wall-of-text lines | **Opus 5** | — | **CLOSED 2026-08-12.** Two halves. (a) Readable grouping into 2-3 sentence lines (`english_line_grouping.py`), wired into `TranscriptStore.get_clean_text` AND `serialize_export_payload`. (b) **The flush is back ON** — its record loss was never the flush's fault. Root cause: every flush commit inherited `is_final: False` from its triggering event and `_display_transcript_item` opens with `if item.get("is_final") is False: return`. The lone survivor on run `...142447` had `is_final: None`, which passes that identity check. Fixed at three layers; flush re-enabled |
 | 66 | English commits land mid-sentence, and the provider re-sends the committed tail | **Opus 5** | — | **FIXED 2026-08-12, widened 2026-08-14.** `_strip_committed_tail_prefix` (min_run=3) trims the NEW utterance's head; revises nothing, so the ledger is untouched. Live run `...20260814-101813` showed one survivor: records [4]/[5] shared `"and the number 1 thing"` but were labelled speaker 2 and speaker 1, so the same-speaker gate refused — while their audio spans (131.56-138.24, 136.32-160.48) **overlapped by ~1.9s**, i.e. one span arriving twice. Overlapping audio is now accepted as an ALTERNATIVE to the speaker match (same discriminator as item 64); a genuine speaker change produces no overlap, so problem C's guard is intact |
-| 49 | Clean-machine install verification | **Sonnet 5** | 11 | TODO |
+| 49 | Clean-machine install verification | **Sonnet 5** | 11 | **TODO — but the item presupposes something that does not exist. Read §11 before starting.** There is no packaged build and no packaging tooling in the repo (no `.spec`, no installer script, nothing in `tools/`), so "three full sessions **from the installed build**" (§5, Days 10–11) has no artifact to run from. §11 records the delivery-mechanism options, what was measured about each, and the two facts that decide it |
 | 50 | DeepL `context` parameter — previous 2–3 committed lines, unbilled | **Sonnet 5** | 12 | **DONE `3514999`** — status was still "OPTIONAL" until 2026-08-15; the work had already shipped. Both halves are wired: `translation_worker` keeps a `(source_language, text)` tail, builds the hint, and remembers a line only **after** a successful translation, so a line that never reached the provider cannot pollute the next one's context. Guarded twice on capability — `DeepLClient._provider_supports_context()` inspects the installed SDK's signature, and the worker re-checks its own client — because passing an unknown kwarg to an older SDK raises `TypeError`, which the error mapper would classify `retryable=False` and turn every translation into a permanent failure |
 | 51 | Fix problem F: English commits self-concatenate on reformatting variants, slid windows and tail re-sends (`utterance_lifecycle.py` `_merge_lexical`) | **Opus 5** | — | **DONE 2026-08-11, confirmed on a second live run.** Gate approved before implementation. Four changes, all inside `_merge_lexical`: edge-punctuation-insensitive token comparison; exact boundary-run join placed *before* the fuzzy gate; order gate measured over the shorter side; bounded tail-resend splice. Both 0.6 thresholds unchanged. Tests `test_utterance_lifecycle_merge_lexical.py` (25). **Measured on the same 364 real input chunks: repeated 4-word phrases 935 → 9, and 8 of those 9 occur in the reference transcript itself (real speech, not merge duplication).** Live export: 17074 → 6288 chars, longest line 5039 → 1580 |
 
@@ -673,3 +674,136 @@ wrong.
 applies per session — so a Fable session and a Sonnet session can run in
 two terminals at the same time.
 Reference: https://code.claude.com/docs/en/model-config
+
+---
+
+## 11. Item 49 — delivery mechanism: what was measured, and what decides it
+
+Written 2026-08-16 so the decision can be made from facts rather than
+re-derived under time pressure. **Nothing here is built yet.** The target
+is a hand-over onto a non-developer's (the boss's) Windows laptop.
+
+### 11.1 The blocker, stated plainly
+
+**No packaged build exists.** No `.spec`, no installer script, nothing in
+`tools/` that produces an artifact. §5's "three full sessions **from the
+installed build**" has nothing to run from. Item 49 is therefore not
+"verify the install" — it is "decide the delivery mechanism, build it,
+then verify it".
+
+### 11.2 What the target machine actually needs
+
+Measured from `requirements.txt`, `requirements-lock.txt`, `.venv/pyvenv.cfg`
+and `alpha/config.py`:
+
+| | Detail |
+|---|---|
+| Python | Lock header says **3.14.6**; shipped code uses `str \| None`, so the *language* floor is 3.10, but every locked wheel is built for 3.14 |
+| tkinter | Bundled with the python.org Windows installer — verified present, no separate install |
+| pip packages | customtkinter 5.2.2, Pillow 12.2.0, sounddevice 0.5.5, websocket-client 1.6.0, pyaudiowpatch 0.2.12.8, numpy 2.5.0, python-dotenv 1.0.0, requests 2.34.2, psutil 7.2.2 (+ `deepl`, see the lock gap below) |
+| Not software, still required | `.env` at the repo root with `DEEPGRAM_API_KEY` and `DEEPL_API_KEY` (`config.py:14` loads it); internet for Deepgram's websocket and DeepL |
+| Not required | Git — a ZIP is enough |
+
+**Lock file gap, found 2026-08-16:** `requirements-lock.txt` pins **9**
+packages and **omits `deepl`**, which `requirements.txt` requires. It also
+pins no transitive dependencies (urllib3, charset-normalizer, …), so the
+name "lock" overstates it. Fix this before any packaging work — every
+option below installs from it.
+
+**`.venv` is not portable.** `pyvenv.cfg` hardcodes
+`home = C:\Users\islamm\AppData\Local\Python\pythoncore-3.14-64` and the
+full venv path. It has already broken once on a user-account move (§3).
+Copying `.venv` to another machine is not a delivery option.
+
+### 11.3 The four options
+
+| | Boss's effort | Admin needed | Antivirus risk | Build effort | Size |
+|---|---|---|---|---|---|
+| **A. Fresh clone + venv, manual** | installs Python, runs commands | maybe | low | none | small |
+| **B. `.bat` + system Python** | one installer prompt | maybe | low (installer) | ~1–2 h | small |
+| **C. `.bat` + embeddable Python bundle** | **none — double-click** | **no** | low | medium | ~60–80 MB |
+| **D. PyInstaller `.exe`** | **none — double-click** | no | **highest** (unsigned self-extractor) | high | 150+ MB |
+
+### 11.4 The two facts that decide it — both currently UNKNOWN
+
+Neither has been measured. Measure both before choosing; they are cheap
+and they eliminate whole options.
+
+1. **Can software be installed on the boss's laptop at all?** (admin
+   rights, IT policy, whether `pip` can reach the network through a
+   proxy.) If **no**, A and B are dead and it must be C or D.
+2. **Does PyInstaller support Python 3.14?** PyInstaller is **not
+   installed here**, and 3.14 is new enough that support may lag. If it
+   does not, D requires rebuilding the whole dependency set on 3.12/3.13
+   — including a `pyaudiowpatch` wheel for that version, itself unknown.
+
+### 11.5 Why D (single `.exe`) is not simply the best answer
+
+It is the nicest experience and the riskiest build, and the risk is
+concrete rather than general:
+
+**Every path anchor in the app is `Path(__file__)`.** Under a onefile
+build the code runs from a temp extraction (`sys._MEIPASS`), so these all
+point somewhere that is deleted on exit:
+
+```
+alpha/config.py:10              PROJECT_ROOT   = Path(__file__).resolve().parent.parent
+alpha/transcription/deepgram_client.py:133  _PROJECT_ROOT = Path(__file__).resolve().parents[2]
+alpha/utils/async_debug_log.py:17           (same shape)
+alpha/utils/crash_guard_log.py:21           (same shape)
+alpha/utils/diagnostic_test_log.py:47       (same shape)
+alpha/utils/freeze_guard_log.py:20          (same shape)
+```
+
+Consequences, not hypotheticals: `.env` is looked for inside the temp
+extract, so **the boss's API keys are never found**; and
+`troubleshooting/runs/` evidence is written into that temp directory and
+**deleted when the app exits**, which removes the entire evidence trail
+this project's debugging depends on.
+
+Making these frozen-aware (`sys.frozen` → beside `sys.executable`) is a
+small change, but it touches six shipped modules days before freeze.
+
+**`--onedir` (a folder with the `.exe` inside) avoids most of this** —
+`sys._MEIPASS` still applies but the folder is stable, `.env` can sit
+beside the executable, and evidence has somewhere durable to go. If the
+answer to "can files live beside the exe?" is yes, prefer onedir over
+onefile.
+
+### 11.6 Recommendation, and what to do first
+
+**Option C** unless fact (1) rules out an install entirely, in which case
+**D as `--onedir`, not `--onefile`.** C gives the boss the same
+double-click experience as D, needs no admin, avoids the unsigned-binary
+antivirus problem, and — decisively — **requires no change to shipped
+code**, so it cannot introduce a path bug days before freeze.
+
+C's one unknown: the embeddable Python zip ships **without tkinter**, so
+`_tkinter.pyd`, `tk86t.dll`, `tcl86t.dll` and the `tcl/` tree must be
+copied in from a full install. That works, but must be verified rather
+than assumed.
+
+Order of work, cheapest-first, all of it doable without the target
+machine:
+
+1. Fix the `requirements-lock.txt` gap (add `deepl`, pin transitives).
+2. Build a throwaway venv from the lock on a different path and confirm
+   every wheel installs on 3.14 — **`pyaudiowpatch` is the one most
+   likely to fail**, and it is the hardest to work around because it is
+   the WASAPI loopback capture layer.
+3. Check whether PyInstaller supports 3.14, in a *separate* venv so the
+   project's baseline venv stays untouched.
+4. Only then choose, and build.
+
+### 11.7 A separate delivery risk, bigger than packaging
+
+`alpha/audio/wasapi.py:33` calls `get_default_wasapi_loopback()` — there
+is **no device picker**. The app captures whatever Windows currently has
+as its default output device. On a laptop with a headset, a dock or
+Bluetooth, that is whatever was last selected, and **changing audio
+device mid-meeting silently moves the capture source**.
+
+§1's problem **D** listed "device change" alongside network drop, quota
+and credentials; items 44/45/46 covered the other three, and this one was
+never picked up. It will bite on any machine other than the development
+one, whichever delivery option is chosen. Worth filing as its own item.
