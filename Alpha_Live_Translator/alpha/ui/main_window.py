@@ -243,7 +243,18 @@ LANGUAGE_FLAG_LABELS = {
     "Russian": "Russian",
 }
 
-# Left column vertical split: Live Transcript (upper, larger) / Translation (lower, smaller)
+# Item 71. Side-by-side reading grid, from the design's `.atf-reading-grid`
+# (`minmax(0, 70fr) 8px minmax(220px, 30fr)`): translation is the primary pane
+# and the original transcript is a reference pane beside it.
+CONTENT_PRIMARY_WEIGHT = 70
+CONTENT_REFERENCE_WEIGHT = 30
+# Below this the design stacks the grid into rows
+# (`@media (max-width: 700px)` -> `grid-template-columns: 1fr`). The app
+# already had a 700 breakpoint for the same reason.
+CONTENT_STACK_BREAKPOINT = LAYOUT_MEDIUM_BREAKPOINT
+
+# Retained: still the vertical split used when the grid stacks on a narrow
+# window, where transcript and translation share one column as rows.
 TRANSCRIPT_PANEL_WEIGHT = 65
 TRANSLATION_PANEL_WEIGHT = 35
 
@@ -269,7 +280,9 @@ class AlphaApp(
         self._header_mode = None
         self._layout_mode = None
         self._menu_visible = False
-        self.summary_panel_visible = True
+        # Item 71: the meeting summary must not be on screen when the app
+        # opens -- only after its button is pressed.
+        self.summary_panel_visible = False
         self.summary_outer = None
         self.summary_card = None
         self.summary_panel_close_btn = None
@@ -285,7 +298,11 @@ class AlphaApp(
         self.footer_btn_row2 = None
         self._footer_buttons = []
         self._pane_initialized = False
-        self._initial_verse_visible = True
+        # Item 71: the original transcript is a reference pane, hidden until
+        # asked for. The design's default is `.atf-original-hidden` -- a single
+        # full-width translation column.
+        self._initial_verse_visible = False
+        self.transcript_column = None
         self.logo_image = None
         self._font_cache = {}
         self._resize_layout_job = None
@@ -2887,24 +2904,51 @@ class AlphaApp(
             padx=SPACING["window_pad_x"],
             pady=(SPACING["section_gap"], SPACING["section_gap_compact"]),
         )
-        self.content_wrapper.grid_columnconfigure(0, weight=7)
-        self.content_wrapper.grid_columnconfigure(1, weight=3)
+        # Item 71. Three side-by-side columns instead of two stacked panes:
+        #
+        #   col 0  translation  weight 70  always visible   (primary)
+        #   col 1  transcript   weight 30  hidden by default (reference)
+        #   col 2  summary      weight 30  hidden by default
+        #
+        # Matches the design's `.atf-reading-grid`
+        # (`minmax(0, 70fr) 8px minmax(220px, 30fr)`) and its
+        # `.atf-original-hidden` state, which collapses to a single column.
+        # Weights are re-derived in `_apply_content_layout`; the values here
+        # only cover the first paint before any resize event arrives.
+        self.content_wrapper.grid_columnconfigure(0, weight=CONTENT_PRIMARY_WEIGHT)
+        self.content_wrapper.grid_columnconfigure(1, weight=0)
+        self.content_wrapper.grid_columnconfigure(2, weight=0)
         self.content_wrapper.grid_rowconfigure(0, weight=1)
 
+        # `left_column` keeps its name and its role as the primary pane, but
+        # now holds ONLY the translation. Renaming it would touch 12 direct
+        # dereferences for no behavioural gain.
         self.left_column = ctk.CTkFrame(self.content_wrapper, fg_color="transparent")
         self.left_column.grid(row=0, column=0, sticky="nsew", padx=(0, 8))
-        self._apply_left_column_panel_weights()
+        self.left_column.grid_rowconfigure(0, weight=1)
         self.left_column.grid_columnconfigure(0, weight=1)
 
+        self.transcript_column = ctk.CTkFrame(
+            self.content_wrapper, fg_color="transparent"
+        )
+        self.transcript_column.grid(row=0, column=1, sticky="nsew", padx=(8, 0))
+        self.transcript_column.grid_rowconfigure(0, weight=1)
+        self.transcript_column.grid_columnconfigure(0, weight=1)
+
         self.right_column = ctk.CTkFrame(self.content_wrapper, fg_color="transparent")
-        self.right_column.grid(row=0, column=1, sticky="nsew", padx=(8, 0))
+        self.right_column.grid(row=0, column=2, sticky="nsew", padx=(8, 0))
         self.right_column.grid_rowconfigure(0, weight=1)
         self.right_column.grid_columnconfigure(0, weight=1)
 
         self.paned = self.left_column
 
+        # `attr_name` is deliberately unchanged on both. `_transcript_box()`
+        # returns `initial_verse_box` and is the target of every transcript
+        # insert; swapping the names here would route transcript text into the
+        # translation widget, which the widget-read export fallback then writes
+        # into the delivered file as if it were translation output.
         self.initial_verse_frame = self._create_verse_section(
-            master=self.left_column,
+            master=self.transcript_column,
             title=SECTION_TRANSCRIPT_TITLE,
             font_size=TRANSCRIPT_BODY_FONT[1],
             body_color=COLORS["text_secondary"],
@@ -2921,37 +2965,95 @@ class AlphaApp(
             body_color=COLORS["text_primary"],
             attr_name="translated_verse_box",
             is_initial=False,
-            grid_row=1,
+            grid_row=0,
             placeholder_text=PLACEHOLDER_TRANSLATION,
             placeholder_font=FONTS["placeholder_lg"],
         )
 
         self._create_summary_card()
 
+        # Both reference panes start hidden (C2: created eagerly, hidden with
+        # grid_remove -- never deferred, because three call sites dereference
+        # these widgets with no guard and a missing attribute raises
+        # AttributeError rather than returning None).
+        self.transcript_column.grid_remove()
+        self.right_column.grid_remove()
+
     def _apply_content_layout(self, mode):
-        """Reflow left/right columns — ~70% transcript, ~30% summary when visible."""
+        """Reflow the reading grid. Item 71.
+
+        Three columns -- translation (primary, always shown), transcript and
+        summary (both reference panes, both hidden until their button is
+        pressed). Weights are DERIVED from what is currently visible rather
+        than hardcoded per branch, so adding or removing a pane cannot leave a
+        stale weight behind on a column that is no longer gridded.
+
+        Below `CONTENT_STACK_BREAKPOINT` the design stacks the grid into rows
+        (`@media (max-width: 700px)` -> `grid-template-columns: 1fr`). Tk has
+        no media queries, so `mode` carries the same decision: `compact` and
+        `medium` stack, `wide` sits side by side.
+        """
         if not hasattr(self, "content_wrapper") or self.content_wrapper is None:
             return
         if self.left_column is None:
             return
 
-        show_summary = (
-            self.summary_panel_visible
-            and self.right_column is not None
-            and mode != "compact"
+        stacked = mode != "wide"
+        show_transcript = bool(
+            getattr(self, "_initial_verse_visible", False)
+            and getattr(self, "transcript_column", None) is not None
+        )
+        show_summary = bool(
+            self.summary_panel_visible and self.right_column is not None
         )
 
-        if show_summary:
-            self.content_wrapper.grid_columnconfigure(0, weight=7)
-            self.content_wrapper.grid_columnconfigure(1, weight=3)
-            self.left_column.grid(row=0, column=0, sticky="nsew", padx=(0, 8), pady=0)
-            self.right_column.grid(row=0, column=1, sticky="nsew", padx=(8, 0), pady=0)
-        else:
+        panes = [(self.left_column, 0, CONTENT_PRIMARY_WEIGHT, True)]
+        if getattr(self, "transcript_column", None) is not None:
+            panes.append(
+                (self.transcript_column, 1, CONTENT_REFERENCE_WEIGHT, show_transcript)
+            )
+        if self.right_column is not None:
+            panes.append(
+                (self.right_column, 2, CONTENT_REFERENCE_WEIGHT, show_summary)
+            )
+
+        if stacked:
+            # One column, panes become rows. Every column weight but the first
+            # is zeroed so a leftover weight cannot reserve width for a pane
+            # that is now a row.
             self.content_wrapper.grid_columnconfigure(0, weight=1)
-            self.content_wrapper.grid_columnconfigure(1, weight=0)
-            self.left_column.grid(row=0, column=0, sticky="nsew", padx=0, pady=0)
-            if self.right_column is not None:
-                self.right_column.grid_remove()
+            for _, index, _, _ in panes[1:]:
+                self.content_wrapper.grid_columnconfigure(index, weight=0)
+            row = 0
+            for pane, _index, weight, visible in panes:
+                if not visible:
+                    pane.grid_remove()
+                    continue
+                pane.grid(row=row, column=0, sticky="nsew", padx=0, pady=(0, 8))
+                self.content_wrapper.grid_rowconfigure(row, weight=weight)
+                row += 1
+            # Zero any row this pass did not use, or a hidden pane keeps its
+            # share of the height.
+            for spare in range(row, len(panes)):
+                self.content_wrapper.grid_rowconfigure(spare, weight=0)
+            return
+
+        self.content_wrapper.grid_rowconfigure(0, weight=1)
+        for spare in range(1, len(panes)):
+            self.content_wrapper.grid_rowconfigure(spare, weight=0)
+        for pane, index, weight, visible in panes:
+            if not visible:
+                self.content_wrapper.grid_columnconfigure(index, weight=0)
+                pane.grid_remove()
+                continue
+            self.content_wrapper.grid_columnconfigure(index, weight=weight)
+            pane.grid(
+                row=0,
+                column=index,
+                sticky="nsew",
+                padx=(0, 8) if index == 0 else (8, 0),
+                pady=0,
+            )
 
     def _apply_status_bar_layout(self, width):
         """Hide non-essential status elements on very narrow windows."""
@@ -3337,14 +3439,18 @@ class AlphaApp(
         if is_initial:
             self.initial_title_row = title_row
             self.hide_initial_button = self._create_toggle_button(title_row, "Hide", 64)
-            self.hide_initial_button.grid(row=0, column=1, sticky="e", padx=(8, 0))
+            # Item 71: the transcript pane starts hidden, so its "Hide" button
+            # starts hidden too. Created eagerly and removed, never deferred
+            # (C2) -- `_place_toggle_button` dereferences both buttons with no
+            # guard and a missing attribute raises AttributeError.
+            self.hide_initial_button.grid_remove()
         else:
             self.translated_title_row = title_row
             self.translated_title_label = title_label
             self.show_initial_button = self._create_toggle_button(
                 title_row, "Show Transcript", 128
             )
-            self.show_initial_button.grid_remove()
+            self.show_initial_button.grid(row=0, column=1, sticky="e", padx=(8, 0))
 
         text_frame, text_widget = self._create_styled_text(
             outer,
@@ -3376,21 +3482,33 @@ class AlphaApp(
             self.toggle_initial_verse()
 
     def toggle_initial_verse(self):
-        """Hide or restore the Live Transcript panel."""
+        """Show or hide the original-transcript reference pane. Item 71.
+
+        The transcript is now a COLUMN beside the translation, not a row above
+        it, so this no longer touches `left_column`'s row weights -- doing so
+        would be a silent no-op, since `grid_rowconfigure` on a container whose
+        children are in columns raises nothing and does nothing. Visibility is
+        recorded and `_apply_content_layout` derives the geometry, which keeps
+        one function in charge of the grid and lets a later resize re-derive it
+        correctly.
+        """
         try:
+            self._initial_verse_visible = not self._initial_verse_visible
+            # The translation title is NOT hidden any more. That belonged to
+            # the old "full-screen translated" mode, where translation was the
+            # only pane on screen; it is now always the primary pane and always
+            # labelled, in either state.
             if self._initial_verse_visible:
-                self.initial_verse_frame.grid_remove()
-                self.left_column.grid_rowconfigure(0, weight=0)
-                self.left_column.grid_rowconfigure(1, weight=1)
-                self.translated_title_label.grid_remove()
-                self._place_toggle_button(self.translated_title_row, "Show Transcript", 128)
-                self._initial_verse_visible = False
-            else:
-                self.initial_verse_frame.grid()
-                self._apply_left_column_panel_weights()
-                self.translated_title_label.grid()
                 self._place_toggle_button(self.initial_title_row, "Hide", 64)
-                self._initial_verse_visible = True
+            else:
+                self._place_toggle_button(
+                    self.translated_title_row, "Show Transcript", 128
+                )
+            width = self.winfo_width()
+            mode = self._layout_mode or self._get_layout_mode(
+                width if width > 1 else LAYOUT_WIDE_BREAKPOINT
+            )
+            self._apply_content_layout(mode)
         except Exception as exc:
             print(f"Error toggling initial verse: {exc}")
 
@@ -3399,18 +3517,40 @@ class AlphaApp(
         transcript_weight=TRANSCRIPT_PANEL_WEIGHT,
         translation_weight=TRANSLATION_PANEL_WEIGHT,
     ):
-        """Set vertical space split between Live Transcript and Translation."""
-        if self.left_column is None:
-            return
-        self.left_column.grid_rowconfigure(0, weight=transcript_weight)
-        self.left_column.grid_rowconfigure(1, weight=translation_weight)
+        """No longer applicable. Item 71.
+
+        `left_column` used to stack transcript (row 0) over translation
+        (row 1); it now holds the translation alone and the transcript is its
+        own column. Writing row weights here would be a **silent** no-op --
+        `grid_rowconfigure` on a container whose children are in columns
+        neither raises nor does anything -- so the body is removed rather than
+        left to look effective.
+
+        Kept as a function because it has callers (`_set_initial_pane_ratio`)
+        and because deleting it would be a wider change than this phase needs.
+        The stacked-window split is derived in `_apply_content_layout`, which
+        is now the single owner of the reading grid's geometry.
+        """
+        return
 
     def _set_initial_pane_ratio(self):
-        """Set initial row weights for transcript vs translation."""
-        if not self._initial_verse_visible or self.left_column is None:
+        """Apply the reading grid's first layout. Item 71.
+
+        Was row weights on `left_column`; the panes are columns now, so it
+        defers to `_apply_content_layout`, the one owner of that geometry.
+        The `_initial_verse_visible` early return is gone deliberately: the
+        transcript now starts hidden, so returning on that flag would skip the
+        first layout entirely and leave the grid at its constructor defaults
+        until the first resize event happened to arrive.
+        """
+        if self.left_column is None:
             return
         try:
-            self._apply_left_column_panel_weights()
+            width = self.winfo_width()
+            mode = self._layout_mode or self._get_layout_mode(
+                width if width > 1 else LAYOUT_WIDE_BREAKPOINT
+            )
+            self._apply_content_layout(mode)
             if not self._pane_initialized:
                 self._pane_initialized = True
         except Exception as exc:
