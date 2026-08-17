@@ -377,6 +377,15 @@ class AlphaApp(
         self._pyaudio = None
         self._wasapi_stream = None
         self._wasapi_reader_thread = None
+        # Item 73. Declared at process scope, RESET in _close_wasapi_stream --
+        # not only here. `_wasapi_rate`/`_wasapi_channels` above are the
+        # cautionary example: they are set here and again in
+        # _start_wasapi_loopback but cleared nowhere, so a second session whose
+        # device acquisition raises silently inherits the first session's
+        # values. Session-scoped state must be cleared where the session ends.
+        self._wasapi_device_watch_thread = None
+        self._wasapi_default_endpoint_baseline = ""
+        self._wasapi_device_change_reported = False
         self._mix_thread = None
         self._mic_stream = None
         self._wasapi_channels = 1
