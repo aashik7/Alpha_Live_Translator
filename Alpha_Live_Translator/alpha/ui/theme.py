@@ -52,6 +52,33 @@ COLORS = {
     "status_active_bg": INPUT_BG,
     "status_chip_bg": INPUT_BG,
     "status_chip_hover": INPUT_BG_HOVER,
+    # ---- Item 71 / UI redesign Phase 1: design tokens -------------------
+    # Additive only. Nothing above changes value, so any widget not opting in
+    # renders exactly as before. The design was derived from this file, so the
+    # existing tokens already match it hex-for-hex.
+    "pane_translation_bg": "#0D1728",  # primary (translation) pane
+    "pane_original_bg": "#091320",  # reference (transcript) pane
+    "button_border": "#31415C",
+    "toggle_border": "#3B4B67",
+    "toast_bg": "#152238",
+    # ACCENT_GREEN #22C55E is visibly darker than the design's success text --
+    # do not substitute one for the other.
+    "success_text": "#86EFAC",
+    "speaker_two_dot": "#4ADE80",
+    "label_muted": "#94A3B8",
+    "button_text": "#E2E8F0",
+    "scrollbar_thumb": "#1B4B7A",
+    "scrollbar_track": "#050D19",
+    "summary_body_text": "#DBE5F2",
+    "toggle_on_bg": "#1D4ED8",
+    # The design expresses these as rgba() over an opaque backdrop. Tk has no
+    # alpha, so they are pre-composited to flat hex:
+    #   rgba(59,130,246,.09) over #0D1728 -> #11213B
+    #   rgba(59,130,246,.06) over #091320 -> #0C1A2D
+    #   rgba(2,8,23,.72)     over #0B1220 -> #050B1A
+    "entry_current_bg": "#11213B",
+    "entry_current_bg_original": "#0C1A2D",
+    "overlay_backdrop": "#050B1A",
     # Legacy aliases (backend / shared widgets)
     "main_bg": APP_BG,
     "container_bg": CARD_BG,
@@ -104,8 +131,23 @@ EXTENDED_SPEAKER_COLORS = {
 # ---------------------------------------------------------------------------
 # Typography
 # ---------------------------------------------------------------------------
-FONT_FAMILY = "Segoe UI Variable"
-FONT_FAMILY_FALLBACK = "Segoe UI"
+# Item 71 / UI redesign Phase 1. This was "Segoe UI Variable", which Tk cannot
+# resolve: `tkfont.Font(family="Segoe UI Variable").actual("family")` returns
+# **Arial**, and Tk substitutes silently rather than raising, so no fallback
+# ever fired and the whole app rendered in Arial. Re-verified on this machine:
+#
+#   Segoe UI Variable -> 'Arial'      Segoe UI -> 'Segoe UI'
+#
+# "Segoe UI" is registered and is what the design specifies (its stack is
+# "Segoe UI Variable", "Segoe UI", "Yu Gothic UI", sans-serif -- the browser
+# falls through, Tk does not).
+#
+# Safe despite touching every rendered string: a font change alters WRAP
+# points, and wrapping produces *display* lines. Every piece of arithmetic in
+# main_window.py -- `delete("1.0", "2.0")`, `mark lineend` -- operates on
+# *logical* lines, which are unchanged.
+FONT_FAMILY = "Segoe UI"
+FONT_FAMILY_FALLBACK = "Yu Gothic UI"
 
 APP_TITLE_FONT = (FONT_FAMILY, 25, "bold")
 APP_SUBTITLE_FONT = (FONT_FAMILY, 12)
