@@ -181,6 +181,9 @@ from alpha.ui.theme import (
     FOOTER_BTN_WIDTH_SECONDARY,
     FONTS,
     HEADER_CONTROL_HEIGHT,
+    INTERIM_FONT_PX,
+    INTERIM_SPACE_ABOVE_PX,
+    INTERIM_SPACE_BELOW_PX,
     LAYOUT_FOOTER_WRAP_BREAKPOINT,
     LAYOUT_HAMBURGER_BREAKPOINT,
     LAYOUT_MEDIUM_BREAKPOINT,
@@ -189,14 +192,17 @@ from alpha.ui.theme import (
     LAYOUT_STATUS_COMPACT_BREAKPOINT,
     LAYOUT_WIDE_BREAKPOINT,
     MEETING_SUMMARY_BUTTON_TEXT,
+    PANE_BG,
     PLACEHOLDER_SUMMARY,
     PLACEHOLDER_TRANSCRIPT,
     PLACEHOLDER_TRANSLATION,
     RADII,
+    READING_TYPOGRAPHY,
     SECTION_TRANSCRIPT_TITLE,
     SECTION_TRANSLATION_TITLE,
     SMALL_BUTTON_HEIGHT,
     SPACING,
+    SPEAKER_LABEL_FONT_PX,
     SUMMARY_BUTTON_WIDTH,
     SUMMARY_CLOSE_ICON,
     SUMMARY_PANEL_TITLE,
@@ -303,6 +309,9 @@ class AlphaApp(
         # full-width translation column.
         self._initial_verse_visible = False
         self.transcript_column = None
+        # Which branch of the design's type scale is currently applied.
+        # `None` until the panes are built, so the first refresh always runs.
+        self._reading_typography_stacked = None
         self.logo_image = None
         self._font_cache = {}
         self._resize_layout_job = None
@@ -1834,13 +1843,143 @@ class AlphaApp(
     # -----------------------------------------------------------------------
     # UI style helpers (visual consistency only)
     # -----------------------------------------------------------------------
-    def _ui_font(self, size, weight="normal"):
-        """Return CTkFont using Segoe UI Variable with Segoe UI fallback."""
+    def _design_px(self, css_px):
+        """Convert a design px to a device pixel at the current display scaling.
+
+        CustomTkinter scales every widget it owns by
+        `ScalingTracker.get_widget_scaling`, but the two reading panes are raw
+        `tk.Text` widgets and get none of it. Measured on a 150% display: one
+        `CTkFont(size=16)` object renders at 18 pt inside a `CTkLabel` and at
+        12 pt inside the `tk.Text` -- so today the app's primary content is a
+        third smaller than the chrome around it, on exactly the kind of laptop
+        the client will use. Applying the same factor here keeps them together.
+
+        Falls back to 1.0 if the tracker is unavailable, which reproduces the
+        current behaviour rather than failing.
+        """
+        try:
+            scaling = ctk.ScalingTracker.get_widget_scaling(self)
+        except Exception:
+            scaling = 1.0
+        if not scaling or scaling <= 0:
+            scaling = 1.0
+        return max(1, int(round(css_px * scaling)))
+
+    def _apply_reading_typography(self, text_widget, role, stacked):
+        """Style one reading pane from the design's type scale. Item 71.
+
+        Every option written here -- `font`, `padx`, `pady`, `spacing1/2/3`,
+        `background`, `foreground` -- changes only where glyphs land. None of
+        them adds a logical line, so the render cap's `delete("1.0", "2.0")`
+        and the revision paths' `mark lineend` arithmetic behave exactly as
+        before; only wrap points move.
+
+        `spacing2` (the gap between the wrapped display lines of one
+        paragraph) is derived rather than tabulated. The design states a
+        line-height *ratio*, and the space Tk needs to add on top is the
+        difference between that target and the font's own measured linespace,
+        which depends on the family, the size and the current DPI. Hardcoding
+        it would be right on this machine only.
+        """
+        if text_widget is None:
+            return
+        spec = READING_TYPOGRAPHY.get((role, bool(stacked)))
+        if spec is None:
+            return
+        try:
+            # A CustomTkinter font size is already in pixels, so the design's
+            # `font-size: 18px` is `size=18`; only display scaling is applied.
+            font = self._ui_font(self._design_px(spec["font_px"]))
+
+            linespace = 0
+            try:
+                linespace = int(font.metrics("linespace"))
+            except Exception:
+                linespace = 0
+            target_line_px = self._design_px(spec["font_px"] * spec["line_height"])
+            spacing2 = max(0, target_line_px - linespace) if linespace else 0
+
+            pane_bg = PANE_BG.get(role, COLORS["card_bg_soft"])
+            # Paragraph spacing goes on the WIDGET, not on the `body` tag. Tk
+            # resolves `spacing1` from the tags on the first character of a
+            # display line, and every rendered entry starts with the
+            # `speaker_label` tag -- so a `body`-tagged spacing1 would silently
+            # apply to nothing on exactly the lines it was meant for.
+            text_widget.configure(
+                font=font,
+                padx=self._design_px(spec["pad_x_px"]),
+                pady=self._design_px(spec["pad_top_px"]),
+                bg=pane_bg,
+                spacing1=self._design_px(spec["space_above_px"]),
+                spacing2=spacing2,
+                spacing3=self._design_px(spec["space_below_px"]),
+            )
+            # The tk.Text shares its rectangle with a CTkFrame and a CTkScrollbar.
+            # Recolouring only the text would leave a visible band of the old
+            # card colour down the right edge and around the border.
+            for sibling in (
+                getattr(text_widget, "_pane_frame", None),
+                getattr(text_widget, "_scrollbar", None),
+            ):
+                if sibling is not None:
+                    try:
+                        sibling.configure(fg_color=pane_bg)
+                    except Exception:
+                        pass
+            # The live "listening" preview is a quieter, smaller row in the
+            # design (`.atf-incoming-entry`, 12px, tighter padding). It covers
+            # its whole display line, so its own spacing1 does win here.
+            text_widget.tag_configure(
+                "interim",
+                font=self._ui_font(self._design_px(INTERIM_FONT_PX)),
+                foreground=COLORS["text_muted"],
+                spacing1=self._design_px(INTERIM_SPACE_ABOVE_PX),
+                spacing3=self._design_px(INTERIM_SPACE_BELOW_PX),
+            )
+            # Four sites build `speaker_label` lazily with a hardcoded
+            # `("Segoe UI", 12, "bold")` -- a raw Tk tuple, so 12 *points*,
+            # neither a design px nor scaled. It happened to match the old
+            # body size exactly; now that the body follows the design it would
+            # be left behind as a mismatched inline prefix. Configuring it here
+            # wins because all four sites are guarded by
+            # `if tag not in box.tag_names()`.
+            text_widget.tag_configure(
+                "speaker_label",
+                font=self._ui_font(
+                    self._design_px(SPEAKER_LABEL_FONT_PX), "bold"
+                ),
+                foreground=COLORS["text_primary"],
+            )
+        except Exception as exc:
+            # Typography is cosmetic; a failure here must not stop the pane
+            # from rendering text.
+            print(f"Error applying reading typography ({role}): {exc}")
+
+    def _refresh_reading_typography(self, mode):
+        """Re-apply the design's type scale after a layout-mode change.
+
+        The design has a single mobile branch (`@media (max-width: 700px)`),
+        which is the same threshold that turns the reading columns into rows,
+        so `stacked` decides both.
+        """
+        stacked = mode != "wide"
+        if stacked == getattr(self, "_reading_typography_stacked", None):
+            return
+        self._reading_typography_stacked = stacked
+        self._apply_reading_typography(
+            getattr(self, "translated_verse_box", None), "translation", stacked
+        )
+        self._apply_reading_typography(
+            getattr(self, "initial_verse_box", None), "transcript", stacked
+        )
+
+    def _ui_font(self, size, weight="normal", slant="roman"):
+        """Return a CTkFont in the design's family, falling back if absent."""
         cache = getattr(self, "_font_cache", None)
         if cache is None:
             self._font_cache = {}
             cache = self._font_cache
-        key = (size, weight or "normal")
+        key = (size, weight or "normal", slant or "roman")
         cached = cache.get(key)
         if cached is not None:
             return cached
@@ -1849,6 +1988,8 @@ class AlphaApp(
                 kwargs = {"family": family, "size": size}
                 if weight and weight != "normal":
                     kwargs["weight"] = weight
+                if slant and slant != "roman":
+                    kwargs["slant"] = slant
                 font = ctk.CTkFont(**kwargs)
                 cache[key] = font
                 return font
@@ -1857,6 +1998,29 @@ class AlphaApp(
         font = ctk.CTkFont(family="Segoe UI", size=size)
         cache[key] = font
         return font
+
+    def _scaled_design_font(self, font_spec):
+        """Rebuild a `(family, size[, style])` theme tuple at display scaling.
+
+        Only the reading panes need this: they are raw `tk.Text` widgets, so
+        CustomTkinter never scales anything handed to them. Without it the
+        placeholder would draw at its literal pixel size beside body text that
+        has been scaled, which on a 150% display is the first mismatch the
+        user sees -- the panes are empty at launch.
+        """
+        try:
+            family = font_spec[0]
+            size = self._design_px(font_spec[1])
+            style = font_spec[2] if len(font_spec) > 2 else ""
+            weight = "bold" if "bold" in style else "normal"
+            slant = "italic" if "italic" in style else "roman"
+            if family in (FONT_FAMILY, FONT_FAMILY_FALLBACK, "Segoe UI"):
+                return self._ui_font(size, weight, slant)
+            return ctk.CTkFont(
+                family=family, size=size, weight=weight, slant=slant
+            )
+        except Exception:
+            return font_spec
 
     def _language_flag_label(self, plain_language):
         """Return display label with country flag for a plain language name."""
@@ -2414,6 +2578,7 @@ class AlphaApp(
         """Second slice of responsive layout (content/footer/status)."""
         try:
             self._apply_content_layout(mode)
+            self._refresh_reading_typography(mode)
             self.after(
                 1, lambda m=mode, w=width: self._apply_responsive_layout_tail2(m, w)
             )
@@ -3292,8 +3457,14 @@ class AlphaApp(
         placeholder_text=None,
         placeholder_font=None,
         text_pad_y=12,
+        pane_role=None,
     ):
-        """Create a read-only tk.Text widget with a right-side auto-hiding CTkScrollbar."""
+        """Create a read-only tk.Text widget with a right-side auto-hiding CTkScrollbar.
+
+        `pane_role` opts the widget into the design's reading type scale
+        (item 71 Phase 2). Without it the widget keeps the pre-redesign
+        styling, so any future caller is unaffected.
+        """
         text_frame = ctk.CTkFrame(
             master=master,
             fg_color=COLORS["card_bg_soft"],
@@ -3335,9 +3506,17 @@ class AlphaApp(
             text_widget.tag_configure(tag_name, foreground=color)
 
         text_widget._scrollbar = scrollbar
+        text_widget._pane_frame = text_frame
+
+        if pane_role:
+            stacked = (self._layout_mode or "wide") != "wide"
+            self._reading_typography_stacked = stacked
+            self._apply_reading_typography(text_widget, pane_role, stacked)
 
         if placeholder_text:
             pfont = placeholder_font or FONTS["placeholder"]
+            if pane_role:
+                pfont = self._scaled_design_font(pfont)
             text_widget.tag_configure(
                 "placeholder",
                 foreground=COLORS["text_disabled"],
@@ -3459,6 +3638,7 @@ class AlphaApp(
             placeholder_text=placeholder_text,
             placeholder_font=placeholder_font,
             text_pad_y=text_pad_y,
+            pane_role="transcript" if is_initial else "translation",
         )
         text_frame.grid(
             row=1,

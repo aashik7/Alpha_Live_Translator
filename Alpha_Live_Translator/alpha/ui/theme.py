@@ -162,6 +162,102 @@ SMALL_FONT = (FONT_FAMILY, 11)
 PLACEHOLDER_FONT = (FONT_FAMILY, 13, "italic")
 TIMESTAMP_FONT = (FONT_FAMILY, 12)
 
+# ---------------------------------------------------------------------------
+# Item 71 / UI redesign Phase 2: reading typography
+# ---------------------------------------------------------------------------
+# Every size below is a design px, taken verbatim from the CSS. No unit
+# conversion is needed, and doing one would be wrong: a CustomTkinter font size
+# is already **pixels**, not points. Measured on 5.2.2 --
+# `CTkFont(family="Segoe UI", size=14)` and `tkinter.font.Font(size=-14)`
+# produce byte-identical metrics (actual size 11 pt, linespace 19). So the
+# design's `font-size: 18px` is `size=18`.
+#
+# What DOES need converting is display scaling, and only for these two panes.
+# CustomTkinter scales its own widgets by `ScalingTracker.get_widget_scaling`,
+# but a raw `tk.Text` is not a CTk widget and receives none of it: on a 150%
+# display the same CTkFont object measures 18 pt inside a CTkLabel and 12 pt
+# inside the tk.Text. That is applied at runtime -- see `_design_px` in
+# main_window.py -- so the reading panes track the chrome around them.
+#
+# All of this is wrap-only. `spacing1/2/3`, `lmargin1/2`, `rmargin`, `font` and
+# `background` add ZERO logical lines, so `delete("1.0", "2.0")` and every
+# `mark lineend` arithmetic in main_window.py is untouched.
+#
+# Keys are (pane role, stacked). `stacked` mirrors the design's
+# `@media (max-width: 700px)` branch, which is the same threshold the layout
+# uses to turn the reading columns into rows.
+#
+# `line_height` is the design's CSS ratio, not a pixel count: the actual extra
+# inter-line space depends on the font's measured linespace at the current DPI,
+# so it is resolved at runtime rather than baked in here.
+READING_TYPOGRAPHY = {
+    # .atf-translation-entry p { font-size: 18px; line-height: 1.58 }
+    # .atf-translation-entry  { padding: 16px 0 }
+    # .atf-translation-content { padding: 5px 20px 18px }
+    ("translation", False): {
+        "font_px": 18,
+        "line_height": 1.58,
+        "space_above_px": 16,
+        "space_below_px": 16,
+        "pad_x_px": 20,
+        "pad_top_px": 5,
+        "pad_bottom_px": 18,
+    },
+    # .atf-mobile-preview .atf-translation-entry p { font-size: 17px }
+    # .atf-mobile-preview .atf-translation-content { padding: 4px 14px 14px }
+    ("translation", True): {
+        "font_px": 17,
+        "line_height": 1.58,
+        "space_above_px": 16,
+        "space_below_px": 16,
+        "pad_x_px": 14,
+        "pad_top_px": 4,
+        "pad_bottom_px": 14,
+    },
+    # .atf-original-entry p { font-size: 14px; line-height: 1.55 }
+    # .atf-original-entry   { padding: 14px 0 }
+    # .atf-original-content { padding: 5px 15px 16px }
+    ("transcript", False): {
+        "font_px": 14,
+        "line_height": 1.55,
+        "space_above_px": 14,
+        "space_below_px": 14,
+        "pad_x_px": 15,
+        "pad_top_px": 5,
+        "pad_bottom_px": 16,
+    },
+    # The design gives the original pane no mobile font override, only tighter
+    # padding: .atf-mobile-preview .atf-original-content { padding: 4px 13px 13px }
+    ("transcript", True): {
+        "font_px": 14,
+        "line_height": 1.55,
+        "space_above_px": 14,
+        "space_below_px": 14,
+        "pad_x_px": 13,
+        "pad_top_px": 4,
+        "pad_bottom_px": 13,
+    },
+}
+
+# .atf-incoming-entry { margin-top: 8px; padding: 13px 0; color: #64748b;
+#                       font-size: 12px }
+INTERIM_FONT_PX = 12
+INTERIM_SPACE_ABOVE_PX = 8 + 13
+INTERIM_SPACE_BELOW_PX = 13
+
+# .atf-entry-meta { font-size: 11px } / .atf-entry-meta strong { font-weight: 500 }
+# The design puts the speaker name on its own meta row above the body; that
+# needs a second logical line and therefore the render-cap fix first, so for
+# now the label keeps its inline position and only takes the design's size.
+SPEAKER_LABEL_FONT_PX = 11
+
+# Pane backgrounds. The design tints the two panes differently so the primary
+# one reads as the foreground surface; both tokens were added in Phase 1.
+PANE_BG = {
+    "translation": COLORS["pane_translation_bg"],
+    "transcript": COLORS["pane_original_bg"],
+}
+
 FONTS = {
     "brand": APP_TITLE_FONT,
     "brand_sub": APP_SUBTITLE_FONT,
