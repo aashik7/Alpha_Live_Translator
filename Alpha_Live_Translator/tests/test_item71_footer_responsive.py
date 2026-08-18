@@ -74,7 +74,6 @@ from alpha.ui.main_window import AlphaApp  # noqa: E402
 from alpha.ui.theme import (  # noqa: E402
     APP_WINDOW_TITLE,
     DEFAULT_WINDOW_WIDTH,
-    FOOTER_ACTIONS_STRETCH_BREAKPOINT,
     FOOTER_STACK_BREAKPOINT,
     LISTEN_BUTTON_LABELS,
 )
@@ -251,10 +250,10 @@ class TestStartStopIsNeverHidden(unittest.TestCase):
             )
 
     def test_the_primary_button_is_the_one_that_fills_a_narrow_footer(self):
-        # 420: below where the action group still fits one line (~560), so
+        # 380: below where the action group still fits one line, so
         # Start/Stop is the footer's ONLY content and spans the full row --
         # there is no second group left to share it with.
-        m = _footer(420)
+        m = _footer(380)
         self.assertFalse(m["copy"]["mapped"])
         self.assertGreater(
             m["listen"]["w"],
@@ -286,38 +285,52 @@ class TestTheDesignsTwoFooterBreakpoints(unittest.TestCase):
                 f"the two footer groups should share one row at {width}px",
             )
 
-    def test_the_primary_button_stretches_below_the_breakpoint(self):
-        """`.atf-stop-button { flex: 1 1 auto }` -- it fills its half of the
-        row rather than sitting at its label width."""
-        narrow = _footer(600)
+    def test_the_primary_button_never_stretches(self):
+        """The design's `.atf-stop-button { flex: 1 1 auto }` stretches
+        Start/Stop to half the row below 700px. Phase 3e removes that by
+        explicit user request: it made Start/Stop visibly bigger than the
+        other three footer buttons. Its width must stay the same at every
+        width where the action group is ALSO in the footer -- 410 design px
+        (just past where the group still fits one line) and 900 both share a
+        row with it, so its own width should be identical, not larger at the
+        narrower one."""
+        narrow = _footer(410)
         wide = _footer(900)
-        self.assertGreater(
+        self.assertTrue(narrow["copy"]["mapped"], "test premise: not hamburger-routed")
+        self.assertEqual(
             narrow["listen"]["w"],
             wide["listen"]["w"],
-            "the start/stop button should stretch once the footer is narrow",
-        )
-        self.assertGreater(
-            narrow["listen"]["w"] / narrow["_footer_w"],
-            0.3,
-            "and it should hold roughly its half of the row",
+            "start/stop must not resize just because the footer narrowed",
         )
 
-    def test_stretch_below_430_is_currently_unreachable_with_real_button_text(self):
-        """`@media (max-width: 430px)` gives the action buttons
-        `flex: 1 1 auto`, and `_apply_footer_layout` still computes
-        `stretch_actions` for it -- kept because the design specifies it and
-        a future label/padding change could make it reachable again. It does
-        NOT fire today: the action group only stays in the footer once it
-        fits one line, measured at ~560 design px and up, which is already
-        past 430. Pinned so a future reader does not read the stretch code as
-        dead and delete it, or spend time debugging why it "never triggers"."""
-        m = _footer(FOOTER_ACTIONS_STRETCH_BREAKPOINT - 10)
+    def test_the_primary_button_fills_the_row_only_once_alone_in_it(self):
+        """The full-row fill is real, but it is not a stretch reacting to
+        width -- it only happens once the action group has moved to the
+        hamburger menu and there is nothing left to share the row with."""
+        alone = _footer(380)
+        shared = _footer(410)
+        self.assertFalse(alone["copy"]["mapped"])
+        self.assertTrue(shared["copy"]["mapped"])
+        self.assertGreater(
+            alone["listen"]["w"],
+            shared["listen"]["w"],
+            "start/stop should only be wider when it is the row's only content",
+        )
+
+    def test_action_buttons_never_stretch(self):
+        """The design's `@media (max-width: 430px)` gives the action buttons
+        `flex: 1 1 auto`. Phase 3e removes that too, by the same request as
+        Start/Stop: their width must stay the natural, text-driven size at
+        every width where they are in the footer at all, never grown to fill
+        the row."""
+        narrow = _footer(410)
+        wide = _footer(900)
         for name in ("copy", "export", "clear"):
-            self.assertFalse(
-                m[name]["mapped"],
-                f"{name} should have moved to the hamburger menu by "
-                f"{FOOTER_ACTIONS_STRETCH_BREAKPOINT - 10}px, not be "
-                "stretching in the footer",
+            self.assertTrue(narrow[name]["mapped"], "test premise")
+            self.assertEqual(
+                narrow[name]["w"],
+                wide[name]["w"],
+                f"{name} must not resize just because the footer narrowed",
             )
 
     def test_actions_sit_at_their_natural_width_between_430_and_700(self):
@@ -346,10 +359,16 @@ class TestActionsMoveToTheHamburgerRatherThanWrap(unittest.TestCase):
     enough to swallow widths where one line was in fact possible. The decision
     is now the ACTUAL computed line count -- more than one line moves the
     whole group to the hamburger menu instead of wrapping.
+
+    The threshold itself later moved (Phase 3e) when the available-width
+    calculation was corrected to subtract Start/Stop's REAL width rather than
+    assume it takes half the row; the exact number below is a re-measurement
+    of where this environment's font metrics put the crossover, not a
+    constant the code exposes.
     """
 
     def test_the_wrap_is_gone_across_the_whole_band_it_used_to_appear_in(self):
-        for width in range(360, 560, 20):
+        for width in range(350, 410, 10):
             m = _footer(width)
             for name in ("copy", "export", "clear"):
                 self.assertFalse(

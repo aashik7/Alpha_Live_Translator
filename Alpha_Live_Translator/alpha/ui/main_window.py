@@ -182,14 +182,12 @@ from alpha.ui.theme import (
     FOOTER_BTN_WIDTH_SECONDARY,
     FOOTER_ACTION_HEIGHT,
     FOOTER_ACTION_PAD_X,
-    FOOTER_ACTIONS_STRETCH_BREAKPOINT,
     FOOTER_BTN_PAD_X,
     FOOTER_GROUP_GAP,
     FOOTER_PAD_X,
     FOOTER_PAD_X_STACKED,
     FOOTER_PAD_Y,
     FOOTER_PAD_Y_STACKED,
-    FOOTER_PRIMARY_HEIGHT,
     FOOTER_ROW_GAP,
     FOOTER_STACK_BREAKPOINT,
     FONTS,
@@ -267,6 +265,19 @@ LANGUAGE_FLAG_LABELS = {
     "Russian": "Russian",
 }
 
+# Header-only display abbreviation, item 71 Phase 3e. Below the header's
+# "medium" mode (LAYOUT_HAMBURGER_BREAKPOINT), the language dropdowns
+# already narrow to 128px (`_pack_header_controls`), and "Japanese"/"English"
+# at that width was measured to overflow the header row far enough to push
+# the swap toggle and Meeting Summary button off-screen -- reported with two
+# screenshots. Only these two are needed: `SOURCE_LANGUAGES`/
+# `TARGET_LANGUAGES` are Japanese/English only (constants.py's "Phase 1
+# active UI scope").
+LANGUAGE_ABBREVIATIONS = {
+    "Japanese": "JP",
+    "English": "EN",
+}
+
 # Item 71. Side-by-side reading grid, from the design's `.atf-reading-grid`
 # (`minmax(0, 70fr) 8px minmax(220px, 30fr)`): translation is the primary pane
 # and the original transcript is a reference pane beside it.
@@ -331,6 +342,11 @@ class AlphaApp(
         # `None` until the panes are built, so the first refresh always runs.
         self._reading_typography_stacked = None
         self._first_map_handled = False
+        # Whether the header's language combos currently show "JP"/"EN"
+        # instead of "Japanese"/"English". `None` until `_pack_header_controls`
+        # first runs, so the first call always applies (same reasoning as
+        # `_reading_typography_stacked` above).
+        self._header_lang_abbreviated = None
         self.logo_image = None
         self._font_cache = {}
         self._resize_layout_job = None
@@ -606,11 +622,15 @@ class AlphaApp(
                 return
             # Snapshot current geometry so the deferred first responsive-layout
             # pass can no-op when nothing changed (avoids a post-paint UI stall).
+            # Must match what `_apply_responsive_layout` snapshots into these
+            # same two attributes -- design px via `_design_width()`, not
+            # `winfo_width()`'s device px -- or the very first skip-check
+            # compares a device-px value against a design-px one.
             try:
-                width = int(self.winfo_width() or 0)
-                if width > 1:
-                    mode = self._get_layout_mode(width)
-                    self._last_layout_width = width
+                design_width = self._design_width()
+                if design_width > 1:
+                    mode = self._get_layout_mode(design_width)
+                    self._last_layout_width = design_width
                     self._last_layout_mode_applied = mode
                     self._layout_mode = mode
             except Exception:
@@ -1874,36 +1894,54 @@ class AlphaApp(
         self.bind("<Map>", self._on_first_map)
 
     def _on_first_map(self, event=None):
-        """Correct the footer and reading-pane typography as soon as the
-        window is actually on screen, instead of leaving them at whatever
-        `create_footer()` computed during `__init__`.
+        """Run the full responsive-layout pass as soon as the window is
+        actually on screen, instead of leaving everything at whatever
+        `__init__`'s eager widget construction computed.
 
         Measured: right after `self.geometry("900x650")`, before the window
         manager has mapped the window, `winfo_width()` returns Tk's own
         placeholder size (200 device px on this machine) -- not the 900
         requested, and not the `<= 1` this file's other fallbacks guard
         against. 200 / 1.5 scaling is a 133 design-px window, which is what
-        `create_footer()` and the reading panes' initial typography pass
-        built the whole layout for: the footer wraps to its narrowest
-        two-line shape and the panes take the mobile type scale, both
-        wrong for whatever size the window actually opens at.
+        `create_footer()`, the reading panes' initial typography pass, and
+        the header's initial (unabbreviated, un-narrowed) construction were
+        ALL built for: wrong for whatever size the window actually opens at.
 
         `<Map>` is the first point `winfo_width()` is guaranteed correct --
         measured 1350 (900 design px) at the same instant this fires, where
-        `after(0, ...)` and `after_idle(...)` still both read 200. The
-        `<Configure>`-driven resize handler and the existing 900ms deferred
-        pass are left as they are and still act as a safety net; this simply
-        removes the window where the first paint is visibly wrong.
+        `after(0, ...)` and `after_idle(...)` still both read 200.
+
+        Calling the full `_apply_responsive_layout()` here, not a hand-picked
+        subset, is itself a fix: `_mark_real_alpha_interactive_ready` snapshots
+        `_last_layout_width`/`_last_layout_mode_applied` from the window's
+        real size without ever calling `_apply_header_layout`, and
+        `_apply_responsive_layout`'s own `UI_PERFORMANCE_MODE` skip-check
+        compares against exactly those two attributes -- so on a normal
+        launch where nothing else resizes the window, the header's OWN first
+        correction (medium-mode narrowing, the language abbreviation below)
+        was skipped forever, not just delayed. An earlier revision of this
+        method called `_apply_footer_layout`/`_refresh_reading_typography`
+        directly and left the header on this path, which is why the header
+        stayed in "wide" styling at any width the window opened at.
         """
         if self._first_map_handled or event is not None and event.widget is not self:
             return
         if self.winfo_width() <= 1:
             return
         self._first_map_handled = True
-        design_width = self._design_width()
         try:
-            self._apply_footer_layout(design_width)
-            self._refresh_reading_typography(design_width)
+            # `_mark_real_alpha_interactive_ready` (main.py's startup-perf
+            # path) can snapshot `_last_layout_width`/`_last_layout_mode_applied`
+            # from the window's real size WITHOUT ever calling
+            # `_apply_header_layout` -- it exists purely to stop this call's
+            # OWN `UI_PERFORMANCE_MODE` skip-check from redoing a layout pass
+            # that already happened. If that snapshot lands before this
+            # handler does, the skip-check would see a "match" and skip the
+            # one call that actually applies anything. Invalidating the
+            # snapshot first guarantees at least one real pass runs.
+            self._last_layout_width = -1
+            self._last_layout_mode_applied = None
+            self._apply_responsive_layout()
         except Exception as exc:
             print(f"Error correcting first-paint layout: {exc}")
 
@@ -2125,12 +2163,30 @@ class AlphaApp(
         """Return display label with country flag for a plain language name."""
         return LANGUAGE_FLAG_LABELS.get(plain_language, plain_language)
 
+    def _header_language_label(self, plain_language, abbreviated=False):
+        """Header combobox display text -- "JP"/"EN" when the header does not
+        have room for the full name, otherwise the same label used elsewhere.
+
+        Display-only. `self.source_language`/`self.target_language` -- read
+        everywhere else in this file, and by translation routing -- always
+        hold the full name; `on_select` inside `_make_language_combo`
+        translates a header selection back to it via `_strip_language_flag`
+        before writing to either variable.
+        """
+        if abbreviated and plain_language in LANGUAGE_ABBREVIATIONS:
+            return LANGUAGE_ABBREVIATIONS[plain_language]
+        return self._language_flag_label(plain_language)
+
     def _strip_language_flag(self, display_value):
-        """Convert a flagged dropdown label back to the plain language name."""
+        """Convert a flagged or abbreviated dropdown label back to the plain
+        language name."""
         if not display_value:
             return display_value
         for plain, flagged in LANGUAGE_FLAG_LABELS.items():
             if display_value == flagged:
+                return plain
+        for plain, short in LANGUAGE_ABBREVIATIONS.items():
+            if display_value == short:
                 return plain
         for plain in LANGUAGE_FLAG_LABELS:
             if plain in display_value:
@@ -2287,8 +2343,15 @@ class AlphaApp(
         }
 
     def _make_language_combo(self, master, plain_values, variable, changed_key):
-        """Language dropdown with flag labels; returns (wrapper_frame, combo)."""
-        flagged_values = self._flagged_language_values(plain_values)
+        """Language dropdown with flag labels; returns (wrapper_frame, combo).
+
+        Built at the default (non-abbreviated) width: this runs during
+        `__init__`, before the window's real size is known, and the app opens
+        wide enough that abbreviation is not needed. `_set_header_language_abbreviated`
+        corrects it once the responsive layout knows better, the same
+        eager-build-then-correct pattern as the footer.
+        """
+        combo_values = list(plain_values)
 
         def on_select(choice):
             plain = self._strip_language_flag(choice)
@@ -2304,7 +2367,7 @@ class AlphaApp(
 
         combo = ctk.CTkComboBox(
             master=wrapper,
-            values=flagged_values,
+            values=self._flagged_language_values(combo_values),
             command=on_select,
             **self._header_glass_combo_config(),
         )
@@ -2313,14 +2376,59 @@ class AlphaApp(
         inset = DROPDOWN_WRAPPER_BORDER_WIDTH
         combo.grid(row=0, column=0, sticky="nsew", padx=inset, pady=inset)
         combo.set(self._language_flag_label(variable.get()))
+        combo._alpha_plain_values = combo_values
         return wrapper, combo
 
     def _sync_language_combo_displays(self):
-        """Refresh flagged labels on header language dropdowns."""
+        """Refresh header language dropdown text from the canonical variables,
+        at whichever width mode (full name / abbreviated) is currently set."""
+        abbreviated = getattr(self, "_header_lang_abbreviated", False)
         if hasattr(self, "source_combo") and self.source_combo is not None:
-            self.source_combo.set(self._language_flag_label(self.source_language.get()))
+            self.source_combo.set(
+                self._header_language_label(self.source_language.get(), abbreviated)
+            )
         if hasattr(self, "target_combo") and self.target_combo is not None:
-            self.target_combo.set(self._language_flag_label(self.target_language.get()))
+            self.target_combo.set(
+                self._header_language_label(self.target_language.get(), abbreviated)
+            )
+
+    def _set_header_language_abbreviated(self, abbreviated):
+        """Switch the header's two language combos between full names
+        ("Japanese"/"English") and abbreviations ("JP"/"EN").
+
+        Item 71 Phase 3e. Reported with two screenshots: shrinking the header
+        into "medium" mode pushed the swap toggle and Meeting Summary button
+        off-screen even after `_pack_header_controls`'s existing narrowing
+        (128px combo boxes, "Meeting Summary" -> "Summary"). The combo boxes'
+        OWN width is the fix -- "JP"/"EN" needs roughly a third of what
+        "Japanese"/"English" needs, which is what actually frees the row.
+
+        Only the two combo boxes' displayed VALUES change here.
+        `self.source_language`/`self.target_language` are untouched --
+        `on_select` inside `_make_language_combo` already translates a
+        selection back to the full name via `_strip_language_flag` before
+        writing to either, abbreviated or not, so nothing downstream (
+        translation routing, `on_language_change`, export, summary) needs to
+        know this state exists.
+        """
+        if abbreviated == getattr(self, "_header_lang_abbreviated", None):
+            return
+        self._header_lang_abbreviated = abbreviated
+        for combo, variable in (
+            (getattr(self, "source_combo", None), self.source_language),
+            (getattr(self, "target_combo", None), self.target_language),
+        ):
+            if combo is None:
+                continue
+            plain_values = getattr(combo, "_alpha_plain_values", None)
+            if plain_values:
+                combo.configure(
+                    values=[
+                        self._header_language_label(name, abbreviated)
+                        for name in plain_values
+                    ]
+                )
+            combo.set(self._header_language_label(variable.get(), abbreviated))
 
     # -----------------------------------------------------------------------
     # Logo
@@ -2659,27 +2767,41 @@ class AlphaApp(
         return "compact"
 
     def _apply_responsive_layout(self):
-        """Apply header, content, footer, and status bar layout for current width."""
+        """Apply header, content, footer, and status bar layout for current width.
+
+        Every threshold this function and everything it calls compares
+        against (`LAYOUT_WIDE_BREAKPOINT`, `LAYOUT_HAMBURGER_BREAKPOINT`,
+        `LAYOUT_MEDIUM_BREAKPOINT`, the header's own 560/480/460) is a design
+        px value, so the width fed into them must be too -- see
+        `_design_width`. This used to read `self.winfo_width()` directly
+        (device px), which is why the header's mode switches happened at the
+        wrong physical window size on any scaled display: on this machine's
+        150% display, `LAYOUT_WIDE_BREAKPOINT` (1050) was effectively being
+        enforced at a 700 design-px window instead of 1050. The footer and
+        reading grid had the identical bug and were fixed the same way
+        earlier in item 71; the header was missed because it is driven by
+        this function rather than calling `_design_width()` itself.
+        """
         try:
-            width = self.winfo_width()
-            if width <= 1:
+            design_width = self._design_width()
+            if design_width <= 1:
                 return
 
-            mode = self._get_layout_mode(width)
+            mode = self._get_layout_mode(design_width)
             if (
                 UI_PERFORMANCE_MODE
-                and width == getattr(self, "_last_layout_width", -1)
+                and design_width == getattr(self, "_last_layout_width", -1)
                 and mode == getattr(self, "_last_layout_mode_applied", None)
             ):
                 return
-            self._last_layout_width = width
+            self._last_layout_width = design_width
             if mode != self._layout_mode:
                 self._layout_mode = mode
             self._last_layout_mode_applied = mode
 
             pad_x = (
                 SPACING["window_pad_compact_x"]
-                if width < LAYOUT_MEDIUM_BREAKPOINT
+                if design_width < LAYOUT_MEDIUM_BREAKPOINT
                 else SPACING["window_pad_x"]
             )
             if hasattr(self, "content_wrapper") and self.content_wrapper is not None:
@@ -2695,9 +2817,10 @@ class AlphaApp(
                 self.brand_block.pack_configure(padx=(pad_x, 8 if mode == "compact" else 12))
 
             # Slice layout across event-loop turns so post-paint UI stays under 500ms.
-            self._apply_header_layout(width, mode)
+            self._apply_header_layout(design_width, mode)
             self.after(
-                1, lambda m=mode, w=width: self._apply_responsive_layout_tail(m, w)
+                1,
+                lambda m=mode, w=design_width: self._apply_responsive_layout_tail(m, w),
             )
             return
         except Exception as exc:
@@ -2706,9 +2829,12 @@ class AlphaApp(
     def _apply_responsive_layout_tail(self, mode, width):
         """Second slice of responsive layout (content/footer/status).
 
-        `width` here is `winfo_width()`, i.e. device pixels. The reading grid,
-        the footer and the type scale are all specified in the design's CSS px,
-        so each asks `_design_width()` rather than reusing this number.
+        `width` is `design_width` from the caller (`_apply_responsive_layout`)
+        -- CSS px, not `winfo_width()`'s device px; see `_design_width`. The
+        reading grid, the footer and the type scale each re-ask
+        `_design_width()` directly anyway rather than trust the parameter,
+        the same defensive redundancy `_apply_status_bar_layout` further down
+        this chain does not have, since it is a single-hop call.
         """
         try:
             design_width = self._design_width()
@@ -2759,11 +2885,26 @@ class AlphaApp(
             self._pack_header_controls(mode, width)
 
     def _pack_header_controls(self, mode, width):
-        """Layout header language controls for wide or medium layouts."""
+        """Layout header language controls for wide or medium layouts.
+
+        `width` is design px (see `_apply_responsive_layout`).
+
+        In "medium" mode, "Japanese"/"English" was measured to overflow the
+        header row far enough to push the swap toggle and Meeting Summary
+        button off-screen even after this function's existing narrowing
+        (128px combo boxes, "Meeting Summary" -> "Summary") -- reported with
+        two screenshots. `_set_header_language_abbreviated` switches the
+        combo boxes to "JP"/"EN", which needs roughly a third of the space
+        and is what actually frees the row; the combo box itself can then be
+        narrower too.
+        """
         if self.header_lang_frame is None:
             return
 
-        combo_width = DROPDOWN_WIDTH if mode == "wide" else 128
+        abbreviated = mode != "wide"
+        self._set_header_language_abbreviated(abbreviated)
+
+        combo_width = DROPDOWN_WIDTH if mode == "wide" else (72 if abbreviated else 128)
         for wrapper, combo in (
             (self.source_combo_wrap, self.source_combo),
             (self.target_combo_wrap, self.target_combo),
@@ -3504,23 +3645,30 @@ class AlphaApp(
     def _apply_footer_layout(self, design_width):
         """Reflow the footer. `design_width` is CSS px, not device px. Item 71 Phase 3b.
 
-        Follows the design document's two footer rules rather than the app's
-        own three breakpoints (680 / 700 / 800), which disagreed with each
-        other and with the reading grid:
+        Started from the design document's footer rules, since corrected and
+        then partly overridden by explicit user request -- see below.
 
           >= 700   one row, `justify-content: space-between` -- start/stop
                    hard left, the action group hard right, both at their
                    natural width.
-          <  700   `.atf-listening-group, .atf-action-group { flex: 1 1 100% }`
-                   in a container that is `flex-wrap: nowrap` (the footer has
-                   no `flex-wrap` rule anywhere in the design) -- so the two
-                   groups do NOT stack, they shrink to **50/50 on one row**.
-                   `.atf-stop-button { flex: 1 1 auto }` fills the left half.
-                   `.atf-action-group` is the one that carries
-                   `flex-wrap: wrap`, so its buttons flow onto extra lines
-                   inside the right half when they do not fit.
-          <  430   `.atf-action-group button { flex: 1 1 auto }` -- the action
-                   buttons stretch to fill whichever line they landed on.
+          <  700   The design stretches both groups to 50/50
+                   (`.atf-stop-button { flex: 1 1 auto }`,
+                   `.atf-listening-group, .atf-action-group { flex: 1 1 100% }`
+                   in a `flex-wrap: nowrap` container) and lets the action
+                   group wrap onto extra lines below 430
+                   (`.atf-action-group button { flex: 1 1 auto }`,
+                   `.atf-action-group` is the one element that DOES carry
+                   `flex-wrap: wrap`). **This app no longer does either.**
+                   Start/Stop stays left-aligned and the action group stays
+                   right-aligned at their own natural widths all the way down
+                   to the hamburger cutover, and a wrap is never rendered in
+                   the footer -- it moves the action group to the hamburger
+                   menu instead. Both were explicit user requests: uniform
+                   button sizing (the 50/50 stretch made Start/Stop visibly
+                   bigger than the others) and no wrapped shape in the footer
+                   at any width (a screenshot showed the wrap once, at 400px,
+                   and again at ~430px once the first fix only moved the
+                   cutover instead of removing the wrap).
 
         An earlier revision of this method read `flex: 1 1 100%` as "each group
         takes a full row" and stacked them. That is corrected here rather than
@@ -3542,22 +3690,33 @@ class AlphaApp(
 
         The three action buttons leave the footer entirely -- moving to the
         hamburger menu, already the header's answer to the same width --
-        whenever they would need MORE THAN ONE LINE to fit their half of the
-        row. That is measured against the real button widths on every call
-        rather than pinned to a single width like `HAMBURGER_ACTIONS_BREAKPOINT`
-        used to be: measured, the wrap this replaces is not confined to a
-        narrow band near that number, it runs from 400 design px up to ~550 --
-        "Copy Translation" alone is wider than half the row for most of the
-        stacked band, so a fixed cutoff either left the wrap active well past
-        it (a user report, with a screenshot, showed the exact 400-430
-        two-line shape) or moved the cutoff so high it swallowed widths where
-        a single line was in fact possible.
+        whenever they would need MORE THAN ONE LINE to fit next to Start/Stop
+        on the row. That is measured against the real button widths on every
+        call rather than pinned to a single width like
+        `HAMBURGER_ACTIONS_BREAKPOINT` used to be: measured, the wrap this
+        replaces is not confined to a narrow band near that number, it ran
+        from 400 design px up to ~550 -- "Copy Translation" alone is wider
+        than half the row for most of that band, so a fixed cutoff either
+        left the wrap active well past it (a user report, with a screenshot,
+        showed the exact 400-430 two-line shape) or moved the cutoff so high
+        it swallowed widths where a single line was in fact possible.
+
+        **Start/Stop is always left-aligned at its own natural width, the
+        action group always right-aligned at its own natural width, in every
+        state up to the hamburger cutover -- neither ever stretches.** An
+        earlier revision stretched both to share the row 50/50 below 700px,
+        matching the design's `.atf-stop-button { flex: 1 1 auto }`; the user
+        reported that as an unwanted height/size mismatch between Start/Stop
+        and the action buttons, and asked for uniform natural sizing instead,
+        which is what this does -- overriding the design's own stretch rule
+        by explicit request. Both buttons also now share ONE height
+        (`FOOTER_ACTION_HEIGHT`); the design's 4px difference between them
+        was too small to read as intentional and looked like a bug.
         """
         if not self._footer_buttons or self.footer_btn_row is None:
             return
 
         stacked = design_width < FOOTER_STACK_BREAKPOINT
-        stretch_actions = design_width < FOOTER_ACTIONS_STRETCH_BREAKPOINT
         gap = self._design_px(FOOTER_GROUP_GAP)
         pad_x_design = FOOTER_PAD_X_STACKED if stacked else FOOTER_PAD_X
         pad_y_design = FOOTER_PAD_Y_STACKED if stacked else FOOTER_PAD_Y
@@ -3572,7 +3731,7 @@ class AlphaApp(
             btn.grid_forget()
 
         listen_btn.configure(
-            height=self._design_px(FOOTER_PRIMARY_HEIGHT),
+            height=self._design_px(FOOTER_ACTION_HEIGHT),
             width=self._footer_button_width(LISTEN_BUTTON_LABELS, FOOTER_BTN_PAD_X),
         )
         for btn in actions:
@@ -3584,14 +3743,16 @@ class AlphaApp(
             )
 
         # `.atf-action-group { flex-wrap: wrap }`. Tk's grid has no auto-wrap,
-        # so the lines are computed from the space the group will actually get:
-        # its own half of the row when stacked, otherwise the whole row, which
-        # it never fills. Computed BEFORE deciding whether the group stays in
-        # the footer at all -- see the docstring.
-        available = (
-            max(1, (design_width - 2 * pad_x_design - FOOTER_GROUP_GAP) // 2)
-            if stacked
-            else design_width
+        # so the lines are computed from the space the group will actually
+        # get -- the row's own padding and Start/Stop's natural width taken
+        # out, since the two share one row rather than a 50/50 split. Computed
+        # BEFORE deciding whether the group stays in the footer at all -- see
+        # the docstring.
+        available = max(
+            1,
+            design_width
+            - 2 * pad_x_design
+            - int(listen_btn.cget("width")),
         )
         line, used, lines = [], 0, []
         for btn in actions:
@@ -3633,43 +3794,26 @@ class AlphaApp(
                 left.grid(row=0, column=0, columnspan=3, sticky="ew")
             return
 
+        # `narrow_hamburger` is False here, which means `lines` has EXACTLY
+        # one line (the definition of `narrow_hamburger` is `len(lines) > 1`)
+        # -- the whole action group fits next to Start/Stop, so it is laid
+        # out once, at natural width, right-aligned as a group.
         if left is not None:
-            left.grid_columnconfigure(0, weight=1 if stacked else 0)
-            listen_btn.grid(row=0, column=0, sticky="ew" if stacked else "w")
+            left.grid_columnconfigure(0, weight=0)
+            listen_btn.grid(row=0, column=0, sticky="w")
 
-        # A grid column has ONE width across every row, so a short line would
-        # otherwise stop at the widest line's first column and leave a gap to
-        # its right. A flex line fills itself, so the last button on each line
-        # spans whatever columns are left.
-        columns = max(len(line) for line in lines)
-        for row_index, row_buttons in enumerate(lines):
-            for column, btn in enumerate(row_buttons):
-                if right is not None:
-                    right.grid_columnconfigure(
-                        column, weight=1 if stretch_actions else 0
-                    )
-                last = column == len(row_buttons) - 1
-                btn.grid(
-                    row=row_index,
-                    column=column,
-                    columnspan=(columns - column) if last else 1,
-                    padx=(0, 0) if last else (0, gap),
-                    pady=(gap if row_index else 0, 0),
-                    sticky="ew" if stretch_actions else "e",
-                )
-
-        if stacked:
-            # Two halves of one row, not two rows: see the docstring.
-            self.footer_btn_row.grid_columnconfigure(0, weight=1)
-            self.footer_btn_row.grid_columnconfigure(1, weight=0, minsize=gap)
-            self.footer_btn_row.grid_columnconfigure(2, weight=1)
-            if left is not None:
-                left.grid(row=0, column=0, columnspan=1, sticky="ew", pady=0)
+        for column, btn in enumerate(actions):
             if right is not None:
-                right.grid(row=0, column=2, columnspan=1, sticky="ew", pady=0)
-            return
+                right.grid_columnconfigure(column, weight=0)
+            btn.grid(
+                row=0,
+                column=column,
+                padx=(0, gap) if column < len(actions) - 1 else 0,
+                sticky="e",
+            )
 
-        # Column 1 is the elastic gap that produces `space-between`.
+        # Column 1 is the elastic gap that produces `space-between` -- Start
+        # left, actions right, at every width up to the hamburger cutover.
         self.footer_btn_row.grid_columnconfigure(0, weight=0)
         self.footer_btn_row.grid_columnconfigure(1, weight=1, minsize=0)
         self.footer_btn_row.grid_columnconfigure(2, weight=0)

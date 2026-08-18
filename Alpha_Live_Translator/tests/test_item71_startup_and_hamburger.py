@@ -85,6 +85,23 @@ FOOTER_METHODS = (
     "_on_first_map",
     "on_window_resize",
     "_glass_button_config",
+    # `_on_first_map` now runs the FULL `_apply_responsive_layout()` chain
+    # (Phase 3e -- it used to call only `_apply_footer_layout`/
+    # `_refresh_reading_typography` directly, which is what let the header's
+    # own first correction be skipped on every normal launch; see that
+    # function's docstring). Everything below is what the chain needs to run
+    # without a real header/content/status bar built, safely no-op-ing via
+    # the same None-guards the real widgets would otherwise satisfy.
+    "_apply_responsive_layout",
+    "_apply_responsive_layout_tail",
+    "_apply_responsive_layout_tail2",
+    "_apply_header_layout",
+    "_pack_header_controls",
+    "show_normal_layout",
+    "show_compact_layout",
+    "_get_layout_mode",
+    "_apply_content_layout",
+    "_apply_status_bar_layout",
 )
 
 
@@ -108,6 +125,24 @@ def _build_root(design_width=900):
     root.right_column = None
     root.content_wrapper = None
     root.footer_frame = None
+    # No real header/status bar in this footer-focused host; every one of
+    # these is a None-guard the real methods already check before touching
+    # a widget, matching how `_apply_responsive_layout`'s chain safely skips
+    # pieces of the app that have not been built yet during `__init__`.
+    root._compact_mode = None
+    root.header_lang_frame = None
+    root.status_bar_frame = None
+    root.waveform_canvas = None
+    root.brand_block = None
+    root._last_layout_width = -1
+    root._last_layout_mode_applied = None
+    # `show_normal_layout`/`show_compact_layout` catch their own exceptions
+    # and print rather than raise -- this footer-focused host has no header,
+    # so every call to either prints "Error showing .../compact layout: ...".
+    # Harmless (already caught, tests below assert on the FOOTER, not the
+    # header), left as visible noise rather than built out further: chasing
+    # it required a widget tree deep enough to duplicate
+    # `test_item71_header_responsive.py`'s real header host.
     for name in FOOTER_METHODS:
         setattr(root, name, types.MethodType(getattr(AlphaApp, name), root))
     for command in (
@@ -122,6 +157,9 @@ def _build_root(design_width=900):
     # build. A no-op stub keeps that debounced callback from raising into
     # stderr on every `<Configure>` this test's own `update()` calls provoke.
     root._apply_responsive_layout_debounced = lambda: None
+    # Waveform scheduling is irrelevant to footer/hamburger behaviour and
+    # pulls in its own `after()` chain; stubbed rather than built out.
+    root._schedule_waveform_layout = lambda: None
     root.grid_columnconfigure(0, weight=1)
     root.grid_rowconfigure(0, weight=1)
 

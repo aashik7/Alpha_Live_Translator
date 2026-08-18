@@ -367,6 +367,12 @@ FOOTER_BTN_HEIGHT_COMPACT = 36
 FOOTER_BTN_PAD_X = 16  # design px, each side, .atf-stop-button
 FOOTER_ACTION_PAD_X = 12  # design px, each side, .atf-action-group button
 FOOTER_ACTION_HEIGHT = 36  # design px, .atf-action-group button min-height
+# The design gives Start/Stop `min-height: 40px` against the action buttons'
+# 36px. Not used: by explicit user request all four footer buttons share one
+# height (`FOOTER_ACTION_HEIGHT`) -- the 4px design difference read as a
+# height/size mismatch rather than an intentional hierarchy. Kept as a named
+# number rather than deleted so a future design-parity pass has the design's
+# real value on hand instead of having to re-derive it.
 FOOTER_PRIMARY_HEIGHT = 40  # design px, .atf-stop-button min-height
 FOOTER_GROUP_GAP = 8  # design px, gap inside a group
 FOOTER_ROW_GAP = 12  # design px, .atf-footer gap between the two groups
@@ -392,11 +398,20 @@ FOOTER_PAD_Y_STACKED = 10
 # half when they do not fit. `align-items: stretch` on the footer then makes
 # the start/stop side as tall as whatever the action side needed.
 #
-# Same 700 the reading grid stacks at, so the window changes shape at one
-# threshold instead of the three (680 / 700 / 800) it used to use.
+# Same 700 the reading grid stacks at. Only decides the footer's PADDING now
+# (`FOOTER_PAD_X_STACKED`/`FOOTER_PAD_Y_STACKED` below) -- Start/Stop and the
+# action group used to also stretch to 50/50 below this, matching the
+# design's `.atf-stop-button { flex: 1 1 auto }`; that stretch was removed by
+# explicit user request (it made Start/Stop visibly bigger than the other
+# three), so this no longer changes the footer's shape, only its padding.
 FOOTER_STACK_BREAKPOINT = 700
-# `@media (max-width: 430px)` gives `.atf-action-group button { flex: 1 1 auto }`
-# -- the action buttons stretch to share the row equally.
+# The design's `@media (max-width: 430px)` gives
+# `.atf-action-group button { flex: 1 1 auto }` -- the action buttons stretch
+# to fill whichever line they land on. Deliberately NOT implemented, by
+# explicit user request: Start/Stop and the three action buttons must all
+# share one height and never stretch, at every width up to the hamburger
+# cutover. Kept as a named number only so a test can still say "a width the
+# design would have stretched at" without a bare magic number.
 FOOTER_ACTIONS_STRETCH_BREAKPOINT = 430
 
 # Not from the design -- the design has no hamburger menu at all, so this is
