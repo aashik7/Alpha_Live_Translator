@@ -330,6 +330,7 @@ class AlphaApp(
         # Which branch of the design's type scale is currently applied.
         # `None` until the panes are built, so the first refresh always runs.
         self._reading_typography_stacked = None
+        self._first_map_handled = False
         self.logo_image = None
         self._font_cache = {}
         self._resize_layout_job = None
@@ -363,8 +364,13 @@ class AlphaApp(
         _default_source_ui = (
             "Japanese" if DEFAULT_SOURCE_LANGUAGE == "ja" else "English"
         )
+        # Default the target to the OTHER language. Both dropdowns opened on
+        # "Japanese" / "Japanese" -- nothing stops the user picking the same
+        # language twice, but defaulting there made every fresh launch look
+        # like translation was pointed at itself.
+        _default_target_ui = "English" if _default_source_ui == "Japanese" else "Japanese"
         self.source_language = ctk.StringVar(value=_default_source_ui)
-        self.target_language = ctk.StringVar(value="Japanese")
+        self.target_language = ctk.StringVar(value=_default_target_ui)
         self.source_language.trace_add(
             "write", lambda *_: self.on_language_change("source")
         )
@@ -385,6 +391,10 @@ class AlphaApp(
         self.always_on_top_switch_menu = None
         self.listen_button = None
         self.listen_button_menu = None
+        self.copy_translation_btn_menu = None
+        self.export_btn_menu = None
+        self.clear_btn_menu = None
+        self._hamburger_actions_visible = None
         self.footer_stop_button = None
         self.paned = None
         self.left_column = None
@@ -1861,6 +1871,41 @@ class AlphaApp(
     def bind_resize_event(self):
         """Bind window resize events to responsive header logic."""
         self.bind("<Configure>", self.on_window_resize)
+        self.bind("<Map>", self._on_first_map)
+
+    def _on_first_map(self, event=None):
+        """Correct the footer and reading-pane typography as soon as the
+        window is actually on screen, instead of leaving them at whatever
+        `create_footer()` computed during `__init__`.
+
+        Measured: right after `self.geometry("900x650")`, before the window
+        manager has mapped the window, `winfo_width()` returns Tk's own
+        placeholder size (200 device px on this machine) -- not the 900
+        requested, and not the `<= 1` this file's other fallbacks guard
+        against. 200 / 1.5 scaling is a 133 design-px window, which is what
+        `create_footer()` and the reading panes' initial typography pass
+        built the whole layout for: the footer wraps to its narrowest
+        two-line shape and the panes take the mobile type scale, both
+        wrong for whatever size the window actually opens at.
+
+        `<Map>` is the first point `winfo_width()` is guaranteed correct --
+        measured 1350 (900 design px) at the same instant this fires, where
+        `after(0, ...)` and `after_idle(...)` still both read 200. The
+        `<Configure>`-driven resize handler and the existing 900ms deferred
+        pass are left as they are and still act as a safety net; this simply
+        removes the window where the first paint is visibly wrong.
+        """
+        if self._first_map_handled or event is not None and event.widget is not self:
+            return
+        if self.winfo_width() <= 1:
+            return
+        self._first_map_handled = True
+        design_width = self._design_width()
+        try:
+            self._apply_footer_layout(design_width)
+            self._refresh_reading_typography(design_width)
+        except Exception as exc:
+            print(f"Error correcting first-paint layout: {exc}")
 
     # -----------------------------------------------------------------------
     # UI style helpers (visual consistency only)
@@ -2520,6 +2565,11 @@ class AlphaApp(
         )
         self.target_combo_menu.pack(fill="x", padx=15, pady=(0, 8))
 
+        # Created eagerly like every other widget in this file (C2), but never
+        # shown: Start/Stop lives in the footer only, at every width. This
+        # used to be packed and visible alongside the footer's own Start
+        # button whenever the hamburger menu was open -- the duplicate
+        # control the user reported.
         self.listen_button_menu = ctk.CTkButton(
             master=self.menu_dropdown_frame,
             text="Start Listening",
@@ -2531,8 +2581,13 @@ class AlphaApp(
             corner_radius=RADII["button"],
             command=self.toggle_listening,
         )
-        self.listen_button_menu.pack(fill="x", padx=15, pady=(4, 8))
 
+        # Copy Translation / Export / Clear: visible here only when
+        # `_apply_footer_layout` finds they no longer fit their half of the
+        # footer row on one line and removes them from it instead of wrapping
+        # a second line. `_sync_hamburger_action_buttons` packs them; start
+        # hidden, matching the footer having enough room at the app's default
+        # 900px width.
         self.copy_translation_btn_menu = ctk.CTkButton(
             master=self.menu_dropdown_frame,
             text="Copy Translation",
@@ -2540,6 +2595,26 @@ class AlphaApp(
             **self._glass_button_config(),
         )
         self.copy_translation_btn_menu.pack(fill="x", padx=15, pady=(4, 8))
+        self.copy_translation_btn_menu.pack_forget()
+
+        self.export_btn_menu = ctk.CTkButton(
+            master=self.menu_dropdown_frame,
+            text="Export",
+            command=self.export_transcript_placeholder,
+            **self._glass_button_config(),
+        )
+        self.export_btn_menu.pack(fill="x", padx=15, pady=(4, 8))
+        self.export_btn_menu.pack_forget()
+
+        self.clear_btn_menu = ctk.CTkButton(
+            master=self.menu_dropdown_frame,
+            text="Clear",
+            command=self.clear_text,
+            **self._glass_button_config(),
+        )
+        self.clear_btn_menu.pack(fill="x", padx=15, pady=(4, 8))
+        self.clear_btn_menu.pack_forget()
+        self._hamburger_actions_visible = False
 
         self.always_on_top_switch_menu = ctk.CTkSwitch(
             master=self.menu_dropdown_frame,
@@ -3397,6 +3472,35 @@ class AlphaApp(
         except Exception:
             return FOOTER_BTN_WIDTH
 
+    def _sync_hamburger_action_buttons(self, show):
+        """Pack/unpack the hamburger menu's Copy/Export/Clear buttons.
+
+        `show=True` (the footer's action group no longer fits its half of the
+        row on one line) is the only state where these are the sole place
+        those three actions are reachable, so this must run BEFORE
+        `_apply_footer_layout` removes them from the footer, not after -- see
+        the caller.
+
+        The Start/Stop button is deliberately not included: it stays only in
+        the footer at every width. It used to also exist here
+        (`listen_button_menu`), visible at the same time as the footer's copy,
+        which is the duplicate control the user reported.
+        """
+        if show == getattr(self, "_hamburger_actions_visible", None):
+            return
+        self._hamburger_actions_visible = show
+        for btn in (
+            getattr(self, "copy_translation_btn_menu", None),
+            getattr(self, "export_btn_menu", None),
+            getattr(self, "clear_btn_menu", None),
+        ):
+            if btn is None:
+                continue
+            if show:
+                btn.pack(fill="x", padx=15, pady=(4, 8))
+            else:
+                btn.pack_forget()
+
     def _apply_footer_layout(self, design_width):
         """Reflow the footer. `design_width` is CSS px, not device px. Item 71 Phase 3b.
 
@@ -3435,6 +3539,19 @@ class AlphaApp(
         text + padding -- but when the requested widths exceed the row, Tk
         shrinks every one of them below that request and the labels are cut.
         Stacking is the fix, not smaller widths.
+
+        The three action buttons leave the footer entirely -- moving to the
+        hamburger menu, already the header's answer to the same width --
+        whenever they would need MORE THAN ONE LINE to fit their half of the
+        row. That is measured against the real button widths on every call
+        rather than pinned to a single width like `HAMBURGER_ACTIONS_BREAKPOINT`
+        used to be: measured, the wrap this replaces is not confined to a
+        narrow band near that number, it runs from 400 design px up to ~550 --
+        "Copy Translation" alone is wider than half the row for most of the
+        stacked band, so a fixed cutoff either left the wrap active well past
+        it (a user report, with a screenshot, showed the exact 400-430
+        two-line shape) or moved the cutoff so high it swallowed widths where
+        a single line was in fact possible.
         """
         if not self._footer_buttons or self.footer_btn_row is None:
             return
@@ -3466,23 +3583,11 @@ class AlphaApp(
                 ),
             )
 
-        left = getattr(self, "left_controls_frame", None)
-        right = getattr(self, "right_actions_frame", None)
-        for frame in (left, right):
-            if frame is not None:
-                for child in frame.winfo_children():
-                    child.grid_forget()
-                for column in range(len(actions)):
-                    frame.grid_columnconfigure(column, weight=0)
-
-        if left is not None:
-            left.grid_columnconfigure(0, weight=1 if stacked else 0)
-            listen_btn.grid(row=0, column=0, sticky="ew" if stacked else "w")
-
         # `.atf-action-group { flex-wrap: wrap }`. Tk's grid has no auto-wrap,
         # so the lines are computed from the space the group will actually get:
         # its own half of the row when stacked, otherwise the whole row, which
-        # it never fills.
+        # it never fills. Computed BEFORE deciding whether the group stays in
+        # the footer at all -- see the docstring.
         available = (
             max(1, (design_width - 2 * pad_x_design - FOOTER_GROUP_GAP) // 2)
             if stacked
@@ -3500,6 +3605,37 @@ class AlphaApp(
                 used += extra
         if line:
             lines.append(line)
+
+        narrow_hamburger = len(lines) > 1
+        self._sync_hamburger_action_buttons(narrow_hamburger)
+
+        left = getattr(self, "left_controls_frame", None)
+        right = getattr(self, "right_actions_frame", None)
+        for frame in (left, right):
+            if frame is not None:
+                for child in frame.winfo_children():
+                    child.grid_forget()
+                for column in range(len(actions)):
+                    frame.grid_columnconfigure(column, weight=0)
+
+        if narrow_hamburger:
+            # No right-hand group at all: Start/Stop is the footer's only
+            # content, so it takes every column instead of sharing with an
+            # empty `right`.
+            if right is not None:
+                right.grid_remove()
+            self.footer_btn_row.grid_columnconfigure(0, weight=1)
+            self.footer_btn_row.grid_columnconfigure(1, weight=0, minsize=0)
+            self.footer_btn_row.grid_columnconfigure(2, weight=0, minsize=0)
+            if left is not None:
+                left.grid_columnconfigure(0, weight=1)
+                listen_btn.grid(row=0, column=0, sticky="ew")
+                left.grid(row=0, column=0, columnspan=3, sticky="ew")
+            return
+
+        if left is not None:
+            left.grid_columnconfigure(0, weight=1 if stacked else 0)
+            listen_btn.grid(row=0, column=0, sticky="ew" if stacked else "w")
 
         # A grid column has ONE width across every row, so a short line would
         # otherwise stop at the widest line's first column and leave a gap to

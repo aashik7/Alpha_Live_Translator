@@ -399,6 +399,21 @@ FOOTER_STACK_BREAKPOINT = 700
 # -- the action buttons stretch to share the row equally.
 FOOTER_ACTIONS_STRETCH_BREAKPOINT = 430
 
+# Not from the design -- the design has no hamburger menu at all, so this is
+# the app's own answer to how narrow the footer can get before its action
+# group stops being legible. Copy Translation / Export / Clear move into the
+# hamburger menu (already the header's own answer to the same width), and the
+# footer keeps only Start/Stop, full width, whenever the action group would
+# need more than one line to fit its half of the row -- measured directly off
+# the real button widths in `_apply_footer_layout`, not a fixed px threshold.
+# A fixed number was tried first and was wrong: the wrap this replaces runs
+# from 400 design px up to ~550 (`_footer_button_width` is text-driven, so
+# "Copy Translation" alone is wider than half the row for most of that band),
+# so any single cutoff either left the wrap active well past it or moved the
+# cutoff so high it swallowed widths where one line was in fact possible.
+# Start/Stop is never moved to the hamburger menu; it stays reachable in
+# exactly one place at every width.
+
 # Every label the primary button can display. It is sized for the widest of
 # them once, so starting or stopping a session does not make the button jump
 # width mid-meeting. Keep this in sync with `_set_listen_button_state` and the

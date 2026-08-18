@@ -85,6 +85,7 @@ REAL_METHODS = (
     "_ui_font",
     "_footer_button_width",
     "_apply_footer_layout",
+    "_sync_hamburger_action_buttons",
     "_primary_button_config",
     "_secondary_button_config",
     "create_footer",
@@ -167,11 +168,15 @@ def _groups_share_a_row(m):
 
 
 def _action_lines(m):
-    """How many lines the action buttons wrapped onto.
+    """How many lines the action buttons occupy, counting only mapped ones.
 
-    `.atf-action-group` is the one element that DOES carry `flex-wrap: wrap`.
+    Unmapped buttons still report a stale `winfo_rooty()` from their last
+    placement rather than raising, so counting them here would make a button
+    that left the footer for the hamburger menu look like it was still on a
+    line of its own.
     """
-    return len({m[n]["y"] for n in ("copy", "export", "clear")})
+    mapped = [n for n in ("copy", "export", "clear") if m[n]["mapped"]]
+    return len({m[n]["y"] for n in mapped})
 
 
 WIDTHS = (400, 430, 500, 600, 699, 700, 800, 900, 1050, 1200, 1400)
@@ -233,22 +238,29 @@ class TestStartStopIsNeverHidden(unittest.TestCase):
     way to start or stop a session except through the hamburger menu.
     """
 
-    def test_every_footer_button_is_visible_at_every_width(self):
+    def test_start_stop_is_visible_in_the_footer_at_every_width(self):
+        """The one button this class's docstring is actually about. The
+        other three are checked separately -- at 400/430/500 they now leave
+        the footer for the hamburger menu on purpose (Phase 3d,
+        `TestActionsMoveToTheHamburgerRatherThanWrap`), which is not the
+        "hidden with no way to start or stop a session" bug this guards."""
         for width in WIDTHS:
             m = _footer(width)
-            for name in BUTTON_NAMES:
-                self.assertTrue(
-                    m[name]["mapped"], f"the {name} button is hidden at {width}px"
-                )
+            self.assertTrue(
+                m["listen"]["mapped"], f"start/stop is hidden at {width}px"
+            )
 
     def test_the_primary_button_is_the_one_that_fills_a_narrow_footer(self):
+        # 420: below where the action group still fits one line (~560), so
+        # Start/Stop is the footer's ONLY content and spans the full row --
+        # there is no second group left to share it with.
         m = _footer(420)
-        self.assertTrue(_groups_share_a_row(m))
+        self.assertFalse(m["copy"]["mapped"])
         self.assertGreater(
             m["listen"]["w"],
-            m["clear"]["w"],
-            "the start/stop button is the primary control and must dominate "
-            "the narrow footer, not Clear",
+            m["_footer_w"] * 0.8,
+            "with the action group moved to the hamburger menu, start/stop "
+            "should fill the row rather than sit at its old half-row width",
         )
 
 
@@ -259,20 +271,20 @@ class TestTheDesignsTwoFooterBreakpoints(unittest.TestCase):
     def test_the_two_groups_always_share_one_row(self):
         """The footer has no `flex-wrap` at any width, so the groups never
         stack -- above 700 they sit at their natural widths with an elastic
-        gap between them, below 700 they shrink against each other."""
-        for width in (400, 500, 600, FOOTER_STACK_BREAKPOINT - 1,
+        gap between them, below 700 they shrink against each other.
+
+        Widths below ~560 are excluded here: at those widths the action group
+        no longer fits its half of the row on ONE line, and per
+        `TestActionsMoveToTheHamburgerRatherThanWrap` below it moves to the
+        hamburger menu instead of wrapping -- there is no second group left in
+        the footer to share a row with."""
+        for width in (600, FOOTER_STACK_BREAKPOINT - 1,
                       FOOTER_STACK_BREAKPOINT, 800, 1050, 1400):
             m = _footer(width)
             self.assertTrue(
                 _groups_share_a_row(m),
                 f"the two footer groups should share one row at {width}px",
             )
-
-    def test_the_action_buttons_wrap_inside_their_half_when_narrow(self):
-        """`.atf-action-group { flex-wrap: wrap }` -- the buttons flow onto
-        extra lines rather than being squeezed below their text width."""
-        self.assertGreater(_action_lines(_footer(400)), 1)
-        self.assertEqual(_action_lines(_footer(900)), 1)
 
     def test_the_primary_button_stretches_below_the_breakpoint(self):
         """`.atf-stop-button { flex: 1 1 auto }` -- it fills its half of the
@@ -290,30 +302,24 @@ class TestTheDesignsTwoFooterBreakpoints(unittest.TestCase):
             "and it should hold roughly its half of the row",
         )
 
-    def test_action_buttons_fill_their_line_below_430(self):
-        """`@media (max-width: 430px)` gives them `flex: 1 1 auto`. In a
-        wrapped flex container that distributes the free space within EACH
-        LINE, not equally across every button -- so the check is that no line
-        is left with slack, rather than that all three grew by the same
-        amount."""
-        narrow = _footer(FOOTER_ACTIONS_STRETCH_BREAKPOINT - 10)
-        by_line = {}
+    def test_stretch_below_430_is_currently_unreachable_with_real_button_text(self):
+        """`@media (max-width: 430px)` gives the action buttons
+        `flex: 1 1 auto`, and `_apply_footer_layout` still computes
+        `stretch_actions` for it -- kept because the design specifies it and
+        a future label/padding change could make it reachable again. It does
+        NOT fire today: the action group only stays in the footer once it
+        fits one line, measured at ~560 design px and up, which is already
+        past 430. Pinned so a future reader does not read the stretch code as
+        dead and delete it, or spend time debugging why it "never triggers"."""
+        m = _footer(FOOTER_ACTIONS_STRETCH_BREAKPOINT - 10)
         for name in ("copy", "export", "clear"):
-            by_line.setdefault(narrow[name]["y"], []).append(narrow[name])
-        group_right = max(b["x"] + b["w"] for b in narrow.values() if isinstance(b, dict))
-        for line in by_line.values():
-            right = max(b["x"] + b["w"] for b in line)
-            self.assertLessEqual(
-                group_right - right,
-                4,
-                "every wrapped line should be filled when the buttons stretch",
+            self.assertFalse(
+                m[name]["mapped"],
+                f"{name} should have moved to the hamburger menu by "
+                f"{FOOTER_ACTIONS_STRETCH_BREAKPOINT - 10}px, not be "
+                "stretching in the footer",
             )
 
-    def test_action_buttons_keep_their_natural_width_above_430(self):
-        wider = _footer(FOOTER_ACTIONS_STRETCH_BREAKPOINT + 10)
-        widest = _footer(900)
-        for name in ("copy", "export", "clear"):
-            self.assertEqual(wider[name]["w"], widest[name]["w"])
     def test_actions_sit_at_their_natural_width_between_430_and_700(self):
         between = _footer(600)
         single = _footer(900)
@@ -323,6 +329,41 @@ class TestTheDesignsTwoFooterBreakpoints(unittest.TestCase):
                 single[name]["w"],
                 f"{name} should keep its natural width at 600px",
             )
+
+
+@unittest.skipUnless(TK_AVAILABLE, "Tk display unavailable in this environment")
+class TestActionsMoveToTheHamburgerRatherThanWrap(unittest.TestCase):
+    """Phase 3d. `_apply_footer_layout` used to let the action group wrap onto
+    a second line inside its half of the row -- Copy alone on top, Export and
+    Clear below -- whenever it did not fit on one. A user report, with a
+    screenshot, showed exactly that shape and called it broken.
+
+    Measured, the wrap was not confined to a narrow band near any one
+    threshold: `_footer_button_width` sizes buttons from their label text, and
+    "Copy Translation" alone is wider than half the row from 400 design px up
+    to ~550. A single fixed cutoff (`HAMBURGER_ACTIONS_BREAKPOINT`, tried
+    first) either left the wrap active well past it or moved the cutoff high
+    enough to swallow widths where one line was in fact possible. The decision
+    is now the ACTUAL computed line count -- more than one line moves the
+    whole group to the hamburger menu instead of wrapping.
+    """
+
+    def test_the_wrap_is_gone_across_the_whole_band_it_used_to_appear_in(self):
+        for width in range(360, 560, 20):
+            m = _footer(width)
+            for name in ("copy", "export", "clear"):
+                self.assertFalse(
+                    m[name]["mapped"],
+                    f"{name} should have left the footer for the hamburger "
+                    f"menu at {width}px, not be wrapped inside it",
+                )
+            self.assertTrue(m["listen"]["mapped"])
+
+    def test_one_line_stays_in_the_footer_once_it_fits(self):
+        m = _footer(900)
+        for name in ("copy", "export", "clear"):
+            self.assertTrue(m[name]["mapped"])
+        self.assertEqual(_action_lines(m), 1)
 
 
 @unittest.skipUnless(TK_AVAILABLE, "Tk display unavailable in this environment")
