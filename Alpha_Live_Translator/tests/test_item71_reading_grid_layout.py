@@ -51,11 +51,18 @@ from alpha.ui.main_window import (  # noqa: E402
 )
 
 
-def _measure(mode, *, transcript, summary, width=1200, height=700):
-    """Lay the real `_apply_content_layout` out once and measure the result."""
+def _measure(design_width, *, transcript, summary, height=700):
+    """Lay the real `_apply_content_layout` out once and measure the result.
+
+    `design_width` is passed explicitly rather than read from the window,
+    because a raw `tk.Tk()` has no CustomTkinter scaling attached and
+    `_design_width` would report device pixels here while the real app divides
+    them out. Passing it keeps the test driving the same decision the app makes
+    without depending on this machine's display scaling.
+    """
     root = tk.Tk()
     try:
-        root.geometry(f"{width}x{height}")
+        root.geometry(f"{design_width}x{height}")
         wrapper = tk.Frame(root)
         wrapper.pack(fill="both", expand=True)
         left = tk.Frame(wrapper)
@@ -73,7 +80,7 @@ def _measure(mode, *, transcript, summary, width=1200, height=700):
         host._initial_verse_visible = transcript
         host.summary_panel_visible = summary
 
-        host._apply_content_layout(mode)
+        host._apply_content_layout(design_width=design_width)
         for _ in range(4):
             root.update_idletasks()
             root.update()
@@ -94,7 +101,7 @@ HIDDEN_W = 1  # an ungridded Tk frame reports width 1
 @unittest.skipUnless(TK_AVAILABLE, "Tk display unavailable in this environment")
 class TestReadingGridGeometry(unittest.TestCase):
     def test_default_shows_translation_alone_full_width(self):
-        m = _measure("wide", transcript=False, summary=False)
+        m = _measure(1200, transcript=False, summary=False)
         self.assertEqual(m["transcript_w"], HIDDEN_W, "transcript must start hidden")
         self.assertEqual(m["summary_w"], HIDDEN_W, "summary must start hidden")
         self.assertGreater(
@@ -102,7 +109,7 @@ class TestReadingGridGeometry(unittest.TestCase):
         )
 
     def test_transcript_pane_takes_thirty_percent_beside_translation(self):
-        m = _measure("wide", transcript=True, summary=False)
+        m = _measure(1200, transcript=True, summary=False)
         total = m["translation_w"] + m["transcript_w"]
         share = 100 * m["transcript_w"] / total
         self.assertAlmostEqual(
@@ -118,13 +125,13 @@ class TestReadingGridGeometry(unittest.TestCase):
         )
 
     def test_summary_uses_the_same_reference_width(self):
-        m = _measure("wide", transcript=False, summary=True)
+        m = _measure(1200, transcript=False, summary=True)
         total = m["translation_w"] + m["summary_w"]
         share = 100 * m["summary_w"] / total
         self.assertAlmostEqual(share, CONTENT_REFERENCE_WEIGHT, delta=2, msg=str(m))
 
     def test_both_reference_panes_can_be_open_together(self):
-        m = _measure("wide", transcript=True, summary=True)
+        m = _measure(1200, transcript=True, summary=True)
         for key in ("transcript_w", "summary_w"):
             self.assertGreater(m[key], HIDDEN_W, f"{key} should be visible ({m})")
         self.assertGreater(
@@ -138,7 +145,7 @@ class TestReadingGridGeometry(unittest.TestCase):
 class TestResponsiveStacking(unittest.TestCase):
     def test_narrow_windows_stack_the_panes_into_rows(self):
         narrow = CONTENT_STACK_BREAKPOINT - 100
-        m = _measure("compact", transcript=True, summary=False, width=narrow)
+        m = _measure(narrow, transcript=True, summary=False)
         # Stacked means both panes span the full width and split the height.
         self.assertAlmostEqual(m["translation_w"], m["transcript_w"], delta=2)
         self.assertGreater(
@@ -148,7 +155,7 @@ class TestResponsiveStacking(unittest.TestCase):
         )
 
     def test_medium_also_stacks(self):
-        m = _measure("medium", transcript=True, summary=False, width=800)
+        m = _measure(650, transcript=True, summary=False)
         self.assertAlmostEqual(m["translation_w"], m["transcript_w"], delta=2)
 
 

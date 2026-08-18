@@ -325,11 +325,11 @@ class TestResponsiveTypography(unittest.TestCase):
             root._reading_typography_stacked = None
             root._apply_reading_typography = lambda *a, **k: applied.append(a)
 
-            root._refresh_reading_typography("wide")
+            root._refresh_reading_typography(1200)
             self.assertEqual(len(applied), 2, "first call must apply both panes")
-            root._refresh_reading_typography("wide")
-            self.assertEqual(len(applied), 2, "same branch must be a no-op")
-            root._refresh_reading_typography("compact")
+            root._refresh_reading_typography(1200)
+            self.assertEqual(len(applied), 2, "same width band must be a no-op")
+            root._refresh_reading_typography(600)
             self.assertEqual(len(applied), 4, "crossing the breakpoint re-applies")
         finally:
             _close(root)

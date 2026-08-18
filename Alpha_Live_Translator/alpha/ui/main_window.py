@@ -165,6 +165,7 @@ from alpha.transcription.duplicate_protection import (
 from alpha.transcription.speaker_detection import SpeakerDetectionMixin
 from alpha.summary.transcript_store import TranscriptStore
 from alpha.ui.theme import (
+    APP_WINDOW_TITLE,
     COLORS,
     CONTENT_COMPACT_BREAKPOINT,
     DROPDOWN_BORDER_WIDTH,
@@ -179,6 +180,14 @@ from alpha.ui.theme import (
     FOOTER_BTN_WIDTH,
     FOOTER_BTN_WIDTH_COMPACT,
     FOOTER_BTN_WIDTH_SECONDARY,
+    FOOTER_ACTION_HEIGHT,
+    FOOTER_ACTION_PAD_X,
+    FOOTER_ACTIONS_STRETCH_BREAKPOINT,
+    FOOTER_BTN_PAD_X,
+    FOOTER_GROUP_GAP,
+    FOOTER_PRIMARY_HEIGHT,
+    FOOTER_ROW_GAP,
+    FOOTER_STACK_BREAKPOINT,
     FONTS,
     HEADER_CONTROL_HEIGHT,
     INTERIM_FONT_PX,
@@ -190,7 +199,9 @@ from alpha.ui.theme import (
     LAYOUT_MIN_HEIGHT,
     LAYOUT_MIN_WIDTH,
     LAYOUT_STATUS_COMPACT_BREAKPOINT,
+    DEFAULT_WINDOW_WIDTH,
     LAYOUT_WIDE_BREAKPOINT,
+    LISTEN_BUTTON_LABELS,
     MEETING_SUMMARY_BUTTON_TEXT,
     PANE_BG,
     PLACEHOLDER_SUMMARY,
@@ -1823,7 +1834,11 @@ class AlphaApp(
     # -----------------------------------------------------------------------
     def setup_window(self):
         """Configure the main application window."""
-        self.title(f"Alpha — Meeting Assistant V{APP_VERSION}")
+        # No version number: this is the client's window title, not a build stamp.
+        # `APP_VERSION` stays in every diagnostic sink -- run ids, log filenames,
+        # artifact manifests -- because that is how a delivered run is traced back
+        # to the build it came from.
+        self.title(APP_WINDOW_TITLE)
         self.geometry("900x650")
         self.minsize(LAYOUT_MIN_WIDTH, LAYOUT_MIN_HEIGHT)
         self.grid_columnconfigure(0, weight=1)
@@ -1843,6 +1858,35 @@ class AlphaApp(
     # -----------------------------------------------------------------------
     # UI style helpers (visual consistency only)
     # -----------------------------------------------------------------------
+    def _design_width(self, fallback=DEFAULT_WINDOW_WIDTH):
+        """Window width in DESIGN px, which is not what `winfo_width()` returns.
+
+        The design document's breakpoints are CSS px. `winfo_width()` reports
+        device pixels, and CustomTkinter runs the window at
+        `ScalingTracker.get_widget_scaling` -- measured 1.5 on this display, so
+        a window asked for as 900 reports **1350**. Comparing that 1350 against
+        a 700 or 1050 threshold answers a different question than the design
+        asked: it decides the layout from how many dots the window covers
+        rather than from how much content fits, so the same physical window
+        lays out differently on a 100% and a 150% machine. Dividing back out is
+        what makes a breakpoint mean the same thing on the client's laptop as
+        it does here.
+
+        Before the first paint `winfo_width()` is 1, which would read as the
+        narrowest possible window and stack everything at startup; the fallback
+        is the geometry the window is actually created at.
+        """
+        try:
+            width = self.winfo_width()
+            if width <= 1:
+                return fallback
+            scaling = ctk.ScalingTracker.get_widget_scaling(self) or 1.0
+        except Exception:
+            return fallback
+        if scaling <= 0:
+            return fallback
+        return int(round(width / scaling))
+
     def _design_px(self, css_px):
         """Convert a design px to a device pixel at the current display scaling.
 
@@ -1955,14 +1999,17 @@ class AlphaApp(
             # from rendering text.
             print(f"Error applying reading typography ({role}): {exc}")
 
-    def _refresh_reading_typography(self, mode):
-        """Re-apply the design's type scale after a layout-mode change.
+    def _refresh_reading_typography(self, design_width=None):
+        """Re-apply the design's type scale after a width change.
 
         The design has a single mobile branch (`@media (max-width: 700px)`),
         which is the same threshold that turns the reading columns into rows,
-        so `stacked` decides both.
+        so one comparison decides both. It is made against the design width,
+        not `winfo_width()`, for the reason spelled out in `_design_width`.
         """
-        stacked = mode != "wide"
+        if design_width is None:
+            design_width = self._design_width()
+        stacked = design_width < CONTENT_STACK_BREAKPOINT
         if stacked == getattr(self, "_reading_typography_stacked", None):
             return
         self._reading_typography_stacked = stacked
@@ -2575,10 +2622,16 @@ class AlphaApp(
             print(f"Error applying responsive layout: {exc}")
 
     def _apply_responsive_layout_tail(self, mode, width):
-        """Second slice of responsive layout (content/footer/status)."""
+        """Second slice of responsive layout (content/footer/status).
+
+        `width` here is `winfo_width()`, i.e. device pixels. The reading grid,
+        the footer and the type scale are all specified in the design's CSS px,
+        so each asks `_design_width()` rather than reusing this number.
+        """
         try:
-            self._apply_content_layout(mode)
-            self._refresh_reading_typography(mode)
+            design_width = self._design_width()
+            self._apply_content_layout(mode, design_width=design_width)
+            self._refresh_reading_typography(design_width)
             self.after(
                 1, lambda m=mode, w=width: self._apply_responsive_layout_tail2(m, w)
             )
@@ -2587,7 +2640,7 @@ class AlphaApp(
 
     def _apply_responsive_layout_tail2(self, mode, width):
         try:
-            self._apply_footer_layout(width)
+            self._apply_footer_layout(self._design_width())
             self._apply_status_bar_layout(width)
             self._schedule_waveform_layout()
         except Exception as exc:
@@ -2946,22 +2999,14 @@ class AlphaApp(
         if self.right_column is None:
             return
         self.summary_panel_visible = True
-        width = self.winfo_width()
-        mode = self._layout_mode or self._get_layout_mode(
-            width if width > 1 else LAYOUT_WIDE_BREAKPOINT
-        )
-        self._apply_content_layout(mode)
+        self._apply_content_layout(design_width=self._design_width())
 
     def hide_summary_panel(self):
         """Instantly hide the right-side Meeting Summary column."""
         if self.right_column is None:
             return
         self.summary_panel_visible = False
-        width = self.winfo_width()
-        mode = self._layout_mode or self._get_layout_mode(
-            width if width > 1 else LAYOUT_WIDE_BREAKPOINT
-        )
-        self._apply_content_layout(mode)
+        self._apply_content_layout(design_width=self._design_width())
 
     def toggle_summary_panel(self):
         """Toggle right-side Meeting Summary visibility."""
@@ -3055,6 +3100,42 @@ class AlphaApp(
     # -----------------------------------------------------------------------
     # Main content
     # -----------------------------------------------------------------------
+    def _build_content_column(self, column, padx):
+        """One reading column whose width is decided by its weight, not its content.
+
+        Two measured floors otherwise make the 70/30 ratio unreachable, and
+        both are invisible in source:
+
+        * A `CTkFrame` defaults to `width=200`, which CustomTkinter scales, so
+          an "empty" column already demands 300 px on a 150% display. Two of
+          them reserve 600 px before any weight is applied.
+        * `_create_styled_text` builds its `tk.Text` with no `width=`, and Tk's
+          default is **80 characters** -- measured `winfo_reqwidth()` of 644 px.
+
+        Tk's grid gives a column at least its children's requested width and
+        only distributes what is left over according to `weight`, so with those
+        floors in place the panes measured **49/51** in a 900 px window -- the
+        transcript as wide as the translation -- and **31/69** at 700 px, where
+        the reference pane came out more than twice the primary one.
+
+        `grid_propagate(False)` plus a 1 px request is what fixes it: the frame
+        stops asking for its children's size and takes exactly what the grid
+        assigns, so the weights alone decide. Measured after the change:
+        **70.0/30.0 at 700, 900, 1200 and 1400 px.** The `tk.Text` default stops
+        mattering entirely, which is why it is left alone.
+
+        The children inside still resize normally -- every one of them is
+        gridded `sticky="nsew"` under a weighted row and column.
+        """
+        frame = ctk.CTkFrame(
+            self.content_wrapper, fg_color="transparent", width=1, height=1
+        )
+        frame.grid(row=0, column=column, sticky="nsew", padx=padx)
+        frame.grid_rowconfigure(0, weight=1)
+        frame.grid_columnconfigure(0, weight=1)
+        frame.grid_propagate(False)
+        return frame
+
     def create_main_content(self):
         """Two-column layout: transcript + translation | Meeting Summary."""
         self.content_wrapper = ctk.CTkFrame(
@@ -3088,22 +3169,9 @@ class AlphaApp(
         # `left_column` keeps its name and its role as the primary pane, but
         # now holds ONLY the translation. Renaming it would touch 12 direct
         # dereferences for no behavioural gain.
-        self.left_column = ctk.CTkFrame(self.content_wrapper, fg_color="transparent")
-        self.left_column.grid(row=0, column=0, sticky="nsew", padx=(0, 8))
-        self.left_column.grid_rowconfigure(0, weight=1)
-        self.left_column.grid_columnconfigure(0, weight=1)
-
-        self.transcript_column = ctk.CTkFrame(
-            self.content_wrapper, fg_color="transparent"
-        )
-        self.transcript_column.grid(row=0, column=1, sticky="nsew", padx=(8, 0))
-        self.transcript_column.grid_rowconfigure(0, weight=1)
-        self.transcript_column.grid_columnconfigure(0, weight=1)
-
-        self.right_column = ctk.CTkFrame(self.content_wrapper, fg_color="transparent")
-        self.right_column.grid(row=0, column=2, sticky="nsew", padx=(8, 0))
-        self.right_column.grid_rowconfigure(0, weight=1)
-        self.right_column.grid_columnconfigure(0, weight=1)
+        self.left_column = self._build_content_column(0, padx=(0, 8))
+        self.transcript_column = self._build_content_column(1, padx=(8, 0))
+        self.right_column = self._build_content_column(2, padx=(8, 0))
 
         self.paned = self.left_column
 
@@ -3144,7 +3212,7 @@ class AlphaApp(
         self.transcript_column.grid_remove()
         self.right_column.grid_remove()
 
-    def _apply_content_layout(self, mode):
+    def _apply_content_layout(self, mode=None, design_width=None):
         """Reflow the reading grid. Item 71.
 
         Three columns -- translation (primary, always shown), transcript and
@@ -3154,16 +3222,27 @@ class AlphaApp(
         stale weight behind on a column that is no longer gridded.
 
         Below `CONTENT_STACK_BREAKPOINT` the design stacks the grid into rows
-        (`@media (max-width: 700px)` -> `grid-template-columns: 1fr`). Tk has
-        no media queries, so `mode` carries the same decision: `compact` and
-        `medium` stack, `wide` sits side by side.
+        (`@media (max-width: 700px)` -> `grid-template-columns: 1fr`).
+
+        `design_width` decides that, NOT the `_get_layout_mode` string this
+        used to take. Two reasons, both measured. The mode string switches to
+        "medium" below `LAYOUT_WIDE_BREAKPOINT` (1050), so stacking on
+        `mode != "wide"` collapsed the reading grid at 1050 where the design
+        keeps two columns down to 700. And the mode was computed from
+        `winfo_width()`, which is device pixels: a window created at 900
+        reports 1350 on this 150% display, so the threshold meant a different
+        physical size on every machine. `mode` is still accepted because five
+        call sites pass it and it remains the right input for the header's
+        hamburger decision, but it no longer decides this.
         """
         if not hasattr(self, "content_wrapper") or self.content_wrapper is None:
             return
         if self.left_column is None:
             return
 
-        stacked = mode != "wide"
+        if design_width is None:
+            design_width = self._design_width()
+        stacked = design_width < CONTENT_STACK_BREAKPOINT
         show_transcript = bool(
             getattr(self, "_initial_verse_visible", False)
             and getattr(self, "transcript_column", None) is not None
@@ -3245,94 +3324,128 @@ class AlphaApp(
             elif not self.signal_label.winfo_ismapped():
                 self.signal_label.pack(side="right", padx=(0, 10))
 
-    def _apply_footer_layout(self, width):
-        """Reflow footer: listen on the left, actions on the right."""
+    def _footer_button_width(self, labels, pad_x):
+        """Width in CustomTkinter units that fits the WIDEST of `labels`.
+
+        The design sizes footer buttons by padding, not by a fixed width, and
+        the fixed widths are what broke: on a 150% display the rendered button
+        font is 20 px, so "Start Listening" needs 138 px of glyphs plus padding
+        while `FOOTER_BTN_WIDTH_COMPACT` (88) buys 132 px -- the label came out
+        as "Start Listen". Measuring the text removes that whole class of bug
+        and survives a font, label or display-scaling change.
+
+        A list is taken rather than one string so a button whose label changes
+        at runtime is sized for its widest state once. Start/Stop must not
+        resize the moment the session begins.
+        """
+        try:
+            font = self._ui_font(FONTS["button"][1], "bold")
+            scaling = ctk.ScalingTracker.get_widget_scaling(self) or 1.0
+            # `font.measure` reports real device pixels; a CTk `width=` is in
+            # unscaled units, so divide before adding the design's padding.
+            widest = max(int(font.measure(str(text))) for text in labels)
+            return int(round(widest / scaling)) + 2 * pad_x
+        except Exception:
+            return FOOTER_BTN_WIDTH
+
+    def _apply_footer_layout(self, design_width):
+        """Reflow the footer. `design_width` is CSS px, not device px. Item 71 Phase 3b.
+
+        Follows the design document's two footer rules rather than the app's
+        own three breakpoints (680 / 700 / 800), which disagreed with each
+        other and with the reading grid:
+
+          >= 700   one row, `justify-content: space-between` -- start/stop
+                   hard left, the action group hard right.
+          <  700   `.atf-listening-group, .atf-action-group { flex: 1 1 100% }`
+                   -- each group takes a FULL ROW. Start/Stop stretches across
+                   row 0, the three actions sit on row 1.
+          <  430   `.atf-action-group button { flex: 1 1 auto }` -- the action
+                   buttons stretch to share row 1 equally.
+
+        **The start/stop button is never hidden.** It used to be: the old
+        hamburger branch called `left_controls_frame.grid_remove()` and gridded
+        `clear_btn` alone, so below 800 px the footer offered Clear and no way
+        to start or stop a session except through the hamburger menu. Nothing
+        in the design hides it at any width, and it is the one control a
+        meeting cannot proceed without.
+
+        Cramming four buttons onto one narrow row is also what produced the
+        overlap the user saw. A `CTkButton` does not clip itself -- it requests
+        text + padding -- but when the requested widths exceed the row, Tk
+        shrinks every one of them below that request and the labels are cut.
+        Stacking is the fix, not smaller widths.
+        """
         if not self._footer_buttons or self.footer_btn_row is None:
             return
 
-        compact = width < LAYOUT_FOOTER_WRAP_BREAKPOINT
-        hamburger_layout = self._compact_mode is True
-        gap = (
-            SPACING["footer_btn_gap_compact"]
-            if width < LAYOUT_MEDIUM_BREAKPOINT
-            else SPACING["footer_btn_gap"]
-        )
-        btn_h = FOOTER_BTN_HEIGHT_COMPACT if width < 500 else FOOTER_BTN_HEIGHT
-        btn_w_primary = (
-            FOOTER_BTN_WIDTH_COMPACT if width < 500 else FOOTER_BTN_WIDTH
-        )
-        btn_w_secondary = (
-            FOOTER_BTN_WIDTH_COMPACT if width < 500 else FOOTER_BTN_WIDTH_SECONDARY
-        )
-        pad_x = (
-            SPACING["window_pad_compact_x"]
-            if width < LAYOUT_MEDIUM_BREAKPOINT
-            else SPACING["window_pad_x"]
-        )
-        pad_y = (
-            SPACING["footer_pad_y_compact"]
-            if compact
-            else SPACING["footer_pad_y"]
-        )
+        stacked = design_width < FOOTER_STACK_BREAKPOINT
+        stretch_actions = design_width < FOOTER_ACTIONS_STRETCH_BREAKPOINT
+        gap = self._design_px(FOOTER_GROUP_GAP)
+        row_gap = self._design_px(FOOTER_ROW_GAP)
+        pad_x = self._design_px(12 if stacked else 16)
+        pad_y = self._design_px(10 if stacked else 11)
         self.footer_btn_row.grid_configure(padx=pad_x, pady=pad_y)
 
         listen_btn, copy_btn, export_btn, clear_btn = self._footer_buttons
+        actions = (copy_btn, export_btn, clear_btn)
+
         for btn in self._footer_buttons:
             btn.grid_forget()
-            btn.configure(height=btn_h)
 
-        listen_btn.configure(width=btn_w_primary)
-        if not hamburger_layout:
-            copy_btn.configure(width=btn_w_primary if not compact else btn_w_secondary)
-            export_btn.configure(width=btn_w_secondary)
-            clear_btn.configure(width=btn_w_secondary)
+        listen_btn.configure(
+            height=self._design_px(FOOTER_PRIMARY_HEIGHT),
+            width=self._footer_button_width(LISTEN_BUTTON_LABELS, FOOTER_BTN_PAD_X),
+        )
+        for btn in actions:
+            btn.configure(
+                height=self._design_px(FOOTER_ACTION_HEIGHT),
+                width=self._footer_button_width(
+                    [btn.cget("text")], FOOTER_ACTION_PAD_X
+                ),
+            )
 
-        if hasattr(self, "left_controls_frame") and self.left_controls_frame is not None:
-            for child in self.left_controls_frame.winfo_children():
-                child.grid_forget()
-            if hamburger_layout:
-                self.left_controls_frame.grid_remove()
-            else:
-                self.left_controls_frame.grid(row=0, column=0, sticky="w")
-        if hasattr(self, "right_actions_frame") and self.right_actions_frame is not None:
-            for child in self.right_actions_frame.winfo_children():
-                child.grid_forget()
+        left = getattr(self, "left_controls_frame", None)
+        right = getattr(self, "right_actions_frame", None)
+        for frame in (left, right):
+            if frame is not None:
+                for child in frame.winfo_children():
+                    child.grid_forget()
 
-        if hamburger_layout:
+        if left is not None:
+            left.grid_columnconfigure(0, weight=1 if stacked else 0)
+            listen_btn.grid(row=0, column=0, sticky="ew" if stacked else "w")
+
+        for index, btn in enumerate(actions):
+            if right is not None:
+                right.grid_columnconfigure(index, weight=1 if stretch_actions else 0)
+            btn.grid(
+                row=0,
+                column=index,
+                padx=(0, gap) if index < len(actions) - 1 else 0,
+                sticky="ew" if stretch_actions else "e",
+            )
+
+        if stacked:
             self.footer_btn_row.grid_columnconfigure(0, weight=1)
             self.footer_btn_row.grid_columnconfigure(1, weight=0)
             self.footer_btn_row.grid_columnconfigure(2, weight=0)
-            if hasattr(self, "right_actions_frame") and self.right_actions_frame is not None:
-                self.right_actions_frame.grid(row=0, column=0, columnspan=3, sticky="ew")
-                self.right_actions_frame.grid_columnconfigure(0, weight=1)
-            clear_btn.grid(row=0, column=0, sticky="ew")
+            if left is not None:
+                left.grid(row=0, column=0, columnspan=3, sticky="ew")
+            if right is not None:
+                right.grid(
+                    row=1, column=0, columnspan=3, sticky="ew", pady=(row_gap, 0)
+                )
             return
 
+        # Column 1 is the elastic gap that produces `space-between`.
+        self.footer_btn_row.grid_columnconfigure(0, weight=0)
         self.footer_btn_row.grid_columnconfigure(1, weight=1)
-
-        if not compact:
-            if not hamburger_layout:
-                listen_btn.grid(row=0, column=0, sticky="w")
-            copy_btn.grid(row=0, column=0, padx=(0, gap), sticky="e")
-            export_btn.grid(row=0, column=1, padx=(0, gap), sticky="e")
-            clear_btn.grid(row=0, column=2, sticky="e")
-            if hasattr(self, "right_actions_frame") and self.right_actions_frame is not None:
-                self.right_actions_frame.grid(row=0, column=2, sticky="e")
-            return
-
-        if hasattr(self, "right_actions_frame") and self.right_actions_frame is not None:
-            self.right_actions_frame.grid(
-                row=0 if hamburger_layout else 1,
-                column=0,
-                columnspan=3,
-                sticky="e",
-                pady=(0 if hamburger_layout else 4, 0),
-            )
-        if not hamburger_layout:
-            listen_btn.grid(row=0, column=0, sticky="w")
-        copy_btn.grid(row=0, column=0, padx=(0, gap), sticky="e")
-        export_btn.grid(row=0, column=1, padx=(0, gap), sticky="e")
-        clear_btn.grid(row=0, column=2, sticky="e")
+        self.footer_btn_row.grid_columnconfigure(2, weight=0)
+        if left is not None:
+            left.grid(row=0, column=0, columnspan=1, sticky="w", pady=0)
+        if right is not None:
+            right.grid(row=0, column=2, columnspan=1, sticky="e", pady=0)
 
     def create_footer(self):
         """Bottom toolbar with primary session controls."""
@@ -3399,7 +3512,7 @@ class AlphaApp(
             self.export_btn,
             self.clear_btn,
         ]
-        self._apply_footer_layout(self.winfo_width() if self.winfo_width() > 1 else 1180)
+        self._apply_footer_layout(self._design_width())
 
     def _create_toggle_button(self, master, text, width):
         """Create a compact hide/show toggle button for the Initial verse panel."""
@@ -3509,7 +3622,7 @@ class AlphaApp(
         text_widget._pane_frame = text_frame
 
         if pane_role:
-            stacked = (self._layout_mode or "wide") != "wide"
+            stacked = self._design_width() < CONTENT_STACK_BREAKPOINT
             self._reading_typography_stacked = stacked
             self._apply_reading_typography(text_widget, pane_role, stacked)
 
@@ -3684,11 +3797,7 @@ class AlphaApp(
                 self._place_toggle_button(
                     self.translated_title_row, "Show Transcript", 128
                 )
-            width = self.winfo_width()
-            mode = self._layout_mode or self._get_layout_mode(
-                width if width > 1 else LAYOUT_WIDE_BREAKPOINT
-            )
-            self._apply_content_layout(mode)
+            self._apply_content_layout(design_width=self._design_width())
         except Exception as exc:
             print(f"Error toggling initial verse: {exc}")
 
@@ -3726,11 +3835,7 @@ class AlphaApp(
         if self.left_column is None:
             return
         try:
-            width = self.winfo_width()
-            mode = self._layout_mode or self._get_layout_mode(
-                width if width > 1 else LAYOUT_WIDE_BREAKPOINT
-            )
-            self._apply_content_layout(mode)
+            self._apply_content_layout(design_width=self._design_width())
             if not self._pane_initialized:
                 self._pane_initialized = True
         except Exception as exc:

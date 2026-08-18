@@ -345,6 +345,53 @@ FOOTER_BTN_WIDTH_SECONDARY = FOOTER_ACTION_WIDTH
 FOOTER_BTN_WIDTH_COMPACT = 88
 FOOTER_BTN_HEIGHT_COMPACT = 36
 
+# ---------------------------------------------------------------------------
+# Item 71 Phase 3b: footer, from the design document
+# ---------------------------------------------------------------------------
+# The design sizes footer buttons by their PADDING, not by a fixed pixel width:
+#
+#   .atf-stop-button        { min-height: 40px; padding: 0 16px }
+#   .atf-action-group button { min-height: 36px; padding: 0 12px }
+#   .atf-footer             { justify-content: space-between; gap: 12px;
+#                             min-height: 64px; padding: 11px 16px }
+#   .atf-listening-group, .atf-action-group { gap: 8px }
+#
+# Fixed widths are what broke it. Measured on a 150% display, the rendered
+# button font is 20 px, so "Start Listening" needs 138 px of glyphs plus
+# padding = 162 px, while FOOTER_BTN_WIDTH_COMPACT (88) buys 132 px. Below
+# 500 px the code applied that 88 to the PRIMARY button and the label was cut
+# to "Start Listen". The same arithmetic clipped "Copy Translation" (needs 184)
+# and even "Meeting Summary" (needs 198) against FOOTER_BTN_WIDTH_SECONDARY's
+# 188. Deriving the width from the text removes the whole class of defect and
+# survives any font, label or display-scaling change.
+FOOTER_BTN_PAD_X = 16  # design px, each side, .atf-stop-button
+FOOTER_ACTION_PAD_X = 12  # design px, each side, .atf-action-group button
+FOOTER_ACTION_HEIGHT = 36  # design px, .atf-action-group button min-height
+FOOTER_PRIMARY_HEIGHT = 40  # design px, .atf-stop-button min-height
+FOOTER_GROUP_GAP = 8  # design px, gap inside a group
+FOOTER_ROW_GAP = 12  # design px, gap between the two stacked rows
+
+# The design's own two footer breakpoints. `@media (max-width: 700px)` gives
+# `.atf-listening-group, .atf-action-group { flex: 1 1 100% }`, i.e. each group
+# takes a FULL ROW -- start/stop on one, the actions on the next. That is the
+# same 700 the reading grid stacks at, so the whole window changes shape at one
+# threshold instead of the three (680 / 700 / 800) it used to use.
+FOOTER_STACK_BREAKPOINT = 700
+# `@media (max-width: 430px)` gives `.atf-action-group button { flex: 1 1 auto }`
+# -- the action buttons stretch to share the row equally.
+FOOTER_ACTIONS_STRETCH_BREAKPOINT = 430
+
+# Every label the primary button can display. It is sized for the widest of
+# them once, so starting or stopping a session does not make the button jump
+# width mid-meeting. Keep this in sync with `_set_listen_button_state` and the
+# "Starting…" transitional state.
+LISTEN_BUTTON_LABELS = ("Start Listening", "Stop Listening", "Starting…")
+
+# The width the window is created at, in design px. Used as the responsive
+# fallback before the first paint, when `winfo_width()` still reports 1 and a
+# raw reading of it would stack the whole layout at startup.
+DEFAULT_WINDOW_WIDTH = 900
+
 # Visual-only waveform (not tied to real audio)
 WAVEFORM_BAR_COUNT = 14
 WAVEFORM_BAR_COUNT_WIDE = 35
@@ -368,6 +415,11 @@ LAYOUT_MIN_WIDTH = 400
 LAYOUT_MIN_HEIGHT = 650
 LAYOUT_STATUS_COMPACT_BREAKPOINT = 520
 LAYOUT_FOOTER_WRAP_BREAKPOINT = 680
+
+# The OS window title. Deliberately carries no version number -- the client sees
+# this string. `APP_VERSION` is still stamped into every diagnostic sink (run ids,
+# log filenames, artifact manifests), which is where build traceability belongs.
+APP_WINDOW_TITLE = "Alpha Meeting Assistant"
 
 # Section / summary labels (icons always left of text)
 SUMMARY_TITLE = "Meeting Summary"
