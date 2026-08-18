@@ -20,10 +20,13 @@ running and only *looks* wrong:
    so "Start Listening" needs 138 px of glyphs plus padding while 88 buys 132.
    The design sizes these buttons by padding, not by a fixed width.
 
-3. **Four buttons were kept on one row.** A `CTkButton` does not clip itself --
-   it requests text + padding -- but once the requested widths exceed the row,
-   Tk shrinks every one below its request and the labels are cut. The design
-   gives each group `flex: 1 1 100%` below 700 px, i.e. its own row.
+3. **Four buttons were kept on one unwrappable row.** A `CTkButton` does not
+   clip itself -- it requests text + padding -- but once the requested widths
+   exceed the row, Tk shrinks every one below its request and the labels are
+   cut. The design gives each group `flex: 1 1 100%` below 700 px, which in a
+   `nowrap` footer means the two groups shrink to half the row each, and
+   `.atf-action-group { flex-wrap: wrap }` lets the action buttons flow onto
+   extra lines inside their half instead of being squeezed.
 
 4. **The start/stop button was hidden below 800 px** while Clear was kept. The
    design never hides it at any width, and it is the one control a meeting
@@ -149,9 +152,26 @@ def _overlaps(a, b):
     )
 
 
-def _is_two_rows(m):
-    listen_bottom = m["listen"]["y"] + m["listen"]["h"]
-    return all(m[n]["y"] >= listen_bottom - 2 for n in ("copy", "export", "clear"))
+def _groups_share_a_row(m):
+    """True when the start/stop button and the action group sit side by side.
+
+    The two groups never stack: `.atf-footer` carries no `flex-wrap` anywhere
+    in the design, so `flex: 1 1 100%` on both makes them shrink against each
+    other on one row rather than wrap onto two.
+    """
+    listen = m["listen"]
+    return any(
+        m[n]["y"] < listen["y"] + listen["h"] and listen["y"] < m[n]["y"] + m[n]["h"]
+        for n in ("copy", "export", "clear")
+    )
+
+
+def _action_lines(m):
+    """How many lines the action buttons wrapped onto.
+
+    `.atf-action-group` is the one element that DOES carry `flex-wrap: wrap`.
+    """
+    return len({m[n]["y"] for n in ("copy", "export", "clear")})
 
 
 WIDTHS = (400, 430, 500, 600, 699, 700, 800, 900, 1050, 1200, 1400)
@@ -223,7 +243,7 @@ class TestStartStopIsNeverHidden(unittest.TestCase):
 
     def test_the_primary_button_is_the_one_that_fills_a_narrow_footer(self):
         m = _footer(420)
-        self.assertTrue(_is_two_rows(m))
+        self.assertTrue(_groups_share_a_row(m))
         self.assertGreater(
             m["listen"]["w"],
             m["clear"]["w"],
@@ -236,50 +256,64 @@ class TestStartStopIsNeverHidden(unittest.TestCase):
 class TestTheDesignsTwoFooterBreakpoints(unittest.TestCase):
     """The user's point 4 -- follow the design document."""
 
-    def test_one_row_at_and_above_the_stack_breakpoint(self):
-        for width in (FOOTER_STACK_BREAKPOINT, 800, 1050, 1400):
-            m = _footer(width)
-            self.assertFalse(
-                _is_two_rows(m), f"the footer should be a single row at {width}px"
-            )
-
-    def test_two_rows_below_it(self):
-        """`@media (max-width: 700px)` gives both groups `flex: 1 1 100%`."""
-        for width in (400, 500, 600, FOOTER_STACK_BREAKPOINT - 1):
+    def test_the_two_groups_always_share_one_row(self):
+        """The footer has no `flex-wrap` at any width, so the groups never
+        stack -- above 700 they sit at their natural widths with an elastic
+        gap between them, below 700 they shrink against each other."""
+        for width in (400, 500, 600, FOOTER_STACK_BREAKPOINT - 1,
+                      FOOTER_STACK_BREAKPOINT, 800, 1050, 1400):
             m = _footer(width)
             self.assertTrue(
-                _is_two_rows(m), f"the footer should wrap to two rows at {width}px"
+                _groups_share_a_row(m),
+                f"the two footer groups should share one row at {width}px",
             )
 
-    def test_the_primary_button_stretches_only_when_stacked(self):
-        stacked = _footer(600)
-        single = _footer(900)
+    def test_the_action_buttons_wrap_inside_their_half_when_narrow(self):
+        """`.atf-action-group { flex-wrap: wrap }` -- the buttons flow onto
+        extra lines rather than being squeezed below their text width."""
+        self.assertGreater(_action_lines(_footer(400)), 1)
+        self.assertEqual(_action_lines(_footer(900)), 1)
+
+    def test_the_primary_button_stretches_below_the_breakpoint(self):
+        """`.atf-stop-button { flex: 1 1 auto }` -- it fills its half of the
+        row rather than sitting at its label width."""
+        narrow = _footer(600)
+        wide = _footer(900)
         self.assertGreater(
-            stacked["listen"]["w"],
-            single["listen"]["w"] * 2,
-            "stacked, the start/stop button takes the whole row "
-            "(`.atf-stop-button { flex: 1 1 auto }`)",
+            narrow["listen"]["w"],
+            wide["listen"]["w"],
+            "the start/stop button should stretch once the footer is narrow",
+        )
+        self.assertGreater(
+            narrow["listen"]["w"] / narrow["_footer_w"],
+            0.3,
+            "and it should hold roughly its half of the row",
         )
 
-    def test_action_buttons_share_the_row_below_430(self):
-        """`@media (max-width: 430px)` gives them `flex: 1 1 auto`, which grows
-        each by an equal amount from its natural size -- not to equal widths."""
+    def test_action_buttons_fill_their_line_below_430(self):
+        """`@media (max-width: 430px)` gives them `flex: 1 1 auto`. In a
+        wrapped flex container that distributes the free space within EACH
+        LINE, not equally across every button -- so the check is that no line
+        is left with slack, rather than that all three grew by the same
+        amount."""
         narrow = _footer(FOOTER_ACTIONS_STRETCH_BREAKPOINT - 10)
-        wider = _footer(FOOTER_ACTIONS_STRETCH_BREAKPOINT + 10)
-        growth = {
-            name: narrow[name]["w"] - wider[name]["w"]
-            for name in ("copy", "export", "clear")
-        }
-        self.assertTrue(
-            all(value > 0 for value in growth.values()),
-            f"every action button should grow below the breakpoint: {growth}",
-        )
-        self.assertLessEqual(
-            max(growth.values()) - min(growth.values()),
-            4,
-            f"growth should be shared equally: {growth}",
-        )
+        by_line = {}
+        for name in ("copy", "export", "clear"):
+            by_line.setdefault(narrow[name]["y"], []).append(narrow[name])
+        group_right = max(b["x"] + b["w"] for b in narrow.values() if isinstance(b, dict))
+        for line in by_line.values():
+            right = max(b["x"] + b["w"] for b in line)
+            self.assertLessEqual(
+                group_right - right,
+                4,
+                "every wrapped line should be filled when the buttons stretch",
+            )
 
+    def test_action_buttons_keep_their_natural_width_above_430(self):
+        wider = _footer(FOOTER_ACTIONS_STRETCH_BREAKPOINT + 10)
+        widest = _footer(900)
+        for name in ("copy", "export", "clear"):
+            self.assertEqual(wider[name]["w"], widest[name]["w"])
     def test_actions_sit_at_their_natural_width_between_430_and_700(self):
         between = _footer(600)
         single = _footer(900)

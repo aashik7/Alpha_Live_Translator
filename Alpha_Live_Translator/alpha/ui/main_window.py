@@ -185,6 +185,10 @@ from alpha.ui.theme import (
     FOOTER_ACTIONS_STRETCH_BREAKPOINT,
     FOOTER_BTN_PAD_X,
     FOOTER_GROUP_GAP,
+    FOOTER_PAD_X,
+    FOOTER_PAD_X_STACKED,
+    FOOTER_PAD_Y,
+    FOOTER_PAD_Y_STACKED,
     FOOTER_PRIMARY_HEIGHT,
     FOOTER_ROW_GAP,
     FOOTER_STACK_BREAKPOINT,
@@ -207,8 +211,11 @@ from alpha.ui.theme import (
     PLACEHOLDER_SUMMARY,
     PLACEHOLDER_TRANSCRIPT,
     PLACEHOLDER_TRANSLATION,
+    CONTENT_STACKED_PRIMARY_WEIGHT,
+    CONTENT_STACKED_REFERENCE_WEIGHT,
     RADII,
     READING_TYPOGRAPHY,
+    RIGHT_COLUMN_MIN_WIDTH,
     SECTION_TRANSCRIPT_TITLE,
     SECTION_TRANSLATION_TITLE,
     SMALL_BUTTON_HEIGHT,
@@ -3264,17 +3271,31 @@ class AlphaApp(
         if stacked:
             # One column, panes become rows. Every column weight but the first
             # is zeroed so a leftover weight cannot reserve width for a pane
-            # that is now a row.
-            self.content_wrapper.grid_columnconfigure(0, weight=1)
+            # that is now a row. `minsize` is cleared with it: a 220px floor on
+            # a column that no longer holds anything would reserve width beside
+            # a full-width row.
+            self.content_wrapper.grid_columnconfigure(0, weight=1, minsize=0)
             for _, index, _, _ in panes[1:]:
-                self.content_wrapper.grid_columnconfigure(index, weight=0)
+                self.content_wrapper.grid_columnconfigure(index, weight=0, minsize=0)
             row = 0
-            for pane, _index, weight, visible in panes:
+            for pane, _index, _weight, visible in panes:
                 if not visible:
                     pane.grid_remove()
                     continue
                 pane.grid(row=row, column=0, sticky="nsew", padx=0, pady=(0, 8))
-                self.content_wrapper.grid_rowconfigure(row, weight=weight)
+                # The stacked split is NOT the column split. The design gives
+                # `grid-template-rows: minmax(0, 1.15fr) minmax(0, .85fr)`, i.e.
+                # 57.5/42.5 -- a reference pane needs proportionally more height
+                # than it needs width to stay readable. Phase 3b carried the
+                # 70/30 column weights over here; that was a deviation.
+                self.content_wrapper.grid_rowconfigure(
+                    row,
+                    weight=(
+                        CONTENT_STACKED_PRIMARY_WEIGHT
+                        if row == 0
+                        else CONTENT_STACKED_REFERENCE_WEIGHT
+                    ),
+                )
                 row += 1
             # Zero any row this pass did not use, or a hidden pane keeps its
             # share of the height.
@@ -3285,12 +3306,35 @@ class AlphaApp(
         self.content_wrapper.grid_rowconfigure(0, weight=1)
         for spare in range(1, len(panes)):
             self.content_wrapper.grid_rowconfigure(spare, weight=0)
+        # What one reference pane's weighted share works out to, in design px.
+        # Only used to decide whether the design's 220px floor is in play.
+        visible_reference_panes = sum(
+            1 for _, index, _, visible in panes if index != 0 and visible
+        )
+        reference_share = design_width * CONTENT_REFERENCE_WEIGHT / (
+            CONTENT_PRIMARY_WEIGHT
+            + CONTENT_REFERENCE_WEIGHT * max(1, visible_reference_panes)
+        )
         for pane, index, weight, visible in panes:
             if not visible:
-                self.content_wrapper.grid_columnconfigure(index, weight=0)
+                self.content_wrapper.grid_columnconfigure(index, weight=0, minsize=0)
                 pane.grid_remove()
                 continue
-            self.content_wrapper.grid_columnconfigure(index, weight=weight)
+            # `minmax(220px, 30fr)` on the reference panes. Tk's `minsize` is
+            # NOT `minmax`: it is reserved BEFORE the weights are applied and
+            # then the weighted share is added on top, so setting it
+            # unconditionally does not clamp the column, it inflates it --
+            # measured, a plain `minsize=220` turned a 70/30 split into 57/43
+            # at 1200 design px, where the floor should not have been in play
+            # at all. So the floor is only installed when it actually binds,
+            # and it replaces the weight rather than adding to it.
+            floor = 0
+            if index != 0 and reference_share < RIGHT_COLUMN_MIN_WIDTH:
+                floor = self._design_px(RIGHT_COLUMN_MIN_WIDTH)
+                weight = 0
+            self.content_wrapper.grid_columnconfigure(
+                index, weight=weight, minsize=floor
+            )
             pane.grid(
                 row=0,
                 column=index,
@@ -3340,11 +3384,16 @@ class AlphaApp(
         """
         try:
             font = self._ui_font(FONTS["button"][1], "bold")
-            scaling = ctk.ScalingTracker.get_widget_scaling(self) or 1.0
-            # `font.measure` reports real device pixels; a CTk `width=` is in
-            # unscaled units, so divide before adding the design's padding.
+            # `CTkFont.measure` returns UNSCALED CustomTkinter units, the same
+            # space a `width=` is expressed in -- measured: 90 for "Start
+            # Listening" both before and after the font is attached to a live
+            # button, against 138 device px on the rendered label. An earlier
+            # revision of this function divided by the scaling factor on the
+            # belief that `measure` reported device pixels; that was wrong and
+            # returned 92 units where the label needs 93, which only escaped
+            # notice because a CTkButton grows past its configured width.
             widest = max(int(font.measure(str(text))) for text in labels)
-            return int(round(widest / scaling)) + 2 * pad_x
+            return widest + 2 * pad_x
         except Exception:
             return FOOTER_BTN_WIDTH
 
@@ -3356,12 +3405,23 @@ class AlphaApp(
         other and with the reading grid:
 
           >= 700   one row, `justify-content: space-between` -- start/stop
-                   hard left, the action group hard right.
+                   hard left, the action group hard right, both at their
+                   natural width.
           <  700   `.atf-listening-group, .atf-action-group { flex: 1 1 100% }`
-                   -- each group takes a FULL ROW. Start/Stop stretches across
-                   row 0, the three actions sit on row 1.
+                   in a container that is `flex-wrap: nowrap` (the footer has
+                   no `flex-wrap` rule anywhere in the design) -- so the two
+                   groups do NOT stack, they shrink to **50/50 on one row**.
+                   `.atf-stop-button { flex: 1 1 auto }` fills the left half.
+                   `.atf-action-group` is the one that carries
+                   `flex-wrap: wrap`, so its buttons flow onto extra lines
+                   inside the right half when they do not fit.
           <  430   `.atf-action-group button { flex: 1 1 auto }` -- the action
-                   buttons stretch to share row 1 equally.
+                   buttons stretch to fill whichever line they landed on.
+
+        An earlier revision of this method read `flex: 1 1 100%` as "each group
+        takes a full row" and stacked them. That is corrected here rather than
+        quietly rewritten: the two layouts look similar at a glance and only
+        the CSS settles it.
 
         **The start/stop button is never hidden.** It used to be: the old
         hamburger branch called `left_controls_frame.grid_remove()` and gridded
@@ -3382,10 +3442,11 @@ class AlphaApp(
         stacked = design_width < FOOTER_STACK_BREAKPOINT
         stretch_actions = design_width < FOOTER_ACTIONS_STRETCH_BREAKPOINT
         gap = self._design_px(FOOTER_GROUP_GAP)
-        row_gap = self._design_px(FOOTER_ROW_GAP)
-        pad_x = self._design_px(12 if stacked else 16)
-        pad_y = self._design_px(10 if stacked else 11)
-        self.footer_btn_row.grid_configure(padx=pad_x, pady=pad_y)
+        pad_x_design = FOOTER_PAD_X_STACKED if stacked else FOOTER_PAD_X
+        pad_y_design = FOOTER_PAD_Y_STACKED if stacked else FOOTER_PAD_Y
+        self.footer_btn_row.grid_configure(
+            padx=self._design_px(pad_x_design), pady=self._design_px(pad_y_design)
+        )
 
         listen_btn, copy_btn, export_btn, clear_btn = self._footer_buttons
         actions = (copy_btn, export_btn, clear_btn)
@@ -3411,36 +3472,70 @@ class AlphaApp(
             if frame is not None:
                 for child in frame.winfo_children():
                     child.grid_forget()
+                for column in range(len(actions)):
+                    frame.grid_columnconfigure(column, weight=0)
 
         if left is not None:
             left.grid_columnconfigure(0, weight=1 if stacked else 0)
             listen_btn.grid(row=0, column=0, sticky="ew" if stacked else "w")
 
-        for index, btn in enumerate(actions):
-            if right is not None:
-                right.grid_columnconfigure(index, weight=1 if stretch_actions else 0)
-            btn.grid(
-                row=0,
-                column=index,
-                padx=(0, gap) if index < len(actions) - 1 else 0,
-                sticky="ew" if stretch_actions else "e",
-            )
+        # `.atf-action-group { flex-wrap: wrap }`. Tk's grid has no auto-wrap,
+        # so the lines are computed from the space the group will actually get:
+        # its own half of the row when stacked, otherwise the whole row, which
+        # it never fills.
+        available = (
+            max(1, (design_width - 2 * pad_x_design - FOOTER_GROUP_GAP) // 2)
+            if stacked
+            else design_width
+        )
+        line, used, lines = [], 0, []
+        for btn in actions:
+            needed = int(btn.cget("width"))
+            extra = needed if not line else needed + FOOTER_GROUP_GAP
+            if line and used + extra > available:
+                lines.append(line)
+                line, used = [btn], needed
+            else:
+                line.append(btn)
+                used += extra
+        if line:
+            lines.append(line)
+
+        # A grid column has ONE width across every row, so a short line would
+        # otherwise stop at the widest line's first column and leave a gap to
+        # its right. A flex line fills itself, so the last button on each line
+        # spans whatever columns are left.
+        columns = max(len(line) for line in lines)
+        for row_index, row_buttons in enumerate(lines):
+            for column, btn in enumerate(row_buttons):
+                if right is not None:
+                    right.grid_columnconfigure(
+                        column, weight=1 if stretch_actions else 0
+                    )
+                last = column == len(row_buttons) - 1
+                btn.grid(
+                    row=row_index,
+                    column=column,
+                    columnspan=(columns - column) if last else 1,
+                    padx=(0, 0) if last else (0, gap),
+                    pady=(gap if row_index else 0, 0),
+                    sticky="ew" if stretch_actions else "e",
+                )
 
         if stacked:
+            # Two halves of one row, not two rows: see the docstring.
             self.footer_btn_row.grid_columnconfigure(0, weight=1)
-            self.footer_btn_row.grid_columnconfigure(1, weight=0)
-            self.footer_btn_row.grid_columnconfigure(2, weight=0)
+            self.footer_btn_row.grid_columnconfigure(1, weight=0, minsize=gap)
+            self.footer_btn_row.grid_columnconfigure(2, weight=1)
             if left is not None:
-                left.grid(row=0, column=0, columnspan=3, sticky="ew")
+                left.grid(row=0, column=0, columnspan=1, sticky="ew", pady=0)
             if right is not None:
-                right.grid(
-                    row=1, column=0, columnspan=3, sticky="ew", pady=(row_gap, 0)
-                )
+                right.grid(row=0, column=2, columnspan=1, sticky="ew", pady=0)
             return
 
         # Column 1 is the elastic gap that produces `space-between`.
         self.footer_btn_row.grid_columnconfigure(0, weight=0)
-        self.footer_btn_row.grid_columnconfigure(1, weight=1)
+        self.footer_btn_row.grid_columnconfigure(1, weight=1, minsize=0)
         self.footer_btn_row.grid_columnconfigure(2, weight=0)
         if left is not None:
             left.grid(row=0, column=0, columnspan=1, sticky="w", pady=0)

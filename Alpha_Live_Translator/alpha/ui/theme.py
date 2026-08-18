@@ -369,12 +369,30 @@ FOOTER_ACTION_PAD_X = 12  # design px, each side, .atf-action-group button
 FOOTER_ACTION_HEIGHT = 36  # design px, .atf-action-group button min-height
 FOOTER_PRIMARY_HEIGHT = 40  # design px, .atf-stop-button min-height
 FOOTER_GROUP_GAP = 8  # design px, gap inside a group
-FOOTER_ROW_GAP = 12  # design px, gap between the two stacked rows
+FOOTER_ROW_GAP = 12  # design px, .atf-footer gap between the two groups
+FOOTER_PAD_X = 16  # design px, .atf-footer padding
+FOOTER_PAD_Y = 11
+FOOTER_PAD_X_STACKED = 12  # design px, the @media 700 override
+FOOTER_PAD_Y_STACKED = 10
 
-# The design's own two footer breakpoints. `@media (max-width: 700px)` gives
-# `.atf-listening-group, .atf-action-group { flex: 1 1 100% }`, i.e. each group
-# takes a FULL ROW -- start/stop on one, the actions on the next. That is the
-# same 700 the reading grid stacks at, so the whole window changes shape at one
+# The design's own two footer breakpoints, and what they actually mean.
+#
+# `@media (max-width: 700px)` gives
+# `.atf-listening-group, .atf-action-group { flex: 1 1 100% }`. An earlier
+# revision read that as "each group takes a full row" and stacked them. That
+# was WRONG, and the correction matters because it changes the layout: the
+# whole file contains `flex-wrap` on exactly four selectors -- `.atf-action-group`,
+# `.atf-reading-toolbar` twice, and one other -- and `.atf-footer` is NOT among
+# them, so the footer computes `flex-wrap: nowrap`. Two children with
+# `flex-basis: 100%` in a nowrap container cannot wrap; they shrink against each
+# other and settle at **50/50 on one row**.
+#
+# The wrapping happens one level down: `.atf-action-group` DOES carry
+# `flex-wrap: wrap`, so the action buttons flow onto extra lines *inside* their
+# half when they do not fit. `align-items: stretch` on the footer then makes
+# the start/stop side as tall as whatever the action side needed.
+#
+# Same 700 the reading grid stacks at, so the window changes shape at one
 # threshold instead of the three (680 / 700 / 800) it used to use.
 FOOTER_STACK_BREAKPOINT = 700
 # `@media (max-width: 430px)` gives `.atf-action-group button { flex: 1 1 auto }`
@@ -444,4 +462,18 @@ SUMMARY_ANIMATION_STEP_MS = 16
 
 # Legacy alias used by older responsive helpers
 CONTENT_COMPACT_BREAKPOINT = LAYOUT_WIDE_BREAKPOINT
+# `.atf-reading-grid { grid-template-columns: minmax(0, 70fr) 8px minmax(220px, 30fr) }`
+# -- the reference pane has a 220px floor, so it stops being 30% of the window
+# once 30% would be narrower than that. Defined here since the first UI pass but
+# with no consumer until item 71 phase 3c; `_apply_content_layout` now sets it as
+# the column `minsize`.
 RIGHT_COLUMN_MIN_WIDTH = 220
+
+# The design's STACKED row split is not the same as its column split:
+#   @media (max-width: 700px) { grid-template-rows: minmax(0, 1.15fr) minmax(0, .85fr) }
+# i.e. 57.5 / 42.5, not 70 / 30. Reading is harder in a short pane than in a
+# narrow one, so the reference gets proportionally more height than it gets
+# width. Item 71 phase 3b used 70/30 here by carrying the column weights over;
+# that was a deviation from the design, corrected in 3c.
+CONTENT_STACKED_PRIMARY_WEIGHT = 115
+CONTENT_STACKED_REFERENCE_WEIGHT = 85
