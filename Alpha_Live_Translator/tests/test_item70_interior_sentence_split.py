@@ -262,8 +262,14 @@ class TestTheTwoMechanismsThatMakeItWork(unittest.TestCase):
         in produced 34 out with the longest still 1909 characters."""
         host = _Host()
         owner = reset_utterance_lifecycle(host, session_id="item70-version")
+        # Long enough that a head actually reaches the readable-line rule
+        # (>= 2 sentences AND >= 20 words); a three-short-sentence fixture no
+        # longer produces a split at all, which would test nothing.
         chunks = _cumulative(
-            "First one is done. Second one follows it. Third one ends here.", step=3
+            "The first sentence here is deliberately long enough to carry real "
+            "weight. The second sentence continues the same thought at length. "
+            "A third sentence follows it. And a fourth one closes the passage.",
+            step=3,
         )
         seen = []
         for i, chunk in enumerate(chunks):
@@ -351,3 +357,73 @@ class TestExistingBehaviourIsUnchanged(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestTheSplitMatchesTheReadableLineRule(unittest.TestCase):
+    """The live run after the first version of this fix showed the other half of
+    the problem: splitting at EVERY settled sentence made records one sentence
+    long, so median line length fell from 24 words to 6 and 45% of lines were 5
+    words or fewer against 6% before. A record boundary now has to be worth a
+    readable line, using the same constants the readable layer already applies.
+    """
+
+    def test_a_short_sentence_does_not_end_a_record_on_its_own(self):
+        published, active = _drive(
+            _cumulative("Yes. Okay. Thanks for asking me about it.", step=2), "short"
+        )
+        for record in published:
+            self.assertGreater(
+                len(record.split()),
+                5,
+                f"a 1-2 word sentence was committed as its own record: {record!r}",
+            )
+
+    def test_records_reach_the_target_line_length(self):
+        from alpha.utils.english_line_grouping import ENGLISH_LINE_TARGET_WORDS
+
+        text = (
+            "The first sentence here is deliberately long enough to carry real "
+            "weight. The second sentence continues the same thought at length. "
+            "A third sentence follows on from it naturally. And a fourth one "
+            "closes the passage off completely. A fifth keeps the speaker going. "
+            "A sixth finally ends the whole thing."
+        )
+        published, _ = _drive(_cumulative(text, step=3), "target")
+        self.assertTrue(published, "nothing was committed at all")
+        for record in published:
+            self.assertGreaterEqual(
+                len(record.split()),
+                ENGLISH_LINE_TARGET_WORDS // 2,
+                f"record is far below the readable-line target: {record!r}",
+            )
+
+    def test_three_sentences_break_even_when_short(self):
+        """`ENGLISH_LINE_MAX_SENTENCES` is an unconditional cap, so a run of
+        short sentences still breaks rather than growing without bound."""
+        from alpha.utils.english_line_grouping import ENGLISH_LINE_MAX_SENTENCES
+
+        text = "One two. Three four. Five six. Seven eight. Nine ten. Eleven twelve."
+        published, active = _drive(_cumulative(text, step=2), "cap")
+        for record in published + [active]:
+            if not record.strip():
+                continue
+            self.assertLessEqual(
+                sum(1 for ch in record if ch in ".!?"),
+                ENGLISH_LINE_MAX_SENTENCES,
+                f"a record carried more sentences than the cap: {record!r}",
+            )
+
+    def test_long_input_is_still_broken_up(self):
+        """The readable-line rule must not undo item 70's original purpose."""
+        text = " ".join(
+            f"This is sentence number {n} and it runs on for a while to add length."
+            for n in range(20)
+        )
+        published, active = _drive(_cumulative(text, step=4), "long")
+        records = published + ([active] if active.strip() else [])
+        self.assertGreater(len(records), 4, "the long passage was barely split")
+        self.assertLess(
+            max(len(r) for r in records),
+            len(text) // 2,
+            "no record was meaningfully shorter than the whole input",
+        )

@@ -4015,7 +4015,21 @@ class AlphaApp(
             if yview[0] == 0.0 and yview[1] == 1.0:
                 scrollbar.pack_forget()
             else:
-                scrollbar.pack(side="right", fill="y")
+                # `before=text_widget` is what makes the scrollbar visible at
+                # all. The text widget is packed first with `expand=True`
+                # (`_create_styled_text`), so it claims the entire cavity;
+                # anything packed AFTER it is allocated from what is left,
+                # which is nothing. Measured on a realised window: packed after,
+                # the scrollbar gets width 1 and `winfo_ismapped()` False;
+                # packed before, width 16 and mapped, with the text widget
+                # giving up exactly those pixels. That is why the transcript and
+                # translation panes had no scrollbar while the summary panel --
+                # which packs its scrollbar FIRST -- always had one.
+                #
+                # This has to be on the show path rather than only at creation,
+                # because the auto-hide calls `pack_forget()` and re-packing
+                # sends the widget back to the end of the pack order.
+                scrollbar.pack(side="right", fill="y", before=text_widget)
         except Exception:
             pass
 

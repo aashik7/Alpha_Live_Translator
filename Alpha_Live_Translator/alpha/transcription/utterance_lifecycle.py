@@ -377,15 +377,34 @@ def _interior_sentence_split(prev: str, curr: str, merged: str) -> tuple[str, st
     English records as cumulative windows through the real lifecycle produced 25
     records in and 25 out, longest 1982 characters -- not one split.
 
-    Returns `(head, tail)` for the FIRST position where every condition holds,
-    or `("", "")`. Every candidate is independently safe, so this choice is
-    about how much text is released at once, never about whether releasing it
-    is correct -- and releasing the EARLIEST settled sentence is what makes the
-    records short, which is the whole point of item 70. Measured over the 25
-    longest real English records: taking the last qualifying position left 14
-    committed records still over 400 characters, longest 879, because four
-    settled sentences went out as one record. Taking the first drains them one
-    sentence per chunk instead.
+    Returns `(head, tail)` for the first position where every condition holds
+    AND the head is worth a readable line, or `("", "")`.
+
+    Every candidate is independently safe, so the choice of WHICH one is about
+    how much text is released at once, never about whether releasing it is
+    correct. Both extremes were measured and both are wrong:
+
+      * Last qualifying position -- four settled sentences go out as one
+        record. 14 committed records still over 400 characters, longest 879.
+      * First qualifying position -- one sentence per record. This shipped, and
+        the live run that followed showed why it was wrong: median line length
+        collapsed from 24 words to 6, and 45% of lines were 5 words or fewer
+        against 6% before. Records like "I don't know." and "That's all I got."
+        each became their own line.
+
+    So the boundary is chosen to match the line the user actually asked for,
+    which is already encoded in `alpha/utils/english_line_grouping.py` and
+    applied by the readable layer: **2 to 3 sentences, around 20 words**. A head
+    is released once it holds at least `ENGLISH_LINE_MIN_SENTENCES` sentences
+    and `ENGLISH_LINE_TARGET_WORDS` words, or unconditionally at
+    `ENGLISH_LINE_MAX_SENTENCES`. Reusing those constants rather than inventing
+    thresholds here keeps one definition of a readable line: if the record and
+    the rendered line disagree, text visibly reflows the moment it commits,
+    which is the bug item 69 was filed for.
+
+    A short sentence therefore no longer ends a record on its own; it waits for
+    the next one, exactly as `group_sentences_into_lines` would have joined
+    them.
 
     Four conditions, each carrying its own failure it exists to prevent:
 
@@ -416,6 +435,27 @@ def _interior_sentence_split(prev: str, curr: str, merged: str) -> tuple[str, st
     curr = curr or ""
     merged = merged or ""
     head = tail = ""
+    try:
+        from alpha.utils.english_line_grouping import (
+            ENGLISH_LINE_MAX_SENTENCES,
+            ENGLISH_LINE_MIN_SENTENCES,
+            ENGLISH_LINE_TARGET_WORDS,
+        )
+    except Exception:
+        # Fail closed on the readable-line rule rather than on the split: the
+        # long lines item 70 exists to break up are the worse outcome.
+        ENGLISH_LINE_MAX_SENTENCES, ENGLISH_LINE_MIN_SENTENCES = 3, 2
+        ENGLISH_LINE_TARGET_WORDS = 20
+
+    def _worth_a_line(candidate: str) -> bool:
+        sentences = sum(1 for ch in candidate if ch in _SENTENCE_TERMINATORS)
+        if sentences >= ENGLISH_LINE_MAX_SENTENCES:
+            return True
+        return (
+            sentences >= ENGLISH_LINE_MIN_SENTENCES
+            and len(candidate.split()) >= ENGLISH_LINE_TARGET_WORDS
+        )
+
     limit = min(len(prev), len(curr), len(merged))
     for i in range(limit):
         if merged[i] not in _SENTENCE_TERMINATORS:
@@ -431,6 +471,10 @@ def _interior_sentence_split(prev: str, curr: str, merged: str) -> tuple[str, st
         if not curr.startswith(candidate_head):
             continue
         if not prev.startswith(candidate_head):
+            continue
+        if not _worth_a_line(candidate_head):
+            # Settled, but too short to stand as a line on its own. Leave it in
+            # the utterance and let the next sentence join it.
             continue
         return candidate_head, candidate_tail
     return head, tail
