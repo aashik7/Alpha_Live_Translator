@@ -8192,7 +8192,26 @@ class AlphaApp(
         if replace_with_text:
             label = self._ui_speaker_label_text()
             cleaned = (replace_with_text or "").strip()
-            start_idx = box.index(tk.END)
+            # `tk.END` is one character past where `insert(tk.END, ...)`
+            # actually writes, because Tk maintains a trailing newline of its
+            # own. Capturing the start there put `completed_mark` on the line
+            # AFTER this translation, so
+            # `delete(mark, "mark lineend + 1 chars")` in
+            # `_remove_translation_item_for_utterance` removed a newline and
+            # left the stale translation on screen -- a revision added its new
+            # text and the superseded line stayed above it. Probed directly
+            # against real Tk: removing the middle of three completed
+            # translations left all three. It also mis-sized the
+            # `speaker_label` tag range for the same reason.
+            #
+            # Third instance of this shape in this file, after `interim_anchor`
+            # and `segment_anchor`; same fix. Re-establish the empty last line
+            # so the start is a line start, measure at `"end-1c"`, and give the
+            # mark LEFT gravity so a later append at that position cannot carry
+            # it forward.
+            if box.index("end-1c") != box.index("end-1c linestart"):
+                box.insert(tk.END, "\n")
+            start_idx = box.index("end-1c")
             box.insert(tk.END, label)
             tag_name = "speaker_label"
             if tag_name not in box.tag_names():
@@ -8201,7 +8220,7 @@ class AlphaApp(
                     foreground=COLORS.get("text_primary", "#111111"),
                     font=("Segoe UI", 12, "bold"),
                 )
-            end_idx = box.index(tk.END)
+            end_idx = box.index("end-1c")
             box.tag_add(tag_name, start_idx, end_idx)
             box.insert(tk.END, cleaned + "\n", "body")
             line = f"{label}{cleaned}"
@@ -8213,6 +8232,9 @@ class AlphaApp(
                 completed_mark = f"tr_done_{utterance_key}_{int(source_version or 1)}"
                 try:
                     box.mark_set(completed_mark, start_idx)
+                    # LEFT gravity: a later translation appended at this exact
+                    # position must not carry this mark forward with it.
+                    box.mark_gravity(completed_mark, "left")
                 except Exception:
                     completed_mark = None
                 self._translation_items_by_utterance[utterance_key] = {
@@ -8516,7 +8538,13 @@ class AlphaApp(
             self._clear_text_placeholder(box)
             box.configure(state="normal")
             label = self._ui_speaker_label_text()
-            start_idx = box.index(tk.END)
+            # Same correction as the completed branch above: `tk.END` is one
+            # character past the real write position, so a mark placed there
+            # lands on the following line and cannot remove this translation
+            # when a revision supersedes it.
+            if box.index("end-1c") != box.index("end-1c linestart"):
+                box.insert(tk.END, "\n")
+            start_idx = box.index("end-1c")
             box.insert(tk.END, label)
             tag_name = "speaker_label"
             if tag_name not in box.tag_names():
@@ -8525,7 +8553,7 @@ class AlphaApp(
                     foreground=COLORS.get("text_primary", "#111111"),
                     font=("Segoe UI", 12, "bold"),
                 )
-            end_idx = box.index(tk.END)
+            end_idx = box.index("end-1c")
             box.tag_add(tag_name, start_idx, end_idx)
             box.insert(tk.END, cleaned + "\n", "body")
             box.configure(state="disabled")
@@ -8536,6 +8564,9 @@ class AlphaApp(
                 completed_mark = f"tr_done_{utterance_key}_{int(source_version or 1)}"
                 try:
                     box.mark_set(completed_mark, start_idx)
+                    # LEFT gravity: a later translation appended at this exact
+                    # position must not carry this mark forward with it.
+                    box.mark_gravity(completed_mark, "left")
                 except Exception:
                     completed_mark = None
                 self._translation_items_by_utterance[utterance_key] = {
