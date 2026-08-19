@@ -75,10 +75,27 @@ _PREMATURE_COMMIT_REASONS = frozenset(
 )
 
 # Commit reasons after which a re-sent tail must NOT be stripped from the next
-# utterance. A provider disconnect is the case that matters: the words after
-# the hole are not a continuation of the words before it, so an apparent
-# overlap there is coincidence, not the provider repeating itself.
-_HARD_BOUNDARY_COMMIT_REASONS = frozenset({"provider_disconnected"})
+# utterance.
+#
+# `provider_disconnected`: the words after the hole are not a continuation of
+# the words before it, so an apparent overlap there is coincidence, not the
+# provider repeating itself.
+#
+# `sentence_boundary_flush` (item 70): item 66's trim exists for a commit that
+# landed MID-SENTENCE -- `utterance_end` and `speech_final` both do, because
+# they mean speech paused, not that a sentence finished -- after which the
+# provider re-sends the partial span. A sentence split ends on a terminator by
+# construction, so there is no partial span to re-send, and the cumulative
+# re-send it DOES produce is already removed exactly by
+# `_split_committed_prefix`. Leaving the fuzzy trim armed here was measured
+# deleting genuine speech: replaying real record
+# `"...Oh, yeah. So everybody agrees. So everybody agrees. Yeah..."` lost one
+# whole "So everybody agrees", because a token-run match cannot tell a
+# provider re-send from a speaker actually repeating themselves, and immediate
+# repetition is ordinary in meeting speech.
+_HARD_BOUNDARY_COMMIT_REASONS = frozenset(
+    {"provider_disconnected", "sentence_boundary_flush"}
+)
 
 # A sentence terminator, allowing for a closing quote or bracket after it.
 _SENTENCE_TERMINATED = re.compile(r'[.!?]["\')\]]*\s*$')
@@ -344,6 +361,79 @@ def _strip_committed_tail_prefix(
         remainder = " ".join(curr_parts[k:]).strip()
         return remainder or None
     return None
+
+
+_SENTENCE_TERMINATORS = ".!?"
+
+
+def _interior_sentence_split(prev: str, curr: str, merged: str) -> tuple[str, str]:
+    """Find a settled sentence inside the accumulated text, not just at its seam.
+
+    fixes CLIENT_DELIVERY_SPRINT_v5.md item 70. `_flush_sentence_boundary_locked`
+    could only split where `previous_text` itself ended on a terminator. Measured
+    on the recorded runs, **68% of Deepgram's finals do not end on a
+    terminator**, so the boundary normally sits in the MIDDLE of the accumulated
+    text and that gate never looked there. Re-growing the 25 longest real
+    English records as cumulative windows through the real lifecycle produced 25
+    records in and 25 out, longest 1982 characters -- not one split.
+
+    Returns `(head, tail)` for the FIRST position where every condition holds,
+    or `("", "")`. Every candidate is independently safe, so this choice is
+    about how much text is released at once, never about whether releasing it
+    is correct -- and releasing the EARLIEST settled sentence is what makes the
+    records short, which is the whole point of item 70. Measured over the 25
+    longest real English records: taking the last qualifying position left 14
+    committed records still over 400 characters, longest 879, because four
+    settled sentences went out as one record. Taking the first drains them one
+    sentence per chunk instead.
+
+    Four conditions, each carrying its own failure it exists to prevent:
+
+    1. `merged[i]` is a terminator followed by a space, with non-empty text
+       after -- a boundary with something on both sides.
+    2. `head + " " + tail == merged` byte-for-byte. The split adds, drops and
+       moves nothing; whatever would have been one record becomes two.
+    3. `curr.startswith(head)` -- the provider's OWN latest text still carries
+       this completed sentence. This is the condition the withdrawn attempt
+       lacked, and the only one that catches a terminator the provider has
+       already retracted:
+
+           prev   'I am very happy.'
+           curr   'I am very happy today.'    <- period WITHDRAWN
+           merged 'I am very happy. today.'   <- `_merge_lexical` kept it anyway
+                                                 (a separate pre-existing defect,
+                                                  recorded in v5 section 9)
+
+       Conditions 1, 2 and 4 all pass on that shape. Only this one fails, on
+       `curr` reading "happy today" where `head` demands "happy.".
+    4. `prev.startswith(head)` -- the sentence survived a full merge cycle
+       verbatim. This is the original gate's "verbatim survival proves the
+       sentence is settled" guarantee, generalised from the seam to the
+       interior: if Deepgram were still correcting the text -- re-punctuating
+       "Hello there." to "Hello, there." -- `head` would not be a prefix of both.
+    """
+    prev = prev or ""
+    curr = curr or ""
+    merged = merged or ""
+    head = tail = ""
+    limit = min(len(prev), len(curr), len(merged))
+    for i in range(limit):
+        if merged[i] not in _SENTENCE_TERMINATORS:
+            continue
+        if i + 1 >= len(merged) or merged[i + 1] != " ":
+            continue
+        candidate_head = merged[: i + 1]
+        candidate_tail = merged[i + 2 :].strip()
+        if not candidate_tail:
+            continue
+        if f"{candidate_head} {candidate_tail}" != merged:
+            continue
+        if not curr.startswith(candidate_head):
+            continue
+        if not prev.startswith(candidate_head):
+            continue
+        return candidate_head, candidate_tail
+    return head, tail
 
 
 def _known_speaker(value: Any) -> Optional[int]:
@@ -621,6 +711,12 @@ class UtteranceLifecycleOwner:
         self._seq = 0
         self._active: Optional[ActiveUtterance] = None
         self._last_committed: Optional[ActiveUtterance] = None
+        # Item 70. Exactly what a sentence split has already committed out of
+        # the provider's current cumulative window, so the next window can have
+        # it removed by byte-exact match. Item 66's `_strip_committed_tail_prefix`
+        # cannot do this job: it compares fuzzily and gives up below `min_run=3`
+        # tokens, which is why "Yes." and "Okay." were committed twice.
+        self._split_committed_prefix = ""
         self._timeout_token = 0
         self._timeout_after_id: Any = None
         self._events: list[dict[str, Any]] = []
@@ -654,6 +750,7 @@ class UtteranceLifecycleOwner:
             self._seq = 0
             self._active = None
             self._last_committed = None
+            self._split_committed_prefix = ""
             self._committed_utterance_ids.clear()
             self._timeout_token = 0
             self._stats = {k: 0 for k in self._stats}
@@ -1932,9 +2029,39 @@ class UtteranceLifecycleOwner:
         source: str,
         force_new: bool = False,
         emit_interim: bool = True,
+        from_sentence_split: bool = False,
     ) -> LifecycleDecision:
         active = self._active
         previous_text = active.text if active else ""
+
+        if not from_sentence_split:
+            # Item 70. A sentence split commits part of the provider's current
+            # cumulative window; the next window still begins with that text.
+            # Removing it here, by byte-exact match against what was actually
+            # committed, is what keeps the split from duplicating a sentence
+            # into the following record. Exactness matters: item 66's fuzzy
+            # `_strip_committed_tail_prefix` needs 3 comparison tokens and so
+            # let one- and two-token sentences through, and a fuzzy match could
+            # also eat a genuine repetition. If the provider starts a fresh
+            # window this simply does not match and nothing is removed.
+            carried = self._split_committed_prefix
+            if carried and (lexical or "").startswith(carried):
+                lexical = lexical[len(carried):].lstrip()
+                if not lexical:
+                    self._split_committed_prefix = ""
+                    d = LifecycleDecision(
+                        decision=IGNORE_DUPLICATE,
+                        reason="cumulative_window_fully_committed_by_split",
+                        session_id=self._session_id,
+                        event_id=event_id,
+                    )
+                    self._record_decision(
+                        d,
+                        is_final=source == "final",
+                        speech_final=speech_final,
+                        channel=channel,
+                    )
+                    return d
 
         if force_new or active is None or active.committed:
             # Item 66: a commit that landed mid-sentence is followed by the
@@ -1942,13 +2069,23 @@ class UtteranceLifecycleOwner:
             # committed, so `_merge_lexical`'s overlap machinery never sees it
             # and the tail ends up stored in two records. Trim it here, at the
             # one point a new utterance inherits text straight from the wire.
-            lexical = self._trim_resent_tail_locked(
-                lexical,
-                channel=channel,
-                speaker=speaker,
-                cand_start=cand_start,
-                cand_end=cand_end,
-            )
+            #
+            # Item 70: a sentence split's tail is NOT that. It is text this
+            # module already held, and the split has just proven it equal to
+            # `merged[len(head):]` byte-for-byte, so it cannot be a re-send.
+            # Running the trim on it deleted the head of an ordinary
+            # anadiplosis outright -- "...the bottom line. The bottom line is
+            # simple." lost "The bottom line", present in no record. The trim's
+            # own contract says it is for text arriving from the wire, so the
+            # split path is excluded rather than the trim being loosened.
+            if not from_sentence_split:
+                lexical = self._trim_resent_tail_locked(
+                    lexical,
+                    channel=channel,
+                    speaker=speaker,
+                    cand_start=cand_start,
+                    cand_end=cand_end,
+                )
             self._seq += 1
             uid = f"U-{self._seq}"
             active = ActiveUtterance(
@@ -2074,6 +2211,7 @@ class UtteranceLifecycleOwner:
                     source=source,
                     force_new=True,
                     emit_interim=emit_interim,
+                    from_sentence_split=True,
                 )
             if _norm_text(merged) != curr_n and _norm_text(merged) != prev_n:
                 decision = EXTEND_ACTIVE
@@ -2264,8 +2402,6 @@ class UtteranceLifecycleOwner:
         curr = (lexical or "").strip()
         if not prev or not curr:
             return (False, "")
-        if prev[-1] not in ".!?":
-            return (False, "")
         # Item 70. Two deliveries of the SAME event -- a finished sentence
         # meeting new speech -- and until now only the first was recognised.
         #
@@ -2295,48 +2431,78 @@ class UtteranceLifecycleOwner:
         # guarantee, now stated as the actual test rather than as a
         # side-effect of the pure-append equality.
         #
-        # PURE APPEND ONLY. Item 70 attempted to widen this to the cumulative
-        # re-send shape as well (`prev in curr`, i.e. the provider re-sent the
-        # finished sentence intact and moved past it). Adversarial review
-        # before shipping found the widening both broken and pointless, and
-        # all three findings are reproducible -- see §9 and
-        # `tests/test_item70_cumulative_sentence_flush.py`:
+        # TWO SHAPES, one property. Both split `merged` at a settled sentence
+        # boundary; they differ only in where that boundary sits.
         #
-        #   DUPLICATION. After a flush, the next cumulative window carries the
-        #   committed sentence back in, and the only defence -- item 66's
-        #   `_strip_committed_tail_prefix(min_run=3)` -- fails closed below 3
-        #   tokens. `"Hello there."` was committed, then committed again
-        #   inside `"Hello there. How are you doing?"`. Short acknowledgements
-        #   are the most common sentence type in meeting speech.
+        #   SEAM (the original). `previous_text` itself ends on a terminator and
+        #   the merge was a pure append, so the boundary is exactly between the
+        #   two. Only `_merge_lexical`'s `prev[-1:] in ".!?"` branch produces
+        #   this string, so every revision, `_overlap_join`, `_tail_resend_splice`
+        #   and similarity result is left alone.
         #
-        #   CONTENT LOSS. The flush tail is handed to `_trim_resent_tail_locked`
-        #   via `force_new=True`, which is written for a window the provider
-        #   RE-SENT. The tail provably is not that, so an ordinary anadiplosis
-        #   ("...the bottom line. The bottom line is simple.") had "The bottom
-        #   line" deleted outright.
+        #   INTERIOR (item 70). The boundary is inside the accumulated text.
+        #   This is the common case and the reason item 65's long-line symptom
+        #   survived the seam gate: **68% of Deepgram's finals do not end on a
+        #   terminator**. Measured on run ...20260814-114309, the seam gate
+        #   fired on 72% of LINES while catching roughly one BOUNDARY in eight
+        #   -- 921 sentences committed against 115 flushes, mean source_version
+        #   29.8 -- leaving 57 of 160 records over 400 characters, longest 1556.
         #
-        #   AND IT DID NOT HELP. On a replay of run ...20260814-114309 the
-        #   longest record was unchanged at 2084 chars and records over 400
-        #   went 59 -> 60. Averages improved only because the denominator grew.
+        # A PREVIOUS ATTEMPT AT THE SECOND SHAPE WAS WITHDRAWN, and the two
+        # failures it hit are fixed here rather than avoided. It widened the
+        # test to `prev in curr` and split at the seam anyway, which committed
+        # the wrong span; both traps stay pinned in
+        # `tests/test_item70_cumulative_sentence_flush.py`.
         #
-        # The reason is structural: **68% of Deepgram's finals do not end on a
-        # terminator**, so the boundary usually sits in the MIDDLE of the
-        # accumulated text while this gate tests `prev[-1]`. Cutting the long
-        # lines needs a split at an INTERIOR terminator -- a different change,
-        # filed as item 70 rather than smuggled in here.
-        if merged != f"{prev} {curr}":
+        #   DUPLICATION. After a commit the next cumulative window carries the
+        #   committed sentence back in, and item 66's fuzzy
+        #   `_strip_committed_tail_prefix` is bounded at `min_run=3`, so 1-2
+        #   token sentences ("Yes.", "Okay.") slipped past it and committed
+        #   twice -- and short acknowledgements are the most common sentence
+        #   type in meeting speech. Now handled exactly rather than fuzzily:
+        #   `_split_committed_prefix` records the committed text verbatim and
+        #   the next window has it removed by byte-exact string match, so no
+        #   token threshold is involved.
+        #
+        #   CONTENT LOSS. The tail reached `_trim_resent_tail_locked` through
+        #   `force_new=True`. That trim exists for text arriving straight from
+        #   the wire that repeats an already-committed tail; a split tail is
+        #   not that -- it is text this module already held, and the byte-exact
+        #   invariant below has just proven it equal to `merged[len(head):]`.
+        #   Running it there deleted the head of an ordinary anadiplosis
+        #   ("...the bottom line. The bottom line is simple."). The caller now
+        #   skips it on this path, on the trim's own stated contract.
+        head, tail = "", ""
+        if prev[-1] in _SENTENCE_TERMINATORS and merged == f"{prev} {curr}":
+            head, tail = prev, merged[len(prev):].strip()
+        if not head or not tail:
+            head, tail = _interior_sentence_split(prev, curr, merged)
+        if not head or not tail:
             return (False, "")
-        tail = merged[len(prev):].strip()
-        if not tail:
+        # The flush must be a pure SPLIT of `merged`, never a rewrite. Whatever
+        # text would have been committed as one record is committed as two with
+        # no character added, dropped or moved. Asserted here as well as inside
+        # `_interior_sentence_split` so the seam shape inherits it too, and so
+        # any future third shape has to satisfy it before it can commit.
+        if not merged.startswith(head) or f"{head} {tail}" != merged:
             return (False, "")
-        # Kept from the item 70 work even though the append equality already
-        # implies both: the flush must be a pure SPLIT of `merged`, never a
-        # rewrite. Whatever text would have been committed as one record is
-        # committed as two with no character added, dropped or moved. Stated
-        # as a precondition so any future widening inherits it instead of
-        # having to rediscover it.
-        if not merged.startswith(prev) or f"{prev} {tail}" != merged:
-            return (False, "")
+        # The active utterance must hold exactly `head` when it is committed;
+        # only that part is settled. For the seam shape it already does, because
+        # `active.text` is still `previous_text` at this point -- the caller
+        # writes `merged` back only after this returns.
+        #
+        # For an interior split it does not, and shortening it needs a version
+        # bump rather than a bare assignment. `_observe_identity` records the
+        # text seen at each (utterance_id, version); presenting different text
+        # at a version it has already seen is rejected as
+        # `conflicting_same_version_text`, which silently refused every interior
+        # split until this was found by tracing the real commit. Shortening the
+        # utterance IS a state change, so a new version is also the honest
+        # description of it.
+        restore_text, restore_version = active.text, active.version
+        if active.text != head:
+            active.text = head
+            active.version += 1
         commit = self._commit_locked(
             reason="sentence_boundary_flush",
             event_id=event_id,
@@ -2344,14 +2510,25 @@ class UtteranceLifecycleOwner:
             decision_name=COMMIT_ACTIVE,
         )
         if not commit.should_commit:
+            # Put the utterance back exactly as it was. The caller extends as
+            # before; abandoning `merged` here would drop the tail outright.
+            active.text, active.version = restore_text, restore_version
             return (False, "")
         self._stats["sentence_boundary_flushes"] += 1
-        # `tail`, computed above, is what `merged` holds PAST the committed
-        # sentence -- never `curr`. For a pure append the two are the same
-        # string. For a cumulative re-send they are not: `curr` is the whole
-        # re-sent window and still contains the sentence just committed, so
-        # starting the next utterance from it would duplicate that sentence
-        # into the next record.
+        # Remember what the provider will re-send. Only meaningful when `curr`
+        # actually carried `head` -- for a seam split the provider sent the two
+        # sentences as separate windows and there is nothing to strip, so the
+        # marker is cleared instead of being left stale.
+        if curr.startswith(head):
+            carried = self._split_committed_prefix
+            self._split_committed_prefix = f"{carried} {head}" if carried else head
+        else:
+            self._split_committed_prefix = ""
+        # `tail` is what `merged` holds PAST the committed sentence -- never
+        # `curr`. For a seam split the two are the same string. For an interior
+        # split they are not: `curr` is the whole re-sent window and still
+        # contains the sentence just committed, so starting the next utterance
+        # from it would duplicate that sentence into the next record.
         return (True, tail)
 
     def _commit_locked(
@@ -2429,6 +2606,16 @@ class UtteranceLifecycleOwner:
         self._stats["translation_jobs_hint"] += 1
         self._last_committed = active
         self._active = None
+        # Item 70. The split marker describes the provider's CURRENT cumulative
+        # window and nothing else. Any commit for another reason -- speech
+        # paused, the socket dropped, the inactivity timeout -- ends that
+        # window, so the marker must not survive it: a later window that
+        # happened to open with the same words would otherwise have real speech
+        # stripped off its head. The flush sets the marker again itself, after
+        # this returns, which is why it is excluded here rather than cleared
+        # unconditionally.
+        if reason != "sentence_boundary_flush":
+            self._split_committed_prefix = ""
 
         d = LifecycleDecision(
             decision=decision_name,
