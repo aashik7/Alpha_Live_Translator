@@ -1115,7 +1115,43 @@ class AlphaApp(
         chars_inserted = 0
         max_inserts = 12 if self._ui_queue_backpressure_active else 8
         retry_triggered = False
+        # Item 74(c). The item cap alone bounds HOW MANY items are rendered,
+        # never how long the tick takes, so a rise in per-item cost turns into
+        # an unbounded freeze rather than a deferral. Measured today the render
+        # is 0.009 ms per segment -- 8 items is 0.07 ms against a 10 ms budget,
+        # about 2700x of headroom -- so this changes nothing now. It bites at
+        # roughly 25 ms per item, which is the region a per-entry widget model
+        # lands in (item 75 measured 35.6 ms per card), and at that point the
+        # flush would outlast its own 200 ms interval and the buffer would stop
+        # draining. Whatever is not rendered stays in the buffer and is
+        # rescheduled below exactly as an over-cap batch already is.
+        budget_s = UI_QUEUE_TIME_BUDGET_MS / 1000.0
+        deferred_for_time = 0
         for idx, item in enumerate(batch[:max_inserts]):
+            if idx and (time.perf_counter() - start) >= budget_s:
+                # Preserve chronological order: everything still unrendered
+                # goes back to the FRONT of the buffer, including items past
+                # `max_inserts`, so the over-cap branch below has nothing left
+                # to do and is correctly skipped by `retry_triggered`.
+                self._transcript_ui_batch_buffer[:0] = batch[idx:]
+                deferred_for_time = len(batch) - idx
+                self._schedule_transcript_ui_batch_flush()
+                retry_triggered = True
+                # Never defer silently. A cap that trims work without a trace
+                # reads as "kept up fine" in every later diagnosis.
+                try:
+                    from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+                    jp_accuracy_log(
+                        "TRANSCRIPT_UI_FLUSH_TIME_BUDGET_EXCEEDED",
+                        rendered=idx,
+                        deferred=deferred_for_time,
+                        elapsed_ms=round((time.perf_counter() - start) * 1000, 2),
+                        budget_ms=UI_QUEUE_TIME_BUDGET_MS,
+                    )
+                except Exception:
+                    pass
+                break
             text_len = len((item.get("text") or ""))
             result = self._display_transcript_item(item)
             if result == "retry_pending":
