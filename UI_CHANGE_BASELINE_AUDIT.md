@@ -621,8 +621,33 @@ Do not rediscover these the hard way.
 2. **The store and the ledger can disagree.** A lifecycle fix looked correct in
    both the lifecycle and the store while the ledger kept truncated text. Always
    check `Alpha output.txt`, not just the pane.
-3. **Tk marks have right gravity.** A mark left at `"end"` with no text under it
-   sits *before* the next appended line, and deleting at it removes real content.
+3. **A Tk mark set at `"end"` does not bound the text written after it — and
+   the direction is the opposite of what this list said until 2026-08-19.**
+   The old wording claimed such a mark sits *before* the next appended line so
+   deleting at it removes real content. Probed directly against Tk 8.6.15, the
+   reverse happens: `"end"` is one character past where `insert("end", ...)`
+   actually writes, because Tk maintains a trailing newline of its own, and the
+   default **right** gravity carries the mark along with text inserted at its
+   position. The mark therefore ends up *after* the new text and
+   `delete(mark, "end")` spans an **empty range**, removing nothing.
+
+   That is not theoretical. Three marks in `main_window.py` were built this way
+   and all three were broken, each fixed on 2026-08-19:
+   `interim_anchor` (previews stacked — four ⏳ rows after four ticks),
+   `segment_anchor` (a corrected segment was appended to its predecessor on one
+   line), and the completed-translation `tr_done_*` mark (a revision left the
+   superseded translation on screen).
+
+   **The working recipe, all three parts required:** re-establish an empty last
+   line so the position is a line start, mark `"end-1c"` rather than `"end"`,
+   and set **left** gravity. Measured over three ticks: `"end"` → 3 previews,
+   `"end-1c"` alone → 3, `"end"` + left → 3, `"end-1c"` + right → 3,
+   `"end-1c"` + left → **1**.
+
+   A fourth instance survives at the pending-placeholder mark
+   (`mark_set(mark_name, "end")`), left alone because
+   `TRANSLATION_PENDING_PLACEHOLDER_VISIBLE` is `False`. Fix it with the recipe
+   above before ever re-enabling that flag.
 4. **`re.IGNORECASE` on `[A-Z]`** matches lowercase too.
 5. **Changing two properties of a regex at once** hid a second bug inside the
    fix for the first.
