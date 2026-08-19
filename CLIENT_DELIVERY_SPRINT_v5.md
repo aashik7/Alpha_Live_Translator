@@ -84,8 +84,9 @@ Shortened from v4 §1 deliberately. Do not run v4's full ritual; it costs
    item sends you there.
 4. `git log --oneline -15`. Compare against §8's ledger. If they
    disagree, **fix this file first** and note it in §9.
-5. Run the test baseline (§3). If it is not 354 / 5F / 2E / 2S, stop and
-   tell the human.
+5. Run the test baseline (§3). If it does not match §3's current numbers
+   and names, stop and tell the human. (§3's numbers change as the sprint
+   adds tests — read §3 itself, never a number cached here or in memory.)
 6. Go to the current day in §5.
 
 ---
@@ -114,14 +115,19 @@ skips. **Verified 2026-08-15, not a regression** — but note the test's
 guarantee disappears silently with the evidence, so do not read its pass
 as ongoing coverage.
 
-**One caveat, added 2026-08-11.** The 7 names are the *stable* set, but
-an 8th can appear:
+**One caveat, added 2026-08-11, resolved 2026-08-19.** The 7 names are the
+*stable* set, but an 8th can appear — this has happened with at least two
+different names now
+(`test_item48_audio_manifest_bounded…test_interleaved_streams_each_keep_their_own_run`,
+`test_stop_finalize_v3_2_3…test_phase_constants_match_spec`), so treat it
+as a class of pre-existing suite flakiness, not one specific test.
 `test_task9_report…test_inactivity_timeout_fallback_survives_immediate_real_stop_5x`
-is a real-thread timing test that failed two subtest iterations in one
-full-suite run and passed the next, and passes 3 runs out of 3 when its
-module runs alone. It is **intermittent, not a regression** — if it is
-the only new name, re-run before concluding anything. Any *other* new
-name is real. See §9.
+used to be the usual example (item 78) — **it is fixed as of `1bc1637`
+and should no longer flake; if it fails now, that is a real regression,
+not the old intermittent case.** For any *other* 8th name: if it is the
+only new name and re-running clears it, treat as the known flakiness
+class, not a regression. Any name that persists across re-runs, or any
+change to the 7 stable names, is real. See §9.
 
 **Venv:** `<repo_root>\.venv\Scripts\python.exe`. The bare system python
 will fail with `ModuleNotFoundError`. If the venv reports
