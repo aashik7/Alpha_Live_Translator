@@ -325,6 +325,16 @@ class RealIntegrationHost(tk.Tk, DeepgramClientMixin, DuplicateProtectionMixin):
     _run_on_ui_thread = AlphaApp._run_on_ui_thread
     _start_ui_event_bus_drain_loop = AlphaApp._start_ui_event_bus_drain_loop
     _register_ui_event_bus_handlers = AlphaApp._register_ui_event_bus_handlers
+    # fixes item 78: without these, drain_stop_queues_on_main_thread's two
+    # hasattr-gated drain calls (_flush_pending_transcript_queue,
+    # drain_transcript_queue_for_stop) are both silently no-ops on this
+    # host, and the Stop UI barrier degrades to a bare queue-size read with
+    # nothing actually flushing it -- see the item 78 session-log entry.
+    _flush_pending_transcript_queue = AlphaApp._flush_pending_transcript_queue
+    drain_transcript_queue_for_stop = AlphaApp.drain_transcript_queue_for_stop
+    _enqueue_transcript_ui_batch = AlphaApp._enqueue_transcript_ui_batch
+    _flush_transcript_ui_batch = AlphaApp._flush_transcript_ui_batch
+    _schedule_transcript_ui_batch_flush = AlphaApp._schedule_transcript_ui_batch_flush
 
     def __init__(self, session_id: str, run_id: str) -> None:
         # fixes TASK_10_REPORT.md test-stability finding: tkinter/Tcl does
@@ -374,6 +384,15 @@ class RealIntegrationHost(tk.Tk, DeepgramClientMixin, DuplicateProtectionMixin):
                 pass
             self._process_ui_queue_after_id = None
 
+        # Same reasoning, for _flush_transcript_ui_batch's own self-rescheduling
+        # job -- see item 78's session-log entry.
+        pending_batch_flush = getattr(self, "_transcript_ui_batch_after_id", None)
+        if pending_batch_flush is not None:
+            try:
+                self.after_cancel(pending_batch_flush)
+            except Exception:
+                pass
+
         from alpha.summary.transcript_store import TranscriptStore
 
         self.transcript_store = TranscriptStore()
@@ -381,6 +400,12 @@ class RealIntegrationHost(tk.Tk, DeepgramClientMixin, DuplicateProtectionMixin):
         self._live_session_id = session_id
         self._listen_language = "en"
         self._frozen_ledger_error_count = 0
+        self._transcript_events_posted = 0
+        self._transcript_events_drained = 0
+        self._transcript_ui_batch_buffer: list = []
+        self._transcript_ui_batch_after_id = None
+        self._transcript_ui_last_flush_mono = 0.0
+        self._ui_queue_backpressure_active = False
 
         self.translation_worker = TranslationWorker(
             run_id=run_id, evidence_dir=None, client=FakeDeepLClient(), enabled=True,
@@ -441,6 +466,13 @@ class RealIntegrationHost(tk.Tk, DeepgramClientMixin, DuplicateProtectionMixin):
             except Exception:
                 pass
             self._process_ui_queue_after_id = None
+        pending_batch_flush = getattr(self, "_transcript_ui_batch_after_id", None)
+        if pending_batch_flush is not None:
+            try:
+                self.after_cancel(pending_batch_flush)
+            except Exception:
+                pass
+            self._transcript_ui_batch_after_id = None
 
 
 _shared_integration_host: "RealIntegrationHost | None" = None
