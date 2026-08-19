@@ -1478,9 +1478,33 @@ class AlphaApp(
 
     def _insert_speaker_segment_line(self, box, speaker, text: str):
         tag = self._speaker_tag(speaker)
+        # `segment_anchor` exists so `_on_store_segment_updated` can replace the
+        # last displayed segment when its text is corrected. It has to mark
+        # where the segment STARTS.
+        #
+        # Setting it afterwards from `"insert linestart"` marked the wrong
+        # place: `insert` is the cursor, not the write position, so the anchor
+        # landed on the line AFTER the segment and
+        # `delete("segment_anchor", "end")` removed only the trailing newline.
+        # Driven through the real methods, a corrected segment did not replace
+        # its predecessor -- it was appended to it, on one line, with no
+        # separator:
+        #
+        #   'Speaker: the first version of this segmentSpeaker: the CORRECTED
+        #    version of this segment'
+        #
+        # Same shape and same fix as `interim_anchor` in
+        # `_update_interim_line_only`: re-establish an empty last line so the
+        # anchor sits at a line start, mark the real insertion point
+        # (`"end-1c"`, not `"end"` -- Tk keeps a trailing newline of its own),
+        # and give it LEFT gravity so writing the segment past it does not
+        # carry it along.
+        if box.index("end-1c") != box.index("end-1c linestart"):
+            box.insert("end", "\n")
+        box.mark_set("segment_anchor", "end-1c")
+        box.mark_gravity("segment_anchor", "left")
         box.insert("end", self._ui_speaker_label_text(), tag)
         box.insert("end", (text or "").strip() + "\n", "body")
-        box.mark_set("segment_anchor", "insert linestart")
 
     def _on_store_segment_added(
         self,
@@ -1759,7 +1783,46 @@ class AlphaApp(
         if hasattr(self, "_clear_text_placeholder"):
             self._clear_text_placeholder(box)
         tag = self._speaker_tag(speaker)
-        box.mark_set("interim_anchor", "end")
+        # The anchor has to sit exactly where the preview will be written, and
+        # it has to stay there while the preview is written past it.
+        #
+        # `"end"` is NOT that position: Tk keeps a final newline of its own, so
+        # `"end"` is one character past where `insert("end", ...)` actually
+        # puts text. And a mark carries RIGHT gravity by default, which moves
+        # it along with text inserted at its position instead of leaving it
+        # behind. Between them the preview landed BEFORE the anchor, so
+        # `_remove_interim_line_from_display`'s
+        # `delete("interim_anchor", "end")` spanned an empty range and removed
+        # nothing -- every tick stacked another row. Driven over four ticks
+        # against a real tk.Text through these two methods, the pane held four
+        # preview rows and four hourglasses where one is correct.
+        #
+        # `"end-1c"` is the real insertion point and LEFT gravity keeps the
+        # mark there. Both halves are required: measured against real Tk, each
+        # of `"end"`, `"end-1c"` alone, `"end"` + left, and `"end-1c"` + right
+        # still produced three hourglasses over three ticks; only this pair
+        # produced one.
+        #
+        # The newline guard is the third necessary piece, and it is not
+        # obvious. `delete("interim_anchor", "end")` consumes Tk's own trailing
+        # newline along with the preview, so on the NEXT tick the widget has no
+        # empty last line and `"end-1c"` resolves into the middle of the last
+        # committed line -- traced directly: index 2.0 on the first tick, 1.19
+        # on the second. Anchoring there wrote the preview onto the end of the
+        # committed sentence instead of below it. Re-establishing the empty
+        # last line first keeps the anchor at a line start on every tick, and
+        # costs nothing when one is already there, so no blank line
+        # accumulates. Verified across five shapes -- committed text, an empty
+        # tick between two previews, an empty widget, several committed lines,
+        # and a multi-line preview replaced by a short one -- all giving one
+        # hourglass and zero stray blank lines.
+        #
+        # `tests/test_interim_preview_is_replaced_not_stacked.py` pins the
+        # mechanism as well as the symptom.
+        if box.index("end-1c") != box.index("end-1c linestart"):
+            box.insert("end", "\n")
+        box.mark_set("interim_anchor", "end-1c")
+        box.mark_gravity("interim_anchor", "left")
         # Item 69: the preview is one growing paragraph -- measured past 2000
         # characters before it settles. Render it as readable 2-3 sentence
         # lines instead. Display-only and inherently safe: the whole preview is
