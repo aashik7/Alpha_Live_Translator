@@ -160,9 +160,16 @@ class PendingPlaceholderIsHiddenTest(unittest.TestCase):
 
     def test_the_finished_translation_is_appended_at_the_end(self):
         """Proof the row is not an ordering slot: the real text goes to END,
-        not to the mark."""
+        not to the mark.
+
+        Item 83 grouped the translation into readable lines, so the text is
+        written as `part` per line rather than one `cleaned` string. The
+        property this test exists for is unchanged and still checked: the
+        finished text is appended at `tk.END`, never at the pending mark.
+        """
         src = inspect.getsource(AlphaApp._clear_translation_loading_item)
-        self.assertIn("box.insert(tk.END, cleaned", src)
+        self.assertIn('box.insert(tk.END, part + "\\n", "body")', src)
+        self.assertNotIn("box.insert(mark_name", src)
 
 
 class LivePaneGroupsCommittedSegmentsTest(unittest.TestCase):

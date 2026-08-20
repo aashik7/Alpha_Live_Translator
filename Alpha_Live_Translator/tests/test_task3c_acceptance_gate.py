@@ -54,6 +54,8 @@ class TranslationUIHost(tk.Tk):
     _flush_pending_translation_submit = AlphaApp._flush_pending_translation_submit
     _show_translation_loading_item = AlphaApp._show_translation_loading_item
     _clear_translation_loading_item = AlphaApp._clear_translation_loading_item
+    _readable_translation_parts = AlphaApp._readable_translation_parts
+    _delete_translation_entry = AlphaApp._delete_translation_entry
     _on_translation_worker_result = AlphaApp._on_translation_worker_result
     _handle_translation_worker_result = AlphaApp._handle_translation_worker_result
     _append_translation_result = AlphaApp._append_translation_result

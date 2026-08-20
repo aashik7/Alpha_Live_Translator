@@ -92,6 +92,8 @@ class _TranslationFlushHost:
     _flush_pending_translation_submit = AlphaApp._flush_pending_translation_submit
     _show_translation_loading_item = AlphaApp._show_translation_loading_item
     _clear_translation_loading_item = AlphaApp._clear_translation_loading_item
+    _readable_translation_parts = AlphaApp._readable_translation_parts
+    _delete_translation_entry = AlphaApp._delete_translation_entry
 
     def __init__(self) -> None:
         self.translation_worker = FakeTranslationWorker()

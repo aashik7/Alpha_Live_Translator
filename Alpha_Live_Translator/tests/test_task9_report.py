@@ -309,6 +309,8 @@ class RealIntegrationHost(tk.Tk, DeepgramClientMixin, DuplicateProtectionMixin):
     flush_pending_translation_submissions = AlphaApp.flush_pending_translation_submissions
     _show_translation_loading_item = AlphaApp._show_translation_loading_item
     _clear_translation_loading_item = AlphaApp._clear_translation_loading_item
+    _readable_translation_parts = AlphaApp._readable_translation_parts
+    _delete_translation_entry = AlphaApp._delete_translation_entry
     _remove_translation_item_for_utterance = AlphaApp._remove_translation_item_for_utterance
     _log_translation_display_skip = AlphaApp._log_translation_display_skip
     _on_store_segment_added = AlphaApp._on_store_segment_added

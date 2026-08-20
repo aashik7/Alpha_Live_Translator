@@ -74,6 +74,10 @@ class TranslationRevisionReplacesLineTest(unittest.TestCase):
             _clear_translation_loading_item = (
                 AlphaApp._clear_translation_loading_item
             )
+            # Item 83 grouped the translation and made the removal delete the
+            # whole entry, so the host carries both collaborators.
+            _readable_translation_parts = AlphaApp._readable_translation_parts
+            _delete_translation_entry = AlphaApp._delete_translation_entry
             _remove_translation_item_for_utterance = (
                 AlphaApp._remove_translation_item_for_utterance
             )

@@ -1577,6 +1577,79 @@ class AlphaApp(
             lines += 1
         return lines
 
+    def _delete_translation_entry(self, box, mark_name, item=None):
+        """Remove a whole displayed translation entry, however many lines it is.
+
+        Item 74(b): both removal sites deleted `mark -> mark lineend + 1 chars`,
+        exactly ONE logical line. That was correct only while a translation was
+        always one line, and item 83's grouping makes it one to three. Deleting
+        one line from a three-line entry leaves two orphans that no later
+        revision can reclaim -- and they reach the client's file, because
+        `_get_translated_transcript_for_copy_export` falls back to reading the
+        widget whenever the identity registry has no completed `line_text`.
+
+        The line count is recorded on the registry entry when the translation is
+        written. It falls back to one so a pending-row mark, which is genuinely
+        a single line, still behaves exactly as before.
+        """
+        lines = 1
+        try:
+            if isinstance(item, dict):
+                lines = max(1, int(item.get("entry_lines") or 1))
+        except Exception:
+            lines = 1
+        end = f"{mark_name} lineend + 1 chars"
+        for _ in range(lines - 1):
+            end += " + 1 lines"
+        box.delete(mark_name, end)
+
+    def _readable_translation_parts(self, text: str) -> list[str]:
+        """Group one finished translation into readable lines. Item 83.
+
+        The rule is chosen by what the text IS, not by the transcript's
+        language: a translation's language is the target the user picked, and
+        the transcript beside it is the other one. Japanese gets the `。！？`
+        rule, anything else gets the English sentence rule, and text that
+        matches neither is returned untouched.
+
+        This is the TRANSLATION pane only. Contract C9 -- Japanese is never
+        regrouped by a display rule -- is about the Japanese TRANSCRIPT, whose
+        boundaries come from `japanese_sentence_assembler.py`. That path is not
+        reached from here and is not changed.
+
+        Falls back to the original single line on any failure: an over-long
+        line is a readability problem, a lost one is a data problem.
+        """
+        raw = (text or "").strip()
+        if not raw:
+            return []
+        try:
+            from alpha.utils.japanese_line_grouping import (
+                group_japanese_lines,
+                japanese_text_is_preserved,
+                looks_japanese,
+            )
+
+            if looks_japanese(raw):
+                parts = group_japanese_lines(raw)
+                if parts and japanese_text_is_preserved(raw, parts):
+                    return parts
+                return [raw]
+        except Exception:
+            return [raw]
+        try:
+            from alpha.utils.english_line_grouping import (
+                group_sentences_into_lines,
+                text_is_preserved,
+            )
+
+            parts = [p for p in group_sentences_into_lines(raw) if p and p.strip()]
+            if parts and text_is_preserved(raw, parts):
+                return parts
+        except Exception:
+            pass
+        return [raw]
+
     def _readable_segment_parts(self, speaker, text: str) -> list[str]:
         """Group one committed segment into the design's readable lines.
 
@@ -1855,7 +1928,7 @@ class AlphaApp(
             tbox.configure(state="normal")
             try:
                 if tbox.compare(mark_name, ">=", "1.0"):
-                    tbox.delete(mark_name, f"{mark_name} lineend + 1 chars")
+                    self._delete_translation_entry(tbox, mark_name, item)
                 tbox.mark_unset(mark_name)
             except Exception:
                 pass
@@ -8367,8 +8440,11 @@ class AlphaApp(
         box.configure(state="normal")
         try:
             if box.compare(mark_name, ">=", "1.0"):
-                # Delete from mark through end of that line.
-                box.delete(mark_name, f"{mark_name} lineend + 1 chars")
+                self._delete_translation_entry(
+                    box, mark_name, (self._translation_items_by_utterance or {}).get(
+                        utterance_key
+                    ),
+                )
             box.mark_unset(mark_name)
         except Exception:
             pass
@@ -8395,7 +8471,6 @@ class AlphaApp(
             if box.index("end-1c") != box.index("end-1c linestart"):
                 box.insert(tk.END, "\n")
             start_idx = box.index("end-1c")
-            box.insert(tk.END, label)
             tag_name = "speaker_label"
             if tag_name not in box.tag_names():
                 box.tag_configure(
@@ -8403,9 +8478,24 @@ class AlphaApp(
                     foreground=COLORS.get("text_primary", "#111111"),
                     font=("Segoe UI", 12, "bold"),
                 )
-            end_idx = box.index("end-1c")
-            box.tag_add(tag_name, start_idx, end_idx)
-            box.insert(tk.END, cleaned + "\n", "body")
+            # Item 83. The English pane reads as 2-3 sentence lines after item
+            # 82; the translation was still one line per record -- measured on
+            # a real run, 36 records at a median of 139 characters and up to
+            # 769, holding 4.9 sentences each. Grouped by the same idea, using
+            # the rule that fits the target language.
+            parts = self._readable_translation_parts(cleaned) or [cleaned]
+            for part in parts:
+                part_start = box.index("end-1c")
+                box.insert(tk.END, label)
+                box.tag_add(tag_name, part_start, box.index("end-1c"))
+                box.insert(tk.END, part + "\n", "body")
+            # How many logical lines this entry occupies. The removal paths
+            # delete a fixed ONE line (item 74(b)); grouping is what makes that
+            # latent defect live, so the count travels with the entry and the
+            # removal replays it. Without this a revised translation would
+            # orphan every line but the first, and those orphans reach the
+            # export through the widget-read fallback.
+            entry_lines = len(parts)
             line = f"{label}{cleaned}"
             # fixes TASK_3A_FINDINGS.md Item 1: track this completed line by
             # canonical_utterance_id (with its own text mark) instead of a
@@ -8426,6 +8516,10 @@ class AlphaApp(
                     "source_version": int(source_version or 1),
                     "state": "completed",
                     "line_text": line,
+                    # Item 74(b) / 83: how many logical lines to remove when a
+                    # revision supersedes this entry. One is no longer a safe
+                    # assumption now that a translation is grouped.
+                    "entry_lines": int(entry_lines),
                 }
             else:
                 self._log_translation_display_skip(
