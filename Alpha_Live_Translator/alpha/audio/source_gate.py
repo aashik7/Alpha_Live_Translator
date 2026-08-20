@@ -14,6 +14,13 @@ from alpha.constants import (
 
 _NOISE_EMA_ALPHA = 0.05
 
+# How far above the current floor a frame may sit and still be believed to be
+# background. Anything louder is speech the threshold misjudged, and learning
+# from it is what let the floor run away (see `_learns_as_noise`). Chosen to sit
+# below the activity multipliers themselves (system 3.0, mic 4.0) so a frame can
+# never both fail the activity test and be treated as a clean noise sample.
+_NOISE_LEARN_MAX_RATIO = 2.0
+
 
 class TeamsSourceGate:
     """Per-frame system/mic activity with overlap confirmation and source hold."""
@@ -40,8 +47,44 @@ class TeamsSourceGate:
     def get_summary(self):
         return dict(self._stats)
 
+    def _learns_as_noise(self, rms, floor, activity_min) -> bool:
+        """True when this frame can be believed to be background, not speech.
+
+        The floor is only ever updated from frames judged INACTIVE, and a frame
+        is judged inactive by comparing it against a threshold derived from the
+        floor itself. That is a positive feedback loop: once the threshold drifts
+        above real speech, the speech it wrongly rejects is fed back in as
+        "noise", which raises the floor, which rejects more speech.
+
+        It ran away in production. Measured over the live run of 2026-08-20 the
+        system floor climbed 23 -> 946 -> 1432 -> 1872 and the threshold reached
+        5616, while the frame RMS distribution for that audio was p5 125,
+        p50 1343, p90 2709. A threshold of 5616 gates off 99% of frames; the
+        80 minimum gates off 3%, which is the true silence in that recording.
+
+        Two ways a frame earns the right to teach the floor, and no third:
+
+        1. It is quieter than `activity_min`. Nothing below the absolute
+           activity minimum can be speech, so it is always a safe noise sample.
+           This is also what lets a genuinely noisy room bootstrap from zero.
+        2. It is within `_NOISE_LEARN_MAX_RATIO` of the floor already learned.
+           Real background stays near its own level; a frame many times louder
+           is speech the threshold misjudged, and that is exactly the sample
+           that made the loop run away.
+        """
+        rms = float(rms or 0.0)
+        if rms <= 0:
+            return False
+        if rms < float(activity_min):
+            return True
+        if floor <= 0:
+            return True
+        return rms <= float(floor) * _NOISE_LEARN_MAX_RATIO
+
     def _update_noise_floors(self, sys_rms, mic_rms, system_active, mic_active):
-        if not system_active and sys_rms > 0:
+        if not system_active and self._learns_as_noise(
+            sys_rms, self._sys_noise_floor, SYSTEM_ACTIVE_RMS_MIN
+        ):
             if self._sys_noise_floor <= 0:
                 self._sys_noise_floor = float(sys_rms)
             else:
@@ -49,7 +92,9 @@ class TeamsSourceGate:
                     (1.0 - _NOISE_EMA_ALPHA) * self._sys_noise_floor
                     + _NOISE_EMA_ALPHA * float(sys_rms)
                 )
-        if not mic_active and mic_rms > 0:
+        if not mic_active and self._learns_as_noise(
+            mic_rms, self._mic_noise_floor, MIC_ACTIVE_RMS_MIN
+        ):
             if self._mic_noise_floor <= 0:
                 self._mic_noise_floor = float(mic_rms)
             else:
@@ -206,4 +251,26 @@ class TeamsSourceGate:
         if source == "mic":
             return mic_samples.astype(np.int16)
 
-        return np.zeros(len(sys_samples), dtype=np.int16)
+        # "none" means neither source cleared its threshold. It must NOT mean
+        # "send silence to the transcriber".
+        #
+        # This gate exists to LABEL a frame (system / mic / overlap) for speaker
+        # attribution. Returning zeros made it destroy audio instead, and a
+        # wrong label then became permanent word loss. Measured on the live run
+        # of 2026-08-20: the delivered stream was 52-82% silence from two
+        # minutes in, Deepgram returned 43% of the reference words, and the app
+        # kept 96.5% of what Deepgram gave it -- so essentially all of the loss
+        # was created right here.
+        #
+        # Failing OPEN is strictly safer than failing closed:
+        #   * when the frame really is silence, `sys_samples` IS silence, so the
+        #     delivered bytes are unchanged;
+        #   * when the gate is wrong, the speech survives.
+        # There is no case where emitting zeros is better than emitting the
+        # captured system audio, and Deepgram runs its own VAD on top.
+        #
+        # The louder source is chosen so a mic-only moment is not dropped when
+        # system capture is idle.
+        if float(mic_rms) > float(sys_rms):
+            return mic_samples.astype(np.int16)
+        return sys_samples.astype(np.int16)
