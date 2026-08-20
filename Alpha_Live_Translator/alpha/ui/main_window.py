@@ -473,6 +473,11 @@ class AlphaApp(
         self._dg_thread = None
         self._dg_reconnect_lock = threading.Lock()  # CHANGED: reconnect serialization (fix 5)
         self._dg_reconnecting = False  # CHANGED: prevent parallel reconnects (fix 5)
+        # Item 47 runtime half: a key that was valid at Start and is later
+        # rejected must surface as a clear FAILED state, not an endless
+        # reconnect loop the operator cannot interpret. Set in
+        # `_deepgram_on_error`, cleared whenever the socket opens.
+        self._dg_auth_failed = False
         self._dg_backoff_seconds = 1.0  # CHANGED: exponential backoff start (fix 5)
         self._dg_awaiting_transcript_reset = False  # CHANGED: reset backoff on transcript (fix 5)
         self._dg_replay_buffer = []  # CHANGED: buffered audio for reconnect replay (fix 5)
@@ -3435,7 +3440,97 @@ class AlphaApp(
                 self.timer_label.configure(text=f"{hours:02d}:{mins:02d}:{secs:02d}")
             else:
                 self.timer_label.configure(text=f"{mins:02d}:{secs:02d}")
+        self._sync_connection_indicator()
         self._timer_job = self.after(1000, self._update_timer)
+
+    # Item 47's label text per state. `describe_connection` owns the DECISION;
+    # this owns only how it is spelled in a narrow header label.
+    _CONNECTION_INDICATOR_TEXT = {
+        "connected": ("● Signal OK", "accent_green"),
+        "reconnecting": ("● Reconnecting", "accent_red_glow"),
+        "degraded": ("● Translation degraded", "accent_red_glow"),
+        "failed": ("● Key rejected", "accent_red"),
+    }
+
+    def _sync_connection_indicator(self, *, force_idle: bool = False):
+        """Single owner of `signal_label`, driven by `describe_connection`.
+
+        Item 47, WIRED. `service_status.describe_connection` shipped 2026-08-12
+        and was reopened 2026-08-16 because **nothing in the application ever
+        called it** -- there was no status indicator at all. Meanwhile
+        `signal_label` was written from four places with two hardcoded strings,
+        "● Signal OK" and "● Standby", that reflected only whether a session was
+        running: a dead socket, a reconnect in flight and a rejected API key all
+        showed "Signal OK".
+
+        Those four writers now route here, so there is exactly one writer
+        (§0 rule 2), the same single-owner shape as item 81's
+        `_sync_transcript_visibility`. `force_idle` is for the stop/finalise
+        paths, where `is_listening` can still be True while the session is
+        already winding down and "Connected." would be a lie.
+
+        The severity ordering is deliberately NOT re-derived here -- it lives in
+        `describe_connection`, where `reconnecting` outranks `degraded` because
+        degraded means only translation is failing while the transcript still
+        flows, whereas reconnecting means the transcript itself has stopped.
+        """
+        label = getattr(self, "signal_label", None)
+        if label is None:
+            return
+        try:
+            from alpha.utils.service_status import describe_connection
+
+            listening = bool(getattr(self, "is_listening", False)) and not force_idle
+            worker = getattr(self, "translation_worker", None)
+            try:
+                gap_seconds = float(self.deepgram_gap_seconds())
+            except Exception:
+                gap_seconds = 0.0
+            status = describe_connection(
+                listening=listening,
+                # `_dg_disconnected_at` is the authoritative outage clock: set
+                # on an UNEXPECTED close only, cleared once the socket is
+                # genuinely back. Truthier than "is there a ws object".
+                deepgram_connected=not float(
+                    getattr(self, "_dg_disconnected_at", 0.0) or 0.0
+                ),
+                deepgram_reconnecting=bool(getattr(self, "_dg_reconnecting", False)),
+                deepgram_auth_failed=bool(getattr(self, "_dg_auth_failed", False)),
+                translation_degraded=bool(getattr(worker, "degraded", False)),
+                translation_status_message=str(
+                    getattr(worker, "status_message", "") or ""
+                ),
+                gap_seconds=gap_seconds,
+            )
+        except Exception:
+            # A status indicator must never be able to break the UI tick it
+            # rides on. Leave whatever is on screen.
+            return
+        if not listening:
+            text, color_key = "● Standby", "text_muted"
+        else:
+            text, color_key = self._CONNECTION_INDICATOR_TEXT.get(
+                status.state, ("● Signal OK", "accent_green")
+            )
+        try:
+            label.configure(text=text, text_color=COLORS[color_key])
+        except Exception:
+            return
+        # Surface the actionable sentence once per TRANSITION, not once per
+        # tick: this runs every second, and republishing an unchanged problem
+        # would bury everything else in the error surface.
+        previous = getattr(self, "_connection_indicator_state", None)
+        if status.state != previous:
+            self._connection_indicator_state = status.state
+            if listening and status.state != "connected":
+                try:
+                    self.publish_error_event(
+                        status.message,
+                        source="connection",
+                        recoverable=status.state != "failed",
+                    )
+                except Exception:
+                    pass
 
     def _update_status_bar(self, listening=False):
         """Refresh status bar visuals for idle vs listening."""
@@ -3452,7 +3547,10 @@ class AlphaApp(
                 text="Listening — capturing audio",
                 text_color=COLORS["text_primary"],
             )
-            self.signal_label.configure(text="● Signal OK", text_color=COLORS["accent_green"])
+            # Item 47: routed through the single owner. This used to say
+            # "Signal OK" for the whole session regardless of what the
+            # connection was actually doing.
+            self._sync_connection_indicator()
             self.timer_label.configure(text_color=COLORS["text_primary"])
             self._listen_start_time = time.time()
             self._waveform_phase = 0
@@ -3474,7 +3572,7 @@ class AlphaApp(
                 text="Ready to listen",
                 text_color=COLORS["text_secondary"],
             )
-            self.signal_label.configure(text="● Standby", text_color=COLORS["text_muted"])
+            self._sync_connection_indicator(force_idle=True)
             if self.timer_label is not None:
                 self.timer_label.configure(text="00:00", text_color=COLORS["text_secondary"])
             self._listen_start_time = None
@@ -8008,8 +8106,9 @@ class AlphaApp(
             lpp.mark("stop_ui_acknowledged_at")
         except Exception:
             pass
-        if self.signal_label is not None:
-            self.signal_label.configure(text="● Standby", text_color=COLORS["text_muted"])
+        # `is_listening` can still be True while the session winds down, so
+        # the indicator is forced idle rather than reporting "Connected."
+        self._sync_connection_indicator(force_idle=True)
         self._draw_waveform(idle=True)
 
     def _set_finalizing_ui_state(self):
@@ -8044,8 +8143,9 @@ class AlphaApp(
                 text="Finalizing...",
                 text_color=COLORS["text_primary"],
             )
-        if self.signal_label is not None:
-            self.signal_label.configure(text="● Standby", text_color=COLORS["text_muted"])
+        # `is_listening` can still be True while the session winds down, so
+        # the indicator is forced idle rather than reporting "Connected."
+        self._sync_connection_indicator(force_idle=True)
         self._draw_waveform(idle=True)
 
     def _set_stopped_ui_state(self):
@@ -9227,25 +9327,78 @@ class AlphaApp(
         except Exception:
             pass
 
-        key_status = get_deepgram_key_status()
-        if key_status == "missing":
-            print(MISSING_API_KEY_MSG)
-            messagebox.showerror("Deepgram API Key", MISSING_API_KEY_MSG)
+        # Item 46, WIRED. `service_status.preflight_credentials` is now the only
+        # thing that decides whether credentials permit a Start.
+        #
+        # It shipped 2026-08-12 as library code with **no production caller at
+        # all** and was reopened 2026-08-16 for exactly that. Meanwhile this
+        # function answered the same question itself -- two authorities for one
+        # decision (§0 rule 2) -- and only ever asked it about Deepgram, so a
+        # missing DeepL key was never reported at Start in any form. The
+        # operator started a session and found out there was no translation by
+        # watching the pane stay empty.
+        #
+        # Deepgram blocks the Start; DeepL does not. A session with no
+        # translation is degraded, not broken, and refusing to start would be
+        # worse than running transcript-only. That asymmetry is why
+        # `preflight_credentials` returns structured problems instead of
+        # raising, and why the non-blocking one is reported WITHOUT a modal --
+        # a dialog on every Start of a deliberately transcript-only setup would
+        # train the operator to dismiss the one that matters.
+        #
+        # `MISSING_API_KEY_MSG` / `PLACEHOLDER_API_KEY_MSG` are left defined but
+        # are no longer used here; the module's own messages say what the
+        # consequence is, not just what is wrong.
+        try:
+            from alpha.utils.service_status import (
+                blocking_problems,
+                preflight_credentials,
+            )
+
+            credential_problems = preflight_credentials()
+        except Exception as exc:
+            # The preflight is a guard, not a gate on its own health: if it
+            # cannot run, that must never be what stops a session starting.
+            print(f"[Preflight] credential check failed: {exc}")
+            credential_problems = []
+        blocking = blocking_problems(credential_problems)
+        if blocking:
+            problem = blocking[0]
+            print(problem.message)
+            messagebox.showerror(f"{problem.service} API Key", problem.message)
             self.publish_error_event(
-                MISSING_API_KEY_MSG,
+                problem.message,
                 source="config",
                 recoverable=True,
             )
+            try:
+                from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+                jp_accuracy_log(
+                    "START_BLOCKED_BY_CREDENTIAL_PREFLIGHT",
+                    service=problem.service,
+                    code=problem.code,
+                )
+            except Exception:
+                pass
             return
-        if key_status == "placeholder":
-            print(PLACEHOLDER_API_KEY_MSG)
-            messagebox.showerror("Deepgram API Key", PLACEHOLDER_API_KEY_MSG)
+        for problem in credential_problems:
+            print(problem.message)
             self.publish_error_event(
-                PLACEHOLDER_API_KEY_MSG,
+                problem.message,
                 source="config",
                 recoverable=True,
             )
-            return
+            try:
+                from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+                jp_accuracy_log(
+                    "START_CREDENTIAL_WARNING",
+                    service=problem.service,
+                    code=problem.code,
+                )
+            except Exception:
+                pass
 
         dropdown_lang = self._strip_language_flag(self.source_language.get())
         # Capture dropdown before Start Listening so it cannot be overwritten silently.

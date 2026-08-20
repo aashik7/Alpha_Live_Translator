@@ -2173,6 +2173,8 @@ class DeepgramClientMixin:
     def _deepgram_on_open(self, ws):
             """Start streaming queued audio to Deepgram when the socket opens."""
             print("Nova-3 connected — streaming audio to Deepgram")
+            # The key was accepted, so any earlier rejection is stale.
+            self._dg_auth_failed = False
             # Item 44, second correction. The gap marker used to be emitted in
             # `_reconnect_deepgram` just before `run_forever`, i.e. before the
             # socket was known to connect -- so on run `...20260812-142447` it
@@ -2653,6 +2655,30 @@ class DeepgramClientMixin:
                 return
             print(f"Deepgram WebSocket error: {err}")
             err_text = str(err)
+            # Item 47 runtime half. Purely a FLAG -- no control flow here
+            # changes, so the existing reconnect behaviour is untouched and
+            # only the status indicator reads it. Without this, a revoked or
+            # expired key looked exactly like a flaky network: the socket
+            # closed, the loop backed off and retried forever, and the
+            # operator saw "Signal OK" the whole time.
+            _low_err = err_text.lower()
+            if (
+                "401" in err_text
+                or "403" in err_text
+                or "unauthorized" in _low_err
+                or "forbidden" in _low_err
+                or "invalid credentials" in _low_err
+                or "invalid_auth" in _low_err
+            ):
+                self._dg_auth_failed = True
+                try:
+                    from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+                    jp_accuracy_log(
+                        "DEEPGRAM_AUTH_REJECTED", error=err_text[:200]
+                    )
+                except Exception:
+                    pass
             if (
                 bool(JAPANESE_MODE_ENABLED)
                 and bool(JAPANESE_KEYTERMS_ENABLED)
