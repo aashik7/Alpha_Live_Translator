@@ -12,6 +12,8 @@ import re
 import threading
 import time
 import uuid
+from collections import deque
+from types import SimpleNamespace
 
 import customtkinter as ctk
 import tkinter as tk
@@ -1425,6 +1427,10 @@ class AlphaApp(
     # -----------------------------------------------------------------------
     def _reset_incremental_display_state(self):
         self._displayed_segment_count = 0
+        # Cleared with the widget it describes: it records how many logical
+        # lines each rendered segment wrote, and a stale entry would make the
+        # render cap trim the wrong number of lines after a Clear.
+        self._displayed_segment_lines = deque()
         self._exported_ui_segment_count = 0
         self._transcript_ui_batch_buffer.clear()
         self._transcript_ui_last_flush_mono = 0.0
@@ -1545,8 +1551,59 @@ class AlphaApp(
             box.insert("end", "\n")
         box.mark_set("segment_anchor", "end-1c")
         box.mark_gravity("segment_anchor", "left")
-        box.insert("end", self._ui_speaker_label_text(), tag)
-        box.insert("end", (text or "").strip() + "\n", "body")
+        # C8, item 82. This is the path the live pane actually uses: every
+        # translation-eligible commit reaches it through
+        # `duplicate_protection.py`'s `_on_store_segment_added` /
+        # `_on_store_segment_updated`, and the grouped renderer
+        # `_render_transcript_from_store` is only reached when a segment is NOT
+        # translation-eligible. So the pane a user watches during a meeting was
+        # the one path of the four C8 names that did not group.
+        #
+        # Confirmed against the live run of 2026-08-20 rather than argued: the
+        # same session produced `Alpha output.txt` with 84 lines at a median of
+        # 24 words and nothing over 400 characters, while the pane held 36 lines
+        # -- exactly the record count -- at a median of 50 words and up to 1509
+        # characters. One record, one unbroken line.
+        #
+        # `_readable_parts` is the same memoised grouping the store, the copy
+        # path and the export all use, so the pane can no longer disagree with
+        # them, and text no longer reflows the moment it commits (item 69).
+        # It falls back to the raw text on any failure: an unreadable line is
+        # better than a lost one.
+        lines = 0
+        for part in self._readable_segment_parts(speaker, text):
+            box.insert("end", self._ui_speaker_label_text(), tag)
+            box.insert("end", part + "\n", "body")
+            lines += 1
+        return lines
+
+    def _readable_segment_parts(self, speaker, text: str) -> list[str]:
+        """Group one committed segment into the design's readable lines.
+
+        Kept separate from the insert so the render cap can ask how many lines a
+        segment will occupy without writing anything, and so the fallback is in
+        one place rather than repeated at each call site.
+        """
+        raw = (text or "").strip()
+        if not raw:
+            return []
+        store = getattr(self, "transcript_store", None)
+        if store is None or not hasattr(store, "_readable_parts"):
+            return [raw]
+        try:
+            segment = SimpleNamespace(text=raw, source_language=self._segment_language())
+            parts = [p for p in store._readable_parts(segment) if p and p.strip()]
+            return parts or [raw]
+        except Exception:
+            return [raw]
+
+    def _segment_language(self) -> str:
+        """Language tag for grouping. Grouping is English-only by design --
+        Japanese gets its boundaries from the assembler (C9)."""
+        try:
+            return str(getattr(self, "_listen_language", "") or "")
+        except Exception:
+            return ""
 
     def _on_store_segment_added(
         self,
@@ -1591,15 +1648,26 @@ class AlphaApp(
         box.configure(state="normal")
         if hasattr(self, "_clear_text_placeholder"):
             self._clear_text_placeholder(box)
-        self._insert_speaker_segment_line(box, speaker, text)
+        inserted_lines = self._insert_speaker_segment_line(box, speaker, text) or 1
         # Bound rendered UI history; canonical TranscriptStore remains complete.
+        #
+        # Item 74(a), now live. This trim used to delete ONE logical line per
+        # excess SEGMENT, which was only correct while a segment was always
+        # exactly one line. Grouping (C8, above) makes a segment 1-3 lines, so
+        # counting segments would under-trim by the lines-per-entry factor and
+        # leave half-entries stranded at the top of the pane. The widget is now
+        # trimmed by the lines each segment actually wrote, recorded in the same
+        # order they were inserted.
         try:
             limit = int(MAX_RENDERED_UI_SEGMENTS)
-            rendered = int(getattr(self, "_displayed_segment_count", 0) or 0) + 1
-            if rendered > limit:
-                # Delete oldest rendered line(s) from the widget only.
-                excess = rendered - limit
-                for _ in range(max(1, excess)):
+            history = getattr(self, "_displayed_segment_lines", None)
+            if history is None:
+                history = deque()
+                self._displayed_segment_lines = history
+            history.append(int(inserted_lines))
+            while len(history) > limit:
+                stale_lines = int(history.popleft() or 1)
+                for _ in range(max(1, stale_lines)):
                     try:
                         box.delete("1.0", "2.0")
                     except Exception:

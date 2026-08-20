@@ -65,10 +65,20 @@ class SegmentUpdateReplacesTest(unittest.TestCase):
         self.root.withdraw()
         self.box = tk.Text(self.root)
 
+        from alpha.summary.transcript_store import TranscriptStore
+
         class Host:
             _insert_speaker_segment_line = AlphaApp._insert_speaker_segment_line
+            # Item 82 made the insert group English through the store, the same
+            # way the export does, so the host has to carry that collaborator.
+            _readable_segment_parts = AlphaApp._readable_segment_parts
+            _segment_language = AlphaApp._segment_language
             _ui_speaker_label_text = AlphaApp._ui_speaker_label_text
             _speaker_tag = AlphaApp._speaker_tag
+            _listen_language = "en"
+
+            def __init__(self):
+                self.transcript_store = TranscriptStore()
 
         self.host = Host()
 
