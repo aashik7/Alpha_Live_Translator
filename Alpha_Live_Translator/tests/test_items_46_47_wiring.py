@@ -385,7 +385,10 @@ class TheIndicatorReflectsTheConnection(unittest.TestCase):
         indicator reports "Signal OK" over a device nothing is routed to."""
         self.host._audio_device_changed = True
         self.host._sync_connection_indicator()
-        self.assertEqual(self._text(), "● Reconnecting")
+        # NOT "● Reconnecting": the severity is the same but nothing is
+        # reconnecting, and naming the state after its severity would tell the
+        # operator to wait for a recovery that will never come.
+        self.assertEqual(self._text(), "● Audio device changed")
         self.assertTrue(
             any("default audio output" in m for m, _s, _r in self.host.published),
             f"the operator was never told what to do: {self.host.published}",
@@ -415,6 +418,24 @@ class TheIndicatorReflectsTheConnection(unittest.TestCase):
         self.host._audio_device_changed = False
         self.host._sync_connection_indicator()
         self.assertEqual(self._text(), "● Signal OK")
+
+    def test_a_socket_reconnect_still_says_reconnecting(self):
+        """The device wording must not leak onto an ordinary reconnect."""
+        self.host._dg_disconnected_at = 1.0
+        self.host._sync_connection_indicator()
+        self.assertEqual(self._text(), "● Reconnecting")
+
+    def test_a_device_change_during_a_reconnect_names_the_device(self):
+        """Both true: `describe_connection` gives the device message, so the
+        label must agree with the sentence the operator is shown."""
+        self.host._dg_disconnected_at = 1.0
+        self.host._dg_reconnecting = True
+        self.host._audio_device_changed = True
+        self.host._sync_connection_indicator()
+        self.assertEqual(self._text(), "● Audio device changed")
+        self.assertTrue(
+            any("default audio output" in m for m, _s, _r in self.host.published)
+        )
 
     def test_a_missing_label_is_not_an_error(self):
         self.host.signal_label = None

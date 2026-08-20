@@ -3656,6 +3656,17 @@ class AlphaApp(
             text, color_key = self._CONNECTION_INDICATOR_TEXT.get(
                 status.state, ("● Signal OK", "accent_green")
             )
+            # A device change is ranked AT `reconnecting` severity, but nothing
+            # is reconnecting -- the socket is fine and the capture device is
+            # simply recording something nothing is routed to any more. Naming
+            # the state after its severity would tell the operator to wait for
+            # a recovery that will never come. The severity still lives in
+            # `describe_connection`; only the wording is chosen here, and only
+            # when that is the reason the state was raised.
+            if status.state == "reconnecting" and status.detail.get(
+                "audio_device_changed"
+            ):
+                text = "● Audio device changed"
         try:
             label.configure(text=text, text_color=COLORS[color_key])
         except Exception:
