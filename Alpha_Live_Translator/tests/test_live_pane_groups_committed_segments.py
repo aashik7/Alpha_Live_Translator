@@ -74,6 +74,13 @@ def _host(language="en"):
         _segment_language = AlphaApp._segment_language
         _ui_speaker_label_text = AlphaApp._ui_speaker_label_text
         _speaker_tag = AlphaApp._speaker_tag
+        # Item 75 added the meta row and the current-entry highlight to the
+        # same insert, so the host carries those collaborators too -- same
+        # reason as the item 82 line above.
+        _ensure_entry_tags = AlphaApp._ensure_entry_tags
+        _entry_meta_text = AlphaApp._entry_meta_text
+        _entry_meta_time_text = AlphaApp._entry_meta_time_text
+        _highlight_current_entry = AlphaApp._highlight_current_entry
 
         def __init__(self):
             self._listen_language = language
@@ -85,6 +92,24 @@ def _host(language="en"):
 
 def _lines(box):
     return [l for l in box.get("1.0", "end").splitlines() if l.strip()]
+
+
+def _body_lines(box):
+    """Only the lines carrying transcript text.
+
+    Item 75 renders a tagged `entry_meta` row above each entry, so an entry is
+    no longer one logical line. These assertions are about the BODY -- how the
+    text was grouped and how many entries survive the cap -- so the meta rows
+    are filtered by tag rather than by their text.
+    """
+    out = []
+    for number, line in enumerate(box.get("1.0", "end").splitlines(), start=1):
+        if not line.strip():
+            continue
+        if "entry_meta" in box.tag_names(f"{number}.0"):
+            continue
+        out.append(line)
+    return out
 
 
 @unittest.skipUnless(TK_AVAILABLE, "Tk cannot start in this environment")
@@ -133,7 +158,11 @@ class TheLivePaneGroups(unittest.TestCase):
         box = tk.Text(self.root)
         jp = "これは一つ目です。これは二つ目です。これは三つ目です。"
         written = host._insert_speaker_segment_line(box, 1, jp)
-        self.assertEqual(written, 1, "Japanese was split by the English rule")
+        self.assertEqual(
+            len(_body_lines(box)), 1, "Japanese was split by the English rule"
+        )
+        # meta row + one body line; the body is what C9 protects.
+        self.assertEqual(written, 2)
 
     def test_empty_text_writes_nothing(self):
         self.assertEqual(self.host._insert_speaker_segment_line(self.box, 1, "  "), 0)
@@ -149,7 +178,8 @@ class TheLivePaneGroups(unittest.TestCase):
         host.transcript_store = Boom()
         box = tk.Text(self.root)
         written = host._insert_speaker_segment_line(box, 1, FOUR_SENTENCES)
-        self.assertEqual(written, 1)
+        self.assertEqual(len(_body_lines(box)), 1)
+        self.assertEqual(written, len(_lines(box)))
         self.assertIn("Imagine being able", " ".join(_lines(box)))
 
 
@@ -193,16 +223,25 @@ class TheRenderCapCountsLinesNotSegments(unittest.TestCase):
     def test_the_oldest_entry_is_removed_whole(self):
         """Trimming by segment count left half-entries stranded at the top."""
         box, _ = self._fill(int(MAX_RENDERED_UI_SEGMENTS) + 5, FOUR_SENTENCES)
-        first = _lines(box)[0]
-        self.assertTrue(
-            first.startswith("Speaker:"),
-            f"the top of the pane is a stranded fragment: {first[:60]!r}",
+        # Item 75: an entry now STARTS with its meta row, so the top of the pane
+        # being tagged `entry_meta` is the proof that a whole entry was removed
+        # and the next one begins cleanly -- the same thing this test always
+        # asserted, expressed against the current entry shape.
+        self.assertIn(
+            "entry_meta",
+            box.tag_names("1.0"),
+            f"the top of the pane is a stranded fragment: {_lines(box)[0][:60]!r}",
         )
 
     def test_a_single_line_entry_still_caps_exactly(self):
         limit = int(MAX_RENDERED_UI_SEGMENTS)
         box, _ = self._fill(limit + 40, "One short sentence.")
-        self.assertEqual(len(_lines(box)), limit)
+        # The cap bounds SEGMENTS, not lines; item 75 makes each of them a meta
+        # row plus one body line, so the widget holds exactly twice the limit
+        # and not one line more. Drift here is what the cap arithmetic breaking
+        # would look like.
+        self.assertEqual(len(_body_lines(box)), limit)
+        self.assertEqual(len(_lines(box)), limit * 2)
 
 
 if __name__ == "__main__":

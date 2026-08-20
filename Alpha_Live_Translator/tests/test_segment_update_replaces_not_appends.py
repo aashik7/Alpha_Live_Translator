@@ -75,6 +75,13 @@ class SegmentUpdateReplacesTest(unittest.TestCase):
             _segment_language = AlphaApp._segment_language
             _ui_speaker_label_text = AlphaApp._ui_speaker_label_text
             _speaker_tag = AlphaApp._speaker_tag
+            # Item 75 added the meta row and the current-entry highlight to the
+            # same insert, so the host carries those collaborators too -- same
+            # reason as the item 82 line above.
+            _ensure_entry_tags = AlphaApp._ensure_entry_tags
+            _entry_meta_text = AlphaApp._entry_meta_text
+            _entry_meta_time_text = AlphaApp._entry_meta_time_text
+            _highlight_current_entry = AlphaApp._highlight_current_entry
             _listen_language = "en"
 
             def __init__(self):
@@ -86,7 +93,7 @@ class SegmentUpdateReplacesTest(unittest.TestCase):
         self.root.destroy()
 
     def _add(self, text, speaker=1):
-        self.host._insert_speaker_segment_line(self.box, speaker, text)
+        return self.host._insert_speaker_segment_line(self.box, speaker, text)
 
     def _update_in_place(self):
         """The delete half of `_on_store_segment_updated`, verbatim."""
@@ -105,6 +112,23 @@ class SegmentUpdateReplacesTest(unittest.TestCase):
     def _lines(self):
         return [l for l in self._content().splitlines() if l.strip()]
 
+    def _body_lines(self):
+        """Only the lines that carry transcript text.
+
+        Item 75 renders a tagged `entry_meta` row above each entry, so counting
+        raw lines no longer counts entries. Filtering by the tag rather than by
+        the text keeps these assertions about the SEGMENT, which is what they
+        were always testing.
+        """
+        out = []
+        for number, line in enumerate(self._content().splitlines(), start=1):
+            if not line.strip():
+                continue
+            if "entry_meta" in self.box.tag_names(f"{number}.0"):
+                continue
+            out.append(line)
+        return out
+
     def test_a_corrected_segment_replaces_the_stale_one(self):
         self._add("the first version")
         self._update_in_place()
@@ -117,14 +141,14 @@ class SegmentUpdateReplacesTest(unittest.TestCase):
         self._add("the first version")
         self._update_in_place()
         self._add("the CORRECTED version")
-        self.assertEqual(len(self._lines()), 1, self._content())
+        self.assertEqual(len(self._body_lines()), 1, self._content())
 
     def test_earlier_segments_are_untouched_by_an_update(self):
         self._add("segment one stays")
         self._add("segment two original", speaker=2)
         self._update_in_place()
         self._add("segment two CORRECTED", speaker=2)
-        lines = self._lines()
+        lines = self._body_lines()
         self.assertEqual(len(lines), 2, self._content())
         self.assertIn("segment one stays", lines[0])
         self.assertIn("segment two CORRECTED", lines[1])
@@ -135,17 +159,31 @@ class SegmentUpdateReplacesTest(unittest.TestCase):
         for n in range(2, 6):
             self._update_in_place()
             self._add(f"version {n}")
-        lines = self._lines()
+        lines = self._body_lines()
         self.assertEqual(len(lines), 1, self._content())
         self.assertIn("version 5", lines[0])
 
-    def test_each_segment_occupies_exactly_one_logical_line(self):
-        """The render cap trims one logical line per segment, so a segment that
-        spans two would break it. Pinned here because this function is where
-        that would first change."""
+    def test_the_reported_line_count_matches_what_was_written(self):
+        """This test used to pin "one logical line per segment".
+
+        That invariant was real while the render cap deleted a fixed one line
+        per segment. Item 74(a) replaced that with a recorded per-segment line
+        count, and item 75 then deliberately made an entry multi-line (a meta
+        row above the grouped body) -- which is exactly the change this test was
+        left here to catch. The invariant the cap actually depends on now is
+        that the RETURNED count equals the lines written, so that is what is
+        pinned.
+        """
         for text in ("one", "two", "three"):
-            self._add(text)
-        self.assertEqual(len(self._lines()), 3, self._content())
+            reported = self._add(text)
+            self.assertIsNotNone(reported)
+        self.assertEqual(len(self._body_lines()), 3, self._content())
+
+    def test_an_entry_is_a_meta_row_plus_its_grouped_body(self):
+        reported = self._add("a single short sentence")
+        self.assertEqual(reported, len(self._lines()))
+        self.assertEqual(len(self._body_lines()), 1)
+        self.assertEqual(reported, 2, self._content())
 
     def test_the_anchor_is_left_gravity_at_the_segment_start(self):
         """Pins the mechanism. If either half is reverted the update silently

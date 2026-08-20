@@ -1580,12 +1580,143 @@ class AlphaApp(
         # them, and text no longer reflows the moment it commits (item 69).
         # It falls back to the raw text on any failure: an unreadable line is
         # better than a lost one.
+        #
+        # Item 75. The meta row and the highlight are `tk.Text` tag ranges, not
+        # per-entry widgets. Measured on this machine before choosing: 430
+        # entries as CTk cards cost 15.33 s, 5,161 widgets and +49.3 MB RSS,
+        # against 38.46 ms for a full text rewrite -- 35.6 ms per card against
+        # 0.042 ms incremental, so ONE card is 3.6x the entire 10 ms per-tick
+        # budget.
+        #
+        # This is the transcript pane only. `_get_clean_transcript_for_copy_export`
+        # builds the exported transcript from `transcript_store.get_all()` and
+        # has no widget fallback, so a decorative row here can never reach the
+        # client's file. The translation pane is the opposite --
+        # `_get_translated_transcript_for_copy_export` falls back to
+        # `box.get("1.0", "end")` -- which is why nothing decorative is ever
+        # written there.
+        # An empty commit must still write NOTHING -- not even a meta row.
+        # Grouping an empty segment yields no parts, and a meta row on its own
+        # would be a dangling `Speaker 1 · 14:32:05` with no transcript under
+        # it, counted by the render cap as a line that carries no content.
+        parts = self._readable_segment_parts(speaker, text)
+        if not parts:
+            return 0
+        self._ensure_entry_tags(box)
+        entry_start = box.index("end-1c")
         lines = 0
-        for part in self._readable_segment_parts(speaker, text):
+        meta = self._entry_meta_text(speaker)
+        if meta:
+            box.insert("end", meta + "\n", "entry_meta")
+            lines += 1
+        for part in parts:
             box.insert("end", self._ui_speaker_label_text(), tag)
             box.insert("end", part + "\n", "body")
             lines += 1
+        # The count travels to the render cap, which trims by the lines each
+        # segment actually wrote (item 74(a)). Counting the meta row here is
+        # what keeps that arithmetic exact now that an entry is no longer one
+        # logical line -- the single hazard the ledger flagged for this item.
+        self._highlight_current_entry(box, entry_start)
         return lines
+
+    def _ensure_entry_tags(self, box) -> None:
+        """Configure item 75's tags on first use, on this widget only.
+
+        Done lazily here rather than in `_create_styled_text` so the tags exist
+        on the transcript widget and nowhere else. `_create_styled_text` builds
+        both panes, and the translation pane must stay free of decoration.
+        """
+        try:
+            names = box.tag_names()
+        except Exception:
+            return
+        try:
+            if "entry_meta" not in names:
+                box.tag_configure(
+                    "entry_meta",
+                    foreground=COLORS.get("text_muted", "#94A3B8"),
+                    spacing1=6,
+                    spacing3=2,
+                )
+            if "current_entry" not in names:
+                box.tag_configure(
+                    "current_entry",
+                    background=COLORS.get("card_bg_soft", COLORS.get("card_bg", "")),
+                )
+                # Lowest priority: it sets only a background, but keeping it
+                # under the speaker/body tags means it can never win a conflict
+                # over an attribute they also set.
+                box.tag_lower("current_entry")
+        except Exception:
+            pass
+
+    def _entry_meta_text(self, speaker) -> str:
+        """`Speaker 2 - 14:32:05`, the per-entry meta row (item 75).
+
+        Returns "" on any failure, and the caller then renders the entry
+        exactly as it did before -- a missing meta row is cosmetic, a raised
+        exception here would cost the committed segment its render.
+        """
+        try:
+            label = (self._ui_speaker_label_text() or "").strip().rstrip(":").strip()
+        except Exception:
+            label = ""
+        try:
+            speaker_num = int(speaker)
+            if 1 <= speaker_num <= 4:
+                label = f"{label} {speaker_num}".strip()
+        except (TypeError, ValueError):
+            pass
+        when = self._entry_meta_time_text()
+        parts = [p for p in (label, when) if p]
+        return " · ".join(parts)
+
+    def _entry_meta_time_text(self) -> str:
+        """Wall-clock time for the newest committed segment.
+
+        Read from the store rather than threaded through the UI hooks:
+        `_on_store_segment_added` / `_on_store_segment_updated` take no
+        timestamp, and `duplicate_protection.py` writes the segment to the
+        store BEFORE calling either hook, so the value is already there.
+        Measured on run `...20260820-235820`: 126 of 126 rows carry it, as an
+        epoch float.
+        """
+        stamp = None
+        try:
+            store = getattr(self, "transcript_store", None)
+            if store is not None:
+                segments = store.get_all()
+                if segments:
+                    stamp = getattr(segments[-1], "timestamp", None)
+        except Exception:
+            stamp = None
+        try:
+            if stamp is None:
+                value = time.time()
+            elif isinstance(stamp, (int, float)):
+                value = float(stamp)
+            else:
+                value = float(str(stamp).strip())
+            return time.strftime("%H:%M:%S", time.localtime(value))
+        except Exception:
+            try:
+                return time.strftime("%H:%M:%S")
+            except Exception:
+                return ""
+
+    def _highlight_current_entry(self, box, start_index) -> None:
+        """Move the current-entry highlight to the entry starting at `start_index`.
+
+        One tag range, moved, rather than per-entry state: the previous range is
+        removed across the whole widget first, so the highlight cannot be left
+        behind by a trim at the top or by a revision replacing the last entry.
+        """
+        try:
+            box.tag_remove("current_entry", "1.0", "end")
+            box.tag_add("current_entry", start_index, "end-1c")
+        except Exception:
+            pass
 
     def _delete_translation_entry(self, box, mark_name, item=None):
         """Remove a whole displayed translation entry, however many lines it is.
