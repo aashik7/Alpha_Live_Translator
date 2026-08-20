@@ -8420,14 +8420,40 @@ class AlphaApp(
         # fixes TASK_3A_FINDINGS.md Item 1: track the loading item by
         # canonical_utterance_id too, so a later revision can find and
         # remove exactly this item instead of guessing by position.
+        #
+        # This must NEVER overwrite an entry that is already DISPLAYED. A
+        # revision re-submits the same canonical_utterance_id while the previous
+        # translation is still on screen, and this write used to replace that
+        # entry's `tr_done_<id>_<n>` mark and its recorded line count with a
+        # pending row's `tr_load_<segment_id>`. The displayed line then became
+        # unreachable: nothing could remove it, so the superseded translation
+        # stayed beside its replacement for the rest of the session, and the
+        # removal added for item 84 never fired even once.
+        #
+        # Measured by replaying run `...20260820-162804`'s real timeline through
+        # these exact methods: 144 completed translations, 11 utterances
+        # translated two or three times, **12 superseded renderings still
+        # visible** in the reproduced pane. The first utterance of the session
+        # is one of them, which is why it reads as broken immediately.
+        #
+        # The pending job does not need this dict at all -- it is already
+        # tracked in `_translation_loading_items`, keyed by segment_id, and that
+        # is what `_clear_translation_loading_item` reads to find the pending
+        # row. The entry here exists only so an utterance with NO displayed line
+        # yet can still be found by identity.
         utterance_key = str(canonical_utterance_id or "")
         if utterance_key:
-            self._translation_items_by_utterance[utterance_key] = {
-                "segment_id": int(segment_id),
-                "mark": mark_name,
-                "source_version": int(source_version or 1),
-                "state": "loading",
-            }
+            displayed = self._translation_items_by_utterance.get(utterance_key)
+            already_on_screen = (
+                isinstance(displayed, dict) and displayed.get("state") == "completed"
+            )
+            if not already_on_screen:
+                self._translation_items_by_utterance[utterance_key] = {
+                    "segment_id": int(segment_id),
+                    "mark": mark_name,
+                    "source_version": int(source_version or 1),
+                    "state": "loading",
+                }
         try:
             box.see(tk.END)
         except Exception:
@@ -8884,6 +8910,27 @@ class AlphaApp(
             self._clear_text_placeholder(box)
             box.configure(state="normal")
             label = self._ui_speaker_label_text()
+            # A revision supersedes the entry already on screen for this
+            # utterance. Same rule and same reasons as the `segment_id` branch
+            # in `_clear_translation_loading_item`: identity only, never
+            # position or similarity, and done here at write time so the old
+            # line survives until its replacement actually exists.
+            if utterance_key:
+                previous = (self._translation_items_by_utterance or {}).get(
+                    utterance_key
+                )
+                previous_mark = (
+                    (previous or {}).get("mark")
+                    if isinstance(previous, dict)
+                    else None
+                )
+                if previous_mark and previous.get("state") == "completed":
+                    try:
+                        if box.compare(previous_mark, ">=", "1.0"):
+                            self._delete_translation_entry(box, previous_mark, previous)
+                        box.mark_unset(previous_mark)
+                    except Exception:
+                        pass
             # Same correction as the completed branch above: `tk.END` is one
             # character past the real write position, so a mark placed there
             # lands on the following line and cannot remove this translation
@@ -8891,7 +8938,6 @@ class AlphaApp(
             if box.index("end-1c") != box.index("end-1c linestart"):
                 box.insert(tk.END, "\n")
             start_idx = box.index("end-1c")
-            box.insert(tk.END, label)
             tag_name = "speaker_label"
             if tag_name not in box.tag_names():
                 box.tag_configure(
@@ -8899,10 +8945,19 @@ class AlphaApp(
                     foreground=COLORS.get("text_primary", "#111111"),
                     font=("Segoe UI", 12, "bold"),
                 )
-            end_idx = box.index("end-1c")
-            box.tag_add(tag_name, start_idx, end_idx)
-            box.insert(tk.END, cleaned + "\n", "body")
+            # Item 83's grouping, which this branch used to skip -- it wrote the
+            # whole translation as one raw line. That made it a fifth ungrouped
+            # render path, the exact shape item 82 was filed for, and it also
+            # recorded no line count, so a later revision could only ever remove
+            # the first line of what it wrote.
+            parts = self._readable_translation_parts(cleaned) or [cleaned]
+            for part in parts:
+                part_start = box.index("end-1c")
+                box.insert(tk.END, label)
+                box.tag_add(tag_name, part_start, box.index("end-1c"))
+                box.insert(tk.END, part + "\n", "body")
             box.configure(state="disabled")
+            entry_lines = len(parts)
             line = f"{label}{cleaned}"
             # fixes TASK_3A_FINDINGS.md Item 1: identity-keyed tracking
             # instead of appending to a flat positional list.
@@ -8921,6 +8976,7 @@ class AlphaApp(
                     "source_version": int(source_version or 1),
                     "state": "completed",
                     "line_text": line,
+                    "entry_lines": int(entry_lines),
                 }
             else:
                 self._log_translation_display_skip(

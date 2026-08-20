@@ -118,6 +118,7 @@ class ARevisionDeliveredAsAnAddReplacesItsTranslation(unittest.TestCase):
 
         class Host:
             _on_store_segment_added = AlphaApp._on_store_segment_added
+            _show_translation_loading_item = AlphaApp._show_translation_loading_item
             _clear_translation_loading_item = AlphaApp._clear_translation_loading_item
             _remove_translation_item_for_utterance = (
                 AlphaApp._remove_translation_item_for_utterance
@@ -132,6 +133,7 @@ class ARevisionDeliveredAsAnAddReplacesItsTranslation(unittest.TestCase):
                 self._translation_items_by_utterance = {}
                 self.submitted = []
                 self.skips = []
+                self.next_segment_id = 1
 
             # The transcript box is genuinely absent here: this test is about
             # the translation pane, and `_on_store_segment_added` returns right
@@ -146,7 +148,22 @@ class ARevisionDeliveredAsAnAddReplacesItsTranslation(unittest.TestCase):
                 pass
 
             def submit_text_for_translation(self, text, **kw):
+                """Faithful to production: the real one registers a pending
+                item for the job before anything else.
+
+                Leaving this out is what let a fix ship that never fired --
+                `_show_translation_loading_item` writes to the SAME registry the
+                removal reads, so a test that skips it cannot see the clobber.
+                """
                 self.submitted.append((text, kw))
+                self._show_translation_loading_item(
+                    segment_id=int(self.next_segment_id),
+                    session_id="test",
+                    canonical_utterance_id=str(
+                        kw.get("canonical_utterance_id") or ""
+                    ),
+                    source_version=int(kw.get("source_version") or 1),
+                )
 
             def _log_translation_display_skip(self, **kw):
                 self.skips.append(kw)
@@ -156,9 +173,10 @@ class ARevisionDeliveredAsAnAddReplacesItsTranslation(unittest.TestCase):
     def tearDown(self):
         self.root.destroy()
 
-    def _commit(self, text, key, version=1):
+    def _commit(self, text, key, version=1, segment_id=1):
         """A canonical commit reaching the UI as an ADD, which is what the
         Japanese revision path actually does (decision: CREATE_NEW)."""
+        self.host.next_segment_id = int(segment_id)
         self.host._on_store_segment_added(
             1,
             text,
@@ -180,9 +198,9 @@ class ARevisionDeliveredAsAnAddReplacesItsTranslation(unittest.TestCase):
         return self.box.get("1.0", "end")
 
     def test_the_superseded_translation_is_gone(self):
-        self._commit(JA_V1, "jp-utt-A")
+        self._commit(JA_V1, "jp-utt-A", segment_id=1)
         self._translated(1, "jp-utt-A", EN_V1)
-        self._commit(JA_V2, "jp-utt-A")
+        self._commit(JA_V2, "jp-utt-A", segment_id=2)
         self._translated(2, "jp-utt-A", EN_V2)
         self.assertIn("I'm actually a bit against that", self._pane())
         self.assertEqual(
@@ -193,20 +211,20 @@ class ARevisionDeliveredAsAnAddReplacesItsTranslation(unittest.TestCase):
 
     def test_a_multi_line_revision_leaves_no_orphan_lines(self):
         """Item 83 groups a translation into 2-3 lines; all of them must go."""
-        self._commit(JA_V1, "jp-utt-B")
+        self._commit(JA_V1, "jp-utt-B", segment_id=1)
         self._translated(1, "jp-utt-B", LONG_V1)
-        self._commit(JA_V2, "jp-utt-B")
+        self._commit(JA_V2, "jp-utt-B", segment_id=2)
         self._translated(2, "jp-utt-B", LONG_V2)
         self.assertIn("long words in advance", self._pane())
         self.assertNotIn("long sentences", self._pane())
 
     def test_a_third_version_also_replaces(self):
         """Two ids in the run were translated three times."""
-        self._commit(JA_V1, "jp-utt-C")
+        self._commit(JA_V1, "jp-utt-C", segment_id=1)
         self._translated(1, "jp-utt-C", "First rendering of it.")
-        self._commit(JA_V2, "jp-utt-C")
+        self._commit(JA_V2, "jp-utt-C", segment_id=2)
         self._translated(2, "jp-utt-C", "Second rendering of it.")
-        self._commit(JA_V2, "jp-utt-C")
+        self._commit(JA_V2, "jp-utt-C", segment_id=3)
         self._translated(3, "jp-utt-C", "Third rendering of it.")
         pane = self._pane()
         self.assertIn("Third rendering", pane)
@@ -219,9 +237,9 @@ class ARevisionDeliveredAsAnAddReplacesItsTranslation(unittest.TestCase):
         Two distinct utterances can be textually near-identical. Only a
         matching canonical_utterance_id may cause a removal.
         """
-        self._commit("A", "jp-utt-D")
+        self._commit("A", "jp-utt-D", segment_id=1)
         self._translated(1, "jp-utt-D", "The first quarter was strong.")
-        self._commit("B", "jp-utt-E")
+        self._commit("B", "jp-utt-E", segment_id=2)
         self._translated(2, "jp-utt-E", "The second quarter was strong.")
         pane = self._pane()
         self.assertIn("first quarter", pane)
@@ -231,23 +249,23 @@ class ARevisionDeliveredAsAnAddReplacesItsTranslation(unittest.TestCase):
         """109 of the run's 120 commits were genuine appends; none may be lost."""
         for i in range(6):
             key = "jp-utt-seq-%d" % i
-            self._commit("t%d" % i, key)
+            self._commit("t%d" % i, key, segment_id=i + 1)
             self._translated(i + 1, key, "Rendering number %d here." % i)
         for i in range(6):
             self.assertIn("number %d here" % i, self._pane())
 
     def test_the_translation_is_still_submitted_for_a_revision(self):
         """Removal must not short-circuit the resubmit."""
-        self._commit(JA_V1, "jp-utt-F")
+        self._commit(JA_V1, "jp-utt-F", segment_id=1)
         self._translated(1, "jp-utt-F", EN_V1)
-        self._commit(JA_V2, "jp-utt-F")
+        self._commit(JA_V2, "jp-utt-F", segment_id=2)
         self.assertEqual(len(self.host.submitted), 2)
         self.assertEqual(self.host.submitted[-1][0], JA_V2)
 
     def test_a_commit_with_no_canonical_id_removes_nothing(self):
-        self._commit(JA_V1, "jp-utt-G")
+        self._commit(JA_V1, "jp-utt-G", segment_id=1)
         self._translated(1, "jp-utt-G", EN_V1)
-        self._commit(JA_V2, "")
+        self._commit(JA_V2, "", segment_id=2)
         self.assertIn("low energy", self._pane())
 
     def test_the_old_line_survives_until_the_replacement_actually_arrives(self):
@@ -257,9 +275,9 @@ class ARevisionDeliveredAsAnAddReplacesItsTranslation(unittest.TestCase):
         a full provider round-trip. The superseded line is stale, but it is the
         only rendering of that utterance in the pane during that window.
         """
-        self._commit(JA_V1, "jp-utt-H")
+        self._commit(JA_V1, "jp-utt-H", segment_id=1)
         self._translated(1, "jp-utt-H", EN_V1)
-        self._commit(JA_V2, "jp-utt-H")
+        self._commit(JA_V2, "jp-utt-H", segment_id=2)
         self.assertIn("low energy", self._pane())
 
     def test_a_failed_replacement_does_not_lose_the_utterance(self):
@@ -268,9 +286,9 @@ class ARevisionDeliveredAsAnAddReplacesItsTranslation(unittest.TestCase):
         If the resubmitted job dies, removing at commit time would have left
         the pane with no rendering of this utterance at all.
         """
-        self._commit(JA_V1, "jp-utt-I")
+        self._commit(JA_V1, "jp-utt-I", segment_id=1)
         self._translated(1, "jp-utt-I", EN_V1)
-        self._commit(JA_V2, "jp-utt-I")
+        self._commit(JA_V2, "jp-utt-I", segment_id=2)
         self.host._clear_translation_loading_item(
             segment_id=2,
             terminal_state="failed",
@@ -287,18 +305,71 @@ class ARevisionDeliveredAsAnAddReplacesItsTranslation(unittest.TestCase):
         pointing at the LOADING mark, so a revision of a three-line entry
         deleted three rows starting at the pending row.
         """
-        self._commit(JA_V1, "jp-utt-J")
+        self._commit(JA_V1, "jp-utt-J", segment_id=1)
         self._translated(1, "jp-utt-J", LONG_V1)
-        self._commit("other", "jp-utt-K")
+        self._commit("other", "jp-utt-K", segment_id=2)
         self._translated(2, "jp-utt-K", "A neighbour that must survive.")
-        # A pending row for the revision, then its result.
-        self.host._translation_loading_items[3] = {"mark": "tr_load_3"}
-        self._commit(JA_V2, "jp-utt-J")
+        # The pending row is registered by the submit inside _commit below,
+        # exactly as production does it.
+        self._commit(JA_V2, "jp-utt-J", segment_id=3)
         self._translated(3, "jp-utt-J", LONG_V2)
         pane = self._pane()
         self.assertIn("A neighbour that must survive", pane)
         self.assertIn("long words in advance", pane)
         self.assertNotIn("long sentences", pane)
+
+    def test_a_pending_submit_does_not_forget_the_displayed_entry(self):
+        """The defect that made the first version of this fix a no-op.
+
+        `_show_translation_loading_item` writes to the SAME registry the
+        removal reads. On a revision it replaced the displayed entry's
+        `tr_done_<id>_<n>` mark and its line count with a pending row's
+        `tr_load_<segment_id>`, so the removal below found `state == "loading"`
+        and skipped. Nothing could reclaim the line afterwards.
+        """
+        self._commit(JA_V1, "jp-utt-L", segment_id=1)
+        self._translated(1, "jp-utt-L", LONG_V1)
+        before = dict(self.host._translation_items_by_utterance["jp-utt-L"])
+        self.assertEqual(before["state"], "completed")
+
+        # The revision re-submits the same utterance while its translation is
+        # still on screen.
+        self._commit(JA_V2, "jp-utt-L", segment_id=2)
+        after = self.host._translation_items_by_utterance["jp-utt-L"]
+        self.assertEqual(
+            after["state"], "completed", "a pending submit overwrote the displayed entry"
+        )
+        self.assertEqual(after["mark"], before["mark"])
+        self.assertEqual(after["entry_lines"], before["entry_lines"])
+
+    def test_an_utterance_with_nothing_on_screen_still_tracks_its_pending_job(self):
+        """The loading entry must still be registered for a NEW utterance."""
+        self._commit(JA_V1, "jp-utt-M", segment_id=1)
+        entry = self.host._translation_items_by_utterance.get("jp-utt-M")
+        self.assertIsNotNone(entry)
+        self.assertEqual(entry["state"], "loading")
+        self.assertEqual(entry["segment_id"], 1)
+
+    def test_an_out_of_order_older_result_never_replaces_a_newer_one(self):
+        """Provider results are not guaranteed to arrive in version order.
+
+        Preserving the displayed entry across a pending submit must not weaken
+        the stale-result guard: if v2 is already on screen, a late v1 must be
+        dropped, not written and not allowed to remove v2.
+        """
+        self._commit(JA_V1, "jp-utt-N", version=1, segment_id=1)
+        self._commit(JA_V2, "jp-utt-N", version=2, segment_id=2)
+        # v2 comes back first.
+        self._translated(2, "jp-utt-N", "The newer rendering.", version=2)
+        # v1 arrives late.
+        self._translated(1, "jp-utt-N", "The older rendering.", version=1)
+        pane = self._pane()
+        self.assertIn("The newer rendering", pane)
+        self.assertNotIn("The older rendering", pane)
+        self.assertTrue(
+            any(s.get("reason") == "stale_provider_result_ignored" for s in self.host.skips),
+            f"the late v1 was not recognised as stale: {self.host.skips}",
+        )
 
 
 @unittest.skipUnless(TK_AVAILABLE, "Tk cannot start in this environment")
