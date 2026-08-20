@@ -1598,10 +1598,30 @@ class AlphaApp(
                 lines = max(1, int(item.get("entry_lines") or 1))
         except Exception:
             lines = 1
-        end = f"{mark_name} lineend + 1 chars"
+        # Resolve the mark to a concrete "line.char" index BEFORE composing the
+        # end expression. A canonical utterance id is `jp-utt-<hex>`, so the
+        # mark built from it -- `tr_done_jp-utt-e0dcbd1255fc_1` -- contains
+        # hyphens, and Tk reads a `-`/`+` run inside an index as a modifier
+        # operator. Probed against real Tk:
+        #
+        #   index("tr_done_jp-utt-A_1")                   -> "2.0"     ok
+        #   compare("tr_done_jp-utt-A_1", ">=", "1.0")    -> True      ok
+        #   index("tr_done_jp-utt-A_1 lineend + 1 chars") -> TclError
+        #
+        # The guard passes and the delete then raises. Both callers wrap this
+        # in `except Exception: pass`, so it failed silently and the superseded
+        # translation stayed on screen for the rest of the session -- and
+        # reached the client's file through
+        # `_get_translated_transcript_for_copy_export`'s widget-read fallback.
+        # That made the identity-keyed removal (TASK_3A_FINDINGS.md Item 1) and
+        # its multi-line replay (item 74(b)) dead code on the Japanese path,
+        # where every id is hyphenated. A bare `box.index(mark)` is safe, and
+        # the "line.char" it returns composes safely.
+        start = box.index(mark_name)
+        end = f"{start} lineend + 1 chars"
         for _ in range(lines - 1):
             end += " + 1 lines"
-        box.delete(mark_name, end)
+        box.delete(start, end)
 
     def _readable_translation_parts(self, text: str) -> list[str]:
         """Group one finished translation into readable lines. Item 83.
@@ -1693,6 +1713,15 @@ class AlphaApp(
             self._remove_interim_line_from_display()
         except Exception:
             pass
+        # A Japanese revision arrives at THIS hook, not at
+        # `_on_store_segment_updated`, because `duplicate_protection.py`
+        # promotes a commit to "update" only on the ENGLISH lifecycle's
+        # vocabulary. Its superseded translation is therefore NOT removed here
+        # -- it is removed in `_clear_translation_loading_item`, at the moment
+        # the replacement text is actually written. Removing it here instead
+        # would blank the utterance for the whole translation round-trip, and
+        # lose it outright if the resubmitted job then failed. See the comment
+        # there for the measured evidence.
         # fixes TASK_8_REPORT.md: translation submission used to run AFTER
         # all transcript-box rendering below, and after an unconditional
         # `if box is None: return`. Any commit reason funnels through this
@@ -8440,14 +8469,54 @@ class AlphaApp(
         box.configure(state="normal")
         try:
             if box.compare(mark_name, ">=", "1.0"):
-                self._delete_translation_entry(
-                    box, mark_name, (self._translation_items_by_utterance or {}).get(
-                        utterance_key
-                    ),
-                )
+                # `mark_name` is the LOADING mark (`tr_load_<segment_id>`), and
+                # a loading glyph is always exactly one row however many lines
+                # the finished translation will occupy. This used to be handed
+                # the COMPLETED entry for this utterance, so on a revision it
+                # deleted that entry's line count starting at the loading
+                # mark -- eating the rows that happened to follow the pending
+                # row. The completed entry is a different entry with its own
+                # mark, removed just below.
+                self._delete_translation_entry(box, mark_name, {"entry_lines": 1})
             box.mark_unset(mark_name)
         except Exception:
             pass
+        # A revision: this utterance already has a COMPLETED translation on
+        # screen, and the write below would append the new one beside it and
+        # then overwrite the registry entry -- losing the old mark, so nothing
+        # could ever reclaim that line again. It stayed for the rest of the
+        # session and reached the client's file through
+        # `_get_translated_transcript_for_copy_export`'s widget-read fallback.
+        #
+        # Measured on run `v3.3.5.5.8.5.26.5.3-20260820-140328` (Japanese
+        # source): 11 of 120 canonical commits carried `applied_action:
+        # revise`, all 120 utterance decisions were CREATE_NEW with
+        # `revision_target_id` unset, and those same 11 ids were translated two
+        # or three times -- 133 jobs for 120 ids. Six near-duplicate pairs were
+        # visible in the pane, about 4% of it shown twice, e.g. "...tiring to
+        # say long sentences, isn't it?" beside "...tiring to say long words in
+        # advance, isn't it?". The transcript pane was clean throughout, which
+        # is why this reads as a translation-side defect only.
+        #
+        # Done HERE rather than at commit time so the superseded line survives
+        # until its replacement actually exists: removing it when the revision
+        # commits would blank the utterance for the whole translation
+        # round-trip, and lose it outright if that job then failed.
+        #
+        # Identity, never position or similarity: only a matching
+        # `canonical_utterance_id` causes a removal, which is the same proof
+        # `duplicate_protection.py` requires before replacing anything. Two
+        # genuinely distinct utterances can be near-identical in text.
+        if replace_with_text and utterance_key:
+            previous = (self._translation_items_by_utterance or {}).get(utterance_key)
+            previous_mark = (previous or {}).get("mark") if isinstance(previous, dict) else None
+            if previous_mark and previous.get("state") == "completed":
+                try:
+                    if box.compare(previous_mark, ">=", "1.0"):
+                        self._delete_translation_entry(box, previous_mark, previous)
+                    box.mark_unset(previous_mark)
+                except Exception:
+                    pass
         if replace_with_text:
             label = self._ui_speaker_label_text()
             cleaned = (replace_with_text or "").strip()

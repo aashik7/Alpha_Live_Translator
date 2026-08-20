@@ -70,6 +70,17 @@ LONG_JP = (
     "そう、ブレーズ・パスカルです。私は本気で、彼の秘密を知りたかったのです。"
 )
 
+# Real canonical id shape. These tests used to key on `JP_ID`, which production
+# never produces, and that is precisely why they passed while the removal was
+# broken in the field: the mark built from a real id
+# (`tr_done_jp-utt-e0dcbd1255fc_1`) contains hyphens, and Tk reads a `-` run
+# inside a text index as a modifier operator, so the composed delete expression
+# raised and was swallowed. See
+# `test_japanese_revision_replaces_translation.py`.
+JP_ID = "jp-utt-e0dcbd1255fc"
+JP_ID_2 = "jp-utt-53a73ab4b335"
+EN_ID = "en-utt-482a61b3c7d1"
+
 
 class TheGroupingNeverChangesTheText(unittest.TestCase):
     def test_lines_rejoin_into_the_original(self):
@@ -175,27 +186,27 @@ class TheTranslationPaneUsesIt(unittest.TestCase):
         return [l for l in self.box.get("1.0", "end").splitlines() if l.strip()]
 
     def test_a_long_japanese_translation_is_rendered_as_several_lines(self):
-        self._complete("u1", LONG_JP)
+        self._complete(JP_ID, LONG_JP)
         self.assertGreater(len(self._lines()), 1)
 
     def test_the_entry_line_count_is_recorded(self):
-        self._complete("u1", LONG_JP)
-        entry = self.host._translation_items_by_utterance["u1"]
+        self._complete(JP_ID, LONG_JP)
+        entry = self.host._translation_items_by_utterance[JP_ID]
         self.assertEqual(entry["entry_lines"], len(self._lines()))
 
     def test_a_revision_removes_every_line_of_the_entry(self):
         """Item 74(b). Deleting one line of a three-line entry stranded two."""
-        self._complete("u1", LONG_JP)
-        self._complete("u2", "次の翻訳です。これは二番目の文です。", segment_id=2)
+        self._complete(JP_ID, LONG_JP)
+        self._complete(JP_ID_2, "次の翻訳です。これは二番目の文です。", segment_id=2)
         self.host._remove_translation_item_for_utterance(
-            canonical_utterance_id="u1", source_version=1
+            canonical_utterance_id=JP_ID, source_version=1
         )
         remaining = self.box.get("1.0", "end")
         self.assertNotIn("ライアン、本当に", remaining)
         self.assertIn("次の翻訳です", remaining)
 
     def test_no_japanese_text_is_lost_on_the_way_to_the_pane(self):
-        self._complete("u1", LONG_JP)
+        self._complete(JP_ID, LONG_JP)
         rendered = "".join(
             l.replace("Speaker:", "").strip() for l in self._lines()
         )
@@ -209,7 +220,7 @@ class TheTranslationPaneUsesIt(unittest.TestCase):
             "And a third one closes it off completely. A fourth begins again. "
             "A fifth keeps it going for a while longer."
         )
-        self._complete("e1", en)
+        self._complete(EN_ID, en)
         joined = " ".join(
             l.replace("Speaker:", "").strip() for l in self._lines()
         )
