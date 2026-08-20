@@ -336,7 +336,13 @@ class AlphaApp(
         # Item 71: the original transcript is a reference pane, hidden until
         # asked for. The design's default is `.atf-original-hidden` -- a single
         # full-width translation column.
-        self._initial_verse_visible = False
+        # Item 81: the transcript reference pane is shown from the first paint.
+        # It used to start hidden, so a fresh launch showed only the
+        # translation and the user had to find the "Show Transcript" button
+        # before seeing what was being transcribed at all.
+        # `_sync_transcript_visibility` at the end of `create_main_content`
+        # applies this to both the button and the grid.
+        self._initial_verse_visible = True
         self.transcript_column = None
         # Which branch of the design's type scale is currently applied.
         # `None` until the panes are built, so the first refresh always runs.
@@ -3527,12 +3533,21 @@ class AlphaApp(
 
         self._create_summary_card()
 
-        # Both reference panes start hidden (C2: created eagerly, hidden with
-        # grid_remove -- never deferred, because three call sites dereference
-        # these widgets with no guard and a missing attribute raises
-        # AttributeError rather than returning None).
+        # Reference panes are created eagerly and hidden with grid_remove, never
+        # deferred (C2): three call sites dereference these widgets with no
+        # guard, and a missing attribute raises AttributeError rather than
+        # returning None. `_sync_transcript_visibility` below re-grids the
+        # transcript if it is meant to start visible.
         self.transcript_column.grid_remove()
         self.right_column.grid_remove()
+
+        # One place decides the button AND the geometry from the flag. Placing
+        # the button inside `_create_verse_section` and the geometry somewhere
+        # else is what let the two disagree: a live report on a large screen
+        # showed both the "Show Transcript" and "Hide" buttons mapped at once,
+        # which is only reachable if the button state was set without the
+        # layout, or the other way round.
+        self._sync_transcript_visibility()
 
     def _apply_content_layout(self, mode=None, design_width=None):
         """Reflow the reading grid. Item 71.
@@ -3998,7 +4013,15 @@ class AlphaApp(
         )
 
     def _place_toggle_button(self, parent_row, text, width):
-        """Show the correct toggle button for the current transcript visibility."""
+        """Show exactly one of the two toggle buttons.
+
+        `parent_row` is accepted and ignored, and deliberately kept: the two
+        buttons are built in two different title rows and never move between
+        them, so the row is already implied by which button is being shown.
+        Removing the parameter would touch every call site for no behavioural
+        gain; documenting it stops the next reader assuming it re-parents
+        anything.
+        """
         if text == "Hide":
             self.show_initial_button.grid_remove()
             self.hide_initial_button.configure(text=text, width=width)
@@ -4219,10 +4242,17 @@ class AlphaApp(
         if is_initial:
             self.initial_title_row = title_row
             self.hide_initial_button = self._create_toggle_button(title_row, "Hide", 64)
-            # Item 71: the transcript pane starts hidden, so its "Hide" button
-            # starts hidden too. Created eagerly and removed, never deferred
-            # (C2) -- `_place_toggle_button` dereferences both buttons with no
-            # guard and a missing attribute raises AttributeError.
+            # Both buttons are created eagerly and left UNGRIDDED (C2: created
+            # eagerly, never deferred -- `_place_toggle_button` dereferences
+            # both with no guard, so a missing attribute raises AttributeError
+            # rather than returning None).
+            #
+            # Item 81: neither is gridded here any more. This function used to
+            # grid "Show Transcript" while the visibility flag was decided
+            # elsewhere, so the two could disagree -- a live report on a large
+            # screen had BOTH buttons mapped at once. `_sync_transcript_visibility`
+            # is now the only writer of button state, and it derives it from the
+            # same flag the grid does.
             self.hide_initial_button.grid_remove()
         else:
             self.translated_title_row = title_row
@@ -4230,7 +4260,7 @@ class AlphaApp(
             self.show_initial_button = self._create_toggle_button(
                 title_row, "Show Transcript", 128
             )
-            self.show_initial_button.grid(row=0, column=1, sticky="e", padx=(8, 0))
+            self.show_initial_button.grid_remove()
 
         text_frame, text_widget = self._create_styled_text(
             outer,
@@ -4262,32 +4292,67 @@ class AlphaApp(
         if not self._initial_verse_visible:
             self.toggle_initial_verse()
 
+    def _sync_transcript_visibility(self):
+        """Make the button and the reading grid agree with the flag. Item 81.
+
+        Both halves used to be written at the toggle's call site, and the
+        initial button was placed inside `_create_verse_section` instead. A
+        live report on a large screen showed the failure that split allows: the
+        button changed and the pane did not, and in another shot BOTH the
+        "Show Transcript" and "Hide" buttons were mapped at once. Neither state
+        is reachable if one function always writes both from one flag.
+
+        The geometry itself is still owned by `_apply_content_layout`; this only
+        guarantees it is asked, and that the button matches what it did.
+        """
+        visible = bool(getattr(self, "_initial_verse_visible", False))
+        # The translation title is NOT hidden in either state. That belonged to
+        # the old "full-screen translated" mode where translation was the only
+        # pane; it is now always the primary pane and always labelled.
+        if visible:
+            self._place_toggle_button(self.initial_title_row, "Hide", 64)
+        else:
+            self._place_toggle_button(
+                self.translated_title_row, "Show Transcript", 128
+            )
+        self._apply_content_layout(design_width=self._design_width())
+
     def toggle_initial_verse(self):
         """Show or hide the original-transcript reference pane. Item 71.
 
-        The transcript is now a COLUMN beside the translation, not a row above
-        it, so this no longer touches `left_column`'s row weights -- doing so
-        would be a silent no-op, since `grid_rowconfigure` on a container whose
-        children are in columns raises nothing and does nothing. Visibility is
-        recorded and `_apply_content_layout` derives the geometry, which keeps
-        one function in charge of the grid and lets a later resize re-derive it
-        correctly.
+        The transcript is a COLUMN beside the translation, not a row above it,
+        so this does not touch `left_column`'s row weights -- doing so would be
+        a silent no-op, since `grid_rowconfigure` on a container whose children
+        are in columns raises nothing and does nothing.
         """
+        previous = bool(getattr(self, "_initial_verse_visible", False))
         try:
-            self._initial_verse_visible = not self._initial_verse_visible
-            # The translation title is NOT hidden any more. That belonged to
-            # the old "full-screen translated" mode, where translation was the
-            # only pane on screen; it is now always the primary pane and always
-            # labelled, in either state.
-            if self._initial_verse_visible:
-                self._place_toggle_button(self.initial_title_row, "Hide", 64)
-            else:
-                self._place_toggle_button(
-                    self.translated_title_row, "Show Transcript", 128
-                )
-            self._apply_content_layout(design_width=self._design_width())
+            self._initial_verse_visible = not previous
+            self._sync_transcript_visibility()
         except Exception as exc:
+            # A swallowed failure here is exactly the reported bug: the flag
+            # flips, the button swaps, and the grid is never told -- so the
+            # pane does not appear, or its space is never released. Put the
+            # flag back so the next press is not a no-op, and make the failure
+            # findable instead of leaving a lone print in a console nobody
+            # reads during a meeting.
+            self._initial_verse_visible = previous
             print(f"Error toggling initial verse: {exc}")
+            try:
+                from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+                jp_accuracy_log(
+                    "TRANSCRIPT_PANE_TOGGLE_FAILED",
+                    reason=f"{type(exc).__name__}:{exc}",
+                    requested_visible=not previous,
+                    restored_visible=previous,
+                )
+            except Exception:
+                pass
+            try:
+                self._sync_transcript_visibility()
+            except Exception:
+                pass
 
     def _apply_left_column_panel_weights(
         self,
