@@ -11,6 +11,10 @@ from alpha.config import DEEPGRAM_SAMPLE_RATE
 # 20 ms frames at 16 kHz → 320 samples → 640 bytes (256 kbps when paced to real time)
 FRAME_SAMPLES = int(DEEPGRAM_SAMPLE_RATE * 0.02)
 MAX_BUFFER_SAMPLES = DEEPGRAM_SAMPLE_RATE * 3  # cap at 3 s to avoid runaway backlog
+# One call may repay at most this much backlog. 3 s matches the buffer depth, so
+# a single call can always drain everything the buffers still hold, while a
+# stalled caller cannot burst without bound.
+_MAX_FRAMES_PER_EMIT = int(MAX_BUFFER_SAMPLES / FRAME_SAMPLES)
 
 
 class DeepgramTimelineMixer:
@@ -154,23 +158,46 @@ class DeepgramTimelineMixer:
                     pass
 
     def emit_due_frames(self):
-        """Yield at most one mono 16 kHz PCM frame if due by wall clock (real-time paced)."""
+        """Yield every mono 16 kHz PCM frame now due by wall clock.
+
+        This used to return at most ONE frame per call while still advancing the
+        clock by exactly one frame, so a caller running slower than 50 Hz could
+        never catch up: measured, a caller ticking every 100 ms emitted 10 frames
+        per second against 50 due, and the other 800 ms of audio per second was
+        left in the buffer until `_trim_buffer` discarded it. The lag was
+        permanent, because each call only ever repaid one frame of it.
+
+        Emitting all due frames repays the backlog immediately. The per-call cap
+        bounds the burst so one slow tick cannot monopolise the loop.
+        """
         now = time.monotonic()
         if self._next_frame_time is None:
             self._next_frame_time = now
 
-        if now < self._next_frame_time:
-            return []
+        frame_seconds = FRAME_SAMPLES / float(DEEPGRAM_SAMPLE_RATE)
+        max_lag_seconds = MAX_BUFFER_SAMPLES / float(DEEPGRAM_SAMPLE_RATE)
 
-        pcm, meta = self._build_frame()
-        self._next_frame_time += FRAME_SAMPLES / float(DEEPGRAM_SAMPLE_RATE)
-        try:
-            from alpha.utils.runtime_audio_counters import note_mixed_audio_chunk_created
+        # Beyond the buffer's own depth the missing audio has already been
+        # trimmed away, so continuing to count those frames would only emit
+        # zero-padded silence for speech that no longer exists. Resync instead,
+        # and let the buffer contents describe the timeline from here.
+        if now - self._next_frame_time > max_lag_seconds:
+            self._next_frame_time = now - max_lag_seconds
 
-            note_mixed_audio_chunk_created()
-        except Exception:
-            pass
-        return [(pcm, meta)]
+        emitted = []
+        while now >= self._next_frame_time and len(emitted) < _MAX_FRAMES_PER_EMIT:
+            pcm, meta = self._build_frame()
+            self._next_frame_time += frame_seconds
+            emitted.append((pcm, meta))
+            try:
+                from alpha.utils.runtime_audio_counters import (
+                    note_mixed_audio_chunk_created,
+                )
+
+                note_mixed_audio_chunk_created()
+            except Exception:
+                pass
+        return emitted
 
     def sleep_until_next_frame(self):
         if self._next_frame_time is None:
