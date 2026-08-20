@@ -185,6 +185,72 @@ class TheStartPathAsksThePreflight(unittest.TestCase):
         self.assertFalse(got_past)
         self.assertIn("Deepgram", shown[0][0])
 
+    def test_a_previous_sessions_outage_does_not_leak_into_this_one(self):
+        """`_dg_disconnected_at` is cleared ONLY by `_mark_deepgram_gap_if_any`,
+        which runs on `_deepgram_on_open`. A session stopped while still
+        disconnected leaves it set forever, and `_dg_auth_failed` survives the
+        same way. Nothing read either across a session boundary until item 47's
+        indicator did, so the next Start showed "Reconnecting" with a gap
+        measured from the PREVIOUS session -- a number that grows without bound
+        -- or "Key rejected" for a key already fixed.
+        """
+        import alpha.utils.service_status as svc
+
+        real = svc.preflight_credentials
+        svc.preflight_credentials = lambda **kw: []
+        host = self.Host()
+        host._dg_disconnected_at = 12345.0
+        host._dg_auth_failed = True
+        host._connection_indicator_state = "failed"
+        try:
+            host._start_listening()
+        except _GotPastPreflight:
+            pass
+        except Exception:
+            pass
+        finally:
+            svc.preflight_credentials = real
+        self.assertEqual(host._dg_disconnected_at, 0.0, "stale outage clock survived")
+        self.assertFalse(host._dg_auth_failed, "stale auth rejection survived")
+        self.assertIsNone(
+            host._connection_indicator_state,
+            "the indicator would not re-announce a problem in the new session",
+        )
+
+    def test_the_reset_happens_only_after_the_preflight_allows_the_start(self):
+        """A Start refused for a missing key must not touch connection state:
+        the operator has not started anything, so nothing has changed."""
+        import alpha.utils.service_status as svc
+        import alpha.ui.main_window as mw
+
+        real = svc.preflight_credentials
+        real_box = mw.messagebox
+
+        class FakeBox:
+            @staticmethod
+            def showerror(title, message):
+                pass
+
+        svc.preflight_credentials = lambda **kw: [
+            CredentialProblem(
+                service="Deepgram",
+                code="deepgram_key_missing",
+                message="No Deepgram API key found.",
+                blocks_start=True,
+            )
+        ]
+        mw.messagebox = FakeBox
+        host = self.Host()
+        host._dg_disconnected_at = 12345.0
+        try:
+            host._start_listening()
+        except Exception:
+            pass
+        finally:
+            svc.preflight_credentials = real
+            mw.messagebox = real_box
+        self.assertEqual(host._dg_disconnected_at, 12345.0)
+
     def test_a_preflight_that_raises_never_blocks_the_start(self):
         """The guard must not become a gate on its own health."""
         import alpha.utils.service_status as svc

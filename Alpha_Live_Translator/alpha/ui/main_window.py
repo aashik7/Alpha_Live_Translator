@@ -9400,6 +9400,24 @@ class AlphaApp(
             except Exception:
                 pass
 
+        # Item 47 follow-up: clear the previous session's connection state
+        # before this one starts.
+        #
+        # `_dg_disconnected_at` is set on an unexpected close and cleared ONLY
+        # by `_mark_deepgram_gap_if_any`, which runs on `_deepgram_on_open`. A
+        # session that is stopped while still disconnected therefore leaves it
+        # set forever, and `_dg_auth_failed` survives the same way. Nothing read
+        # either across a session boundary until the indicator did, so this was
+        # latent: the next Start would immediately show "Reconnecting" -- with a
+        # gap measured from the PREVIOUS session, so the message grows without
+        # bound -- or "Key rejected" for a key the operator had already fixed.
+        #
+        # Resetting here loses nothing: an outage belonging to the previous
+        # session cannot be marked by this one, and item 72 already covers a gap
+        # with no record to attach to.
+        self._dg_disconnected_at = 0.0
+        self._dg_auth_failed = False
+        self._connection_indicator_state = None
         dropdown_lang = self._strip_language_flag(self.source_language.get())
         # Capture dropdown before Start Listening so it cannot be overwritten silently.
         self._start_listening_dropdown_snapshot = dropdown_lang
