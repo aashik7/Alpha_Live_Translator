@@ -80,26 +80,18 @@ class WasapiCaptureMixin:
         except Exception:
             pass
 
-        def _mark() -> None:
-            label = getattr(self, "signal_label", None)
-            if label is None:
-                return
-            try:
-                from alpha.ui.theme import COLORS
-
-                label.configure(
-                    text="● Audio device changed",
-                    text_color=COLORS["accent_red_glow"],
-                )
-            except Exception:
-                pass
-
-        try:
-            runner = getattr(self, "_run_on_ui_thread", None)
-            if callable(runner):
-                runner(_mark)
-        except Exception:
-            pass
+        # Item 47 made `_sync_connection_indicator` the SINGLE writer of
+        # `signal_label`, and it repaints once a second from `_update_timer`.
+        # Painting the label directly here therefore held for about one second
+        # before being overwritten with "● Signal OK" -- a green light over a
+        # device nothing is being routed to, which is the exact failure this
+        # detector exists to make visible.
+        #
+        # The change is now a SIGNAL the indicator consumes, ranked in
+        # `describe_connection` alongside the connection ones, so it holds
+        # until the device is restored instead of flickering past.
+        self._audio_device_changed = True
+        self._refresh_connection_indicator()
 
     def _report_default_device_restored(self) -> None:
         """The default came back to the device we capture from."""
@@ -113,23 +105,35 @@ class WasapiCaptureMixin:
         except Exception:
             pass
 
-        def _clear() -> None:
-            label = getattr(self, "signal_label", None)
-            if label is None:
-                return
-            try:
-                from alpha.ui.theme import COLORS
+        # Clearing the SIGNAL, not repainting the label: the indicator decides
+        # what to show next, which matters because "restored" does not mean
+        # healthy -- a reconnect or a rejected key may still be in progress,
+        # and hardcoding "● Signal OK" here used to paint over both.
+        self._audio_device_changed = False
+        self._refresh_connection_indicator()
 
-                label.configure(
-                    text="● Signal OK", text_color=COLORS["accent_green"]
-                )
-            except Exception:
-                pass
+    def _refresh_connection_indicator(self) -> None:
+        """Ask the UI to repaint the status indicator now, on its own thread.
+
+        Without this the change would still appear, but only on the next 1 s
+        tick of `_update_timer`. This watcher runs on its own 2 s daemon
+        thread, so it must never touch a widget itself.
+        """
+        runner = getattr(self, "_run_on_ui_thread", None)
+        if not callable(runner):
+            return
+
+        # The indicator is looked up INSIDE the marshalled callback, not before
+        # marshalling. Deciding out here would make the hand-off conditional on
+        # a widget that may not exist yet when the watcher first fires, and the
+        # invariant this must keep is "the UI update is marshalled", full stop.
+        def _paint() -> None:
+            sync = getattr(self, "_sync_connection_indicator", None)
+            if callable(sync):
+                sync()
 
         try:
-            runner = getattr(self, "_run_on_ui_thread", None)
-            if callable(runner):
-                runner(_clear)
+            runner(_paint)
         except Exception:
             pass
 

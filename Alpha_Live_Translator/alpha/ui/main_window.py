@@ -478,6 +478,11 @@ class AlphaApp(
         # reconnect loop the operator cannot interpret. Set in
         # `_deepgram_on_error`, cleared whenever the socket opens.
         self._dg_auth_failed = False
+        # Item 73 sets this from the WASAPI device watcher's own thread; item
+        # 47's indicator renders it. Windows moving the default output leaves
+        # every connection signal healthy while the capture device records
+        # something nothing is routed to, so it needs its own signal.
+        self._audio_device_changed = False
         self._dg_backoff_seconds = 1.0  # CHANGED: exponential backoff start (fix 5)
         self._dg_awaiting_transcript_reset = False  # CHANGED: reset backoff on transcript (fix 5)
         self._dg_replay_buffer = []  # CHANGED: buffered audio for reconnect replay (fix 5)
@@ -3501,6 +3506,14 @@ class AlphaApp(
                     getattr(worker, "status_message", "") or ""
                 ),
                 gap_seconds=gap_seconds,
+                # Item 73's watcher sets this from its own 2s thread. It is
+                # a signal here, not a paint: the socket stays healthy when
+                # Windows moves the default output, so without it the
+                # indicator reports "Signal OK" over a device nothing is
+                # routed to.
+                audio_device_changed=bool(
+                    getattr(self, "_audio_device_changed", False)
+                ),
             )
         except Exception:
             # A status indicator must never be able to break the UI tick it
@@ -9417,6 +9430,7 @@ class AlphaApp(
         # with no record to attach to.
         self._dg_disconnected_at = 0.0
         self._dg_auth_failed = False
+        self._audio_device_changed = False
         self._connection_indicator_state = None
         dropdown_lang = self._strip_language_flag(self.source_language.get())
         # Capture dropdown before Start Listening so it cannot be overwritten silently.

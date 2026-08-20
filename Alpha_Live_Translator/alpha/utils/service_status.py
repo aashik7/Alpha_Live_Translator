@@ -160,6 +160,7 @@ def describe_connection(
     translation_degraded: bool = False,
     translation_status_message: str = "",
     gap_seconds: float = 0.0,
+    audio_device_changed: bool = False,
 ) -> ConnectionStatus:
     """Collapse the live signals into one indicator state (item 47).
 
@@ -196,6 +197,25 @@ def describe_connection(
         if _SEVERITY[candidate] >= _SEVERITY[state]:
             state, message = candidate, candidate_message
 
+    # Item 73's detector, folded in rather than left to paint the indicator
+    # itself. Windows moving the default output does not stop the socket, so
+    # every signal above still reads healthy while the capture device goes on
+    # recording a device nothing is routed to -- silence, with a green light.
+    #
+    # Ranked at `reconnecting` severity because the consequence is the same,
+    # the transcript stops, and checked AFTER the reconnect branch so it wins a
+    # tie: a reconnect resolves itself, whereas this one needs the operator to
+    # do something, and telling them to wait would be wrong.
+    if audio_device_changed:
+        candidate = RECONNECTING
+        candidate_message = (
+            "Windows changed the default audio output. Audio going to the new "
+            "device is not being captured — switch back, or stop and start "
+            "again."
+        )
+        if _SEVERITY[candidate] >= _SEVERITY[state]:
+            state, message = candidate, candidate_message
+
     if deepgram_auth_failed:
         state = FAILED
         message = (
@@ -212,6 +232,7 @@ def describe_connection(
             "deepgram_reconnecting": deepgram_reconnecting,
             "deepgram_auth_failed": deepgram_auth_failed,
             "translation_degraded": translation_degraded,
+            "audio_device_changed": audio_device_changed,
             "gap_seconds": round(float(gap_seconds), 1),
         },
     )

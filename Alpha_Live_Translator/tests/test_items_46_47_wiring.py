@@ -201,6 +201,7 @@ class TheStartPathAsksThePreflight(unittest.TestCase):
         host = self.Host()
         host._dg_disconnected_at = 12345.0
         host._dg_auth_failed = True
+        host._audio_device_changed = True
         host._connection_indicator_state = "failed"
         try:
             host._start_listening()
@@ -212,6 +213,9 @@ class TheStartPathAsksThePreflight(unittest.TestCase):
             svc.preflight_credentials = real
         self.assertEqual(host._dg_disconnected_at, 0.0, "stale outage clock survived")
         self.assertFalse(host._dg_auth_failed, "stale auth rejection survived")
+        self.assertFalse(
+            host._audio_device_changed, "stale device-change warning survived"
+        )
         self.assertIsNone(
             host._connection_indicator_state,
             "the indicator would not re-announce a problem in the new session",
@@ -375,6 +379,43 @@ class TheIndicatorReflectsTheConnection(unittest.TestCase):
         self.host._sync_connection_indicator()
         self.assertEqual(len(self.host.published), 2)
 
+    def test_an_audio_device_change_reaches_the_indicator(self):
+        """Item 73's detector, folded in. Windows moving the default output
+        leaves every connection signal healthy, so without its own signal the
+        indicator reports "Signal OK" over a device nothing is routed to."""
+        self.host._audio_device_changed = True
+        self.host._sync_connection_indicator()
+        self.assertEqual(self._text(), "● Reconnecting")
+        self.assertTrue(
+            any("default audio output" in m for m, _s, _r in self.host.published),
+            f"the operator was never told what to do: {self.host.published}",
+        )
+
+    def test_a_device_change_outranks_a_degraded_translation(self):
+        class Worker:
+            degraded = True
+            status_message = "DeepL circuit open."
+
+        self.host.translation_worker = Worker()
+        self.host._audio_device_changed = True
+        self.host._sync_connection_indicator()
+        self.assertTrue(
+            any("default audio output" in m for m, _s, _r in self.host.published)
+        )
+
+    def test_a_rejected_key_still_outranks_a_device_change(self):
+        self.host._audio_device_changed = True
+        self.host._dg_auth_failed = True
+        self.host._sync_connection_indicator()
+        self.assertEqual(self._text(), "● Key rejected")
+
+    def test_restoring_the_device_clears_the_warning(self):
+        self.host._audio_device_changed = True
+        self.host._sync_connection_indicator()
+        self.host._audio_device_changed = False
+        self.host._sync_connection_indicator()
+        self.assertEqual(self._text(), "● Signal OK")
+
     def test_a_missing_label_is_not_an_error(self):
         self.host.signal_label = None
         self.host._sync_connection_indicator()
@@ -446,7 +487,44 @@ class TheModuleHasProductionCallers(unittest.TestCase):
         self.assertIn("describe_connection", self._source())
 
     def test_the_indicator_has_exactly_one_writer(self):
-        """Four places used to write `signal_label` directly."""
+        """Four places used to write `signal_label` directly.
+
+        This scans the WHOLE `alpha/` tree, not just `main_window.py`. The
+        narrower version missed `alpha/audio/wasapi.py`, where item 73's
+        device-change notice painted the label directly -- and once item 47
+        started repainting it every second from `_update_timer`, that notice
+        survived about one second before being overwritten with "Signal OK".
+
+        The invariant is deliberately "no other module MENTIONS `signal_label`",
+        not "no other module contains the string `signal_label.configure`". The
+        offending code read `label = getattr(self, "signal_label", None)` and
+        then called `label.configure(...)`, so a search for the composed
+        attribute access would have sailed straight past it. Owning the widget
+        in one module is the property that actually holds.
+        """
+        offenders = []
+        for path in (PROJECT_ROOT / "alpha").rglob("*.py"):
+            if path.name == "main_window.py":
+                continue
+            # Comments may name it -- explaining WHY a module must not touch
+            # the label is the opposite of touching it.
+            code = "\n".join(
+                line.split("#", 1)[0]
+                for line in path.read_text(
+                    encoding="utf-8", errors="replace"
+                ).splitlines()
+            )
+            if "signal_label" in code:
+                offenders.append(str(path.relative_to(PROJECT_ROOT)))
+        self.assertEqual(
+            offenders,
+            [],
+            "signal_label is touched outside main_window.py; feed "
+            "_sync_connection_indicator a signal instead of painting the label",
+        )
+
+    def test_the_indicator_owns_the_label_inside_main_window_too(self):
+        """Within `main_window.py`, only the single owner may write it."""
         source = self._source()
         self.assertEqual(
             source.count("signal_label.configure"),
