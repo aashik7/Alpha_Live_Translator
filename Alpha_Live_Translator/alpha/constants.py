@@ -734,6 +734,67 @@ def _load_default_ja_business_keyterms() -> list[str]:
     return list(JAPANESE_KEYTERMS_BUSINESS)
 
 
+USER_KEYTERMS_PATH = (
+    Path(__file__).resolve().parent / "resources" / "keyterms" / "user_terms.json"
+)
+
+
+def _load_user_keyterms() -> list[str]:
+    """Terms the operator added: names, companies, places, product words.
+
+    A proper noun that is not a Japanese word is the one thing the recogniser
+    cannot guess, and it does not fail quietly -- it substitutes something that
+    sounds similar and is confident about it. Measured on run
+    `...20260821-171012`, where the speaker said their own name inside an
+    otherwise Japanese sentence:
+
+        spoken   私は タリクールイスラム と申します
+        returned 誰くりすらむと申します          confidence 0.989
+        spoken   ...バングラデシュ...
+        returned バングラデーション              confidence 0.997
+
+    Nothing downstream can catch that: the text is valid Japanese script and the
+    provider is certain. `LANGUAGE_CONFIDENCE_REJECT` cannot see it either. The
+    provider's own mechanism for it is keyterms, which this app already sends --
+    it just had no way for the operator to add their own.
+
+    Edited by hand, never by the app. A missing or malformed file is not an
+    error: it means "no extra terms", and the session must still start.
+    """
+    try:
+        import json
+
+        if not USER_KEYTERMS_PATH.is_file():
+            return []
+        data = json.loads(USER_KEYTERMS_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+    raw = data.get("keyterms") if isinstance(data, dict) else data
+    if not isinstance(raw, list):
+        return []
+    out: list[str] = []
+    for entry in raw:
+        term = str(entry or "").strip()
+        if term and not term.startswith("#") and term not in out:
+            out.append(term)
+    return out
+
+
+def _merge_user_keyterms(terms: list[str]) -> list[str]:
+    """User terms FIRST, then the defaults, capped at `JAPANESE_KEYTERM_MAX`.
+
+    Order matters because the cap truncates: the operator's own names are the
+    terms the recogniser is least able to guess, so they must not be the ones
+    dropped. Deduplicated while preserving that order.
+    """
+    merged: list[str] = []
+    for term in _load_user_keyterms() + list(terms):
+        if term not in merged:
+            merged.append(term)
+    limit = int(JAPANESE_KEYTERM_MAX or 0)
+    return merged[:limit] if limit > 0 else merged
+
+
 def resolve_japanese_keyterms(
     profile: str | None = None,
 ) -> tuple[list[str], str, list[str]]:
@@ -783,6 +844,7 @@ def resolve_japanese_keyterms(
     terms = _load_default_ja_business_keyterms()
     terms = [t for t in terms if t not in _TEST01_BENCHMARK_KEYTERMS]
     removed = [t for t in _ESL_TWICE_STALE_MARKER_TERMS if t not in terms]
+    terms = _merge_user_keyterms(terms)
     return terms, KEYTERM_PROFILE_BUSINESS_JAPANESE, removed
 
 JAPANESE_STANDALONE_NO_MERGE = [

@@ -1,0 +1,26 @@
+{
+  "_readme": [
+    "Your own words: names, companies, places, product names.",
+    "A proper noun that is not a Japanese word is the one thing the recogniser",
+    "cannot guess. It does not fail quietly -- it substitutes something that",
+    "sounds similar and is confident about it. Measured on a real run:",
+    "  spoken  'タリクールイスラム'  ->  returned '誰くりすらむ'      conf 0.989",
+    "  spoken  'バングラデシュ'      ->  returned 'バングラデーション' conf 0.997",
+    "Adding the term here is what stops that.",
+    "",
+    "HOW TO USE",
+    "  * Write each term the way you want it to APPEAR in the transcript.",
+    "  * Japanese script for Japanese sessions (katakana for foreign names).",
+    "  * Restart the session after editing -- terms are read at Start.",
+    "  * Up to 100 terms in total, shared with the built-in business list.",
+    "    Yours are kept first, so the built-ins are dropped before yours are.",
+    "  * A line starting with # is ignored, so you can leave notes.",
+    "",
+    "This file is edited by hand and never written by the app. If it is missing",
+    "or malformed, it simply means 'no extra terms' and the session still starts."
+  ],
+  "keyterms": [
+    "タリクールイスラム",
+    "バングラデシュ"
+  ]
+}
