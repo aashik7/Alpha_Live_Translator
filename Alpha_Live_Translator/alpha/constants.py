@@ -222,6 +222,24 @@ DEBUG_DIAGNOSTICS = True
 DEBUG_TEAMS_DIAGNOSTICS = False
 
 # Teams source gate thresholds (RMS scale matches existing mixer readings)
+# Microphone capture default. OFF, because Alpha transcribes ONE language per
+# session (`AUTHORITATIVE_UI_TO_DEEPGRAM` is strictly {English: en, Japanese:
+# ja}) and mic + system audio are MERGED into a single stream before Deepgram
+# (`timeline_mixer.py`'s `mix_frame`), with diarization disabled. In a bilingual
+# meeting the operator's own speech therefore lands in the OTHER language's ASR
+# and is transcribed as nonsense, which then reaches the canonical transcript.
+#
+# Measured with the real gate over the real audio of 2026-08-21: 12.7% of frames
+# carried the mic into the ASR on one run and 2.3% on the other -- and in BOTH
+# the operator barely spoke. The gate is echo suppression, not language
+# separation: `mic_active and not system_active` picks "mic", which is exactly
+# when the operator is talking.
+#
+# The UI switch ("Meeting audio only") is ON by default, i.e. this is False.
+# Turning the mic on is a deliberate choice for a single-language session where
+# the operator wants their own voice transcribed too.
+MICROPHONE_CAPTURE_ENABLED_DEFAULT = False
+
 MIC_ACTIVE_RMS_MIN = 80.0
 SYSTEM_ACTIVE_RMS_MIN = 80.0
 MIC_NOISE_MULTIPLIER = 4.0

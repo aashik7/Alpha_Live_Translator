@@ -1,0 +1,255 @@
+"""The microphone can be switched off, and it is off by default.
+
+WHY THIS EXISTS
+---------------
+Alpha transcribes ONE language per session -- `AUTHORITATIVE_UI_TO_DEEPGRAM` is
+strictly `{"English": "en", "Japanese": "ja"}`, every profile is
+`is_auto: False`, and an unmapped selection is refused rather than guessed. Mic
+and system audio are MERGED into a single stream before Deepgram
+(`timeline_mixer.py`'s `mix_frame`), and diarization is off. So in a bilingual
+meeting the operator's own speech is fed to the OTHER language's ASR,
+transcribed as nonsense, and that nonsense reaches the canonical transcript.
+
+Measured with the real `TeamsSourceGate` over the real audio of the 2026-08-21
+runs: **12.7%** of frames carried the mic into the ASR on one run and **2.3%**
+on the other -- and in BOTH the operator barely spoke (mic active 4.7% / 1.2%).
+The gate is echo suppression, not language separation: `mic_active and not
+system_active` picks `"mic"`, which is exactly when the operator is talking.
+
+WHAT THIS DOES NOT CLAIM
+------------------------
+The switch feeds `_system_audio_only` inside `_start_listening_worker`, which
+also opens WASAPI and the Deepgram socket and cannot be driven from a unit
+test. `TheWiringIsPresent` therefore pins the wiring at source level -- the same
+approach items 46/47 used, where a grep for the CODE passed for days while a
+grep for a CALLER was the check that actually mattered. The behaviour of that
+branch when taken is already proven: it is the branch the Stage 1 benchmark
+flag has always used to skip the microphone.
+
+WHY SKIPPING THE MIC IS SAFE
+-----------------------------
+`TimelineMixer._take_samples` zero-pads a short buffer, so with no mic frames
+`mic_rms` is 0.0, `mic_active` is always False, the gate degrades cleanly to
+system-only, and `mix_frame`'s "none" branch returns the louder source, which is
+the system. Nothing waits on a mic frame that never arrives.
+"""
+
+import sys
+import unittest
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from alpha.constants import MICROPHONE_CAPTURE_ENABLED_DEFAULT  # noqa: E402
+
+try:
+    import tkinter as tk
+
+    _probe = tk.Tk()
+    _probe.withdraw()
+    _probe.destroy()
+    TK_AVAILABLE = True
+except Exception:  # pragma: no cover
+    TK_AVAILABLE = False
+
+
+class SwitchRecorder:
+    """Stands in for a `CTkSwitch`; records select/deselect and state."""
+
+    def __init__(self, value=0):
+        self._value = value
+        self.state = "normal"
+
+    def get(self):
+        return self._value
+
+    def select(self):
+        self._value = 1
+
+    def deselect(self):
+        self._value = 0
+
+    def configure(self, **kw):
+        if "state" in kw:
+            self.state = kw["state"]
+
+
+class TheDefaultIsMicrophoneOff(unittest.TestCase):
+    def test_the_constant_defaults_to_microphone_off(self):
+        """The switch reads "Meeting audio only", so ON means the mic is OFF."""
+        self.assertFalse(
+            MICROPHONE_CAPTURE_ENABLED_DEFAULT,
+            "the microphone would be captured by default, which puts the "
+            "operator's own speech into the other language's ASR",
+        )
+
+
+class TheToggleKeepsBothSwitchesInStep(unittest.TestCase):
+    """Drives the real `toggle_meeting_audio_only` and its sync helper."""
+
+    def setUp(self):
+        from alpha.ui.main_window import AlphaApp
+
+        class Host:
+            toggle_meeting_audio_only = AlphaApp.toggle_meeting_audio_only
+            _sync_meeting_audio_only_switches = (
+                AlphaApp._sync_meeting_audio_only_switches
+            )
+            _set_meeting_audio_only_enabled = AlphaApp._set_meeting_audio_only_enabled
+            _set_listen_button_state = AlphaApp._set_listen_button_state
+
+            def __init__(self):
+                self._microphone_capture_enabled = False
+                self.meeting_audio_only_switch = SwitchRecorder(1)
+                self.meeting_audio_only_switch_menu = SwitchRecorder(1)
+                self._compact_mode = False
+                self._menu_visible = False
+                self.listen_button = None
+                self.listen_button_menu = None
+                self.status_updates = []
+
+            def _update_status_bar(self, listening=False):
+                self.status_updates.append(listening)
+
+        self.host = Host()
+
+    def test_the_default_shows_meeting_audio_only_as_on(self):
+        self.host._sync_meeting_audio_only_switches()
+        self.assertEqual(self.host.meeting_audio_only_switch.get(), 1)
+        self.assertEqual(self.host.meeting_audio_only_switch_menu.get(), 1)
+
+    def test_turning_the_switch_off_enables_the_microphone(self):
+        self.host.meeting_audio_only_switch.deselect()
+        self.host.toggle_meeting_audio_only()
+        self.assertTrue(self.host._microphone_capture_enabled)
+        self.assertEqual(self.host.meeting_audio_only_switch_menu.get(), 0)
+
+    def test_turning_it_back_on_disables_the_microphone(self):
+        self.host.meeting_audio_only_switch.deselect()
+        self.host.toggle_meeting_audio_only()
+        self.host.meeting_audio_only_switch.select()
+        self.host.toggle_meeting_audio_only()
+        self.assertFalse(self.host._microphone_capture_enabled)
+        self.assertEqual(self.host.meeting_audio_only_switch_menu.get(), 1)
+
+    def test_the_menu_switch_drives_it_in_compact_mode(self):
+        """In compact mode the header switch is not even mapped."""
+        self.host._compact_mode = True
+        self.host._menu_visible = True
+        self.host.meeting_audio_only_switch_menu.deselect()
+        self.host.toggle_meeting_audio_only()
+        self.assertTrue(self.host._microphone_capture_enabled)
+        self.assertEqual(
+            self.host.meeting_audio_only_switch.get(),
+            0,
+            "the header switch did not follow the menu switch",
+        )
+
+    def test_a_missing_switch_is_not_an_error(self):
+        self.host.meeting_audio_only_switch_menu = None
+        self.host._sync_meeting_audio_only_switches()
+
+    def test_listening_locks_the_switches(self):
+        """The value is read at Start, so it must not look changeable mid-session."""
+        self.host._set_listen_button_state(True)
+        self.assertEqual(self.host.meeting_audio_only_switch.state, "disabled")
+        self.assertEqual(self.host.meeting_audio_only_switch_menu.state, "disabled")
+
+    def test_stopping_unlocks_the_switches(self):
+        self.host._set_listen_button_state(True)
+        self.host._set_listen_button_state(False)
+        self.assertEqual(self.host.meeting_audio_only_switch.state, "normal")
+        self.assertEqual(self.host.meeting_audio_only_switch_menu.state, "normal")
+
+
+class TheWiringIsPresent(unittest.TestCase):
+    """Items 46/47's lesson: grep for the CALLER, not for the code."""
+
+    def _source(self):
+        return (PROJECT_ROOT / "alpha" / "ui" / "main_window.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+
+    def test_the_switch_feeds_the_system_audio_only_branch(self):
+        source = self._source()
+        self.assertIn("if not self._microphone_capture_enabled:", source)
+        self.assertIn("_system_audio_only = True", source)
+
+    def test_the_microphone_is_started_only_when_that_branch_allows_it(self):
+        """`_start_microphone_capture` must keep its single guarded call site."""
+        source = self._source()
+        self.assertEqual(
+            source.count("self._start_microphone_capture()"),
+            1,
+            "a second, unguarded microphone start appeared",
+        )
+        guard = source.index("if not _system_audio_only:")
+        call = source.index("self._start_microphone_capture()")
+        self.assertLess(guard, call, "the microphone start escaped its guard")
+
+    def test_turning_it_off_is_recorded(self):
+        self.assertIn("MICROPHONE_CAPTURE_DISABLED_BY_USER", self._source())
+
+
+@unittest.skipUnless(TK_AVAILABLE, "Tk cannot start in this environment")
+class TheHeaderStillFits(unittest.TestCase):
+    """The switch is 209 device px wide; the header has to survive it.
+
+    An earlier draft showed it from the hamburger breakpoint (800) and
+    overflowed the header at 900 design px -- where the header fits perfectly
+    without it. Geometry is measured on a real MAPPED root, because an
+    unrealised window reports widths that make these assertions vacuous.
+    """
+
+    def setUp(self):
+        from alpha.ui.main_window import AlphaApp
+
+        # A root PER TEST, created and destroyed here rather than shared across
+        # the class. Item 71's own note: "every geometry test must build its own
+        # root". A shared root outlives the test and leaks CTk state into the
+        # other Tk suites -- measured, it broke four
+        # `test_item71_reading_typography` tests that pass in isolation.
+        self.app = AlphaApp()
+        self.app.deiconify()
+        self.app.update()
+
+    def tearDown(self):
+        try:
+            self.app.destroy()
+        except Exception:
+            pass
+
+    def _at(self, width):
+        self.app.geometry(f"{width}x800")
+        self.app.update()
+        self.app._apply_responsive_layout()
+        self.app.update()
+        header = self.app.right_header_cluster.master
+        return header.winfo_reqwidth(), header.winfo_width()
+
+    def test_the_header_does_not_overflow_at_900(self):
+        """The width the first draft broke."""
+        req, got = self._at(900)
+        self.assertLessEqual(req, got, "the header overflows at 900 design px")
+
+    def test_the_switch_is_hidden_below_the_wide_breakpoint(self):
+        self._at(900)
+        self.assertFalse(self.app.meeting_audio_only_switch.winfo_ismapped())
+
+    def test_the_switch_is_shown_when_there_is_room(self):
+        self._at(1400)
+        self.assertTrue(self.app.meeting_audio_only_switch.winfo_ismapped())
+
+    def test_the_header_does_not_overflow_where_the_switch_is_shown(self):
+        for width in (1050, 1200, 1400, 1920):
+            req, got = self._at(width)
+            self.assertLessEqual(req, got, f"the header overflows at {width}")
+
+    def test_the_menu_switch_exists_for_the_widths_that_hide_the_header_one(self):
+        self.assertIsNotNone(self.app.meeting_audio_only_switch_menu)
+
+
+if __name__ == "__main__":
+    unittest.main()

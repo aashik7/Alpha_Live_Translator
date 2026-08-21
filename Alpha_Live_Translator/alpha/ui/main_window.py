@@ -38,6 +38,7 @@ from alpha.config import (
 )
 from alpha.constants import (
     INTERIM_PREVIEW_LINE_GROUPING_ENABLED,
+    MICROPHONE_CAPTURE_ENABLED_DEFAULT,
     TRANSLATION_PENDING_PLACEHOLDER_VISIBLE,
     APP_CODENAME,
     APP_VERSION,
@@ -290,6 +291,19 @@ CONTENT_REFERENCE_WEIGHT = 30
 # already had a 700 breakpoint for the same reason.
 CONTENT_STACK_BREAKPOINT = LAYOUT_MEDIUM_BREAKPOINT
 
+# The "Meeting audio only" switch is shown in the header only in WIDE layout,
+# and that threshold is measured rather than guessed. The switch adds 209
+# device px to the header's required width; driven on a real mapped root at
+# 20 px steps, the header overflows with it below **980 design px** and fits
+# from 980 up. An earlier draft used the hamburger breakpoint (800) and was
+# caught overflowing at 900 -- where the header fits perfectly WITHOUT the
+# switch (req 1236 vs got 1350) and overflows WITH it (1445 vs 1350).
+#
+# `LAYOUT_WIDE_BREAKPOINT` (1050) is an existing measured constant safely
+# above 980, leaving ~70 px of headroom for font and label variation. Below
+# it the control is still reachable from the hamburger menu.
+MEETING_AUDIO_ONLY_SWITCH_MIN_WIDTH = LAYOUT_WIDE_BREAKPOINT
+
 # Retained: still the vertical split used when the grid stacks on a narrow
 # window, where transcript and translation share one column as rows.
 TRANSCRIPT_PANEL_WEIGHT = 65
@@ -429,6 +443,14 @@ class AlphaApp(
         self.status_text_label = None
         self.timer_label = None
         self.signal_label = None
+        # Microphone capture is a per-session choice, read at Start like the
+        # language dropdown. Default OFF: Alpha transcribes ONE language per
+        # session and merges mic with system audio before Deepgram, so in a
+        # bilingual meeting the operator's own speech lands in the other
+        # language's ASR. See MICROPHONE_CAPTURE_ENABLED_DEFAULT.
+        self._microphone_capture_enabled = bool(MICROPHONE_CAPTURE_ENABLED_DEFAULT)
+        self.meeting_audio_only_switch = None
+        self.meeting_audio_only_switch_menu = None
         self.waveform_canvas = None
         self.summary_body_box = None
         self._listen_start_time = None
@@ -2999,6 +3021,19 @@ class AlphaApp(
         )
         self.always_on_top_switch.pack(side="left")
 
+        self.meeting_audio_only_switch = ctk.CTkSwitch(
+            master=self.right_header_cluster,
+            text="Meeting audio only",
+            font=self._ui_font(FONTS["caption"][1]),
+            text_color=COLORS["text_secondary"],
+            fg_color=COLORS["input_bg"],
+            progress_color=COLORS["accent_blue"],
+            button_color=COLORS["text_primary"],
+            button_hover_color="#e2e8f0",
+            command=self.toggle_meeting_audio_only,
+        )
+        self.meeting_audio_only_switch.pack(side="left", padx=(8, 0))
+
         self.listening_label = None
         self.translate_label = None
         self.header_controls = self.left_header_cluster
@@ -3152,6 +3187,23 @@ class AlphaApp(
             command=self.toggle_always_on_top,
         )
         self.always_on_top_switch_menu.pack(anchor="w", padx=15, pady=(4, 12))
+
+        self.meeting_audio_only_switch_menu = ctk.CTkSwitch(
+            master=self.menu_dropdown_frame,
+            text="Meeting audio only",
+            font=ctk.CTkFont(family="Segoe UI", size=13),
+            text_color=COLORS["text_secondary"],
+            fg_color=COLORS["dropdown_bg"],
+            progress_color=COLORS["accent_blue"],
+            button_color=COLORS["text_primary"],
+            button_hover_color="#e0e0e0",
+            command=self.toggle_meeting_audio_only,
+        )
+        self.meeting_audio_only_switch_menu.pack(anchor="w", padx=15, pady=(0, 12))
+        # The switch is ON when the mic is OFF, so the default reads as
+        # "Meeting audio only" being active. Applied to both at once, after
+        # both exist.
+        self._sync_meeting_audio_only_switches()
 
     # -----------------------------------------------------------------------
     # Responsive layout switching
@@ -3344,6 +3396,15 @@ class AlphaApp(
         else:
             self.always_on_top_switch.pack_forget()
 
+        # A wider threshold than the switch above because the label is longer.
+        # Below it the control is still reachable from the hamburger menu, which
+        # is where every header control goes in compact mode anyway.
+        if self.meeting_audio_only_switch is not None:
+            if width >= MEETING_AUDIO_ONLY_SWITCH_MIN_WIDTH:
+                self.meeting_audio_only_switch.pack(side="left", padx=(8, 0))
+            else:
+                self.meeting_audio_only_switch.pack_forget()
+
         if self.brand_sub_label is not None:
             if width < 480:
                 self.brand_sub_label.pack_forget()
@@ -3376,6 +3437,8 @@ class AlphaApp(
                 self.summary_button.pack_forget()
             if self.always_on_top_switch is not None:
                 self.always_on_top_switch.pack_forget()
+            if self.meeting_audio_only_switch is not None:
+                self.meeting_audio_only_switch.pack_forget()
             self.hamburger_button.pack(side="left", padx=(8, 0))
             self._hide_hamburger_menu()
         except Exception as exc:
@@ -8228,6 +8291,9 @@ class AlphaApp(
         for btn in (self.listen_button, self.listen_button_menu):
             if btn is not None:
                 btn.configure(state="normal", **cfg)
+        # The mic choice is read at Start, so it must not look changeable while
+        # a session is running.
+        self._set_meeting_audio_only_enabled(not listening)
         self._update_status_bar(listening=listening)
 
     def _set_stopping_ui_state(self):
@@ -9824,6 +9890,21 @@ class AlphaApp(
                 pass
         except Exception:
             _system_audio_only = False
+        # The UI switch feeds the SAME branch the Stage 1 benchmark flag uses,
+        # rather than introducing a second way to skip the microphone. Either
+        # reason is enough, so the benchmark flag keeps winning when set.
+        if not self._microphone_capture_enabled:
+            _system_audio_only = True
+            try:
+                from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+                jp_accuracy_log(
+                    "MICROPHONE_CAPTURE_DISABLED_BY_USER",
+                    note="meeting audio only; the operator's own speech is not "
+                    "captured or transcribed",
+                )
+            except Exception:
+                pass
         if not _system_audio_only:
             try:
                 self._start_microphone_capture()
@@ -10568,6 +10649,70 @@ class AlphaApp(
         except Exception as exc:
             print(f"Error toggling always on top: {exc}")
             messagebox.showerror("Error", f"Could not update window state:\n{exc}")
+
+    def toggle_meeting_audio_only(self):
+        """Toggle microphone capture and keep both switches in sync.
+
+        Switch ON means "meeting audio only", i.e. the microphone is NOT
+        captured. That is the default, because Alpha transcribes ONE language
+        per session and merges mic with system audio before Deepgram, so in a
+        bilingual meeting the operator's own speech is fed to the other
+        language's ASR.
+
+        Read at Start, exactly like the language dropdown, so it never changes
+        the audio graph of a session already running. The switches are disabled
+        while listening so the UI cannot advertise a setting that will not take
+        effect until the next session.
+        """
+        try:
+            if self._compact_mode and self._menu_visible:
+                source = self.meeting_audio_only_switch_menu
+            else:
+                source = self.meeting_audio_only_switch
+            meeting_audio_only = bool(source is not None and source.get() == 1)
+            self._microphone_capture_enabled = not meeting_audio_only
+            self._sync_meeting_audio_only_switches()
+            print(
+                "Microphone capture: "
+                + ("ON" if self._microphone_capture_enabled else "OFF (meeting audio only)")
+            )
+        except Exception as exc:
+            print(f"Error toggling meeting audio only: {exc}")
+
+    def _sync_meeting_audio_only_switches(self):
+        """Make both switches show `_microphone_capture_enabled`.
+
+        One writer for both, the same shape as item 81's
+        `_sync_transcript_visibility`: two widgets showing one piece of state is
+        how they end up disagreeing.
+        """
+        meeting_audio_only = not bool(self._microphone_capture_enabled)
+        for switch in (
+            getattr(self, "meeting_audio_only_switch", None),
+            getattr(self, "meeting_audio_only_switch_menu", None),
+        ):
+            if switch is None:
+                continue
+            try:
+                if meeting_audio_only:
+                    switch.select()
+                else:
+                    switch.deselect()
+            except Exception:
+                pass
+
+    def _set_meeting_audio_only_enabled(self, enabled: bool):
+        """Lock the switches while a session runs; the value is read at Start."""
+        for switch in (
+            getattr(self, "meeting_audio_only_switch", None),
+            getattr(self, "meeting_audio_only_switch_menu", None),
+        ):
+            if switch is None:
+                continue
+            try:
+                switch.configure(state="normal" if enabled else "disabled")
+            except Exception:
+                pass
 
     def show_meeting_summary(self):
         """Toggle right-side summary panel; refresh summary text when opening."""

@@ -240,6 +240,14 @@ def _build_header_host(design_width, source="Japanese", target="English"):
     root.on_language_change = lambda *a, **k: None
     root.show_meeting_summary = lambda: None
     root.toggle_always_on_top = lambda: None
+    # The header gained a second switch ("Meeting audio only"), so this host
+    # needs its command and the state it reads -- the same fixture maintenance
+    # every header collaborator has needed. Real widgets, so the geometry these
+    # tests measure stays real; only the command is a stand-in.
+    root.toggle_meeting_audio_only = lambda: None
+    root._microphone_capture_enabled = False
+    root.meeting_audio_only_switch = None
+    root.meeting_audio_only_switch_menu = None
     root.grid_columnconfigure(0, weight=1)
     root.grid_rowconfigure(0, weight=1)
     root.create_header_frame()
