@@ -291,18 +291,21 @@ CONTENT_REFERENCE_WEIGHT = 30
 # already had a 700 breakpoint for the same reason.
 CONTENT_STACK_BREAKPOINT = LAYOUT_MEDIUM_BREAKPOINT
 
-# The "Meeting audio only" switch is shown in the header only in WIDE layout,
-# and that threshold is measured rather than guessed. The switch adds 209
-# device px to the header's required width; driven on a real mapped root at
-# 20 px steps, the header overflows with it below **980 design px** and fits
-# from 980 up. An earlier draft used the hamburger breakpoint (800) and was
-# caught overflowing at 900 -- where the header fits perfectly WITHOUT the
-# switch (req 1236 vs got 1350) and overflows WITH it (1445 vs 1350).
+# The microphone switch is shown in the header from the hamburger breakpoint up,
+# so the control is reachable at EVERY width: below it the hamburger menu
+# carries it, at and above it the header does.
 #
-# `LAYOUT_WIDE_BREAKPOINT` (1050) is an existing measured constant safely
-# above 980, leaving ~70 px of headroom for font and label variation. Below
-# it the control is still reachable from the hamburger menu.
-MEETING_AUDIO_ONLY_SWITCH_MIN_WIDTH = LAYOUT_WIDE_BREAKPOINT
+# An earlier draft used `LAYOUT_WIDE_BREAKPOINT` (1050) and created a dead zone
+# at 800-1050 design px, where the header switch was hidden and the hamburger
+# was not shown either -- with `DEFAULT_WINDOW_WIDTH = 900` the app opened
+# inside it and the control could not be reached at all. Continuity of access
+# beats a tidier threshold.
+#
+# It fits because the widget is now narrow. Measured on a real mapped root at
+# 900 design px: the header has 114 device px spare (req 1236 vs got 1350); a
+# default `CTkSwitch` needs 150 whatever its label, and the old "Meeting audio
+# only" one needed 209. The compact form below measures 82.
+MIC_SWITCH_MIN_WIDTH = LAYOUT_HAMBURGER_BREAKPOINT
 
 # Retained: still the vertical split used when the grid stacks on a narrow
 # window, where transcript and translation share one column as rows.
@@ -449,8 +452,8 @@ class AlphaApp(
         # bilingual meeting the operator's own speech lands in the other
         # language's ASR. See MICROPHONE_CAPTURE_ENABLED_DEFAULT.
         self._microphone_capture_enabled = bool(MICROPHONE_CAPTURE_ENABLED_DEFAULT)
-        self.meeting_audio_only_switch = None
-        self.meeting_audio_only_switch_menu = None
+        self.mic_switch = None
+        self.mic_switch_menu = None
         self.waveform_canvas = None
         self.summary_body_box = None
         self._listen_start_time = None
@@ -3021,18 +3024,25 @@ class AlphaApp(
         )
         self.always_on_top_switch.pack(side="left")
 
-        self.meeting_audio_only_switch = ctk.CTkSwitch(
+        # Deliberately compact: a default CTkSwitch is 150 device px whatever
+        # its label, and the header has only 114 spare at 900 design px. This
+        # form measures 82. The hamburger copy below uses the full word, the
+        # same abbreviate-when-tight treatment the language combos already get.
+        self.mic_switch = ctk.CTkSwitch(
             master=self.right_header_cluster,
-            text="Meeting audio only",
+            text="Mic",
             font=self._ui_font(FONTS["caption"][1]),
             text_color=COLORS["text_secondary"],
             fg_color=COLORS["input_bg"],
             progress_color=COLORS["accent_blue"],
             button_color=COLORS["text_primary"],
             button_hover_color="#e2e8f0",
-            command=self.toggle_meeting_audio_only,
+            width=32,
+            switch_width=32,
+            switch_height=16,
+            command=self.toggle_microphone_capture,
         )
-        self.meeting_audio_only_switch.pack(side="left", padx=(8, 0))
+        self.mic_switch.pack(side="left", padx=(8, 0))
 
         self.listening_label = None
         self.translate_label = None
@@ -3188,22 +3198,21 @@ class AlphaApp(
         )
         self.always_on_top_switch_menu.pack(anchor="w", padx=15, pady=(4, 12))
 
-        self.meeting_audio_only_switch_menu = ctk.CTkSwitch(
+        self.mic_switch_menu = ctk.CTkSwitch(
             master=self.menu_dropdown_frame,
-            text="Meeting audio only",
+            text="Microphone",
             font=ctk.CTkFont(family="Segoe UI", size=13),
             text_color=COLORS["text_secondary"],
             fg_color=COLORS["dropdown_bg"],
             progress_color=COLORS["accent_blue"],
             button_color=COLORS["text_primary"],
             button_hover_color="#e0e0e0",
-            command=self.toggle_meeting_audio_only,
+            command=self.toggle_microphone_capture,
         )
-        self.meeting_audio_only_switch_menu.pack(anchor="w", padx=15, pady=(0, 12))
-        # The switch is ON when the mic is OFF, so the default reads as
-        # "Meeting audio only" being active. Applied to both at once, after
-        # both exist.
-        self._sync_meeting_audio_only_switches()
+        self.mic_switch_menu.pack(anchor="w", padx=15, pady=(0, 12))
+        # ON means the microphone IS captured, which is off by default. Applied
+        # to both at once, once both exist.
+        self._sync_mic_switches()
 
     # -----------------------------------------------------------------------
     # Responsive layout switching
@@ -3399,11 +3408,11 @@ class AlphaApp(
         # A wider threshold than the switch above because the label is longer.
         # Below it the control is still reachable from the hamburger menu, which
         # is where every header control goes in compact mode anyway.
-        if self.meeting_audio_only_switch is not None:
-            if width >= MEETING_AUDIO_ONLY_SWITCH_MIN_WIDTH:
-                self.meeting_audio_only_switch.pack(side="left", padx=(8, 0))
+        if self.mic_switch is not None:
+            if width >= MIC_SWITCH_MIN_WIDTH:
+                self.mic_switch.pack(side="left", padx=(8, 0))
             else:
-                self.meeting_audio_only_switch.pack_forget()
+                self.mic_switch.pack_forget()
 
         if self.brand_sub_label is not None:
             if width < 480:
@@ -3437,8 +3446,8 @@ class AlphaApp(
                 self.summary_button.pack_forget()
             if self.always_on_top_switch is not None:
                 self.always_on_top_switch.pack_forget()
-            if self.meeting_audio_only_switch is not None:
-                self.meeting_audio_only_switch.pack_forget()
+            if self.mic_switch is not None:
+                self.mic_switch.pack_forget()
             self.hamburger_button.pack(side="left", padx=(8, 0))
             self._hide_hamburger_menu()
         except Exception as exc:
@@ -8293,7 +8302,7 @@ class AlphaApp(
                 btn.configure(state="normal", **cfg)
         # The mic choice is read at Start, so it must not look changeable while
         # a session is running.
-        self._set_meeting_audio_only_enabled(not listening)
+        self._set_mic_switch_enabled(not listening)
         self._update_status_bar(listening=listening)
 
     def _set_stopping_ui_state(self):
@@ -10650,14 +10659,15 @@ class AlphaApp(
             print(f"Error toggling always on top: {exc}")
             messagebox.showerror("Error", f"Could not update window state:\n{exc}")
 
-    def toggle_meeting_audio_only(self):
-        """Toggle microphone capture and keep both switches in sync.
+    def toggle_microphone_capture(self):
+        """Turn the microphone on or off, keeping both switches in step.
 
-        Switch ON means "meeting audio only", i.e. the microphone is NOT
-        captured. That is the default, because Alpha transcribes ONE language
-        per session and merges mic with system audio before Deepgram, so in a
-        bilingual meeting the operator's own speech is fed to the other
-        language's ASR.
+        ON means the microphone IS captured. It is OFF by default because Alpha
+        transcribes ONE language per session and merges mic with system audio
+        before Deepgram, so in a bilingual meeting the operator's own speech is
+        fed to the other language's ASR. Turning it on is the right choice for a
+        single-language session where the operator wants their own voice in the
+        transcript too.
 
         Read at Start, exactly like the language dropdown, so it never changes
         the audio graph of a session already running. The switches are disabled
@@ -10666,46 +10676,47 @@ class AlphaApp(
         """
         try:
             if self._compact_mode and self._menu_visible:
-                source = self.meeting_audio_only_switch_menu
+                source = self.mic_switch_menu
             else:
-                source = self.meeting_audio_only_switch
-            meeting_audio_only = bool(source is not None and source.get() == 1)
-            self._microphone_capture_enabled = not meeting_audio_only
-            self._sync_meeting_audio_only_switches()
+                source = self.mic_switch
+            self._microphone_capture_enabled = bool(
+                source is not None and source.get() == 1
+            )
+            self._sync_mic_switches()
             print(
                 "Microphone capture: "
                 + ("ON" if self._microphone_capture_enabled else "OFF (meeting audio only)")
             )
         except Exception as exc:
-            print(f"Error toggling meeting audio only: {exc}")
+            print(f"Error toggling microphone capture: {exc}")
 
-    def _sync_meeting_audio_only_switches(self):
+    def _sync_mic_switches(self):
         """Make both switches show `_microphone_capture_enabled`.
 
         One writer for both, the same shape as item 81's
         `_sync_transcript_visibility`: two widgets showing one piece of state is
         how they end up disagreeing.
         """
-        meeting_audio_only = not bool(self._microphone_capture_enabled)
+        enabled = bool(self._microphone_capture_enabled)
         for switch in (
-            getattr(self, "meeting_audio_only_switch", None),
-            getattr(self, "meeting_audio_only_switch_menu", None),
+            getattr(self, "mic_switch", None),
+            getattr(self, "mic_switch_menu", None),
         ):
             if switch is None:
                 continue
             try:
-                if meeting_audio_only:
+                if enabled:
                     switch.select()
                 else:
                     switch.deselect()
             except Exception:
                 pass
 
-    def _set_meeting_audio_only_enabled(self, enabled: bool):
+    def _set_mic_switch_enabled(self, enabled: bool):
         """Lock the switches while a session runs; the value is read at Start."""
         for switch in (
-            getattr(self, "meeting_audio_only_switch", None),
-            getattr(self, "meeting_audio_only_switch_menu", None),
+            getattr(self, "mic_switch", None),
+            getattr(self, "mic_switch_menu", None),
         ):
             if switch is None:
                 continue

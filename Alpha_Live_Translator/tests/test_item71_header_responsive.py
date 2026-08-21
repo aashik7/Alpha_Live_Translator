@@ -244,10 +244,10 @@ def _build_header_host(design_width, source="Japanese", target="English"):
     # needs its command and the state it reads -- the same fixture maintenance
     # every header collaborator has needed. Real widgets, so the geometry these
     # tests measure stays real; only the command is a stand-in.
-    root.toggle_meeting_audio_only = lambda: None
+    root.toggle_microphone_capture = lambda: None
     root._microphone_capture_enabled = False
-    root.meeting_audio_only_switch = None
-    root.meeting_audio_only_switch_menu = None
+    root.mic_switch = None
+    root.mic_switch_menu = None
     root.grid_columnconfigure(0, weight=1)
     root.grid_rowconfigure(0, weight=1)
     root.create_header_frame()

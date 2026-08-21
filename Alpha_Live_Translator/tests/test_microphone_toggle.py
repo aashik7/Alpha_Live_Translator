@@ -87,23 +87,23 @@ class TheDefaultIsMicrophoneOff(unittest.TestCase):
 
 
 class TheToggleKeepsBothSwitchesInStep(unittest.TestCase):
-    """Drives the real `toggle_meeting_audio_only` and its sync helper."""
+    """Drives the real `toggle_microphone_capture` and its sync helper."""
 
     def setUp(self):
         from alpha.ui.main_window import AlphaApp
 
         class Host:
-            toggle_meeting_audio_only = AlphaApp.toggle_meeting_audio_only
-            _sync_meeting_audio_only_switches = (
-                AlphaApp._sync_meeting_audio_only_switches
+            toggle_microphone_capture = AlphaApp.toggle_microphone_capture
+            _sync_mic_switches = (
+                AlphaApp._sync_mic_switches
             )
-            _set_meeting_audio_only_enabled = AlphaApp._set_meeting_audio_only_enabled
+            _set_mic_switch_enabled = AlphaApp._set_mic_switch_enabled
             _set_listen_button_state = AlphaApp._set_listen_button_state
 
             def __init__(self):
                 self._microphone_capture_enabled = False
-                self.meeting_audio_only_switch = SwitchRecorder(1)
-                self.meeting_audio_only_switch_menu = SwitchRecorder(1)
+                self.mic_switch = SwitchRecorder(0)
+                self.mic_switch_menu = SwitchRecorder(0)
                 self._compact_mode = False
                 self._menu_visible = False
                 self.listen_button = None
@@ -115,53 +115,53 @@ class TheToggleKeepsBothSwitchesInStep(unittest.TestCase):
 
         self.host = Host()
 
-    def test_the_default_shows_meeting_audio_only_as_on(self):
-        self.host._sync_meeting_audio_only_switches()
-        self.assertEqual(self.host.meeting_audio_only_switch.get(), 1)
-        self.assertEqual(self.host.meeting_audio_only_switch_menu.get(), 1)
+    def test_the_default_shows_the_microphone_as_off(self):
+        self.host._sync_mic_switches()
+        self.assertEqual(self.host.mic_switch.get(), 0)
+        self.assertEqual(self.host.mic_switch_menu.get(), 0)
 
-    def test_turning_the_switch_off_enables_the_microphone(self):
-        self.host.meeting_audio_only_switch.deselect()
-        self.host.toggle_meeting_audio_only()
+    def test_turning_the_switch_on_enables_the_microphone(self):
+        self.host.mic_switch.select()
+        self.host.toggle_microphone_capture()
         self.assertTrue(self.host._microphone_capture_enabled)
-        self.assertEqual(self.host.meeting_audio_only_switch_menu.get(), 0)
+        self.assertEqual(self.host.mic_switch_menu.get(), 1)
 
-    def test_turning_it_back_on_disables_the_microphone(self):
-        self.host.meeting_audio_only_switch.deselect()
-        self.host.toggle_meeting_audio_only()
-        self.host.meeting_audio_only_switch.select()
-        self.host.toggle_meeting_audio_only()
+    def test_turning_it_back_off_disables_the_microphone(self):
+        self.host.mic_switch.select()
+        self.host.toggle_microphone_capture()
+        self.host.mic_switch.deselect()
+        self.host.toggle_microphone_capture()
         self.assertFalse(self.host._microphone_capture_enabled)
-        self.assertEqual(self.host.meeting_audio_only_switch_menu.get(), 1)
+        self.assertEqual(self.host.mic_switch_menu.get(), 0)
 
     def test_the_menu_switch_drives_it_in_compact_mode(self):
         """In compact mode the header switch is not even mapped."""
         self.host._compact_mode = True
         self.host._menu_visible = True
-        self.host.meeting_audio_only_switch_menu.deselect()
-        self.host.toggle_meeting_audio_only()
+        self.host.mic_switch_menu.select()
+        self.host.toggle_microphone_capture()
         self.assertTrue(self.host._microphone_capture_enabled)
         self.assertEqual(
-            self.host.meeting_audio_only_switch.get(),
-            0,
+            self.host.mic_switch.get(),
+            1,
             "the header switch did not follow the menu switch",
         )
 
     def test_a_missing_switch_is_not_an_error(self):
-        self.host.meeting_audio_only_switch_menu = None
-        self.host._sync_meeting_audio_only_switches()
+        self.host.mic_switch_menu = None
+        self.host._sync_mic_switches()
 
     def test_listening_locks_the_switches(self):
         """The value is read at Start, so it must not look changeable mid-session."""
         self.host._set_listen_button_state(True)
-        self.assertEqual(self.host.meeting_audio_only_switch.state, "disabled")
-        self.assertEqual(self.host.meeting_audio_only_switch_menu.state, "disabled")
+        self.assertEqual(self.host.mic_switch.state, "disabled")
+        self.assertEqual(self.host.mic_switch_menu.state, "disabled")
 
     def test_stopping_unlocks_the_switches(self):
         self.host._set_listen_button_state(True)
         self.host._set_listen_button_state(False)
-        self.assertEqual(self.host.meeting_audio_only_switch.state, "normal")
-        self.assertEqual(self.host.meeting_audio_only_switch_menu.state, "normal")
+        self.assertEqual(self.host.mic_switch.state, "normal")
+        self.assertEqual(self.host.mic_switch_menu.state, "normal")
 
 
 class TheWiringIsPresent(unittest.TestCase):
@@ -194,23 +194,24 @@ class TheWiringIsPresent(unittest.TestCase):
 
 
 @unittest.skipUnless(TK_AVAILABLE, "Tk cannot start in this environment")
-class TheHeaderStillFits(unittest.TestCase):
-    """The switch is 209 device px wide; the header has to survive it.
+class TheControlIsReachableAtEveryWidth(unittest.TestCase):
+    """The bug this class exists for.
 
-    An earlier draft showed it from the hamburger breakpoint (800) and
-    overflowed the header at 900 design px -- where the header fits perfectly
-    without it. Geometry is measured on a real MAPPED root, because an
-    unrealised window reports widths that make these assertions vacuous.
+    The first shipped version put the header switch behind
+    `LAYOUT_WIDE_BREAKPOINT` (1050) to avoid an overflow, which opened a dead
+    zone at 800-1050 design px: the header switch was hidden and the hamburger
+    was not shown either, so the control could not be reached at all. With
+    `DEFAULT_WINDOW_WIDTH = 900` the app opened INSIDE that zone, and the user
+    reported exactly that -- no way to turn the microphone on.
+
+    Geometry is measured on a real MAPPED root, and each test builds its own:
+    an unrealised window reports widths that make these assertions vacuous, and
+    a root shared across a class leaks CTk state into the other Tk suites.
     """
 
     def setUp(self):
         from alpha.ui.main_window import AlphaApp
 
-        # A root PER TEST, created and destroyed here rather than shared across
-        # the class. Item 71's own note: "every geometry test must build its own
-        # root". A shared root outlives the test and leaks CTk state into the
-        # other Tk suites -- measured, it broke four
-        # `test_item71_reading_typography` tests that pass in isolation.
         self.app = AlphaApp()
         self.app.deiconify()
         self.app.update()
@@ -229,26 +230,53 @@ class TheHeaderStillFits(unittest.TestCase):
         header = self.app.right_header_cluster.master
         return header.winfo_reqwidth(), header.winfo_width()
 
-    def test_the_header_does_not_overflow_at_900(self):
-        """The width the first draft broke."""
+    def _reachable(self):
+        return bool(
+            self.app.mic_switch.winfo_ismapped()
+            or self.app.hamburger_button.winfo_ismapped()
+        )
+
+    def test_it_is_reachable_at_every_width(self):
+        for width in (600, 700, 790, 800, 820, 900, 1000, 1100, 1400, 1920):
+            self._at(width)
+            self.assertTrue(
+                self._reachable(),
+                f"the microphone control cannot be reached at {width} device px",
+            )
+
+    def test_it_is_reachable_at_the_default_window_size(self):
+        """The exact case the user hit."""
+        from alpha.ui.theme import DEFAULT_WINDOW_WIDTH
+
+        self._at(DEFAULT_WINDOW_WIDTH)
+        self.assertTrue(self._reachable())
+
+    def test_the_header_switch_is_the_compact_form(self):
+        """A default CTkSwitch is 150 device px whatever its label, and the
+        header has 114 spare at 900. This one has to be narrower."""
+        self._at(1400)
+        self.assertLessEqual(self.app.mic_switch.winfo_reqwidth(), 114)
+
+    def test_the_header_does_not_overflow_at_the_default_width(self):
         req, got = self._at(900)
         self.assertLessEqual(req, got, "the header overflows at 900 design px")
 
-    def test_the_switch_is_hidden_below_the_wide_breakpoint(self):
-        self._at(900)
-        self.assertFalse(self.app.meeting_audio_only_switch.winfo_ismapped())
-
-    def test_the_switch_is_shown_when_there_is_room(self):
-        self._at(1400)
-        self.assertTrue(self.app.meeting_audio_only_switch.winfo_ismapped())
-
     def test_the_header_does_not_overflow_where_the_switch_is_shown(self):
-        for width in (1050, 1200, 1400, 1920):
+        for width in (900, 1000, 1100, 1400, 1920):
             req, got = self._at(width)
             self.assertLessEqual(req, got, f"the header overflows at {width}")
 
-    def test_the_menu_switch_exists_for_the_widths_that_hide_the_header_one(self):
-        self.assertIsNotNone(self.app.meeting_audio_only_switch_menu)
+    def test_the_hamburger_carries_it_when_the_header_cannot(self):
+        self._at(700)
+        self.assertFalse(self.app.mic_switch.winfo_ismapped())
+        self.assertTrue(self.app.hamburger_button.winfo_ismapped())
+        self.assertIsNotNone(self.app.mic_switch_menu)
+
+    def test_the_default_is_microphone_off_on_a_real_window(self):
+        self._at(1400)
+        self.assertEqual(self.app.mic_switch.get(), 0)
+        self.assertEqual(self.app.mic_switch_menu.get(), 0)
+        self.assertFalse(self.app._microphone_capture_enabled)
 
 
 if __name__ == "__main__":
