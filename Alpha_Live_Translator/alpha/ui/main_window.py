@@ -3645,6 +3645,13 @@ class AlphaApp(
                 audio_device_changed=bool(
                     getattr(self, "_audio_device_changed", False)
                 ),
+                # Named so "switch back" is actionable. Capture binds at Start
+                # and never follows, so the operator has to know WHICH device
+                # this session is on -- without it the advice sent one live
+                # test to the wrong device.
+                audio_capture_device=str(
+                    getattr(self, "_diag_wasapi_device_name", "") or ""
+                ),
             )
         except Exception:
             # A status indicator must never be able to break the UI tick it

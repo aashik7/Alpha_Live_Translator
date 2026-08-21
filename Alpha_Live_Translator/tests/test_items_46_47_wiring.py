@@ -299,6 +299,9 @@ class TheIndicatorReflectsTheConnection(unittest.TestCase):
                 self._dg_reconnecting = False
                 self._dg_auth_failed = False
                 self.translation_worker = None
+                # What `_sync_connection_indicator` reads to name the
+                # captured device in the device-change message.
+                self._diag_wasapi_device_name = "Speakers (Realtek Audio) [Loopback]"
                 self.published = []
 
             def deepgram_gap_seconds(self):
@@ -378,6 +381,38 @@ class TheIndicatorReflectsTheConnection(unittest.TestCase):
         self.host._dg_disconnected_at = 1.0
         self.host._sync_connection_indicator()
         self.assertEqual(len(self.host.published), 2)
+
+    def test_the_device_message_names_the_device_this_session_captures(self):
+        """Measured on the live runs of 2026-08-21: capture binds at Start and
+        never follows, so "switch back" is only right if the operator switches
+        back to the device THIS session bound. The old wording never said
+        which, and in the second run the user switched to the device the FIRST
+        session had used -- exactly the wrong move for the one running."""
+        self.host._audio_device_changed = True
+        self.host._sync_connection_indicator()
+        msg = " ".join(m for m, _s, _r in self.host.published)
+        self.assertIn("Realtek Audio", msg, f"the device was not named: {msg}")
+
+    def test_the_device_message_leads_with_stop_and_start(self):
+        """Stop/start is the reliable recovery; switching back is conditional.
+        The reliable one must come first."""
+        self.host._audio_device_changed = True
+        self.host._sync_connection_indicator()
+        msg = " ".join(m for m, _s, _r in self.host.published).lower()
+        self.assertIn("stop and start", msg)
+        self.assertLess(
+            msg.index("stop and start"),
+            msg.index("default again"),
+            "the conditional advice was offered before the reliable one",
+        )
+
+    def test_the_device_message_survives_an_unknown_device_name(self):
+        self.host._diag_wasapi_device_name = ""
+        self.host._audio_device_changed = True
+        self.host._sync_connection_indicator()
+        msg = " ".join(m for m, _s, _r in self.host.published)
+        self.assertIn("Stop and start", msg)
+        self.assertNotIn("“”", msg, "an empty device name left empty quotes")
 
     def test_an_audio_device_change_reaches_the_indicator(self):
         """Item 73's detector, folded in. Windows moving the default output

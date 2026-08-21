@@ -161,6 +161,7 @@ def describe_connection(
     translation_status_message: str = "",
     gap_seconds: float = 0.0,
     audio_device_changed: bool = False,
+    audio_capture_device: str = "",
 ) -> ConnectionStatus:
     """Collapse the live signals into one indicator state (item 47).
 
@@ -208,11 +209,34 @@ def describe_connection(
     # do something, and telling them to wait would be wrong.
     if audio_device_changed:
         candidate = RECONNECTING
-        candidate_message = (
-            "Windows changed the default audio output. Audio going to the new "
-            "device is not being captured — switch back, or stop and start "
-            "again."
-        )
+        # The advice is deliberately ordered "stop and start" FIRST, and the
+        # captured device is NAMED, because the previous wording was misleading
+        # in the field.
+        #
+        # Capture binds to whatever was default at Start and never follows a
+        # change. Measured on the live runs of 2026-08-21: loopback goes to
+        # EXACT digital silence (rms 0.0, 100% of samples) the moment the
+        # default moves, and stays there for the rest of the session -- 85 s in
+        # one run, 65 s in the other. "Switch back" therefore only helps if the
+        # user switches back to the device THIS session bound, which the old
+        # message never said. In the second run the user switched the default
+        # to the device the FIRST session had used, which was exactly the wrong
+        # move for the session that was actually running.
+        device = (audio_capture_device or "").strip()
+        if device:
+            candidate_message = (
+                "Windows changed the default audio output. This session "
+                f"captures “{device}” and cannot follow the change, so nothing "
+                "is being recorded now. Stop and start the session to capture "
+                f"the new device, or make “{device}” the default again."
+            )
+        else:
+            candidate_message = (
+                "Windows changed the default audio output. This session cannot "
+                "follow the change, so nothing is being recorded now. Stop and "
+                "start the session to capture the new device, or make the "
+                "previous device the default again."
+            )
         if _SEVERITY[candidate] >= _SEVERITY[state]:
             state, message = candidate, candidate_message
 
@@ -233,6 +257,7 @@ def describe_connection(
             "deepgram_auth_failed": deepgram_auth_failed,
             "translation_degraded": translation_degraded,
             "audio_device_changed": audio_device_changed,
+            "audio_capture_device": audio_capture_device,
             "gap_seconds": round(float(gap_seconds), 1),
         },
     )
