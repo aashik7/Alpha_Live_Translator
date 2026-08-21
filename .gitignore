@@ -93,3 +93,7 @@ desktop.ini
 # and a cached CPython download here; both are rebuildable from the lock
 # file and must never be committed.
 Alpha_Live_Translator/build/
+
+# Item 49 phase 2: the delivered build's API keys. NEVER commit these --
+# a key in git history cannot be recalled from clones that already exist.
+Alpha_Live_Translator/installer/keys.local.ini

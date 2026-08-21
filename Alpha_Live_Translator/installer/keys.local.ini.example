@@ -1,0 +1,8 @@
+; Copy to keys.local.ini and fill in. THAT FILE IS GIT-IGNORED — keep it so.
+;
+; Use SEPARATE, restricted keys for a delivered build, never the development
+; ones. Anything inside a distributed binary can be extracted; separate keys
+; mean a leak costs a key you can revoke on its own.
+[keys]
+deepgram = your-deepgram-api-key
+deepl = your-deepl-auth-key
