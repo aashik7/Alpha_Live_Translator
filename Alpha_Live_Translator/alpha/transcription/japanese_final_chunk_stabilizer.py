@@ -13,6 +13,7 @@ from typing import Any, Optional
 from alpha.constants import (
     FORCE_DEEPGRAM_LANGUAGE,
     JAPANESE_ACCURACY_MODE,
+    LANGUAGE_CONFIDENCE_REJECT,
     JAPANESE_CONTINUITY_ASSEMBLER_ENABLED,
     JAPANESE_MODE_ENABLED,
     MEETING_SEGMENT_BUFFER_ENABLED,
@@ -127,6 +128,40 @@ class JapaneseFinalChunkStabilizer:
 
         meta = dict(metadata or {})
         meta.setdefault("raw_deepgram_text", raw)
+
+        # Reject a final the provider itself is not confident about.
+        #
+        # `LANGUAGE_CONFIDENCE_REJECT` has existed in `constants.py` since the
+        # language work, but nothing ever consumed it -- `main_window.py` only
+        # LOGGED the three thresholds. That is the fourth instance in this
+        # project of a rule shipped with no caller (items 44, 65, 46+47), and it
+        # meant provider output at confidence 0.38 reached the canonical
+        # transcript as if it were speech.
+        #
+        # The threshold is measured, not chosen: across the three genuine
+        # Japanese runs of 2026-08-20/21 (344 finals) the MINIMUM confidence was
+        # 0.500 and NOT ONE fell below 0.45, so this drops nothing real. On the
+        # run where non-Japanese was spoken into a Japanese session, 10% of
+        # finals fell below it, including the invented `義姉。` at 0.384.
+        #
+        # This does NOT fix wrong-language transcription and must not be
+        # mistaken for it: in that same run `バングラデーション` -- a phonetic
+        # guess at "Bangladesh" -- arrived at confidence **0.997**. A confidence
+        # gate cannot catch a confidently wrong language. That is item 85.
+        confidence = meta.get("transcript_confidence")
+        if confidence is None:
+            confidence = meta.get("confidence")
+        if isinstance(confidence, (int, float)) and float(confidence) < float(
+            LANGUAGE_CONFIDENCE_REJECT
+        ):
+            jp_accuracy_log(
+                "LOW_CONFIDENCE_FINAL_REJECTED",
+                raw_text=raw[:120],
+                confidence=float(confidence),
+                threshold=float(LANGUAGE_CONFIDENCE_REJECT),
+                reason="provider confidence below LANGUAGE_CONFIDENCE_REJECT",
+            )
+            return True
 
         try:
             from alpha.utils.transcript_evidence import log_raw_deepgram_final

@@ -3024,22 +3024,24 @@ class AlphaApp(
         )
         self.always_on_top_switch.pack(side="left")
 
-        # Deliberately compact: a default CTkSwitch is 150 device px whatever
-        # its label, and the header has only 114 spare at 900 design px. This
-        # form measures 82. The hamburger copy below uses the full word, the
-        # same abbreviate-when-tight treatment the language combos already get.
-        self.mic_switch = ctk.CTkSwitch(
+        # A checkbox, and deliberately compact. Measured on a real root: a
+        # default CTkCheckBox or CTkSwitch is 150 device px whatever its label,
+        # the previous "Meeting audio only" switch was 209, and the header has
+        # only 114 spare at 900 design px. This form measures 58. The hamburger
+        # copy below uses the full word, the same abbreviate-when-tight
+        # treatment the language combos already get.
+        self.mic_switch = ctk.CTkCheckBox(
             master=self.right_header_cluster,
             text="Mic",
             font=self._ui_font(FONTS["caption"][1]),
             text_color=COLORS["text_secondary"],
-            fg_color=COLORS["input_bg"],
-            progress_color=COLORS["accent_blue"],
-            button_color=COLORS["text_primary"],
-            button_hover_color="#e2e8f0",
-            width=32,
-            switch_width=32,
-            switch_height=16,
+            fg_color=COLORS["accent_blue"],
+            hover_color=COLORS["accent_blue_hover"],
+            border_color=COLORS["border"],
+            checkmark_color=COLORS["text_primary"],
+            checkbox_width=16,
+            checkbox_height=16,
+            width=1,
             command=self.toggle_microphone_capture,
         )
         self.mic_switch.pack(side="left", padx=(8, 0))
@@ -3198,15 +3200,15 @@ class AlphaApp(
         )
         self.always_on_top_switch_menu.pack(anchor="w", padx=15, pady=(4, 12))
 
-        self.mic_switch_menu = ctk.CTkSwitch(
+        self.mic_switch_menu = ctk.CTkCheckBox(
             master=self.menu_dropdown_frame,
             text="Microphone",
             font=ctk.CTkFont(family="Segoe UI", size=13),
             text_color=COLORS["text_secondary"],
-            fg_color=COLORS["dropdown_bg"],
-            progress_color=COLORS["accent_blue"],
-            button_color=COLORS["text_primary"],
-            button_hover_color="#e0e0e0",
+            fg_color=COLORS["accent_blue"],
+            hover_color=COLORS["accent_blue_hover"],
+            border_color=COLORS["border"],
+            checkmark_color=COLORS["text_primary"],
             command=self.toggle_microphone_capture,
         )
         self.mic_switch_menu.pack(anchor="w", padx=15, pady=(0, 12))
