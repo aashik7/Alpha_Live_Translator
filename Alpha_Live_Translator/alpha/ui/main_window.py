@@ -10728,21 +10728,26 @@ class AlphaApp(
                 pass
 
     def show_meeting_summary(self):
-        """Toggle right-side summary panel; refresh summary text when opening."""
+        """Tell the operator the summary is not ready yet.
+
+        The panel, `summary_service.generate_summary_from_store` and the
+        `SUMMARY_UPDATED` event are all still here and still wired to each
+        other -- only this entry point changed. Item 76 (the summary as a modal
+        overlay) is open and the ledger records it as "not needed for the
+        client's request", so shipping the button in a half-finished state is
+        worse than saying plainly that it is coming.
+
+        Deliberately NOT deleting the panel code with it: that would be a much
+        larger change than the one asked for, and item 76 is the row that
+        decides its future.
+        """
         try:
-            if self.summary_panel_visible:
-                self.hide_summary_panel()
-                return
-            self.show_summary_panel()
-            summary_text = self.summary_service.generate_summary_from_store(
-                self.transcript_store
+            messagebox.showinfo(
+                MEETING_SUMMARY_BUTTON_TEXT,
+                "This feature is coming soon.",
             )
-            self._set_summary_panel_text(summary_text)
-            self.event_bus.publish(EventType.SUMMARY_UPDATED, summary_text)
-            print("Meeting summary updated.")
         except Exception as exc:
-            logger.error("Error generating meeting summary: %s", exc)
-            print(f"Error showing meeting summary: {exc}")
+            print(f"Error showing meeting summary notice: {exc}")
 
     def swap_languages(self):
         """Swap source and target language selections."""
