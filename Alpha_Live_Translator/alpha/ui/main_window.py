@@ -328,6 +328,7 @@ class AlphaApp(
         ctk.set_default_color_theme("dark-blue")
 
         super().__init__()
+        self._apply_window_identity()
         perf_checkpoint("mainwindow_init_start")
 
         self._compact_mode = None
@@ -2874,6 +2875,36 @@ class AlphaApp(
     # -----------------------------------------------------------------------
     # Logo
     # -----------------------------------------------------------------------
+    def _apply_window_identity(self):
+        """Show Alpha's icon in the title bar and the taskbar, not Python's.
+
+        The packaged app runs on `pythonw.exe`, so without this Windows shows
+        the Python logo -- the operator has no reason to know Python is
+        involved, and it looks like the wrong program.
+
+        BOTH steps are needed. `iconbitmap` fixes the window; the taskbar button
+        is grouped by Application User Model ID, which defaults to the host
+        interpreter, so `pythonw.exe` keeps its own icon and grouping there
+        until an explicit ID is set.
+
+        Never raises: a missing icon is cosmetic, and this runs before the UI
+        exists.
+        """
+        try:
+            import ctypes
+
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
+                "Wicresoft.AlphaLiveTranslator"
+            )
+        except Exception:
+            pass
+        try:
+            icon_path = ASSETS_DIR / "alpha.ico"
+            if icon_path.is_file():
+                self.iconbitmap(default=str(icon_path))
+        except Exception:
+            pass
+
     def _load_logo(self):
         """Load logo.png from assets as a 36x36 CTkImage."""
         logo_path = ASSETS_DIR / "logo.png"

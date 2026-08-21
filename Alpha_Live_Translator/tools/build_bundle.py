@@ -72,7 +72,16 @@ TK_DIRS = (Path("Lib") / "tkinter", Path("tcl"))
 
 # What the app itself needs. Everything else in the repo -- runs, logs, docs,
 # analysis scripts -- stays behind.
-APP_ITEMS = ("alpha", "assets", "main.py", "requirements.txt", "requirements-lock.txt")
+APP_ITEMS = (
+    "alpha",
+    "assets",
+    "main.py",
+    # The operator's one-button diagnostic collector. Without it a problem on
+    # a machine we cannot reach has no way of reaching us.
+    "collect_logs.py",
+    "requirements.txt",
+    "requirements-lock.txt",
+)
 
 LAUNCHER = """@echo off
 rem Alpha Live Translator launcher. `start ""` so the console window closes

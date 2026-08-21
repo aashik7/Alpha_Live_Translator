@@ -32,6 +32,8 @@
 #define AppPublisher "Wicresoft"
 #define AppExeName "python\pythonw.exe"
 #define AppScript "app\main.py"
+#define CollectScript "app\collect_logs.py"
+#define AppIcon "app\assets\alpha.ico"
 
 [Setup]
 AppId={{8F3C2A16-4D5E-4B7A-9C21-0A49E1C70001}
@@ -51,6 +53,11 @@ ArchitecturesInstallIn64BitMode=x64compatible
 ; The bundle is ~96 MB on disk and compresses to about a quarter of that.
 DiskSpanning=no
 UninstallDisplayName={#AppName}
+; Alpha's own icon everywhere Windows shows one -- the wizard, the Apps
+; list, and the shortcuts below. Without it the operator sees the Python
+; logo, because the app runs on pythonw.exe and has no icon of its own.
+SetupIconFile={#SourceDir}\{#AppIcon}
+UninstallDisplayIcon={app}\{#AppIcon}
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -68,9 +75,13 @@ Source: "{#SourceDir}\Alpha.bat"; DestDir: "{app}"; Flags: ignoreversion
 [Icons]
 ; Straight at pythonw.exe rather than at Alpha.bat: a .bat shortcut flashes a
 ; console window before the UI appears.
-Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Parameters: """{app}\{#AppScript}"""; WorkingDir: "{app}"
+Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Parameters: """{app}\{#AppScript}"""; WorkingDir: "{app}"; IconFilename: "{app}\{#AppIcon}"
+; One button for the operator to gather everything a diagnosis needs.
+; There is no terminal on that machine, and uninstalling to start clean
+; would destroy the very evidence we would be asking for.
+Name: "{group}\Collect diagnostic logs"; Filename: "{app}\{#AppExeName}"; Parameters: """{app}\{#CollectScript}"""; WorkingDir: "{app}"; IconFilename: "{app}\{#AppIcon}"
 Name: "{group}\Uninstall {#AppName}"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Parameters: """{app}\{#AppScript}"""; WorkingDir: "{app}"; Tasks: desktopicon
+Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Parameters: """{app}\{#AppScript}"""; WorkingDir: "{app}"; Tasks: desktopicon; IconFilename: "{app}\{#AppIcon}"
 
 [Run]
 Filename: "{app}\{#AppExeName}"; Parameters: """{app}\{#AppScript}"""; WorkingDir: "{app}"; Description: "Start {#AppName}"; Flags: nowait postinstall skipifsilent

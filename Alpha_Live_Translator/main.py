@@ -3,6 +3,23 @@
 import os
 import sys
 
+# Give stdout and stderr somewhere durable to go BEFORE importing anything
+# that could fail. The packaged shortcut runs `pythonw.exe`, which has no
+# console, so without this every print() and every startup traceback is
+# discarded -- and on the delivery machine there is no terminal to open and
+# no code to change. Kept to the standard library and wrapped so it can never
+# be the reason the app does not start.
+_CONSOLE_LOG_PATH = None
+try:
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from alpha.utils.console_capture import start as _start_console_capture
+
+    _CONSOLE_LOG_PATH = _start_console_capture(
+        os.path.dirname(os.path.abspath(__file__))
+    )
+except Exception:
+    pass
+
 
 if __name__ == "__main__":
     try:
@@ -511,5 +528,15 @@ if __name__ == "__main__":
             diag_log_exception("startup", "fatal_error", exc)
         except Exception:
             pass
-        print(f"Fatal error: {exc}")
+        # The full traceback, not just the message. This is often the only
+        # record of why the app would not start on a machine we cannot reach.
+        try:
+            import traceback
+
+            print("Fatal error during startup:")
+            traceback.print_exc()
+            if _CONSOLE_LOG_PATH:
+                print("written to " + str(_CONSOLE_LOG_PATH))
+        except Exception:
+            print(f"Fatal error: {exc}")
         sys.exit(1)
