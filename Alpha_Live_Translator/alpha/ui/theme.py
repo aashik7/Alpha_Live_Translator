@@ -458,25 +458,21 @@ PLACEHOLDER_SUMMARY = (
 # Responsive layout breakpoints (window width in px)
 LAYOUT_WIDE_BREAKPOINT = 1050
 LAYOUT_MEDIUM_BREAKPOINT = 700
-LAYOUT_HAMBURGER_BREAKPOINT = 800
+# Raised from 800 to 880 in item 88c. The hamburger menu already carries every
+# control the header does, so showing both at once is the same setting offered
+# twice. One threshold, therefore, not two: above it the header, below it the
+# hamburger, and never both. 880 rather than 800 so the swap happens while the
+# header is still comfortably wide -- dragging the window narrower used to make
+# the display-language button look like it disappeared before anything replaced
+# it, because the swap was happening at the width where the row was already
+# tight. Measured: the header is clean to 0 px past its right edge from 860 up
+# in English and Japanese alike. 880 also leaves margin below
+# DEFAULT_WINDOW_WIDTH (900), so the window still opens in the header layout.
+LAYOUT_HAMBURGER_BREAKPOINT = 880
 LAYOUT_MIN_WIDTH = 400
 LAYOUT_MIN_HEIGHT = 650
 LAYOUT_STATUS_COMPACT_BREAKPOINT = 520
 
-# The display-language button and the hamburger deliberately OVERLAP between
-# these two, both design px. Shrinking the window brings the hamburger in at
-# 899 while the button is still there, and only takes the button away at 859 --
-# so the control is never one pixel away from having nowhere to live. Every
-# earlier version of this used a single shared threshold, which is a knife
-# edge: item 74 shipped with two thresholds that disagreed and left the
-# microphone unreachable between 800 and 1050.
-#
-# Both numbers are measured, not chosen. With both controls packed the header
-# is clean from 860 up in English and Japanese alike, and 8 px past its right
-# edge at 840. 900 is where the window opens, so it stays exactly as it is
-# today: the button, and no hamburger.
-UI_LANGUAGE_BUTTON_MIN_WIDTH = 860
-HAMBURGER_OVERLAP_MIN_WIDTH = 900
 LAYOUT_FOOTER_WRAP_BREAKPOINT = 680
 
 # The OS window title. Deliberately carries no version number -- the client sees

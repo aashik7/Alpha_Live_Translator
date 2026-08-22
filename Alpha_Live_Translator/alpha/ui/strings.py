@@ -249,16 +249,70 @@ def _saved_language() -> str:
         return ""
 
 
+# Primary language id for Japanese, the low 10 bits of any ja-* LCID.
+LANG_JAPANESE = 0x11
+
+
+def language_from_lcid(lcid) -> str:
+    """Map a Windows LCID to one of our language codes, or "" if it cannot be.
+
+    Split out from the call that reads the LCID so both branches are testable
+    on any machine: the OS language cannot be changed from a test, but this can
+    be handed 0x0411 directly. Masking to the primary language id rather than
+    comparing the whole LCID accepts every Japanese regional variant, not only
+    ja-JP.
+    """
+    try:
+        return "ja" if (int(lcid) & 0x3FF) == LANG_JAPANESE else "en"
+    except Exception:
+        return ""
+
+
+def _windows_ui_language() -> str:
+    """The language Windows itself is displayed in, or "" where that is unknown.
+
+    `GetUserDefaultUILanguage` returns an LCID, whose low 10 bits are the
+    primary language id. Japanese is 0x11. Masking rather than comparing the
+    whole LCID is deliberate: it accepts every Japanese regional variant instead
+    of only ja-JP.
+
+    Returns "" -- not "en" -- when the call cannot be made at all, so the caller
+    falls through to its own default rather than this function silently deciding
+    for a platform it knows nothing about.
+    """
+    try:
+        import ctypes
+
+        lcid = ctypes.windll.kernel32.GetUserDefaultUILanguage()
+    except Exception:
+        return ""
+    return language_from_lcid(lcid)
+
+
 def _resolve_language() -> str:
-    """Environment variable, then the saved choice, then the shipped default.
+    """Environment, then the saved choice, then Windows, then the default.
 
     The environment variable comes first deliberately: it is the way to force a
     machine that has already been handed over back to English without editing
     anything or clicking through a UI that may be unreadable to whoever is
-    looking at it. An unusable value at any level falls through to the next one
-    rather than raising or forcing English.
+    looking at it.
+
+    Windows' own display language comes next-to-last, so it decides only on a
+    machine where nobody has chosen yet. That is the point of it -- the app
+    should already be in Japanese the first time it opens on a Japanese
+    Windows, rather than making someone find the control to say so. The moment
+    anyone picks a language the saved choice outranks it, including picking
+    English on a Japanese machine.
+
+    An unusable value at any level falls through to the next rather than raising
+    or forcing English.
     """
-    for candidate in (os.environ.get(ENV_VAR), _saved_language(), DEFAULT_UI_LANGUAGE):
+    for candidate in (
+        os.environ.get(ENV_VAR),
+        _saved_language(),
+        _windows_ui_language(),
+        DEFAULT_UI_LANGUAGE,
+    ):
         code = _normalize(candidate)
         if code in available_languages():
             return code

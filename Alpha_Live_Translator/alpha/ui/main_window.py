@@ -232,8 +232,6 @@ from alpha.ui.theme import (
     EXTENDED_SPEAKER_COLORS,
     TRANSCRIPT_BODY_FONT,
     TRANSLATION_BODY_FONT,
-    HAMBURGER_OVERLAP_MIN_WIDTH,
-    UI_LANGUAGE_BUTTON_MIN_WIDTH,
     UI_LANGUAGE_SHORT_LABELS,
     WAVEFORM_ANIMATION_MS,
     WAVEFORM_BAR_COUNT,
@@ -302,21 +300,12 @@ CONTENT_REFERENCE_WEIGHT = 30
 # already had a 700 breakpoint for the same reason.
 CONTENT_STACK_BREAKPOINT = LAYOUT_MEDIUM_BREAKPOINT
 
-# The microphone switch is shown in the header from the hamburger breakpoint up,
-# so the control is reachable at EVERY width: below it the hamburger menu
-# carries it, at and above it the header does.
-#
-# An earlier draft used `LAYOUT_WIDE_BREAKPOINT` (1050) and created a dead zone
-# at 800-1050 design px, where the header switch was hidden and the hamburger
-# was not shown either -- with `DEFAULT_WINDOW_WIDTH = 900` the app opened
-# inside it and the control could not be reached at all. Continuity of access
-# beats a tidier threshold.
-#
-# It fits because the widget is now narrow. Measured on a real mapped root at
-# 900 design px: the header has 114 device px spare (req 1236 vs got 1350); a
-# default `CTkSwitch` needs 150 whatever its label, and the old "Meeting audio
-# only" one needed 209. The compact form below measures 82.
-MIC_SWITCH_MIN_WIDTH = LAYOUT_HAMBURGER_BREAKPOINT
+# The microphone control used to be gated here, on a width threshold, because
+# it lived in the header. Item 88c moved it into the status strip, which is
+# shown at every width, so it needs no threshold and the constant that carried
+# one is gone. The lesson it recorded is kept in `theme.py`'s
+# `LAYOUT_HAMBURGER_BREAKPOINT`: one threshold owning a whole surface, never
+# two that have to agree.
 
 # Retained: still the vertical split used when the grid stacks on a narrow
 # window, where transcript and translation share one column as rows.
@@ -3479,28 +3468,13 @@ class AlphaApp(
         else:
             self.always_on_top_switch.pack_forget()
 
-        # Exactly the same threshold as the switch above, and that is the
-        # point: `MIC_SWITCH_MIN_WIDTH` IS `LAYOUT_HAMBURGER_BREAKPOINT`, so
-        # the width that hides this button is the width that reveals the
-        # hamburger menu holding the same setting. Item 74 was a control that
-        # vanished between two thresholds that did not line up; reusing the
-        # constant is what stops that happening again here.
+        # No width test of its own. This function only runs above
+        # `LAYOUT_HAMBURGER_BREAKPOINT`, and below it `show_compact_layout`
+        # hides this button along with every other control the hamburger menu
+        # duplicates. One threshold owns the whole header, which is what stops
+        # the same setting being offered twice.
         if self.ui_language_button is not None:
-            if width >= UI_LANGUAGE_BUTTON_MIN_WIDTH:
-                self.ui_language_button.pack(side="left", padx=(8, 0))
-            else:
-                self.ui_language_button.pack_forget()
-
-        # The hamburger arrives BEFORE the language button leaves -- 899 against
-        # 859 -- so between those two widths both are on screen and the setting
-        # is reachable either way. Packed here, in the non-compact path, which
-        # `show_normal_layout` has just hidden it from; below
-        # `LAYOUT_HAMBURGER_BREAKPOINT` `show_compact_layout` owns it instead.
-        if self.hamburger_button is not None:
-            if width < HAMBURGER_OVERLAP_MIN_WIDTH:
-                self.hamburger_button.pack(side="left", padx=(8, 0))
-            else:
-                self.hamburger_button.pack_forget()
+            self.ui_language_button.pack(side="left", padx=(8, 0))
 
         if self.brand_sub_label is not None:
             if width < 480:

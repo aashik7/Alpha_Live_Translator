@@ -21,6 +21,7 @@ because each is invisible until someone looks at the running window.
    rather than in a 16 px tick box.
 """
 
+import pathlib
 import sys
 import types
 import unittest
@@ -32,8 +33,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from alpha.ui import strings  # noqa: E402
 from alpha.ui.theme import (  # noqa: E402
-    HAMBURGER_OVERLAP_MIN_WIDTH,
-    UI_LANGUAGE_BUTTON_MIN_WIDTH,
+    LAYOUT_HAMBURGER_BREAKPOINT,
     UI_LANGUAGE_SHORT_LABELS,
 )
 
@@ -172,9 +172,7 @@ class TestNothingIsPushedOffTheHeader(TkHostTestCase):
     takes over and the row is tightest.
     """
 
-    # 860-899 is the band where the language button and the hamburger are BOTH
-    # on screen, so it is the tightest the header ever gets.
-    WIDTHS = (800, 860, 880, 899, 900, 1050, 1200)
+    WIDTHS = (880, 900, 1050, 1200)
     HEADER_CONTROLS = (
         "summary_button",
         "always_on_top_switch",
@@ -226,23 +224,23 @@ class TestTheLanguageControlIsAlwaysReachable(TkHostTestCase):
     # (width, language button on screen, hamburger on screen)
     EXPECTED = (
         (700, False, True),
-        (799, False, True),
         (800, False, True),
-        (859, False, True),
-        (860, True, True),    # the overlap opens
-        (899, True, True),
+        (879, False, True),
+        (880, True, False),   # the one threshold
         (900, True, False),   # the width the window opens at
         (1050, True, False),
         (1400, True, False),
     )
 
     def _lay_out(self, design_width):
+        """Mode comes from the app's own `_get_layout_mode`, never a literal.
+
+        An earlier version of this helper hardcoded 800 as the compact
+        threshold, so raising the real constant left the test asserting against
+        a boundary the app no longer had.
+        """
         root = self._host(design_width)
-        root._apply_header_layout(
-            design_width,
-            "compact" if design_width < 800
-            else ("wide" if design_width >= 1050 else "medium"),
-        )
+        root._apply_header_layout(design_width, root._get_layout_mode(design_width))
         for _ in range(8):
             root.update_idletasks()
             root.update()
@@ -259,21 +257,27 @@ class TestTheLanguageControlIsAlwaysReachable(TkHostTestCase):
                     f"nothing offers the language setting at {design_width}",
                 )
 
-    def test_the_hamburger_arrives_before_the_button_leaves(self):
-        """The correction the user asked for.
+    def test_the_hamburger_and_the_header_are_never_both_offering_it(self):
+        """The hamburger menu already carries every header control, so showing
+        both at once is the same setting offered twice.
 
-        Sharing one threshold made the swap a knife edge: at one pixel the
-        button was there, at the next it was gone and the hamburger appeared in
-        the same frame. Shrinking past it, the button looked like it vanished.
-        The two thresholds now overlap by design -- 899 lets the hamburger in
-        while the button stays until 859 -- so there is a band where both are
-        visible and the change is never abrupt.
+        A first attempt gave the button and the hamburger separate thresholds
+        so they would overlap; that produced exactly this duplication. One
+        threshold owns the whole header instead, and it sits at 880 -- wide
+        enough that the swap happens while the row is still comfortable, rather
+        than at the width where it was already tight and the button looked like
+        it vanished on its own.
         """
-        self.assertGreater(
-            HAMBURGER_OVERLAP_MIN_WIDTH,
-            UI_LANGUAGE_BUTTON_MIN_WIDTH,
-            "the hamburger must appear at a WIDER window than the button leaves",
-        )
+        for design_width, in_header, in_hamburger in self.EXPECTED:
+            with self.subTest(width=design_width):
+                root = self._lay_out(design_width)
+                self.assertNotEqual(
+                    root.ui_language_button.winfo_ismapped(),
+                    root.hamburger_button.winfo_ismapped(),
+                    f"both surfaces offer the language setting at {design_width}",
+                )
+
+    def test_the_visibility_table_holds(self):
         for design_width, in_header, in_hamburger in self.EXPECTED:
             with self.subTest(width=design_width):
                 root = self._lay_out(design_width)
@@ -286,12 +290,12 @@ class TestTheLanguageControlIsAlwaysReachable(TkHostTestCase):
                     f"hamburger visibility wrong at {design_width}",
                 )
 
-    def test_the_default_window_width_is_unchanged_by_the_overlap(self):
-        """900 is where the window opens, and it must still look as it did:
-        the button, and no hamburger. The overlap sits just below it."""
+    def test_the_window_opens_in_the_header_layout(self):
+        """900 is where the window opens, and the threshold sits below it on
+        purpose, so the app never starts in the hamburger layout."""
         from alpha.ui.theme import DEFAULT_WINDOW_WIDTH
 
-        self.assertGreaterEqual(DEFAULT_WINDOW_WIDTH, HAMBURGER_OVERLAP_MIN_WIDTH)
+        self.assertGreater(DEFAULT_WINDOW_WIDTH, LAYOUT_HAMBURGER_BREAKPOINT)
         root = self._lay_out(DEFAULT_WINDOW_WIDTH)
         self.assertTrue(root.ui_language_button.winfo_ismapped())
         self.assertFalse(root.hamburger_button.winfo_ismapped())
@@ -401,3 +405,42 @@ class TestTheMicControl(TkHostTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestWindowsDecidesTheFirstRun(LanguageRestoringTestCase):
+    """A Japanese Windows should open a Japanese app without being told.
+
+    The OS language is read only when nobody has chosen yet -- see
+    `_resolve_language`'s order -- so it can never override someone who has
+    picked. The mapping is tested here rather than the call that reads the
+    LCID: a test cannot change the machine's display language, but it can hand
+    the mapping any LCID it likes.
+    """
+
+    def test_every_japanese_variant_maps_to_japanese(self):
+        for lcid in (0x0411, 0x0011):
+            with self.subTest(lcid=hex(lcid)):
+                self.assertEqual(strings.language_from_lcid(lcid), "ja")
+
+    def test_everything_else_maps_to_english(self):
+        for lcid in (0x0409, 0x0809, 0x040C, 0x0412, 0x0404, 0x0407):
+            with self.subTest(lcid=hex(lcid)):
+                self.assertEqual(strings.language_from_lcid(lcid), "en")
+
+    def test_an_unreadable_lcid_decides_nothing(self):
+        """"" and not "en": the caller then falls through to its own default
+        instead of this function ruling on a platform it could not read."""
+        for value in (None, "not a number", object()):
+            self.assertEqual(strings.language_from_lcid(value), "")
+
+    def test_a_saved_choice_outranks_windows(self):
+        """Picking English on a Japanese machine has to stick."""
+        source = pathlib.Path(strings.__file__).read_text(encoding="utf-8")
+        saved = source.index("_saved_language()")
+        windows = source.index("_windows_ui_language()", source.index("def _resolve_language"))
+        self.assertLess(
+            source.index("_saved_language()", source.index("def _resolve_language")),
+            windows,
+            "the saved choice must be consulted before the OS language",
+        )
+        self.assertGreater(saved, 0)
