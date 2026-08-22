@@ -243,6 +243,8 @@ from alpha.ui.theme import (
 from alpha.ui.strings import (
     LANGUAGE_NAMES,
     available_languages,
+    clear_saved_language,
+    has_saved_language,
     get_language,
     save_language,
     set_language,
@@ -3179,7 +3181,7 @@ class AlphaApp(
 
         self.ui_language_combo_menu = ctk.CTkComboBox(
             master=self.menu_dropdown_frame,
-            values=[LANGUAGE_NAMES[code] for code in available_languages()],
+            values=self._ui_language_combo_values(),
             command=self._on_ui_language_combo,
             width=260,
             height=32,
@@ -10939,13 +10941,22 @@ class AlphaApp(
                 self.ui_language_menu = menu
             menu.delete(0, "end")
             current = get_language()
+            following_system = not has_saved_language()
+            # First, and marked when nothing has been chosen: this is the state
+            # a fresh install is in, and the only way back to it once someone
+            # has picked a language.
+            menu.add_command(
+                label=("• " if following_system else "   ") + t("System default"),
+                command=self._use_system_language,
+            )
+            menu.add_separator()
             for code in available_languages():
                 # The language's own name, never translated: it is the only
                 # label someone who cannot read the current language can use to
                 # find their way back out.
                 menu.add_command(
                     label=(
-                        ("• " if code == current else "   ")
+                        ("• " if (code == current and not following_system) else "   ")
                         # `.get`, not `[]`: a language added to the table
                         # without a display name would otherwise raise inside
                         # this loop, and the guard below would turn that into
@@ -10968,8 +10979,31 @@ class AlphaApp(
                 except Exception:
                     pass
 
+    def _use_system_language(self):
+        """Forget the saved choice so Windows decides the language again."""
+        written = clear_saved_language()
+        self._sync_ui_language_controls()
+        self._retranslate_ui()
+        if not written:
+            try:
+                messagebox.showwarning(
+                    t("Error"),
+                    t("The display language changed, but the choice could not be saved."),
+                )
+            except Exception:
+                pass
+
+    def _ui_language_combo_values(self):
+        """"System default" first, then each language in its own name."""
+        return [t("System default")] + [
+            LANGUAGE_NAMES.get(code, code) for code in available_languages()
+        ]
+
     def _on_ui_language_combo(self, choice):
         """The hamburger combo shows names; everything else works in codes."""
+        if choice == t("System default"):
+            self._use_system_language()
+            return
         for code in available_languages():
             if LANGUAGE_NAMES.get(code) == choice:
                 self._apply_ui_language(code)
@@ -11019,7 +11053,15 @@ class AlphaApp(
         combo = getattr(self, "ui_language_combo_menu", None)
         if combo is not None:
             try:
-                combo.set(LANGUAGE_NAMES.get(code, LANGUAGE_NAMES["en"]))
+                # The option list carries a translated entry, so it is rebuilt
+                # here rather than fixed at construction -- otherwise "System
+                # default" keeps the wording of whatever language it was built
+                # in.
+                combo.configure(values=self._ui_language_combo_values())
+                if has_saved_language():
+                    combo.set(LANGUAGE_NAMES.get(code, LANGUAGE_NAMES["en"]))
+                else:
+                    combo.set(t("System default"))
             except Exception:
                 pass
 

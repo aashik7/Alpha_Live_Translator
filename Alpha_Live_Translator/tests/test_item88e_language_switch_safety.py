@@ -26,7 +26,9 @@ session state. Each test below is a measured failure, not a hypothetical:
    all while insisting otherwise.
 """
 
+import json
 import sys
+import tempfile
 import time
 import unittest
 from pathlib import Path
@@ -181,26 +183,32 @@ class TestTheLanguageMenu(LanguageSwitchTestCase):
         second = self._open()
         self.assertIs(first, second, "a new Tk menu was built for the second open")
 
-    def test_reopening_does_not_duplicate_entries(self):
-        self._open()
-        menu = self._open()
-        self.assertEqual(
-            menu.index("end") + 1, len(strings.available_languages()),
-            "entries accumulated across opens",
-        )
+    def _entry_labels(self, menu):
+        """Labels only. `entrycget` raises on the separator, which has none."""
+        out = []
+        for index in range(menu.index("end") + 1):
+            try:
+                out.append(menu.entrycget(index, "label"))
+            except Exception:
+                continue
+        return out
 
-    def test_the_active_language_is_marked(self):
-        menu = self._open()
-        labels = [menu.entrycget(i, "label") for i in range(menu.index("end") + 1)]
+    def test_reopening_does_not_duplicate_entries(self):
+        first = self._entry_labels(self._open())
+        second = self._entry_labels(self._open())
+        self.assertEqual(second, first, "entries accumulated across opens")
+        # "System default" plus one per language.
+        self.assertEqual(len(second), len(strings.available_languages()) + 1)
+
+    def test_exactly_one_entry_is_ever_marked(self):
+        labels = self._entry_labels(self._open())
         marked = [label for label in labels if label.startswith("•")]
         self.assertEqual(len(marked), 1, f"expected exactly one marked entry in {labels}")
-        self.assertIn(strings.LANGUAGE_NAMES["en"], marked[0])
 
     def test_a_language_without_a_display_name_still_opens(self):
         """The codes and the names come from two places; they can disagree."""
         with mock.patch.dict(strings._TABLES, {"zz": {}}, clear=False):
-            menu = self._open()
-            labels = [menu.entrycget(i, "label") for i in range(menu.index("end") + 1)]
+            labels = self._entry_labels(self._open())
         self.assertTrue(
             any("zz" in label for label in labels),
             f"the nameless language was dropped instead of shown: {labels}",
@@ -227,6 +235,118 @@ class TestAFailedSaveStillSwitches(LanguageSwitchTestCase):
             self.app._apply_ui_language("ja")
 
         self.assertFalse(warned.called, "a successful save should be silent")
+
+
+class TestSystemDefaultIsReachable(LanguageSwitchTestCase):
+    """There has to be a way back to "whatever Windows says".
+
+    A saved choice outranks the operating system on purpose -- without that,
+    picking a language would be undone on the next launch. The cost is that
+    anyone who tries the control once is stuck with it: the user hit exactly
+    this, an English Windows showing a Japanese app, because they had clicked
+    日本語 to see whether the switch worked. Deleting a JSON file by hand is not
+    an answer, so the control now offers "System default".
+    """
+
+    def setUp(self):
+        super().setUp()
+        # Redirected before anything writes: `clear_saved_language` and
+        # `save_language` both touch APP_ROOT, and a test has no business
+        # rewriting the developer's own settings.
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        real_root = strings.APP_ROOT
+        strings.APP_ROOT = self._tmp.name
+        self.addCleanup(setattr, strings, "APP_ROOT", real_root)
+
+    def _open(self):
+        import tkinter
+
+        with mock.patch.object(tkinter.Menu, "tk_popup", lambda *a, **k: None):
+            self.app._open_ui_language_menu()
+        self.app.update()
+        return self.app.ui_language_menu
+
+    def _labels(self, menu):
+        out = []
+        for index in range(menu.index("end") + 1):
+            try:
+                out.append(menu.entrycget(index, "label"))
+            except Exception:
+                out.append("<separator>")
+        return out
+
+    def test_choosing_it_forgets_the_saved_language(self):
+        strings.save_language("ja")
+        self.assertTrue(strings.has_saved_language())
+
+        self.app._use_system_language()
+
+        self.assertFalse(
+            strings.has_saved_language(),
+            "the saved choice survived, so Windows still does not decide",
+        )
+        self.assertEqual(
+            strings.get_language(), strings._windows_ui_language() or "en",
+            "after clearing, the language has to come from the system",
+        )
+
+    def test_clearing_keeps_other_settings_in_the_file(self):
+        """The file is shared, so dropping one key must not drop the rest."""
+        strings.save_language("ja")
+        path = Path(strings.settings_path())
+        data = json.loads(path.read_text(encoding="utf-8"))
+        data["something_else"] = 42
+        path.write_text(json.dumps(data), encoding="utf-8")
+
+        strings.clear_saved_language()
+
+        left = json.loads(path.read_text(encoding="utf-8"))
+        self.assertEqual(left.get("something_else"), 42)
+        self.assertNotIn(strings.SETTINGS_KEY, left)
+
+    def test_the_menu_marks_system_default_when_nothing_is_chosen(self):
+        strings.clear_saved_language()
+        labels = self._labels(self._open())
+        self.assertTrue(
+            labels[0].startswith("•"),
+            f"System default is not marked as active: {labels}",
+        )
+        self.assertIn(strings.t("System default"), labels[0])
+        for label in labels[1:]:
+            self.assertFalse(
+                label.startswith("•"),
+                f"a language is marked while the system decides: {labels}",
+            )
+
+    def test_the_menu_marks_the_language_once_one_is_chosen(self):
+        strings.save_language("ja")
+        labels = self._labels(self._open())
+        self.assertFalse(labels[0].startswith("•"), f"{labels}")
+        marked = [label for label in labels[1:] if label.startswith("•")]
+        self.assertEqual(len(marked), 1, f"{labels}")
+        self.assertIn(strings.LANGUAGE_NAMES["ja"], marked[0])
+
+    def test_the_combo_shows_system_default_when_nothing_is_chosen(self):
+        strings.clear_saved_language()
+        self.app._sync_ui_language_controls()
+        self.assertEqual(
+            self.app.ui_language_combo_menu.get(), strings.t("System default")
+        )
+
+    def test_the_combo_entry_is_translated_with_everything_else(self):
+        strings.save_language("ja")
+        self.app._sync_ui_language_controls()
+        self.assertIn(
+            strings.t("System default"),
+            self.app.ui_language_combo_menu.cget("values"),
+        )
+        self.assertNotIn("System default", self.app.ui_language_combo_menu.cget("values"))
+
+    def test_picking_it_from_the_combo_works_too(self):
+        strings.save_language("ja")
+        self.app._on_ui_language_combo(strings.t("System default"))
+        self.assertFalse(strings.has_saved_language())
 
 
 if __name__ == "__main__":

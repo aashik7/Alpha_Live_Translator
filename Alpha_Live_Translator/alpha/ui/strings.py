@@ -14,11 +14,18 @@ what the code reads, and it is what appears if anything at all goes wrong.
 
 WHERE THE ACTIVE LANGUAGE COMES FROM
 ------------------------------------
-Three sources, checked in this order, first usable one wins:
+Four sources, checked in this order, first usable one wins:
 
     1. the ALPHA_UI_LANGUAGE environment variable
     2. `ui_language` in <app root>/user_settings.json, written by `save_language`
-    3. DEFAULT_UI_LANGUAGE below
+    3. the Windows display language, via `GetUserDefaultUILanguage`
+    4. DEFAULT_UI_LANGUAGE below
+
+A saved choice outranking Windows is deliberate: without that, picking a
+language would be undone on the next launch. It does mean somebody who tries
+the control once is left with a machine whose app disagrees with it, so
+`clear_saved_language()` exists to drop that choice and fall back to 3 again --
+surfaced as "System default" in the language control.
 
 The environment variable is deliberately first. It is how a machine that has
 already been handed over is forced back to English without editing code and
@@ -155,6 +162,9 @@ _JA: dict[str, str] = {
     # beside it stay in their own language (LANGUAGE_NAMES) -- that is the only
     # way out for someone who cannot read the language currently showing.
     "Display language:": "表示言語:",
+    # Dropping the saved choice so Windows decides again. Without an entry for
+    # this, trying the control once left no way back to following the system.
+    "System default": "システムに合わせる",
     # The transcript card's collapse toggle. "Hide" is ALSO the value
     # `_place_toggle_button` compares against to decide which of the two
     # buttons to show, so it stays English in the code and is translated only
@@ -348,7 +358,54 @@ def save_language(code: str) -> bool:
     normalized = _normalize(code)
     if normalized not in available_languages():
         normalized = "en"
+    if not _rewrite_settings(lambda data: data.__setitem__(SETTINGS_KEY, normalized)):
+        return False
+    set_language(normalized)
+    return True
 
+
+def has_saved_language() -> bool:
+    """Whether anyone has chosen a language, as opposed to inheriting one.
+
+    The UI needs this to show which entry is in force: with no saved choice the
+    language is whatever Windows says, and that is a different state from having
+    picked the same language by hand.
+    """
+    return bool(_saved_language())
+
+
+def clear_saved_language() -> bool:
+    """Forget the remembered choice, so Windows decides again from now on.
+
+    Without this there is no way back. Picking a language writes it, that
+    written choice outranks the operating system by design -- otherwise the
+    control would be undone on every launch -- and the only remaining way to
+    follow the system again was to delete a JSON file by hand. Somebody was
+    always going to be left with an app in a language their machine is not in.
+
+    Returns False if the file could not be rewritten. The in-memory language is
+    re-resolved either way, so the window follows the system immediately even
+    on a disk that cannot be written.
+    """
+    global _active
+    written = _rewrite_settings(lambda data: data.pop(SETTINGS_KEY, None))
+    _active = _resolve_language()
+    return written
+
+
+def _rewrite_settings(mutate) -> bool:
+    """Read the settings file, apply `mutate` to it, write it back atomically.
+
+    The write lands complete or not at all: it goes to a temporary file in the
+    same directory and is renamed over the target, because `os.replace` is
+    atomic for a same-volume rename. Writing in place would mean a crash between
+    truncate and flush leaves a half-written file -- and since any other
+    preference in that file is read, merged and written back here, that would
+    lose settings this module knows nothing about.
+
+    One writer for both `save_language` and `clear_saved_language`: two copies
+    of an atomic-write dance is two chances to get it subtly different.
+    """
     data = {}
     try:
         with open(settings_path(), "r", encoding="utf-8") as handle:
@@ -357,7 +414,11 @@ def save_language(code: str) -> bool:
             data = existing
     except Exception:
         data = {}
-    data[SETTINGS_KEY] = normalized
+
+    try:
+        mutate(data)
+    except Exception:
+        return False
 
     target = settings_path()
     temp = target + ".tmp"
@@ -373,8 +434,6 @@ def save_language(code: str) -> bool:
         except Exception:
             pass
         return False
-
-    set_language(normalized)
     return True
 
 
