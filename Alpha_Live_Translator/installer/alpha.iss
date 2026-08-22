@@ -18,6 +18,12 @@
 #ifndef AppVersion
   #define AppVersion "1.0.0"
 #endif
+; A version RESOURCE accepts only a strict four-part numeric version, which is
+; not the same thing as AppVersion ("1.0.1", or one day "1.1.0-rc1"). Derived
+; by installer/build_installer.py; the default keeps a hand-run compile going.
+#ifndef VersionQuad
+  #define VersionQuad "0.0.0.0"
+#endif
 #ifndef SourceDir
   #error SourceDir must be defined (the folder holding python\ and app\)
 #endif
@@ -30,10 +36,12 @@
 
 #define AppName "Alpha Live Translator"
 #define AppPublisher "Wicresoft"
+#define AppCopyright "Copyright (C) Wicresoft"
 #define AppExeName "python\pythonw.exe"
 #define AppScript "app\main.py"
 #define CollectScript "app\collect_logs.py"
 #define AppIcon "app\assets\alpha.ico"
+#define OutputBase "AlphaLiveTranslator-Setup-" + AppVersion
 
 [Setup]
 AppId={{8F3C2A16-4D5E-4B7A-9C21-0A49E1C70001}
@@ -44,7 +52,7 @@ DefaultDirName={localappdata}\Programs\Alpha Live Translator
 DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
-OutputBaseFilename=AlphaLiveTranslator-Setup-{#AppVersion}
+OutputBaseFilename={#OutputBase}
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
@@ -58,6 +66,41 @@ UninstallDisplayName={#AppName}
 ; logo, because the app runs on pythonw.exe and has no icon of its own.
 SetupIconFile={#SourceDir}\{#AppIcon}
 UninstallDisplayIcon={app}\{#AppIcon}
+AppCopyright={#AppCopyright}
+
+; WHAT WINDOWS KNOWS ABOUT THIS FILE
+; ---------------------------------
+; SmartScreen's "Windows protected your PC" screen is driven by two things,
+; and neither of them is anything in this block: a Mark of the Web on the
+; downloaded copy, and the reputation of the signature on the file. See
+; installer/DELIVERY.md -- the fix is a certificate, or a delivery route that
+; never applies a Mark of the Web.
+;
+; These entries are still worth setting. Inno defaults the company from
+; AppPublisher and the product name from AppName, but leaves FileVersion and
+; the copyright EMPTY -- measured on the 1.0.1 build. A half-empty version
+; resource is a well-known antivirus heuristic and shows the operator nothing
+; useful in Properties -> Details, which is the one place they can check what
+; they have been sent.
+VersionInfoVersion={#VersionQuad}
+VersionInfoProductVersion={#VersionQuad}
+VersionInfoProductTextVersion={#AppVersion}
+VersionInfoCompany={#AppPublisher}
+VersionInfoProductName={#AppName}
+VersionInfoDescription={#AppName} Setup
+VersionInfoCopyright={#AppCopyright}
+VersionInfoOriginalFileName={#OutputBase}.exe
+
+; Code signing, the day a certificate exists. build_installer.py passes both
+; /DSignCommand=1 and /Salphasign=<command line>; without them this block is
+; skipped and the build is unsigned exactly as it is today. SignedUninstaller
+; matters as much as the installer itself: the uninstaller is generated at
+; install time, and an unsigned one is what Windows shows when the operator
+; later removes the app.
+#ifdef SignCommand
+SignTool=alphasign
+SignedUninstaller=yes
+#endif
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
