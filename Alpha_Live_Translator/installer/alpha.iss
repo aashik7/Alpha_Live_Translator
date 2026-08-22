@@ -1,4 +1,4 @@
-; Alpha Live Translator -- hand-over installer (sprint item 49, phase 2).
+﻿; Alpha Live Translator -- hand-over installer (sprint item 49, phase 2).
 ;
 ; THIS FILE CONTAINS NO API KEYS AND MUST NEVER CONTAIN ANY.
 ; They arrive as command-line defines from installer/build_installer.py, which
@@ -35,8 +35,12 @@
 #endif
 
 #define AppName "Alpha Live Translator"
-#define AppPublisher "Wicresoft"
-#define AppCopyright "Copyright (C) Wicresoft"
+; The person this is delivered by. Kept ASCII here because it also becomes the
+; exe's version resource, which is written at COMPILE time and cannot vary by
+; language. The Japanese rendering of the same name lives in [CustomMessages]
+; below and is what the wizard shows when it runs in Japanese.
+#define AppPublisher "Md. Tariqul Islam"
+#define AppCopyright "Copyright (C) Md. Tariqul Islam"
 #define AppExeName "python\pythonw.exe"
 #define AppScript "app\main.py"
 #define CollectScript "app\collect_logs.py"
@@ -47,7 +51,10 @@
 AppId={{8F3C2A16-4D5E-4B7A-9C21-0A49E1C70001}
 AppName={#AppName}
 AppVersion={#AppVersion}
-AppPublisher={#AppPublisher}
+; `{cm:...}` so the wizard shows the publisher in the language it is running
+; in. VersionInfoCompany below stays the compile-time ASCII form, because a
+; version resource has one value and no notion of language.
+AppPublisher={cm:PublisherName}
 DefaultDirName={localappdata}\Programs\Alpha Live Translator
 DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes
@@ -67,6 +74,9 @@ UninstallDisplayName={#AppName}
 SetupIconFile={#SourceDir}\{#AppIcon}
 UninstallDisplayIcon={app}\{#AppIcon}
 AppCopyright={#AppCopyright}
+; Inno asks which language to install in as soon as there is more than one.
+; Picking by the system language is both fewer clicks and the right answer.
+ShowLanguageDialog=no
 
 ; WHAT WINDOWS KNOWS ABOUT THIS FILE
 ; ---------------------------------
@@ -103,7 +113,18 @@ SignedUninstaller=yes
 #endif
 
 [Languages]
+; Japanese as well as English, because the machine this is handed to runs in
+; Japanese. `ShowLanguageDialog=no` above means Inno picks by the system
+; language instead of asking -- the operator was promised double-click, next,
+; next, and a language prompt is one more thing to get wrong.
 Name: "english"; MessagesFile: "compiler:Default.isl"
+Name: "japanese"; MessagesFile: "compiler:Languages\Japanese.isl"
+
+[CustomMessages]
+; The one string that differs. The Japanese form is the name as it is written
+; in Japanese, not a transliteration made up at compile time.
+english.PublisherName=Md. Tariqul Islam
+japanese.PublisherName=イスラム　エムディー　タリクル
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription: "Shortcuts:"
