@@ -3470,9 +3470,13 @@ class AlphaApp(
 
         # No width test of its own. This function only runs above
         # `LAYOUT_HAMBURGER_BREAKPOINT`, and below it `show_compact_layout`
-        # hides this button along with every other control the hamburger menu
-        # duplicates. One threshold owns the whole header, which is what stops
-        # the same setting being offered twice.
+        # hides this button along with every other header control.
+        #
+        # An overlap was tried here -- the hamburger arriving before the button
+        # left -- and MEASURED NOT TO FIT: with both packed the real window
+        # wants 32 device px more header than it has at 900, and 62 at 880. It
+        # only fits from 940 up, which would make the hamburger appear at 999
+        # and vanish again at 939. One threshold stays.
         if self.ui_language_button is not None:
             self.ui_language_button.pack(side="left", padx=(8, 0))
 
@@ -10707,19 +10711,53 @@ class AlphaApp(
     # Context menu
     # -----------------------------------------------------------------------
     def _create_context_menu(self):
-        """Right-click context menu to clear both text areas."""
+        """Right-click a pane to COPY it.
+
+        This used to offer "Clear All Text", which throws the meeting away and
+        sat one slip of the mouse from wherever the reader was looking. Copying
+        is what a right-click on text is for, and Clear is still a labelled
+        button in the footer where a destructive action belongs.
+
+        The entry is relabelled per pane when the menu opens, so the transcript
+        offers "Copy Transcript" and the translation offers "Copy Translation"
+        rather than one ambiguous "Copy". The label goes through `t()` at that
+        moment, which also keeps it correct after a language switch without the
+        menu having to be rebuilt.
+        """
         self.context_menu = Menu(self, tearoff=0)
-        self.context_menu.add_command(label="Clear All Text", command=self.clear_text)
+        self.context_menu.add_command(label="Copy Transcript")
 
-        for box in (self.initial_verse_box, self.translated_verse_box):
-            box.bind("<Button-3>", self._show_context_menu)
+        for box, label_source, copier in (
+            (self.initial_verse_box, "Copy Transcript",
+             self.copy_live_transcript_to_clipboard),
+            (self.translated_verse_box, "Copy Translation",
+             self.copy_translation_to_clipboard),
+        ):
+            if box is None:
+                continue
+            box.bind(
+                "<Button-3>",
+                lambda event, source=label_source, action=copier: (
+                    self._show_context_menu(event, source, action)
+                ),
+            )
 
-    def _show_context_menu(self, event):
-        """Display the context menu at the cursor position."""
+    def _show_context_menu(self, event, label_source="Copy Transcript", action=None):
+        """Display the context menu at the cursor, labelled for this pane."""
+        if action is None:
+            action = self.copy_live_transcript_to_clipboard
         try:
+            self.context_menu.entryconfigure(
+                0, label=t(label_source), command=action
+            )
             self.context_menu.tk_popup(event.x_root, event.y_root)
+        except Exception as exc:
+            print(f"Error showing the context menu: {exc}")
         finally:
-            self.context_menu.grab_release()
+            try:
+                self.context_menu.grab_release()
+            except Exception:
+                pass
 
     # -----------------------------------------------------------------------
     # Event handlers

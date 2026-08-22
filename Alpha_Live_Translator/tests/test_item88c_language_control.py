@@ -106,9 +106,19 @@ HEADER_METHODS = (
 
 
 class LanguageRestoringTestCase(unittest.TestCase):
+    """Every test starts in English and puts the language back afterwards.
+
+    Restoring alone is not enough. The language is module state, so a test that
+    switches to Japanese leaves the NEXT one in whatever it inherited, and
+    unittest runs methods in alphabetical order -- which made assertions on
+    English wording pass or fail according to method name. Starting from a known
+    value takes the ordering out of it; tests wanting Japanese ask for it.
+    """
+
     def setUp(self):
         previous = strings.get_language()
         self.addCleanup(strings.set_language, previous)
+        strings.set_language("en")
 
 
 @unittest.skipUnless(TK_AVAILABLE, "Tk display unavailable in this environment")
@@ -401,6 +411,78 @@ class TestTheMicControl(TkHostTestCase):
         root._sync_mic_switches()
         self.assertEqual(root.mic_switch.cget("text"), strings.t("Mic on"))
         self.assertNotEqual(root.mic_switch.cget("text"), "Mic on")
+
+
+@unittest.skipUnless(TK_AVAILABLE, "Tk display unavailable in this environment")
+class TestTheRightClickMenuCopies(LanguageRestoringTestCase):
+    """Right-clicking a pane offers to copy it, not to destroy it.
+
+    The menu used to hold a single "Clear All Text", which throws the meeting
+    away and sat one slip of the mouse from wherever the reader was looking.
+    Clear is still a labelled button in the footer, which is where a
+    destructive action belongs. Driven through the real AlphaApp because the
+    binding, the menu and both panes have to exist for any of this to mean
+    anything.
+    """
+
+    def setUp(self):
+        super().setUp()
+        from alpha.ui.main_window import AlphaApp
+
+        self.app = AlphaApp()
+        self.addCleanup(self._destroy)
+        self.app.deiconify()
+        self.app.update()
+
+    def _destroy(self):
+        try:
+            self.app.destroy()
+        except Exception:
+            pass
+
+    def _label_for(self, label_source, action):
+        """Relabel the entry the way opening the menu does, without posting it.
+
+        `tk_popup` blocks on a real grab, so the label is read after
+        `entryconfigure` and the popup itself is skipped.
+        """
+        self.app.context_menu.entryconfigure(
+            0, label=strings.t(label_source), command=action
+        )
+        return self.app.context_menu.entrycget(0, "label")
+
+    def test_the_menu_has_no_destructive_entry(self):
+        end = self.app.context_menu.index("end")
+        labels = [
+            self.app.context_menu.entrycget(i, "label")
+            for i in range(0 if end is None else end + 1)
+        ]
+        self.assertTrue(labels, "the context menu is empty")
+        for label in labels:
+            self.assertNotIn("Clear", label)
+
+    def test_both_panes_are_bound(self):
+        for box in (self.app.initial_verse_box, self.app.translated_verse_box):
+            self.assertIn("<Button-3>", box.bind(), "pane has no right-click binding")
+
+    def test_each_pane_offers_its_own_copy(self):
+        self.assertEqual(
+            self._label_for("Copy Transcript",
+                            self.app.copy_live_transcript_to_clipboard),
+            "Copy Transcript",
+        )
+        self.assertEqual(
+            self._label_for("Copy Translation",
+                            self.app.copy_translation_to_clipboard),
+            "Copy Translation",
+        )
+
+    def test_the_label_follows_the_language(self):
+        strings.set_language("ja")
+        label = self._label_for("Copy Transcript",
+                                self.app.copy_live_transcript_to_clipboard)
+        self.assertEqual(label, strings.t("Copy Transcript"))
+        self.assertNotEqual(label, "Copy Transcript")
 
 
 if __name__ == "__main__":

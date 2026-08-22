@@ -251,11 +251,44 @@ class TheControlIsReachableAtEveryWidth(unittest.TestCase):
         self._at(DEFAULT_WINDOW_WIDTH)
         self.assertTrue(self._reachable())
 
-    def test_the_header_switch_is_the_compact_form(self):
-        """A default CTkSwitch is 150 device px whatever its label, and the
-        header has 114 spare at 900. This one has to be narrower."""
+    def test_the_switch_stays_the_compact_form(self):
+        """A default CTkCheckBox or CTkSwitch is 150 device px whatever its
+        label; this one is built narrow on purpose and has to stay that way.
+
+        The bound used to be 114, which was the HEADER's spare width at 900.
+        That number stopped meaning anything when item 88c moved the control
+        into the status strip, and it went stale quietly: relabelling "Mic" to
+        "Mic off" pushed the widget to 117 and failed a test whose premise had
+        already gone. The guard now says what it actually guards -- comfortably
+        under the default form -- and the real constraint, that the strip it
+        lives in fits, is the test below.
+        """
         self._at(1400)
-        self.assertLessEqual(self.app.mic_switch.winfo_reqwidth(), 114)
+        self.assertLess(self.app.mic_switch.winfo_reqwidth(), 150)
+
+    def test_the_status_strip_holds_its_contents(self):
+        """The constraint that replaced the 114: whatever the label says, the
+        cluster carrying mic, standby and the timer has to fit the strip."""
+        for width in (900, 1400, 1920):
+            self._at(width)
+            cluster = self.app._status_right_cluster
+            self.assertGreaterEqual(
+                cluster.winfo_width(),
+                cluster.winfo_reqwidth(),
+                f"the status strip is squeezed at {width}",
+            )
+            strip_right = (
+                self.app.status_bar_frame.winfo_rootx()
+                + self.app.status_bar_frame.winfo_width()
+            )
+            for name in ("mic_switch", "signal_label", "timer_label"):
+                widget = getattr(self.app, name, None)
+                if widget is None or not widget.winfo_ismapped():
+                    continue
+                overflow = (widget.winfo_rootx() + widget.winfo_width()) - strip_right
+                self.assertLessEqual(
+                    overflow, 0, f"{name} is {overflow}px past the strip at {width}"
+                )
 
     def test_the_header_does_not_overflow_at_the_default_width(self):
         req, got = self._at(900)
