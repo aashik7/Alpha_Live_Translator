@@ -232,6 +232,7 @@ from alpha.ui.theme import (
     EXTENDED_SPEAKER_COLORS,
     TRANSCRIPT_BODY_FONT,
     TRANSLATION_BODY_FONT,
+    UI_LANGUAGE_SHORT_LABELS,
     WAVEFORM_ANIMATION_MS,
     WAVEFORM_BAR_COUNT,
     WAVEFORM_BAR_COUNT_WIDE,
@@ -239,7 +240,14 @@ from alpha.ui.theme import (
     WAVEFORM_CANVAS_WIDTH,
     WAVEFORM_CANVAS_WIDTH_WIDE,
 )
-from alpha.ui.strings import t, translate_all
+from alpha.ui.strings import (
+    LANGUAGE_NAMES,
+    available_languages,
+    get_language,
+    save_language,
+    t,
+    translate_all,
+)
 from alpha.utils.logging_utils import get_logger, log_throttled, perf_checkpoint
 from alpha.utils.queues import put_bounded
 
@@ -448,6 +456,8 @@ class AlphaApp(
         self.status_text_label = None
         self.timer_label = None
         self.signal_label = None
+        self.ui_language_button = None
+        self.ui_language_combo_menu = None
         # Microphone capture is a per-session choice, read at Start like the
         # language dropdown. Default OFF: Alpha transcribes ONE language per
         # session and merges mic with system audio before Deepgram, so in a
@@ -3056,27 +3066,21 @@ class AlphaApp(
         )
         self.always_on_top_switch.pack(side="left")
 
-        # A checkbox, and deliberately compact. Measured on a real root: a
-        # default CTkCheckBox or CTkSwitch is 150 device px whatever its label,
-        # the previous "Meeting audio only" switch was 209, and the header has
-        # only 114 spare at 900 design px. This form measures 58. The hamburger
-        # copy below uses the full word, the same abbreviate-when-tight
-        # treatment the language combos already get.
-        self.mic_switch = ctk.CTkCheckBox(
+        # The UI language, as a button rather than a combo box, and the reason
+        # is measured: at 800 design px -- the width where the hamburger menu
+        # takes over -- this cluster has 49 design px left in Japanese, while a
+        # CTkComboBox asks for 72. This button asks for 28 ("EN") or 37
+        # ("日本"). Clicking it posts a real dropdown, which Tk draws over the
+        # window and so costs no layout space at all.
+        ui_language_button_config = self._glass_button_config(width=1)
+        ui_language_button_config["font"] = self._ui_font(FONTS["caption"][1])
+        self.ui_language_button = ctk.CTkButton(
             master=self.right_header_cluster,
-            text=t("Mic"),
-            font=self._ui_font(FONTS["caption"][1]),
-            text_color=COLORS["text_secondary"],
-            fg_color=COLORS["accent_blue"],
-            hover_color=COLORS["accent_blue_hover"],
-            border_color=COLORS["border"],
-            checkmark_color=COLORS["text_primary"],
-            checkbox_width=16,
-            checkbox_height=16,
-            width=1,
-            command=self.toggle_microphone_capture,
+            text=UI_LANGUAGE_SHORT_LABELS.get(get_language(), "EN"),
+            command=self._open_ui_language_menu,
+            **ui_language_button_config,
         )
-        self.mic_switch.pack(side="left", padx=(8, 0))
+        self.ui_language_button.pack(side="left", padx=(8, 0))
 
         self.listening_label = None
         self.translate_label = None
@@ -3110,14 +3114,14 @@ class AlphaApp(
             border_color=COLORS["border"],
         )
 
-        menu_listening_label = ctk.CTkLabel(
+        self.menu_listening_label = ctk.CTkLabel(
             master=self.menu_dropdown_frame,
             text=t("Listening to:"),
             font=ctk.CTkFont(family="Segoe UI", size=13),
             text_color=COLORS["text_secondary"],
             anchor="w",
         )
-        menu_listening_label.pack(fill="x", padx=15, pady=(12, 4))
+        self.menu_listening_label.pack(fill="x", padx=15, pady=(12, 4))
 
         self.source_combo_menu = ctk.CTkComboBox(
             master=self.menu_dropdown_frame,
@@ -3139,14 +3143,14 @@ class AlphaApp(
         )
         self.source_combo_menu.pack(fill="x", padx=15, pady=(0, 8))
 
-        menu_translate_label = ctk.CTkLabel(
+        self.menu_translate_label = ctk.CTkLabel(
             master=self.menu_dropdown_frame,
             text=t("Translate to:"),
             font=ctk.CTkFont(family="Segoe UI", size=13),
             text_color=COLORS["text_secondary"],
             anchor="w",
         )
-        menu_translate_label.pack(fill="x", padx=15, pady=(4, 4))
+        self.menu_translate_label.pack(fill="x", padx=15, pady=(4, 4))
 
         self.target_combo_menu = ctk.CTkComboBox(
             master=self.menu_dropdown_frame,
@@ -3167,6 +3171,39 @@ class AlphaApp(
             state="readonly",
         )
         self.target_combo_menu.pack(fill="x", padx=15, pady=(0, 8))
+
+        # The same setting as the header button, in the surface that replaces
+        # the header below 800 px. There is room for the full names here -- the
+        # panel is 260 wide -- so this one says "English" and "日本語" rather
+        # than the header's abbreviations.
+        self.menu_ui_language_label = ctk.CTkLabel(
+            master=self.menu_dropdown_frame,
+            text=t("Display language:"),
+            font=ctk.CTkFont(family="Segoe UI", size=13),
+            text_color=COLORS["text_secondary"],
+            anchor="w",
+        )
+        self.menu_ui_language_label.pack(fill="x", padx=15, pady=(4, 4))
+
+        self.ui_language_combo_menu = ctk.CTkComboBox(
+            master=self.menu_dropdown_frame,
+            values=[LANGUAGE_NAMES[code] for code in available_languages()],
+            command=self._on_ui_language_combo,
+            width=260,
+            height=32,
+            font=ctk.CTkFont(family="Segoe UI", size=13),
+            fg_color=COLORS["dropdown_bg"],
+            border_color=COLORS["border"],
+            border_width=DROPDOWN_BORDER_WIDTH,
+            button_color=COLORS["accent_blue"],
+            button_hover_color="#3a8eef",
+            dropdown_fg_color=COLORS["dropdown_bg"],
+            dropdown_hover_color="#4d4d5d",
+            text_color=COLORS["text_primary"],
+            corner_radius=8,
+            state="readonly",
+        )
+        self.ui_language_combo_menu.pack(fill="x", padx=15, pady=(0, 8))
 
         # Created eagerly like every other widget in this file (C2), but never
         # shown: Start/Stop lives in the footer only, at every width. This
@@ -3234,7 +3271,7 @@ class AlphaApp(
 
         self.mic_switch_menu = ctk.CTkCheckBox(
             master=self.menu_dropdown_frame,
-            text=t("Microphone"),
+            text=t("Mic off"),
             font=ctk.CTkFont(family="Segoe UI", size=13),
             text_color=COLORS["text_secondary"],
             fg_color=COLORS["accent_blue"],
@@ -3247,6 +3284,7 @@ class AlphaApp(
         # ON means the microphone IS captured, which is off by default. Applied
         # to both at once, once both exist.
         self._sync_mic_switches()
+        self._sync_ui_language_controls()
 
     # -----------------------------------------------------------------------
     # Responsive layout switching
@@ -3439,14 +3477,17 @@ class AlphaApp(
         else:
             self.always_on_top_switch.pack_forget()
 
-        # A wider threshold than the switch above because the label is longer.
-        # Below it the control is still reachable from the hamburger menu, which
-        # is where every header control goes in compact mode anyway.
-        if self.mic_switch is not None:
+        # Exactly the same threshold as the switch above, and that is the
+        # point: `MIC_SWITCH_MIN_WIDTH` IS `LAYOUT_HAMBURGER_BREAKPOINT`, so
+        # the width that hides this button is the width that reveals the
+        # hamburger menu holding the same setting. Item 74 was a control that
+        # vanished between two thresholds that did not line up; reusing the
+        # constant is what stops that happening again here.
+        if self.ui_language_button is not None:
             if width >= MIC_SWITCH_MIN_WIDTH:
-                self.mic_switch.pack(side="left", padx=(8, 0))
+                self.ui_language_button.pack(side="left", padx=(8, 0))
             else:
-                self.mic_switch.pack_forget()
+                self.ui_language_button.pack_forget()
 
         if self.brand_sub_label is not None:
             if width < 480:
@@ -3480,8 +3521,8 @@ class AlphaApp(
                 self.summary_button.pack_forget()
             if self.always_on_top_switch is not None:
                 self.always_on_top_switch.pack_forget()
-            if self.mic_switch is not None:
-                self.mic_switch.pack_forget()
+            if self.ui_language_button is not None:
+                self.ui_language_button.pack_forget()
             self.hamburger_button.pack(side="left", padx=(8, 0))
             self._hide_hamburger_menu()
         except Exception as exc:
@@ -3589,6 +3630,30 @@ class AlphaApp(
             text_color=COLORS["text_secondary"],
         )
         self.timer_label.pack(side="right", padx=(12, 0))
+
+        # The microphone choice lives here rather than in the header. It was
+        # in the header until item 88c, where it cost that row more width than
+        # it had: at 800 design px in Japanese it was already 5 px past the
+        # right edge before anything else was added. The status strip has room
+        # at every width, so this control no longer needs a breakpoint to hide
+        # behind, and it now sits beside the session state it belongs with.
+        # Packed after the timer and before the signal label -- both
+        # side="right", which lands it between the two.
+        self.mic_switch = ctk.CTkCheckBox(
+            master=self._status_right_cluster,
+            text=t("Mic off"),
+            font=self._ui_font(FONTS["caption"][1]),
+            text_color=COLORS["text_secondary"],
+            fg_color=COLORS["accent_blue"],
+            hover_color=COLORS["accent_blue_hover"],
+            border_color=COLORS["border"],
+            checkmark_color=COLORS["text_primary"],
+            checkbox_width=16,
+            checkbox_height=16,
+            width=1,
+            command=self.toggle_microphone_capture,
+        )
+        self.mic_switch.pack(side="right", padx=(0, 12))
 
         self.signal_label = ctk.CTkLabel(
             master=self._status_right_cluster,
@@ -4543,7 +4608,7 @@ class AlphaApp(
         """Create a compact hide/show toggle button for the Initial verse panel."""
         return ctk.CTkButton(
             master=master,
-            text=text,
+            text=t(text),
             command=self.toggle_initial_verse,
             **self._secondary_button_config(width=width, height=SMALL_BUTTON_HEIGHT),
         )
@@ -4560,11 +4625,11 @@ class AlphaApp(
         """
         if text == "Hide":
             self.show_initial_button.grid_remove()
-            self.hide_initial_button.configure(text=text, width=width)
+            self.hide_initial_button.configure(text=t(text), width=width)
             self.hide_initial_button.grid(row=0, column=1, sticky="e", padx=(8, 0))
         else:
             self.hide_initial_button.grid_remove()
-            self.show_initial_button.configure(text=text, width=width)
+            self.show_initial_button.configure(text=t(text), width=width)
             self.show_initial_button.grid(row=0, column=1, sticky="e", padx=(8, 0))
 
     def check_scrollbar_visibility(self, text_widget, scrollbar):
@@ -4777,6 +4842,7 @@ class AlphaApp(
 
         if is_initial:
             self.initial_title_row = title_row
+            self.initial_title_label = title_label
             self.hide_initial_button = self._create_toggle_button(title_row, "Hide", 64)
             # Both buttons are created eagerly and left UNGRIDDED (C2: created
             # eagerly, never deferred -- `_place_toggle_button` dereferences
@@ -10724,6 +10790,213 @@ class AlphaApp(
         except Exception as exc:
             print(f"Error toggling microphone capture: {exc}")
 
+    # -----------------------------------------------------------------------
+    # UI language
+    # -----------------------------------------------------------------------
+    # Every widget whose text is set once when it is built and never touched
+    # again. The English string is the key `t()` looks up, exactly as at the
+    # call site, so this table cannot drift into saying something the widget
+    # never showed. Anything repainted by its own owner -- the listen button,
+    # the status line, the connection indicator, the summary button's
+    # wide/compact wording -- is deliberately absent: `_retranslate_ui` asks
+    # those owners to repaint instead.
+    _RETRANSLATABLE_LABELS = (
+        ("brand_sub_label", "Meeting Assistant"),
+        ("always_on_top_switch", "Always on Top"),
+        ("copy_translation_btn", "Copy Translation"),
+        ("export_btn", "Export"),
+        ("clear_btn", "Clear"),
+        ("copy_translation_btn_menu", "Copy Translation"),
+        ("export_btn_menu", "Export"),
+        ("clear_btn_menu", "Clear"),
+        ("always_on_top_switch_menu", "Always on Top"),
+        ("menu_listening_label", "Listening to:"),
+        ("menu_translate_label", "Translate to:"),
+        ("menu_ui_language_label", "Display language:"),
+    )
+
+    def _open_ui_language_menu(self):
+        """Post a dropdown under the header's language button.
+
+        A `tkinter.Menu` rather than a combo box, and the reason is measured:
+        at 800 design px -- where the hamburger menu takes over -- the header's
+        right cluster has 49 design px left in Japanese and a CTkComboBox asks
+        for 72. Tk draws this menu over the window, so it occupies no layout
+        space at any width.
+        """
+        button = getattr(self, "ui_language_button", None)
+        if button is None:
+            return
+        menu = None
+        try:
+            menu = Menu(self, tearoff=0)
+            current = get_language()
+            for code in available_languages():
+                # The language's own name, never translated: it is the only
+                # label someone who cannot read the current language can use to
+                # find their way back out.
+                menu.add_command(
+                    label=("• " if code == current else "   ") + LANGUAGE_NAMES[code],
+                    command=lambda chosen=code: self._apply_ui_language(chosen),
+                )
+            menu.tk_popup(
+                button.winfo_rootx(),
+                button.winfo_rooty() + button.winfo_height(),
+            )
+        except Exception as exc:
+            print(f"Error opening the display-language menu: {exc}")
+        finally:
+            if menu is not None:
+                try:
+                    menu.grab_release()
+                except Exception:
+                    pass
+
+    def _on_ui_language_combo(self, choice):
+        """The hamburger combo shows names; everything else works in codes."""
+        for code in available_languages():
+            if LANGUAGE_NAMES.get(code) == choice:
+                self._apply_ui_language(code)
+                return
+        # An unrecognised choice means the combo and the real state disagree.
+        # Put the combo back rather than guessing what was meant.
+        self._sync_ui_language_controls()
+
+    def _apply_ui_language(self, code):
+        """Switch language, remember it, and repaint what is already on screen."""
+        if code == get_language():
+            self._sync_ui_language_controls()
+            return
+        saved = save_language(code)
+        self._sync_ui_language_controls()
+        self._retranslate_ui()
+        if not saved:
+            # Silence here would be the worst outcome: the window would change
+            # language and quietly go back on the next launch.
+            try:
+                messagebox.showwarning(
+                    t("Error"),
+                    t("The display language changed, but the choice could not be saved."),
+                )
+            except Exception:
+                pass
+
+    def _sync_ui_language_controls(self):
+        """One writer for the header button and the hamburger combo.
+
+        Two widgets showing one piece of state is how they end up disagreeing --
+        the same reason `_sync_mic_switches` below exists.
+        """
+        code = get_language()
+        button = getattr(self, "ui_language_button", None)
+        if button is not None:
+            try:
+                button.configure(text=UI_LANGUAGE_SHORT_LABELS.get(code, "EN"))
+            except Exception:
+                pass
+        combo = getattr(self, "ui_language_combo_menu", None)
+        if combo is not None:
+            try:
+                combo.set(LANGUAGE_NAMES.get(code, LANGUAGE_NAMES["en"]))
+            except Exception:
+                pass
+
+    def _retranslate_placeholder(self, text_widget, source_text):
+        """Re-render an empty pane's placeholder, and only while it is showing.
+
+        Never touches a pane holding real content: the transcript and
+        translation boxes carry the marks the pane bookkeeping depends on, and
+        this must not go near them.
+        """
+        if text_widget is None:
+            return
+        try:
+            showing = self._is_placeholder_active(text_widget)
+            text_widget._placeholder_text = t(source_text)
+            if showing:
+                self._show_text_placeholder(text_widget)
+        except Exception:
+            pass
+
+    def _retranslate_ui(self):
+        """Repaint every piece of chrome in the language now in force.
+
+        Deliberately does NOT re-render the transcript or translation content:
+        that is the user's own text, and those two widgets carry the Tk marks
+        the pane bookkeeping depends on. Only their empty-state placeholders
+        are refreshed, and only while a placeholder is what is showing.
+
+        Each step is guarded on its own. A label that fails to repaint is a
+        cosmetic problem; an exception escaping into the Tk callback that
+        triggered it is not.
+        """
+        try:
+            self.title(t(APP_WINDOW_TITLE))
+        except Exception:
+            pass
+
+        for attr, source_text in self._RETRANSLATABLE_LABELS:
+            widget = getattr(self, attr, None)
+            if widget is None:
+                continue
+            try:
+                widget.configure(text=t(source_text))
+            except Exception:
+                pass
+
+        for attr, source_text in (
+            ("initial_title_label", SECTION_TRANSCRIPT_TITLE),
+            ("summary_title_label", SUMMARY_PANEL_TITLE),
+        ):
+            widget = getattr(self, attr, None)
+            if widget is None:
+                continue
+            try:
+                widget.configure(text=t(source_text))
+            except Exception:
+                pass
+
+        self._retranslate_placeholder(
+            getattr(self, "initial_verse_box", None), PLACEHOLDER_TRANSCRIPT
+        )
+        # Only when no status message has claimed the placeholder; a status
+        # there outranks the empty-state copy and is written elsewhere.
+        if not (getattr(self, "_translation_status_message", "") or "").strip():
+            self._retranslate_placeholder(
+                getattr(self, "translated_verse_box", None), PLACEHOLDER_TRANSLATION
+            )
+
+        # Ask the owners of the dynamic text to repaint, rather than writing
+        # their labels from here and giving each one a second author.
+        for repaint in (
+            lambda: self._set_listen_button_state(bool(getattr(self, "is_listening", False))),
+            lambda: self._update_translation_title(),
+            lambda: self._sync_connection_indicator(),
+            lambda: self._sync_transcript_visibility(),
+            lambda: self._sync_mic_switches(),
+        ):
+            try:
+                repaint()
+            except Exception:
+                pass
+
+        # Japanese labels are wider than English ones -- measured: the action
+        # group leaves the footer at 450 design px instead of 410 -- so the
+        # responsive rules have to run again against the text now on screen.
+        #
+        # `_apply_responsive_layout` returns immediately when the width and
+        # mode are unchanged, and a language switch changes neither. That cache
+        # is why the header used to keep the old language until the window was
+        # resized: `summary_button`'s wording is set ONLY by
+        # `_pack_header_controls`, which never ran. Clearing the cache keys is
+        # what makes a language change count as a change.
+        self._last_layout_width = -1
+        self._last_layout_mode_applied = None
+        try:
+            self._apply_responsive_layout()
+        except Exception:
+            pass
+
     def _sync_mic_switches(self):
         """Make both switches show `_microphone_capture_enabled`.
 
@@ -10732,6 +11005,10 @@ class AlphaApp(
         how they end up disagreeing.
         """
         enabled = bool(self._microphone_capture_enabled)
+        # The label says what the state IS, not what the control does. "Mic"
+        # alone left the operator reading the tick box to find out, and the
+        # tick is 16 px.
+        label = t("Mic on") if enabled else t("Mic off")
         for switch in (
             getattr(self, "mic_switch", None),
             getattr(self, "mic_switch_menu", None),
@@ -10743,6 +11020,7 @@ class AlphaApp(
                     switch.select()
                 else:
                     switch.deselect()
+                switch.configure(text=label)
             except Exception:
                 pass
 

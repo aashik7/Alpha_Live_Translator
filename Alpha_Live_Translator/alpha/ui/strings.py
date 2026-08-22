@@ -38,14 +38,29 @@ behaves exactly as it did before this module existed. Switching the whole
 feature off is that one word, and it needs no other edit anywhere. The
 environment variable above does the same on a machine already delivered.
 
-APPLIES AT STARTUP, NOT INSTANTLY
----------------------------------
-`t()` is read when a widget is painted, and most of the widgets that carry
-translated text are local variables inside `main_window.py`'s `create_*`
-methods rather than attributes on the app. There is therefore no handle to
-re-render them through, and `set_language()` affects only what is drawn after
-it. Any control built on top of this has to say the change applies next time
-the app starts -- and must not pretend otherwise.
+APPLIES IMMEDIATELY, VIA THE CALLER
+-----------------------------------
+`t()` is read when a widget is painted, so `set_language()` on its own changes
+only what is drawn after it. It does not repaint anything itself and cannot:
+this module knows nothing about widgets.
+
+`main_window.py` closes that gap with `_retranslate_ui()`, which re-configures
+the chrome and re-runs the responsive layout, so a switch takes effect at once
+with no restart. An earlier version of this note claimed a live switch was out
+of reach because most translated widgets were locals with no handle to reach
+them by. That was wrong, and measured rather than argued: of the widgets built
+with translated text, all but two were already held on the app, and those two
+now are.
+
+Two things a caller still has to know:
+
+- The transcript and translation panes are deliberately NOT re-rendered. That
+  is the user's own text, and those widgets carry the Tk marks the pane
+  bookkeeping depends on. Only their empty-state placeholders change.
+- `_apply_responsive_layout()` returns early when the window width and layout
+  mode are unchanged, and a language switch changes neither. Its cache keys
+  have to be cleared first or the header keeps the old wording until the window
+  is resized -- which is exactly the bug item 88c fixed.
 
 WHAT IS DELIBERATELY *NOT* TRANSLATED, AND WHY
 ----------------------------------------------
@@ -121,8 +136,10 @@ _JA: dict[str, str] = {
     "Copy Translation": "翻訳をコピー",
     "Copy Transcript": "文字起こしをコピー",
     "Summary": "要約",
-    "Microphone": "マイク",
-    "Mic": "マイク",
+    # The label states the state rather than the action, so it is written
+    # by `_sync_mic_switches`, the one function that owns that state.
+    "Mic on": "マイク オン",
+    "Mic off": "マイク オフ",
     "Always on Top": "常に最前面",
     # -- Header and section titles -----------------------------------------
     "Meeting Assistant": "会議アシスタント",
@@ -134,6 +151,19 @@ _JA: dict[str, str] = {
     "Meeting Summary ▼": "会議の要約 ▼",
     "Listening to:": "認識する言語:",
     "Translate to:": "翻訳先:",
+    # The control that switches this table on and off. The language NAMES
+    # beside it stay in their own language (LANGUAGE_NAMES) -- that is the only
+    # way out for someone who cannot read the language currently showing.
+    "Display language:": "表示言語:",
+    # The transcript card's collapse toggle. "Hide" is ALSO the value
+    # `_place_toggle_button` compares against to decide which of the two
+    # buttons to show, so it stays English in the code and is translated only
+    # where it is painted.
+    "Hide": "隠す",
+    "Show Transcript": "文字起こしを表示",
+    "The display language changed, but the choice could not be saved.": (
+        "表示言語を変更しましたが、設定を保存できませんでした。"
+    ),
     # -- Status strip ------------------------------------------------------
     "● LIVE": "● ライブ",
     "○ IDLE": "○ 待機",

@@ -266,11 +266,39 @@ class TheControlIsReachableAtEveryWidth(unittest.TestCase):
             req, got = self._at(width)
             self.assertLessEqual(req, got, f"the header overflows at {width}")
 
-    def test_the_hamburger_carries_it_when_the_header_cannot(self):
-        self._at(700)
-        self.assertFalse(self.app.mic_switch.winfo_ismapped())
-        self.assertTrue(self.app.hamburger_button.winfo_ismapped())
+    def test_it_no_longer_depends_on_a_breakpoint_at_all(self):
+        """Item 88c removed the failure mode instead of re-tuning it.
+
+        This used to assert the hand-off: below 800 the header switch hid and
+        the hamburger carried the control. That hand-off was the whole source
+        of the original bug -- two thresholds that had to agree, and once did
+        not. The control now lives in the status strip, which is shown at every
+        width, so there is no threshold left to get wrong and nothing to hand
+        over to. The switch has to be mapped at every width, including the ones
+        where the header itself is gone.
+        """
+        for width in (600, 700, 790, 800, 900, 1400, 1920):
+            self._at(width)
+            self.assertTrue(
+                self.app.mic_switch.winfo_ismapped(),
+                f"the microphone control is not on screen at {width}",
+            )
         self.assertIsNotNone(self.app.mic_switch_menu)
+
+    def test_it_is_not_in_the_header_any_more(self):
+        """Measured at 5px past the header's right edge at 800 in Japanese,
+        before the display-language button was even added. It moved because it
+        did not fit, so a test keeps it out."""
+        self._at(900)
+        header_widgets = []
+
+        def walk(widget):
+            for child in widget.winfo_children():
+                header_widgets.append(child)
+                walk(child)
+
+        walk(self.app.right_header_cluster.master)
+        self.assertNotIn(self.app.mic_switch, header_widgets)
 
     def test_the_default_is_microphone_off_on_a_real_window(self):
         self._at(1400)

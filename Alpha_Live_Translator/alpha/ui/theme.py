@@ -469,6 +469,15 @@ LAYOUT_FOOTER_WRAP_BREAKPOINT = 680
 # log filenames, artifact manifests), which is where build traceability belongs.
 APP_WINDOW_TITLE = "Alpha Meeting Assistant"
 
+# What the header's UI-language button shows for each language. Short on
+# purpose, and measured rather than chosen: the header's right cluster has only
+# 49 design px to spare at 800 px in Japanese -- the width where the hamburger
+# menu takes over -- and a CTkComboBox needs 72. These render at 28 ("EN") and
+# 37 ("日本"), so the control fits at every width where it is shown. The full
+# names live in `alpha/ui/strings.py`'s LANGUAGE_NAMES and are what the
+# hamburger menu and the dropdown itself use, where there is room for them.
+UI_LANGUAGE_SHORT_LABELS = {"en": "EN", "ja": "日本"}
+
 # Section / summary labels (icons always left of text)
 SUMMARY_TITLE = "Meeting Summary"
 SUMMARY_PANEL_TITLE = "Meeting Summary"

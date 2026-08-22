@@ -236,6 +236,12 @@ HEADER_METHODS = (
     "_set_header_language_abbreviated",
     "_load_logo",
     "_deferred_apply_logo",
+    # Item 88c added a display-language button to the header, and
+    # `create_header_frame` wires its command straight to this method, so the
+    # host needs the real one or the header cannot be built at all. Same
+    # fixture maintenance every header collaborator has needed.
+    "_open_ui_language_menu",
+    "_sync_ui_language_controls",
     "create_header_frame",
     "_pack_header_controls",
     "_apply_header_layout",
