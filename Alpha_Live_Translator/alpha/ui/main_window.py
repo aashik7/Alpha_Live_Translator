@@ -239,6 +239,7 @@ from alpha.ui.theme import (
     WAVEFORM_CANVAS_WIDTH,
     WAVEFORM_CANVAS_WIDTH_WIDE,
 )
+from alpha.ui.strings import t, translate_all
 from alpha.utils.logging_utils import get_logger, log_throttled, perf_checkpoint
 from alpha.utils.queues import put_bounded
 
@@ -2317,7 +2318,7 @@ class AlphaApp(
         # `APP_VERSION` stays in every diagnostic sink -- run ids, log filenames,
         # artifact manifests -- because that is how a delivered run is traced back
         # to the build it came from.
-        self.title(APP_WINDOW_TITLE)
+        self.title(t(APP_WINDOW_TITLE))
         self.geometry("900x650")
         self.minsize(LAYOUT_MIN_WIDTH, LAYOUT_MIN_HEIGHT)
         self.grid_columnconfigure(0, weight=1)
@@ -3004,7 +3005,7 @@ class AlphaApp(
         self.brand_label.pack(anchor="w")
         self.brand_sub_label = ctk.CTkLabel(
             master=titles,
-            text="Meeting Assistant",
+            text=t("Meeting Assistant"),
             font=self._ui_font(FONTS["brand_sub"][1]),
             text_color=COLORS["text_secondary"],
         )
@@ -3036,7 +3037,7 @@ class AlphaApp(
 
         self.summary_button = ctk.CTkButton(
             master=self.right_header_cluster,
-            text=MEETING_SUMMARY_BUTTON_TEXT,
+            text=t(MEETING_SUMMARY_BUTTON_TEXT),
             command=self.show_meeting_summary,
             **self._glass_button_config(width=SUMMARY_BUTTON_WIDTH),
         )
@@ -3044,7 +3045,7 @@ class AlphaApp(
 
         self.always_on_top_switch = ctk.CTkSwitch(
             master=self.right_header_cluster,
-            text="Always on Top",
+            text=t("Always on Top"),
             font=self._ui_font(FONTS["caption"][1]),
             text_color=COLORS["text_secondary"],
             fg_color=COLORS["input_bg"],
@@ -3063,7 +3064,7 @@ class AlphaApp(
         # treatment the language combos already get.
         self.mic_switch = ctk.CTkCheckBox(
             master=self.right_header_cluster,
-            text="Mic",
+            text=t("Mic"),
             font=self._ui_font(FONTS["caption"][1]),
             text_color=COLORS["text_secondary"],
             fg_color=COLORS["accent_blue"],
@@ -3111,7 +3112,7 @@ class AlphaApp(
 
         menu_listening_label = ctk.CTkLabel(
             master=self.menu_dropdown_frame,
-            text="Listening to:",
+            text=t("Listening to:"),
             font=ctk.CTkFont(family="Segoe UI", size=13),
             text_color=COLORS["text_secondary"],
             anchor="w",
@@ -3140,7 +3141,7 @@ class AlphaApp(
 
         menu_translate_label = ctk.CTkLabel(
             master=self.menu_dropdown_frame,
-            text="Translate to:",
+            text=t("Translate to:"),
             font=ctk.CTkFont(family="Segoe UI", size=13),
             text_color=COLORS["text_secondary"],
             anchor="w",
@@ -3174,7 +3175,7 @@ class AlphaApp(
         # control the user reported.
         self.listen_button_menu = ctk.CTkButton(
             master=self.menu_dropdown_frame,
-            text="Start Listening",
+            text=t("Start Listening"),
             height=FOOTER_BTN_HEIGHT,
             font=ctk.CTkFont(family="Segoe UI", size=13, weight="bold"),
             fg_color=COLORS["accent_blue"],
@@ -3192,7 +3193,7 @@ class AlphaApp(
         # 900px width.
         self.copy_translation_btn_menu = ctk.CTkButton(
             master=self.menu_dropdown_frame,
-            text="Copy Translation",
+            text=t("Copy Translation"),
             command=self.copy_translation_to_clipboard,
             **self._glass_button_config(),
         )
@@ -3201,7 +3202,7 @@ class AlphaApp(
 
         self.export_btn_menu = ctk.CTkButton(
             master=self.menu_dropdown_frame,
-            text="Export",
+            text=t("Export"),
             command=self.export_transcript_placeholder,
             **self._glass_button_config(),
         )
@@ -3210,7 +3211,7 @@ class AlphaApp(
 
         self.clear_btn_menu = ctk.CTkButton(
             master=self.menu_dropdown_frame,
-            text="Clear",
+            text=t("Clear"),
             command=self.clear_text,
             **self._glass_button_config(),
         )
@@ -3220,7 +3221,7 @@ class AlphaApp(
 
         self.always_on_top_switch_menu = ctk.CTkSwitch(
             master=self.menu_dropdown_frame,
-            text="Always on Top",
+            text=t("Always on Top"),
             font=ctk.CTkFont(family="Segoe UI", size=13),
             text_color=COLORS["text_secondary"],
             fg_color=COLORS["dropdown_bg"],
@@ -3233,7 +3234,7 @@ class AlphaApp(
 
         self.mic_switch_menu = ctk.CTkCheckBox(
             master=self.menu_dropdown_frame,
-            text="Microphone",
+            text=t("Microphone"),
             font=ctk.CTkFont(family="Segoe UI", size=13),
             text_color=COLORS["text_secondary"],
             fg_color=COLORS["accent_blue"],
@@ -3424,12 +3425,12 @@ class AlphaApp(
 
         if mode == "wide":
             self.summary_button.configure(
-                text=MEETING_SUMMARY_BUTTON_TEXT,
+                text=t(MEETING_SUMMARY_BUTTON_TEXT),
                 width=SUMMARY_BUTTON_WIDTH,
             )
         else:
             self.summary_button.configure(
-                text="Summary",
+                text=t("Summary"),
                 width=108 if width < LAYOUT_MEDIUM_BREAKPOINT + 80 else SUMMARY_BUTTON_WIDTH - 20,
             )
 
@@ -3546,7 +3547,7 @@ class AlphaApp(
 
         self.live_indicator = ctk.CTkLabel(
             master=self.live_pill,
-            text="○ IDLE",
+            text=t("○ IDLE"),
             font=ctk.CTkFont(family=FONTS["status"][0], size=FONTS["status"][1], weight="bold"),
             text_color=COLORS["live_idle"],
         )
@@ -3554,7 +3555,7 @@ class AlphaApp(
 
         self.status_text_label = ctk.CTkLabel(
             master=live_wrap,
-            text="Ready to listen",
+            text=t("Ready to listen"),
             font=ctk.CTkFont(family=FONTS["body"][0], size=FONTS["body"][1]),
             text_color=COLORS["text_secondary"],
         )
@@ -3591,7 +3592,7 @@ class AlphaApp(
 
         self.signal_label = ctk.CTkLabel(
             master=self._status_right_cluster,
-            text="● Standby",
+            text=t("● Standby"),
             font=ctk.CTkFont(family=FONTS["caption"][0], size=FONTS["caption"][1]),
             text_color=COLORS["text_muted"],
         )
@@ -3780,7 +3781,7 @@ class AlphaApp(
             ):
                 text = "● Audio device changed"
         try:
-            label.configure(text=text, text_color=COLORS[color_key])
+            label.configure(text=t(text), text_color=COLORS[color_key])
         except Exception:
             return
         # Surface the actionable sentence once per TRANSITION, not once per
@@ -3804,14 +3805,14 @@ class AlphaApp(
         if self.live_indicator is None:
             return
         if listening:
-            self.live_indicator.configure(text="● LIVE", text_color=COLORS["live_glow"])
+            self.live_indicator.configure(text=t("● LIVE"), text_color=COLORS["live_glow"])
             if self.live_pill is not None:
                 self.live_pill.configure(
                     fg_color=COLORS["accent_red_soft"],
                     border_color=COLORS["accent_red"],
                 )
             self.status_text_label.configure(
-                text="Listening — capturing audio",
+                text=t("Listening — capturing audio"),
                 text_color=COLORS["text_primary"],
             )
             # Item 47: routed through the single owner. This used to say
@@ -3829,14 +3830,14 @@ class AlphaApp(
             self._animate_live_pulse()
             self._update_timer()
         else:
-            self.live_indicator.configure(text="○ IDLE", text_color=COLORS["live_idle"])
+            self.live_indicator.configure(text=t("○ IDLE"), text_color=COLORS["live_idle"])
             if self.live_pill is not None:
                 self.live_pill.configure(
                     fg_color=COLORS["status_active_bg"],
                     border_color=COLORS["border_soft"],
                 )
             self.status_text_label.configure(
-                text="Ready to listen",
+                text=t("Ready to listen"),
                 text_color=COLORS["text_secondary"],
             )
             self._sync_connection_indicator(force_idle=True)
@@ -3895,7 +3896,7 @@ class AlphaApp(
 
         self.summary_title_label = ctk.CTkLabel(
             master=header,
-            text=SUMMARY_PANEL_TITLE,
+            text=t(SUMMARY_PANEL_TITLE),
             font=self._ui_font(FONTS["section_title"][1], "bold"),
             text_color=COLORS["text_primary"],
             anchor="w",
@@ -3957,7 +3958,7 @@ class AlphaApp(
         summary_scroll.configure(command=self.summary_body_box.yview)
 
         self.summary_body_box.configure(state="normal")
-        self.summary_body_box.insert("1.0", PLACEHOLDER_SUMMARY)
+        self.summary_body_box.insert("1.0", t(PLACEHOLDER_SUMMARY))
         self.summary_body_box.configure(state="disabled")
 
     # -----------------------------------------------------------------------
@@ -4045,24 +4046,24 @@ class AlphaApp(
         # into the delivered file as if it were translation output.
         self.initial_verse_frame = self._create_verse_section(
             master=self.transcript_column,
-            title=SECTION_TRANSCRIPT_TITLE,
+            title=t(SECTION_TRANSCRIPT_TITLE),
             font_size=TRANSCRIPT_BODY_FONT[1],
             body_color=COLORS["text_secondary"],
             attr_name="initial_verse_box",
             is_initial=True,
             grid_row=0,
-            placeholder_text=PLACEHOLDER_TRANSCRIPT,
+            placeholder_text=t(PLACEHOLDER_TRANSCRIPT),
             placeholder_font=FONTS["placeholder"],
         )
         self.translated_verse_frame = self._create_verse_section(
             master=self.left_column,
-            title=SECTION_TRANSLATION_TITLE,
+            title=t(SECTION_TRANSLATION_TITLE),
             font_size=TRANSLATION_BODY_FONT[1],
             body_color=COLORS["text_primary"],
             attr_name="translated_verse_box",
             is_initial=False,
             grid_row=0,
-            placeholder_text=PLACEHOLDER_TRANSLATION,
+            placeholder_text=t(PLACEHOLDER_TRANSLATION),
             placeholder_font=FONTS["placeholder_lg"],
         )
 
@@ -4216,7 +4217,7 @@ class AlphaApp(
         if compact:
             self.waveform_canvas.pack_forget()
             if self.status_text_label is not None:
-                self.status_text_label.configure(text="Ready")
+                self.status_text_label.configure(text=t("Ready"))
         else:
             if not self.waveform_canvas.winfo_ismapped():
                 self.waveform_canvas.pack(
@@ -4225,7 +4226,7 @@ class AlphaApp(
                     before=self._status_right_cluster,
                 )
             if self.status_text_label is not None and not self.is_listening:
-                self.status_text_label.configure(text="Ready to listen")
+                self.status_text_label.configure(text=t("Ready to listen"))
 
         if self.signal_label is not None:
             if compact:
@@ -4381,7 +4382,7 @@ class AlphaApp(
 
         listen_btn.configure(
             height=self._design_px(FOOTER_ACTION_HEIGHT),
-            width=self._footer_button_width(LISTEN_BUTTON_LABELS, FOOTER_BTN_PAD_X),
+            width=self._footer_button_width(translate_all(LISTEN_BUTTON_LABELS), FOOTER_BTN_PAD_X),
         )
         for btn in actions:
             btn.configure(
@@ -4502,7 +4503,7 @@ class AlphaApp(
 
         self.listen_button = ctk.CTkButton(
             master=self.left_controls_frame,
-            text="Start Listening",
+            text=t("Start Listening"),
             command=self.toggle_listening,
             **self._primary_button_config(width=FOOTER_BTN_WIDTH),
         )
@@ -4511,21 +4512,21 @@ class AlphaApp(
 
         self.copy_translation_btn = ctk.CTkButton(
             master=self.right_actions_frame,
-            text="Copy Translation",
+            text=t("Copy Translation"),
             command=self.copy_translation_to_clipboard,
             **self._secondary_button_config(width=FOOTER_BTN_WIDTH),
         )
 
         self.export_btn = ctk.CTkButton(
             master=self.right_actions_frame,
-            text="Export",
+            text=t("Export"),
             command=self.export_transcript_placeholder,
             **self._secondary_button_config(width=FOOTER_BTN_WIDTH_SECONDARY),
         )
 
         self.clear_btn = ctk.CTkButton(
             master=self.right_actions_frame,
-            text="Clear",
+            text=t("Clear"),
             command=self.clear_text,
             **self._secondary_button_config(width=FOOTER_BTN_WIDTH_SECONDARY),
         )
@@ -8320,13 +8321,13 @@ class AlphaApp(
         """Sync Start/Stop Listening button appearance (footer + hamburger menu)."""
         if listening:
             cfg = {
-                "text": "Stop Listening",
+                "text": t("Stop Listening"),
                 "fg_color": COLORS["accent_red"],
                 "hover_color": COLORS["accent_red_hover"],
             }
         else:
             cfg = {
-                "text": "Start Listening",
+                "text": t("Start Listening"),
                 "fg_color": COLORS["accent_blue"],
                 "hover_color": COLORS["accent_blue_hover"],
             }
@@ -8350,7 +8351,7 @@ class AlphaApp(
             self.after_cancel(self._live_pulse_job)
             self._live_pulse_job = None
         if self.live_indicator is not None:
-            self.live_indicator.configure(text="○ IDLE", text_color=COLORS["live_idle"])
+            self.live_indicator.configure(text=t("○ IDLE"), text_color=COLORS["live_idle"])
         if self.live_pill is not None:
             self.live_pill.configure(
                 fg_color=COLORS["status_active_bg"],
@@ -8367,7 +8368,7 @@ class AlphaApp(
                 btn.configure(**idle_btn)
         if self.status_text_label is not None:
             self.status_text_label.configure(
-                text="Finalising…",
+                text=t("Finalising…"),
                 text_color=COLORS["text_primary"],
             )
         try:
@@ -8393,7 +8394,7 @@ class AlphaApp(
             self.after_cancel(self._live_pulse_job)
             self._live_pulse_job = None
         if self.live_indicator is not None:
-            self.live_indicator.configure(text="○ IDLE", text_color=COLORS["live_idle"])
+            self.live_indicator.configure(text=t("○ IDLE"), text_color=COLORS["live_idle"])
         if self.live_pill is not None:
             self.live_pill.configure(
                 fg_color=COLORS["status_active_bg"],
@@ -8410,7 +8411,7 @@ class AlphaApp(
                 btn.configure(**idle_btn)
         if self.status_text_label is not None:
             self.status_text_label.configure(
-                text="Finalizing...",
+                text=t("Finalizing..."),
                 text_color=COLORS["text_primary"],
             )
         # `is_listening` can still be True while the session winds down, so
@@ -8423,7 +8424,7 @@ class AlphaApp(
         self._set_listen_button_state(False)
         if self.status_text_label is not None:
             self.status_text_label.configure(
-                text="Stopped",
+                text=t("Stopped"),
                 text_color=COLORS["text_secondary"],
             )
 
@@ -9471,7 +9472,7 @@ class AlphaApp(
 
         def update():
             if self.status_text_label is not None and payload.message:
-                self.status_text_label.configure(text=payload.message)
+                self.status_text_label.configure(text=t(payload.message))
 
         self._run_on_ui_thread(update)
 
@@ -9530,7 +9531,7 @@ class AlphaApp(
         logger.error("[%s] %s", payload.source or "app", payload.message)
         if not payload.recoverable:
             self._run_on_ui_thread(
-                lambda: messagebox.showerror("Error", payload.message)
+                lambda: messagebox.showerror(t("Error"), t(payload.message))
             )
 
     def _on_summary_updated(self, payload):
@@ -9566,7 +9567,7 @@ class AlphaApp(
         """Show immediate Starting feedback while Deepgram/audio initialize off-UI."""
         if self.status_text_label is not None:
             self.status_text_label.configure(
-                text="Starting…",
+                text=t("Starting…"),
                 text_color=COLORS["text_primary"],
             )
         try:
@@ -9578,9 +9579,9 @@ class AlphaApp(
         # Keep button responsive lock visible immediately.
         try:
             if self.listen_button is not None:
-                self.listen_button.configure(text="Starting…", state="disabled")
+                self.listen_button.configure(text=t("Starting…"), state="disabled")
             if getattr(self, "listen_button_menu", None) is not None:
-                self.listen_button_menu.configure(text="Starting…", state="disabled")
+                self.listen_button_menu.configure(text=t("Starting…"), state="disabled")
         except Exception:
             pass
 
@@ -9701,7 +9702,7 @@ class AlphaApp(
                     f"Selection: {dropdown_lang}\nReason: {reason}"
                 )
                 print(f"[LANGUAGE] unsupported profile: {reason} ({dropdown_lang})")
-                messagebox.showerror("Language Profile", message)
+                messagebox.showerror(t("Language Profile"), message)
                 self.publish_error_event(message, source="language", recoverable=True)
                 return
 
@@ -9709,7 +9710,7 @@ class AlphaApp(
         except Exception as exc:
             message = f"Language routing failed: {exc}"
             print(f"[LANGUAGE] {message}")
-            messagebox.showerror("Language Routing", message)
+            messagebox.showerror(t("Language Routing"), message)
             self.publish_error_event(message, source="language", recoverable=True)
             return
         self._listen_language = deepgram_lang
@@ -9990,7 +9991,7 @@ class AlphaApp(
             self._stop_listening(graceful=False)
             if self.status_text_label is not None:
                 self.status_text_label.configure(
-                    text="Stopped",
+                    text=t("Stopped"),
                     text_color=COLORS["text_secondary"],
                 )
             return
@@ -10193,7 +10194,7 @@ class AlphaApp(
             self._stop_finalize_started = False
             if timed_out and self.status_text_label is not None:
                 self.status_text_label.configure(
-                    text="Stopped. Diagnostics may still be saving.",
+                    text=t("Stopped. Diagnostics may still be saving."),
                     text_color=COLORS["text_secondary"],
                 )
             if hasattr(self, "stop_ui_restored_event"):
@@ -10690,7 +10691,7 @@ class AlphaApp(
             print(f"Always on Top: {'ON' if is_on else 'OFF'}")
         except Exception as exc:
             print(f"Error toggling always on top: {exc}")
-            messagebox.showerror("Error", f"Could not update window state:\n{exc}")
+            messagebox.showerror(t("Error"), f"Could not update window state:\n{exc}")
 
     def toggle_microphone_capture(self):
         """Turn the microphone on or off, keeping both switches in step.
@@ -10774,8 +10775,8 @@ class AlphaApp(
         """
         try:
             messagebox.showinfo(
-                MEETING_SUMMARY_BUTTON_TEXT,
-                "This feature is coming soon.",
+                t(MEETING_SUMMARY_BUTTON_TEXT),
+                t("This feature is coming soon."),
             )
         except Exception as exc:
             print(f"Error showing meeting summary notice: {exc}")
@@ -10793,17 +10794,17 @@ class AlphaApp(
         """Update translation card title from target language dropdown."""
         if self.translated_title_label is not None:
             lang = self._strip_language_flag(self.target_language.get())
-            self.translated_title_label.configure(text=f"Translation ({lang})")
+            self.translated_title_label.configure(text=f"{t('Translation')} ({lang})")
 
     def copy_live_transcript_to_clipboard(self):
         """Copy canonical transcript text from TranscriptStore."""
         try:
             if not hasattr(self, "transcript_store") or self.transcript_store is None:
-                messagebox.showinfo("Copy Transcript", "No transcript store available.")
+                messagebox.showinfo(t("Copy Transcript"), t("No transcript store available."))
                 return
             clean_text = self._get_clean_transcript_for_copy_export()
             if not clean_text.strip():
-                messagebox.showinfo("Copy Transcript", "No transcript text to copy.")
+                messagebox.showinfo(t("Copy Transcript"), t("No transcript text to copy."))
                 return
             self.clipboard_clear()
             self.clipboard_append(clean_text)
@@ -10812,11 +10813,11 @@ class AlphaApp(
             self._log_transcript_copy_formatting(clean_text, segment_count)
             self._log_copy_export_transcript_diag(clean_text, segment_count)
             self._log_session_transcript_copied(clean_text)
-            messagebox.showinfo("Copy Transcript", "Live transcript copied to clipboard.")
+            messagebox.showinfo(t("Copy Transcript"), t("Live transcript copied to clipboard."))
         except Exception as exc:
             logger.error("Error copying transcript: %s", exc)
             print(f"Error copying transcript: {exc}")
-            messagebox.showerror("Copy Transcript", f"Could not copy transcript:\n{exc}")
+            messagebox.showerror(t("Copy Transcript"), f"Could not copy transcript:\n{exc}")
 
     def _get_translated_transcript_for_copy_export(self) -> str:
         # fixes TASK_3A_FINDINGS.md Item 1: derive export lines from the
@@ -10841,7 +10842,7 @@ class AlphaApp(
         if status and text == status:
             return ""
         placeholder = (PLACEHOLDER_TRANSLATION or "").strip()
-        if text == placeholder:
+        if text in (placeholder, (t(PLACEHOLDER_TRANSLATION) or "").strip()):
             return ""
         return text
 
@@ -10850,15 +10851,15 @@ class AlphaApp(
         try:
             clean_text = self._get_translated_transcript_for_copy_export()
             if not clean_text.strip():
-                messagebox.showinfo("Copy Translation", "No translated transcript to copy.")
+                messagebox.showinfo(t("Copy Translation"), t("No translated transcript to copy."))
                 return
             self.clipboard_clear()
             self.clipboard_append(clean_text)
-            messagebox.showinfo("Copy Translation", "Translated transcript copied to clipboard.")
+            messagebox.showinfo(t("Copy Translation"), t("Translated transcript copied to clipboard."))
         except Exception as exc:
             logger.error("Error copying translation: %s", exc)
             print(f"Error copying translation: {exc}")
-            messagebox.showerror("Copy Translation", f"Could not copy translation:\n{exc}")
+            messagebox.showerror(t("Copy Translation"), f"Could not copy translation:\n{exc}")
 
     def export_transcript_placeholder(self):
         """Export original and translated transcripts as clearly separated sections."""
@@ -10868,7 +10869,7 @@ class AlphaApp(
             original = self._get_clean_transcript_for_copy_export()
             translated = self._get_translated_transcript_for_copy_export()
             if not original.strip() and not translated.strip():
-                messagebox.showinfo("Export", "No transcript text to export.")
+                messagebox.showinfo(t("Export"), t("No transcript text to export."))
                 return
             file_path = filedialog.asksaveasfilename(
                 title="Export Transcript",
@@ -10893,10 +10894,10 @@ class AlphaApp(
                 self.log_copy_export_stats(original, segment_count)
                 self._log_transcript_copy_formatting(original, segment_count)
                 self._log_copy_export_transcript_diag(original, segment_count)
-            messagebox.showinfo("Export", f"Transcript exported to:\n{file_path}")
+            messagebox.showinfo(t("Export"), f"Transcript exported to:\n{file_path}")
         except Exception as exc:
             print(f"Error exporting transcript: {exc}")
-            messagebox.showerror("Export", f"Could not export transcript:\n{exc}")
+            messagebox.showerror(t("Export"), f"Could not export transcript:\n{exc}")
 
     def on_language_change(self, changed="both"):
         """Handle language dropdown changes and log selections to console."""
@@ -10984,8 +10985,8 @@ class AlphaApp(
                 self._show_text_placeholder(box)
             if hasattr(self, "transcript_store") and self.transcript_store is not None:
                 self.transcript_store.clear()
-            self._set_summary_panel_text(PLACEHOLDER_SUMMARY)
+            self._set_summary_panel_text(t(PLACEHOLDER_SUMMARY))
             print("Text boxes cleared.")
         except Exception as exc:
             print(f"Error clearing text: {exc}")
-            messagebox.showerror("Error", f"Could not clear text:\n{exc}")
+            messagebox.showerror(t("Error"), f"Could not clear text:\n{exc}")
