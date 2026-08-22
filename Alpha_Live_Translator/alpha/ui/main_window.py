@@ -245,6 +245,7 @@ from alpha.ui.strings import (
     available_languages,
     get_language,
     save_language,
+    set_language,
     t,
     translate_all,
 )
@@ -3212,6 +3213,7 @@ class AlphaApp(
             corner_radius=RADII["button"],
             command=self.toggle_listening,
         )
+        self.listen_button_menu._alpha_text_source = "Start Listening"
 
         # Copy Translation / Export / Clear: visible here only when
         # `_apply_footer_layout` finds they no longer fit their half of the
@@ -3584,6 +3586,7 @@ class AlphaApp(
             text_color=COLORS["live_idle"],
         )
         self.live_indicator.pack(padx=10, pady=3)
+        self.live_indicator._alpha_text_source = "○ IDLE"
 
         self.status_text_label = ctk.CTkLabel(
             master=live_wrap,
@@ -3592,6 +3595,7 @@ class AlphaApp(
             text_color=COLORS["text_secondary"],
         )
         self.status_text_label.pack(side="left")
+        self.status_text_label._alpha_text_source = "Ready to listen"
 
         self.waveform_canvas = tk.Canvas(
             inner,
@@ -3629,6 +3633,7 @@ class AlphaApp(
             text_color=COLORS["text_muted"],
         )
         self.signal_label.pack(side="right", padx=(0, 8))
+        self.signal_label._alpha_text_source = "● Standby"
 
         # The microphone choice lives here rather than in the header. It was in
         # the header until item 88c, where it cost that row more width than it
@@ -3837,7 +3842,7 @@ class AlphaApp(
             ):
                 text = "● Audio device changed"
         try:
-            label.configure(text=t(text), text_color=COLORS[color_key])
+            self._set_dynamic_text(label, text, text_color=COLORS[color_key])
         except Exception:
             return
         # Surface the actionable sentence once per TRANSITION, not once per
@@ -3861,14 +3866,17 @@ class AlphaApp(
         if self.live_indicator is None:
             return
         if listening:
-            self.live_indicator.configure(text=t("● LIVE"), text_color=COLORS["live_glow"])
+            self._set_dynamic_text(
+                self.live_indicator, "● LIVE", text_color=COLORS["live_glow"]
+            )
             if self.live_pill is not None:
                 self.live_pill.configure(
                     fg_color=COLORS["accent_red_soft"],
                     border_color=COLORS["accent_red"],
                 )
-            self.status_text_label.configure(
-                text=t("Listening — capturing audio"),
+            self._set_dynamic_text(
+                self.status_text_label,
+                "Listening — capturing audio",
                 text_color=COLORS["text_primary"],
             )
             # Item 47: routed through the single owner. This used to say
@@ -3886,14 +3894,17 @@ class AlphaApp(
             self._animate_live_pulse()
             self._update_timer()
         else:
-            self.live_indicator.configure(text=t("○ IDLE"), text_color=COLORS["live_idle"])
+            self._set_dynamic_text(
+                self.live_indicator, "○ IDLE", text_color=COLORS["live_idle"]
+            )
             if self.live_pill is not None:
                 self.live_pill.configure(
                     fg_color=COLORS["status_active_bg"],
                     border_color=COLORS["border_soft"],
                 )
-            self.status_text_label.configure(
-                text=t("Ready to listen"),
+            self._set_dynamic_text(
+                self.status_text_label,
+                "Ready to listen",
                 text_color=COLORS["text_secondary"],
             )
             self._sync_connection_indicator(force_idle=True)
@@ -4273,7 +4284,7 @@ class AlphaApp(
         if compact:
             self.waveform_canvas.pack_forget()
             if self.status_text_label is not None:
-                self.status_text_label.configure(text=t("Ready"))
+                self._set_dynamic_text(self.status_text_label, "Ready")
         else:
             if not self.waveform_canvas.winfo_ismapped():
                 self.waveform_canvas.pack(
@@ -4282,7 +4293,7 @@ class AlphaApp(
                     before=self._status_right_cluster,
                 )
             if self.status_text_label is not None and not self.is_listening:
-                self.status_text_label.configure(text=t("Ready to listen"))
+                self._set_dynamic_text(self.status_text_label, "Ready to listen")
 
         if self.signal_label is not None:
             if compact:
@@ -4563,6 +4574,10 @@ class AlphaApp(
             command=self.toggle_listening,
             **self._primary_button_config(width=FOOTER_BTN_WIDTH),
         )
+        # Recorded at construction as well as on every state change: without it
+        # a language switch before the first Start would leave this button in
+        # the old language, because nothing had written its text yet.
+        self.listen_button._alpha_text_source = "Start Listening"
 
         self.footer_stop_button = None
 
@@ -8377,20 +8392,20 @@ class AlphaApp(
     def _set_listen_button_state(self, listening):
         """Sync Start/Stop Listening button appearance (footer + hamburger menu)."""
         if listening:
+            label = "Stop Listening"
             cfg = {
-                "text": t("Stop Listening"),
                 "fg_color": COLORS["accent_red"],
                 "hover_color": COLORS["accent_red_hover"],
             }
         else:
+            label = "Start Listening"
             cfg = {
-                "text": t("Start Listening"),
                 "fg_color": COLORS["accent_blue"],
                 "hover_color": COLORS["accent_blue_hover"],
             }
         for btn in (self.listen_button, self.listen_button_menu):
             if btn is not None:
-                btn.configure(state="normal", **cfg)
+                self._set_dynamic_text(btn, label, state="normal", **cfg)
         # The mic choice is read at Start, so it must not look changeable while
         # a session is running.
         self._set_mic_switch_enabled(not listening)
@@ -8408,7 +8423,9 @@ class AlphaApp(
             self.after_cancel(self._live_pulse_job)
             self._live_pulse_job = None
         if self.live_indicator is not None:
-            self.live_indicator.configure(text=t("○ IDLE"), text_color=COLORS["live_idle"])
+            self._set_dynamic_text(
+                self.live_indicator, "○ IDLE", text_color=COLORS["live_idle"]
+            )
         if self.live_pill is not None:
             self.live_pill.configure(
                 fg_color=COLORS["status_active_bg"],
@@ -8424,8 +8441,9 @@ class AlphaApp(
             if btn is not None:
                 btn.configure(**idle_btn)
         if self.status_text_label is not None:
-            self.status_text_label.configure(
-                text=t("Finalising…"),
+            self._set_dynamic_text(
+                self.status_text_label,
+                "Finalising…",
                 text_color=COLORS["text_primary"],
             )
         try:
@@ -8451,7 +8469,9 @@ class AlphaApp(
             self.after_cancel(self._live_pulse_job)
             self._live_pulse_job = None
         if self.live_indicator is not None:
-            self.live_indicator.configure(text=t("○ IDLE"), text_color=COLORS["live_idle"])
+            self._set_dynamic_text(
+                self.live_indicator, "○ IDLE", text_color=COLORS["live_idle"]
+            )
         if self.live_pill is not None:
             self.live_pill.configure(
                 fg_color=COLORS["status_active_bg"],
@@ -8467,8 +8487,9 @@ class AlphaApp(
             if btn is not None:
                 btn.configure(**idle_btn)
         if self.status_text_label is not None:
-            self.status_text_label.configure(
-                text=t("Finalizing..."),
+            self._set_dynamic_text(
+                self.status_text_label,
+                "Finalizing...",
                 text_color=COLORS["text_primary"],
             )
         # `is_listening` can still be True while the session winds down, so
@@ -8480,8 +8501,9 @@ class AlphaApp(
         """Restore idle controls and show Stopped after graceful shutdown."""
         self._set_listen_button_state(False)
         if self.status_text_label is not None:
-            self.status_text_label.configure(
-                text=t("Stopped"),
+            self._set_dynamic_text(
+                self.status_text_label,
+                "Stopped",
                 text_color=COLORS["text_secondary"],
             )
 
@@ -9529,7 +9551,7 @@ class AlphaApp(
 
         def update():
             if self.status_text_label is not None and payload.message:
-                self.status_text_label.configure(text=t(payload.message))
+                self._set_dynamic_text(self.status_text_label, payload.message)
 
         self._run_on_ui_thread(update)
 
@@ -9623,8 +9645,9 @@ class AlphaApp(
     def _set_starting_status(self):
         """Show immediate Starting feedback while Deepgram/audio initialize off-UI."""
         if self.status_text_label is not None:
-            self.status_text_label.configure(
-                text=t("Starting…"),
+            self._set_dynamic_text(
+                self.status_text_label,
+                "Starting…",
                 text_color=COLORS["text_primary"],
             )
         try:
@@ -9636,9 +9659,11 @@ class AlphaApp(
         # Keep button responsive lock visible immediately.
         try:
             if self.listen_button is not None:
-                self.listen_button.configure(text=t("Starting…"), state="disabled")
+                self._set_dynamic_text(self.listen_button, "Starting…", state="disabled")
             if getattr(self, "listen_button_menu", None) is not None:
-                self.listen_button_menu.configure(text=t("Starting…"), state="disabled")
+                self._set_dynamic_text(
+                    self.listen_button_menu, "Starting…", state="disabled"
+                )
         except Exception:
             pass
 
@@ -10047,8 +10072,9 @@ class AlphaApp(
             print(f"Error starting listening: {error}")
             self._stop_listening(graceful=False)
             if self.status_text_label is not None:
-                self.status_text_label.configure(
-                    text=t("Stopped"),
+                self._set_dynamic_text(
+                    self.status_text_label,
+                    "Stopped",
                     text_color=COLORS["text_secondary"],
                 )
             return
@@ -10250,8 +10276,9 @@ class AlphaApp(
             self._is_stopping = False
             self._stop_finalize_started = False
             if timed_out and self.status_text_label is not None:
-                self.status_text_label.configure(
-                    text=t("Stopped. Diagnostics may still be saving."),
+                self._set_dynamic_text(
+                    self.status_text_label,
+                    "Stopped. Diagnostics may still be saving.",
                     text_color=COLORS["text_secondary"],
                 )
             if hasattr(self, "stop_ui_restored_event"):
@@ -10840,6 +10867,55 @@ class AlphaApp(
         ("menu_ui_language_label", "Display language:"),
     )
 
+    # Widgets whose text changes at runtime. `_retranslate_dynamic_labels`
+    # re-renders exactly these and nothing else.
+    _DYNAMIC_TEXT_WIDGETS = (
+        "listen_button",
+        "listen_button_menu",
+        "live_indicator",
+        "status_text_label",
+        "signal_label",
+    )
+
+    def _set_dynamic_text(self, widget, source, **kwargs):
+        """Set a widget's text, and remember the English string it came from.
+
+        Runtime text cannot be re-translated from what is on screen -- reading
+        "認識を開始" back gives no way to know it was "Start Listening" -- so the
+        source is kept beside the widget as it is written.
+        """
+        if widget is None:
+            return
+        try:
+            widget._alpha_text_source = source
+            widget.configure(text=t(source), **kwargs)
+        except Exception:
+            pass
+
+    def _retranslate_dynamic_labels(self):
+        """Re-render runtime text in the current language, and NOTHING else.
+
+        This exists because the obvious alternative is wrong. Repainting the
+        primary button by calling `_set_listen_button_state` also runs
+        `_update_status_bar`, which sets `_listen_start_time = time.time()` and
+        re-arms the animation jobs -- so switching language mid-meeting reset
+        the session clock to 00:00, measured at 600 s elapsed before and 0 s
+        after. The same call forced `state="normal"`, re-enabling a button that
+        was deliberately disabled during "Starting…". A repaint must not go
+        through anything that owns session state.
+        """
+        for attr in self._DYNAMIC_TEXT_WIDGETS:
+            widget = getattr(self, attr, None)
+            if widget is None:
+                continue
+            source = getattr(widget, "_alpha_text_source", None)
+            if not source:
+                continue
+            try:
+                widget.configure(text=t(source))
+            except Exception:
+                pass
+
     def _open_ui_language_menu(self):
         """Post a dropdown under the header's language button.
 
@@ -10852,16 +10928,30 @@ class AlphaApp(
         button = getattr(self, "ui_language_button", None)
         if button is None:
             return
-        menu = None
         try:
-            menu = Menu(self, tearoff=0)
+            # Built once and refilled. A fresh `Menu(self)` per click is never
+            # destroyed -- it stays a child of the root for the life of the
+            # process -- so opening this menu repeatedly leaked one Tk widget
+            # each time.
+            menu = getattr(self, "ui_language_menu", None)
+            if menu is None:
+                menu = Menu(self, tearoff=0)
+                self.ui_language_menu = menu
+            menu.delete(0, "end")
             current = get_language()
             for code in available_languages():
                 # The language's own name, never translated: it is the only
                 # label someone who cannot read the current language can use to
                 # find their way back out.
                 menu.add_command(
-                    label=("• " if code == current else "   ") + LANGUAGE_NAMES[code],
+                    label=(
+                        ("• " if code == current else "   ")
+                        # `.get`, not `[]`: a language added to the table
+                        # without a display name would otherwise raise inside
+                        # this loop, and the guard below would turn that into
+                        # "the menu silently never opens".
+                        + LANGUAGE_NAMES.get(code, code)
+                    ),
                     command=lambda chosen=code: self._apply_ui_language(chosen),
                 )
             menu.tk_popup(
@@ -10871,6 +10961,7 @@ class AlphaApp(
         except Exception as exc:
             print(f"Error opening the display-language menu: {exc}")
         finally:
+            menu = getattr(self, "ui_language_menu", None)
             if menu is not None:
                 try:
                     menu.grab_release()
@@ -10893,11 +10984,17 @@ class AlphaApp(
             self._sync_ui_language_controls()
             return
         saved = save_language(code)
+        if not saved:
+            # `save_language` applies nothing when the write fails, so without
+            # this the click would do NOTHING while the dialog below claimed
+            # the language had changed. Apply it for this session; only the
+            # remembering failed.
+            set_language(code)
         self._sync_ui_language_controls()
         self._retranslate_ui()
         if not saved:
-            # Silence here would be the worst outcome: the window would change
-            # language and quietly go back on the next launch.
+            # Silence would be worse: the window changes language and then
+            # quietly goes back on the next launch with nothing said.
             try:
                 messagebox.showwarning(
                     t("Error"),
@@ -10994,7 +11091,7 @@ class AlphaApp(
         # Ask the owners of the dynamic text to repaint, rather than writing
         # their labels from here and giving each one a second author.
         for repaint in (
-            lambda: self._set_listen_button_state(bool(getattr(self, "is_listening", False))),
+            lambda: self._retranslate_dynamic_labels(),
             lambda: self._update_translation_title(),
             lambda: self._sync_connection_indicator(),
             lambda: self._sync_transcript_visibility(),

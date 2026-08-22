@@ -292,6 +292,11 @@ class TheIndicatorReflectsTheConnection(unittest.TestCase):
         class Host:
             _sync_connection_indicator = AlphaApp._sync_connection_indicator
             _CONNECTION_INDICATOR_TEXT = AlphaApp._CONNECTION_INDICATOR_TEXT
+            # Item 88e routed the indicator through this so the wording it
+            # paints can be re-translated later. The host has to carry it, or
+            # `_sync_connection_indicator` raises, swallows it, and every
+            # assertion below reads an empty label instead of a wrong one.
+            _set_dynamic_text = AlphaApp._set_dynamic_text
 
             def __init__(self):
                 self.signal_label = LabelRecorder()
