@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import argparse
 import datetime
+import json
 import os
 import platform
 import sys
@@ -85,6 +86,28 @@ def redact(data: bytes, secrets: list[str]) -> bytes:
     return text.encode("utf-8")
 
 
+def ui_language() -> str:
+    """Which language the window was in, and why.
+
+    Read straight from the file rather than by importing alpha.ui.strings:
+    this script has to keep working even when the app itself cannot start,
+    which is exactly when a bundle gets collected.
+    """
+    override = os.environ.get("ALPHA_UI_LANGUAGE", "").strip()
+    if override:
+        return override.lower() + "  (forced by ALPHA_UI_LANGUAGE)"
+    try:
+        data = json.loads(
+            (APP_ROOT / "user_settings.json").read_text(encoding="utf-8")
+        )
+        chosen = str(data.get("ui_language", "")).strip()
+        if chosen:
+            return chosen.lower() + "  (chosen in the app)"
+    except Exception:
+        pass
+    return "en  (never changed from the shipped default)"
+
+
 def newest_runs(limit: int) -> list[Path]:
     runs_dir = APP_ROOT / "troubleshooting" / "runs"
     if not runs_dir.is_dir():
@@ -103,6 +126,7 @@ def summary(included: list[str], skipped_audio: bool) -> str:
         "executable   " + str(sys.executable),
         "windows      " + platform.platform(),
         "machine      " + platform.machine(),
+        "ui language  " + ui_language(),
         "",
         "audio        " + ("EXCLUDED (re-run with --with-audio)" if skipped_audio else "included"),
         "",
@@ -184,6 +208,14 @@ def main() -> None:
             for run in newest_runs(args.runs):
                 n = add_tree(zf, run, f"runs/{run.name}", secrets, args.with_audio)
                 included.append(f"runs/{run.name}  ({n} files)")
+
+            settings = APP_ROOT / "user_settings.json"
+            if settings.is_file():
+                zf.writestr(
+                    "user_settings.json",
+                    redact(settings.read_bytes(), secrets),
+                )
+                included.append("user_settings.json")
 
             for name in ("logs", "troubleshooting/latest", "debug"):
                 src = APP_ROOT / name

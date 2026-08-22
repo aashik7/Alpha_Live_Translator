@@ -12,19 +12,40 @@ widget. `t()` either finds a translation or hands the English straight back.
 The English string is therefore still the single authority: it is the key, it is
 what the code reads, and it is what appears if anything at all goes wrong.
 
+WHERE THE ACTIVE LANGUAGE COMES FROM
+------------------------------------
+Three sources, checked in this order, first usable one wins:
+
+    1. the ALPHA_UI_LANGUAGE environment variable
+    2. `ui_language` in <app root>/user_settings.json, written by `save_language`
+    3. DEFAULT_UI_LANGUAGE below
+
+The environment variable is deliberately first. It is how a machine that has
+already been handed over is forced back to English without editing code and
+without clicking through a UI that the person looking at it may not be able to
+read:
+
+    set ALPHA_UI_LANGUAGE=en
+
+An unusable value at any level falls through to the next rather than raising, so
+a missing, unreadable or corrupt settings file is simply "nobody has chosen yet".
+
 THE KILL SWITCH
 ---------------
 `DEFAULT_UI_LANGUAGE = "en"` makes `t()` an identity function -- it returns its
 argument unchanged, for every input, with no dictionary consulted. The app then
 behaves exactly as it did before this module existed. Switching the whole
-feature off is that one word, and it needs no other edit anywhere.
+feature off is that one word, and it needs no other edit anywhere. The
+environment variable above does the same on a machine already delivered.
 
-The environment variable `ALPHA_UI_LANGUAGE` overrides it, so a machine that has
-already been handed over can be put back to English without touching the code:
-
-    set ALPHA_UI_LANGUAGE=en
-
-An unrecognised value falls back to English rather than raising.
+APPLIES AT STARTUP, NOT INSTANTLY
+---------------------------------
+`t()` is read when a widget is painted, and most of the widgets that carry
+translated text are local variables inside `main_window.py`'s `create_*`
+methods rather than attributes on the app. There is therefore no handle to
+re-render them through, and `set_language()` affects only what is drawn after
+it. Any control built on top of this has to say the change applies next time
+the app starts -- and must not pretend otherwise.
 
 WHAT IS DELIBERATELY *NOT* TRANSLATED, AND WHY
 ----------------------------------------------
@@ -60,13 +81,31 @@ and do nothing.
 
 from __future__ import annotations
 
+import json
 import os
 
-# Change this one word to turn the feature off completely. See the module
-# docstring: with "en" the table below is never consulted at all.
-DEFAULT_UI_LANGUAGE = "ja"
+# What a fresh install starts in, before anyone has chosen anything. With "en"
+# the table below is never consulted at all, so this doubles as the switch that
+# turns the whole feature off. See the module docstring.
+DEFAULT_UI_LANGUAGE = "en"
 
 ENV_VAR = "ALPHA_UI_LANGUAGE"
+
+# Where the user's own choice is remembered between runs.
+SETTINGS_FILENAME = "user_settings.json"
+SETTINGS_KEY = "ui_language"
+
+# alpha/ui/strings.py -> alpha/ui -> alpha -> the app root: the same directory
+# `.env` sits in, and what alpha/config.py calls PROJECT_ROOT. Worked out here
+# rather than imported, because this module has to stay free of dependencies --
+# main.py starts it before anything that could fail.
+APP_ROOT = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
+
+# What the language is called in its own language, which is the only way a
+# reader who cannot read the current one can find their way out.
+LANGUAGE_NAMES = {"en": "English", "ja": "日本語"}
 
 
 # Keys are the exact English literal used in the code. Anything absent from this
@@ -148,18 +187,52 @@ _JA: dict[str, str] = {
 _TABLES: dict[str, dict[str, str]] = {"ja": _JA}
 
 
-def _resolve_language() -> str:
-    """The active language code, environment first.
+def settings_path() -> str:
+    """The file the user's choice is remembered in."""
+    return os.path.join(APP_ROOT, SETTINGS_FILENAME)
 
-    Never raises and never returns something `_TABLES` cannot handle: an unknown
-    or misspelled value simply means English.
+
+def available_languages() -> tuple[str, ...]:
+    """Every code a caller may offer, English first."""
+    return ("en",) + tuple(_TABLES)
+
+
+def _normalize(code) -> str:
+    """A code reduced to something comparable, or "" if it is unusable."""
+    try:
+        return str(code).strip().lower() if code else ""
+    except Exception:
+        return ""
+
+
+def _saved_language() -> str:
+    """The choice from a previous run, or "" if there isn't a usable one.
+
+    A missing, unreadable, or corrupt settings file is an ordinary state, not
+    an error: it just means nobody has chosen yet.
     """
     try:
-        value = os.environ.get(ENV_VAR) or DEFAULT_UI_LANGUAGE
-        code = str(value).strip().lower()
+        with open(settings_path(), "r", encoding="utf-8") as handle:
+            data = json.load(handle)
+        return _normalize(data.get(SETTINGS_KEY)) if isinstance(data, dict) else ""
     except Exception:
-        return "en"
-    return code if code in _TABLES else "en"
+        return ""
+
+
+def _resolve_language() -> str:
+    """Environment variable, then the saved choice, then the shipped default.
+
+    The environment variable comes first deliberately: it is the way to force a
+    machine that has already been handed over back to English without editing
+    anything or clicking through a UI that may be unreadable to whoever is
+    looking at it. An unusable value at any level falls through to the next one
+    rather than raising or forcing English.
+    """
+    for candidate in (os.environ.get(ENV_VAR), _saved_language(), DEFAULT_UI_LANGUAGE):
+        code = _normalize(candidate)
+        if code in available_languages():
+            return code
+    return "en"
 
 
 _active = _resolve_language()
@@ -170,16 +243,69 @@ def get_language() -> str:
     return _active
 
 
-def set_language(code: str) -> None:
-    """Switch language. Intended for tests and for a future settings control.
+def save_language(code: str) -> bool:
+    """Remember `code` for future runs, and apply it to anything drawn next.
 
-    Text already drawn on screen is not re-rendered; every call site reads
-    through `t()` when it paints, so this takes effect for anything drawn
-    afterwards. The app applies the language once, at startup.
+    Returns False if the choice could not be written to disk, so the caller can
+    say so rather than let someone believe a setting stuck when it did not. The
+    install directory is writable by design, but a locked-down machine is
+    exactly where that would surprise them.
+
+    The write lands complete or not at all: it goes to a temporary file in the
+    same directory and is then renamed over the target, because `os.replace` is
+    atomic on Windows for a same-volume rename. Writing in place would mean that
+    a crash between truncate and flush leaves a half-written file -- and since
+    any other preference in that file is read, merged and written back here,
+    that would lose settings this module knows nothing about.
+
+    The language is applied only once the write has succeeded, so memory and
+    disk cannot disagree about what was chosen.
+    """
+    normalized = _normalize(code)
+    if normalized not in available_languages():
+        normalized = "en"
+
+    data = {}
+    try:
+        with open(settings_path(), "r", encoding="utf-8") as handle:
+            existing = json.load(handle)
+        if isinstance(existing, dict):
+            data = existing
+    except Exception:
+        data = {}
+    data[SETTINGS_KEY] = normalized
+
+    target = settings_path()
+    temp = target + ".tmp"
+    try:
+        with open(temp, "w", encoding="utf-8") as handle:
+            json.dump(data, handle, ensure_ascii=False, indent=2)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temp, target)
+    except Exception:
+        try:
+            os.remove(temp)
+        except Exception:
+            pass
+        return False
+
+    set_language(normalized)
+    return True
+
+
+def set_language(code: str) -> None:
+    """Switch the active language without remembering it.
+
+    `save_language` is what a settings control should call; this is the
+    in-memory half of it, and what tests use to pin a language.
+
+    Text already on screen is not re-rendered -- see "APPLIES AT STARTUP" in the
+    module docstring. This takes effect for whatever is drawn next.
     """
     global _active
-    normalized = str(code).strip().lower() if code else "en"
-    _active = normalized if normalized in _TABLES else "en"
+    normalized = _normalize(code)
+    _active = normalized if normalized in available_languages() else "en"
 
 
 def t(text):

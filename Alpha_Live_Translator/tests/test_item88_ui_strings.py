@@ -23,7 +23,10 @@ is not evidence it fits in Japanese, and the footer is where that was found
 last time.
 """
 
+import json
+import os
 import sys
+import tempfile
 import types
 import unittest
 from pathlib import Path
@@ -254,6 +257,125 @@ class TestJapaneseFooterFits(LanguageRestoringTestCase):
                     f"the primary button is not on screen at width {design_width}",
                 )
                 self.assertGreater(primary.winfo_width(), 0)
+
+
+class TestTheSavedChoice(LanguageRestoringTestCase):
+    """`save_language` is what a settings control will call.
+
+    Every test here redirects `APP_ROOT` at a temporary directory first. Without
+    that they would write `user_settings.json` into the real application folder
+    and quietly change the language of the developer's own next run.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        real_root = strings.APP_ROOT
+        strings.APP_ROOT = self._tmp.name
+        self.addCleanup(setattr, strings, "APP_ROOT", real_root)
+        # A stray ALPHA_UI_LANGUAGE on the developer's machine outranks the
+        # saved file, which would make these tests pass or fail by accident.
+        self._env = os.environ.pop(strings.ENV_VAR, None)
+        if self._env is not None:
+            self.addCleanup(os.environ.__setitem__, strings.ENV_VAR, self._env)
+
+    def _write_settings(self, payload):
+        path = Path(self._tmp.name) / strings.SETTINGS_FILENAME
+        path.write_text(json.dumps(payload), encoding="utf-8")
+        return path
+
+    def test_settings_path_sits_beside_the_app(self):
+        self.assertEqual(
+            strings.settings_path(),
+            os.path.join(self._tmp.name, strings.SETTINGS_FILENAME),
+        )
+
+    def test_a_saved_choice_survives_into_the_next_run(self):
+        self.assertTrue(strings.save_language("ja"))
+        self.assertEqual(strings.get_language(), "ja")
+        self.assertEqual(strings._saved_language(), "ja")
+        self.assertEqual(strings._resolve_language(), "ja")
+
+    def test_saving_leaves_no_temporary_file_behind(self):
+        strings.save_language("ja")
+        leftovers = [p.name for p in Path(self._tmp.name).iterdir() if p.suffix == ".tmp"]
+        self.assertEqual(leftovers, [])
+
+    def test_other_preferences_in_the_file_are_kept(self):
+        """This file is shared, so a language write must not flatten it."""
+        self._write_settings({"something_else": 42, "ui_language": "en"})
+        self.assertTrue(strings.save_language("ja"))
+        data = json.loads(
+            (Path(self._tmp.name) / strings.SETTINGS_FILENAME).read_text(encoding="utf-8")
+        )
+        self.assertEqual(data["something_else"], 42)
+        self.assertEqual(data["ui_language"], "ja")
+
+    def test_a_failed_write_reports_false_and_changes_nothing(self):
+        """Memory must not claim a choice the disk never accepted."""
+        strings.set_language("en")
+        strings.APP_ROOT = os.path.join(self._tmp.name, "no", "such", "place")
+        self.assertFalse(strings.save_language("ja"))
+        self.assertEqual(strings.get_language(), "en")
+
+    def test_a_corrupt_settings_file_is_just_no_choice_yet(self):
+        (Path(self._tmp.name) / strings.SETTINGS_FILENAME).write_text(
+            "{not json at all", encoding="utf-8"
+        )
+        self.assertEqual(strings._saved_language(), "")
+        self.assertEqual(strings._resolve_language(), strings.DEFAULT_UI_LANGUAGE)
+
+    def test_a_settings_file_that_is_not_an_object_is_ignored(self):
+        self._write_settings(["ja"])
+        self.assertEqual(strings._saved_language(), "")
+
+    def test_an_unknown_saved_code_falls_through_to_the_default(self):
+        self._write_settings({"ui_language": "zz"})
+        self.assertEqual(strings._resolve_language(), strings.DEFAULT_UI_LANGUAGE)
+
+    def test_saving_rubbish_stores_english_rather_than_rubbish(self):
+        for value in ("zz", "", None, 7):
+            self.assertTrue(strings.save_language(value))
+            self.assertEqual(strings._saved_language(), "en")
+
+    def test_the_environment_outranks_the_saved_choice(self):
+        """The documented way back to English on a delivered machine."""
+        self._write_settings({"ui_language": "ja"})
+        os.environ[strings.ENV_VAR] = "en"
+        self.addCleanup(os.environ.pop, strings.ENV_VAR, None)
+        self.assertEqual(strings._resolve_language(), "en")
+
+    def test_an_unusable_environment_value_falls_through_to_the_file(self):
+        self._write_settings({"ui_language": "ja"})
+        os.environ[strings.ENV_VAR] = "not-a-language"
+        self.addCleanup(os.environ.pop, strings.ENV_VAR, None)
+        self.assertEqual(strings._resolve_language(), "ja")
+
+
+class TestEveryLanguageIsOfferable(LanguageRestoringTestCase):
+    def test_available_languages_starts_with_english(self):
+        self.assertEqual(strings.available_languages()[0], "en")
+        self.assertIn("ja", strings.available_languages())
+
+    def test_every_available_language_has_a_name_to_show(self):
+        """A dropdown built from `available_languages()` reads `LANGUAGE_NAMES`.
+
+        Adding a table without a name would raise there, in front of the user,
+        rather than here.
+        """
+        missing = [c for c in strings.available_languages() if c not in strings.LANGUAGE_NAMES]
+        self.assertEqual(missing, [], f"no display name for: {missing}")
+
+    def test_every_language_is_named_in_its_own_language(self):
+        """Whoever needs to switch away cannot necessarily read the current one."""
+        self.assertEqual(strings.LANGUAGE_NAMES["en"], "English")
+        self.assertEqual(strings.LANGUAGE_NAMES["ja"], "日本語")
+
+    def test_set_language_accepts_everything_available_languages_offers(self):
+        for code in strings.available_languages():
+            strings.set_language(code)
+            self.assertEqual(strings.get_language(), code)
 
 
 if __name__ == "__main__":

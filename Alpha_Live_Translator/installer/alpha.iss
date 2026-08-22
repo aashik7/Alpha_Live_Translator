@@ -135,6 +135,9 @@ Filename: "{app}\{#AppExeName}"; Parameters: """{app}\{#AppScript}"""; WorkingDi
 Type: filesandordirs; Name: "{app}\python\Lib\site-packages\__pycache__"
 Type: filesandordirs; Name: "{app}\app\alpha\__pycache__"
 Type: files; Name: "{app}\app\.env"
+; The UI-language choice. The app writes it, not Inno, so an uninstall
+; would otherwise leave it behind.
+Type: files; Name: "{app}\app\user_settings.json"
 
 [Code]
 // Write the .env beside the app folder so alpha/config.py's PROJECT_ROOT

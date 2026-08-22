@@ -1,7 +1,10 @@
-﻿# Secrets
+# Secrets
 .env
 .env.*
 !.env.example
+
+# The user's own UI preferences, written by the app at runtime.
+Alpha_Live_Translator/user_settings.json
 
 # Local-only archive (old versions + bulky run data)
 _archive/
