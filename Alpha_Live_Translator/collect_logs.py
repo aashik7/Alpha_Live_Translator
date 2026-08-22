@@ -86,12 +86,38 @@ def redact(data: bytes, secrets: list[str]) -> bytes:
     return text.encode("utf-8")
 
 
+def windows_ui_language() -> str:
+    """The Windows display language as "ja" or "en", or "" if unreadable.
+
+    A deliberate copy of `alpha/ui/strings.py`'s version rather than an import,
+    for the reason in `ui_language()` below. `GetUserDefaultUILanguage` is the
+    USER's display language, which is not the same thing as the system's or the
+    regional format -- on the machine this was written on the three disagree
+    (user English, system Japanese), and picking the wrong one reports the
+    wrong answer with total confidence.
+    """
+    try:
+        import ctypes
+
+        lcid = ctypes.windll.kernel32.GetUserDefaultUILanguage()
+        return "ja" if (int(lcid) & 0x3FF) == 0x11 else "en"
+    except Exception:
+        return ""
+
+
 def ui_language() -> str:
     """Which language the window was in, and why.
 
     Read straight from the file rather than by importing alpha.ui.strings:
     this script has to keep working even when the app itself cannot start,
     which is exactly when a bundle gets collected.
+
+    The order below mirrors `strings._resolve_language`. It has to: this
+    function used to stop after the saved choice and report "never changed from
+    the shipped default", which was true before the app learned to follow
+    Windows and quietly wrong afterwards. On a Japanese Windows with nothing
+    chosen it would have said the window was English while it was Japanese --
+    the one question a diagnostic bundle exists to answer.
     """
     override = os.environ.get("ALPHA_UI_LANGUAGE", "").strip()
     if override:
@@ -105,7 +131,10 @@ def ui_language() -> str:
             return chosen.lower() + "  (chosen in the app)"
     except Exception:
         pass
-    return "en  (never changed from the shipped default)"
+    from_windows = windows_ui_language()
+    if from_windows:
+        return from_windows + "  (nothing chosen; following the Windows display language)"
+    return "en  (nothing chosen, and the Windows display language could not be read)"
 
 
 def newest_runs(limit: int) -> list[Path]:
