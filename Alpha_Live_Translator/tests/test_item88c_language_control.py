@@ -31,7 +31,11 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from alpha.ui import strings  # noqa: E402
-from alpha.ui.theme import UI_LANGUAGE_SHORT_LABELS  # noqa: E402
+from alpha.ui.theme import (  # noqa: E402
+    HAMBURGER_OVERLAP_MIN_WIDTH,
+    UI_LANGUAGE_BUTTON_MIN_WIDTH,
+    UI_LANGUAGE_SHORT_LABELS,
+)
 
 
 def _close(root):
@@ -168,8 +172,15 @@ class TestNothingIsPushedOffTheHeader(TkHostTestCase):
     takes over and the row is tightest.
     """
 
-    WIDTHS = (800, 850, 900, 1050, 1200)
-    HEADER_CONTROLS = ("summary_button", "always_on_top_switch", "ui_language_button")
+    # 860-899 is the band where the language button and the hamburger are BOTH
+    # on screen, so it is the tightest the header ever gets.
+    WIDTHS = (800, 860, 880, 899, 900, 1050, 1200)
+    HEADER_CONTROLS = (
+        "summary_button",
+        "always_on_top_switch",
+        "ui_language_button",
+        "hamburger_button",
+    )
 
     def test_no_header_control_is_squeezed_or_pushed_off(self):
         for language in ("en", "ja"):
@@ -212,27 +223,78 @@ class TestTheLanguageControlIsAlwaysReachable(TkHostTestCase):
     shows the control -- the item 74 bug.
     """
 
-    def test_header_button_above_the_breakpoint_hamburger_below(self):
-        for design_width, expect_header in ((700, False), (799, False),
-                                            (800, True), (900, True), (1200, True)):
+    # (width, language button on screen, hamburger on screen)
+    EXPECTED = (
+        (700, False, True),
+        (799, False, True),
+        (800, False, True),
+        (859, False, True),
+        (860, True, True),    # the overlap opens
+        (899, True, True),
+        (900, True, False),   # the width the window opens at
+        (1050, True, False),
+        (1400, True, False),
+    )
+
+    def _lay_out(self, design_width):
+        root = self._host(design_width)
+        root._apply_header_layout(
+            design_width,
+            "compact" if design_width < 800
+            else ("wide" if design_width >= 1050 else "medium"),
+        )
+        for _ in range(8):
+            root.update_idletasks()
+            root.update()
+        return root
+
+    def test_the_control_is_on_screen_at_every_width(self):
+        """One or both surfaces, never neither. This is the item 74 invariant."""
+        for design_width, in_header, in_hamburger in self.EXPECTED:
             with self.subTest(width=design_width):
-                root = self._host(design_width)
-                root._apply_header_layout(
-                    design_width,
-                    "compact" if design_width < 800
-                    else ("wide" if design_width >= 1050 else "medium"),
+                root = self._lay_out(design_width)
+                self.assertTrue(
+                    root.ui_language_button.winfo_ismapped()
+                    or root.hamburger_button.winfo_ismapped(),
+                    f"nothing offers the language setting at {design_width}",
                 )
-                for _ in range(6):
-                    root.update_idletasks()
-                    root.update()
+
+    def test_the_hamburger_arrives_before_the_button_leaves(self):
+        """The correction the user asked for.
+
+        Sharing one threshold made the swap a knife edge: at one pixel the
+        button was there, at the next it was gone and the hamburger appeared in
+        the same frame. Shrinking past it, the button looked like it vanished.
+        The two thresholds now overlap by design -- 899 lets the hamburger in
+        while the button stays until 859 -- so there is a band where both are
+        visible and the change is never abrupt.
+        """
+        self.assertGreater(
+            HAMBURGER_OVERLAP_MIN_WIDTH,
+            UI_LANGUAGE_BUTTON_MIN_WIDTH,
+            "the hamburger must appear at a WIDER window than the button leaves",
+        )
+        for design_width, in_header, in_hamburger in self.EXPECTED:
+            with self.subTest(width=design_width):
+                root = self._lay_out(design_width)
                 self.assertEqual(
-                    bool(root.ui_language_button.winfo_ismapped()), expect_header,
+                    bool(root.ui_language_button.winfo_ismapped()), in_header,
                     f"language button visibility wrong at {design_width}",
                 )
                 self.assertEqual(
-                    bool(root.hamburger_button.winfo_ismapped()), not expect_header,
-                    f"the hamburger has to take over wherever the button does not",
+                    bool(root.hamburger_button.winfo_ismapped()), in_hamburger,
+                    f"hamburger visibility wrong at {design_width}",
                 )
+
+    def test_the_default_window_width_is_unchanged_by_the_overlap(self):
+        """900 is where the window opens, and it must still look as it did:
+        the button, and no hamburger. The overlap sits just below it."""
+        from alpha.ui.theme import DEFAULT_WINDOW_WIDTH
+
+        self.assertGreaterEqual(DEFAULT_WINDOW_WIDTH, HAMBURGER_OVERLAP_MIN_WIDTH)
+        root = self._lay_out(DEFAULT_WINDOW_WIDTH)
+        self.assertTrue(root.ui_language_button.winfo_ismapped())
+        self.assertFalse(root.hamburger_button.winfo_ismapped())
 
     def test_the_button_shows_the_active_language(self):
         for language in ("en", "ja"):
@@ -303,15 +365,20 @@ class TestTheMicControl(TkHostTestCase):
         walk(root.header_frame)
         self.assertNotIn(root.mic_switch, header_descendants)
 
-    def test_it_sits_to_the_left_of_the_timer(self):
+    def test_it_sits_left_of_the_standby_indicator_and_the_timer(self):
         root = self._host(900)
         for _ in range(4):
             root.update_idletasks()
             root.update()
         self.assertLess(
             root.mic_switch.winfo_rootx(),
+            root.signal_label.winfo_rootx(),
+            "the mic control belongs left of the standby indicator",
+        )
+        self.assertLess(
+            root.signal_label.winfo_rootx(),
             root.timer_label.winfo_rootx(),
-            "the mic control belongs left of the running time",
+            "standby stays between the mic control and the running time",
         )
 
     def test_the_label_states_the_state(self):

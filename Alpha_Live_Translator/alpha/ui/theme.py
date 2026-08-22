@@ -462,6 +462,21 @@ LAYOUT_HAMBURGER_BREAKPOINT = 800
 LAYOUT_MIN_WIDTH = 400
 LAYOUT_MIN_HEIGHT = 650
 LAYOUT_STATUS_COMPACT_BREAKPOINT = 520
+
+# The display-language button and the hamburger deliberately OVERLAP between
+# these two, both design px. Shrinking the window brings the hamburger in at
+# 899 while the button is still there, and only takes the button away at 859 --
+# so the control is never one pixel away from having nowhere to live. Every
+# earlier version of this used a single shared threshold, which is a knife
+# edge: item 74 shipped with two thresholds that disagreed and left the
+# microphone unreachable between 800 and 1050.
+#
+# Both numbers are measured, not chosen. With both controls packed the header
+# is clean from 860 up in English and Japanese alike, and 8 px past its right
+# edge at 840. 900 is where the window opens, so it stays exactly as it is
+# today: the button, and no hamburger.
+UI_LANGUAGE_BUTTON_MIN_WIDTH = 860
+HAMBURGER_OVERLAP_MIN_WIDTH = 900
 LAYOUT_FOOTER_WRAP_BREAKPOINT = 680
 
 # The OS window title. Deliberately carries no version number -- the client sees

@@ -232,6 +232,8 @@ from alpha.ui.theme import (
     EXTENDED_SPEAKER_COLORS,
     TRANSCRIPT_BODY_FONT,
     TRANSLATION_BODY_FONT,
+    HAMBURGER_OVERLAP_MIN_WIDTH,
+    UI_LANGUAGE_BUTTON_MIN_WIDTH,
     UI_LANGUAGE_SHORT_LABELS,
     WAVEFORM_ANIMATION_MS,
     WAVEFORM_BAR_COUNT,
@@ -3484,10 +3486,21 @@ class AlphaApp(
         # vanished between two thresholds that did not line up; reusing the
         # constant is what stops that happening again here.
         if self.ui_language_button is not None:
-            if width >= MIC_SWITCH_MIN_WIDTH:
+            if width >= UI_LANGUAGE_BUTTON_MIN_WIDTH:
                 self.ui_language_button.pack(side="left", padx=(8, 0))
             else:
                 self.ui_language_button.pack_forget()
+
+        # The hamburger arrives BEFORE the language button leaves -- 899 against
+        # 859 -- so between those two widths both are on screen and the setting
+        # is reachable either way. Packed here, in the non-compact path, which
+        # `show_normal_layout` has just hidden it from; below
+        # `LAYOUT_HAMBURGER_BREAKPOINT` `show_compact_layout` owns it instead.
+        if self.hamburger_button is not None:
+            if width < HAMBURGER_OVERLAP_MIN_WIDTH:
+                self.hamburger_button.pack(side="left", padx=(8, 0))
+            else:
+                self.hamburger_button.pack_forget()
 
         if self.brand_sub_label is not None:
             if width < 480:
@@ -3631,14 +3644,22 @@ class AlphaApp(
         )
         self.timer_label.pack(side="right", padx=(12, 0))
 
-        # The microphone choice lives here rather than in the header. It was
-        # in the header until item 88c, where it cost that row more width than
-        # it had: at 800 design px in Japanese it was already 5 px past the
-        # right edge before anything else was added. The status strip has room
-        # at every width, so this control no longer needs a breakpoint to hide
-        # behind, and it now sits beside the session state it belongs with.
-        # Packed after the timer and before the signal label -- both
-        # side="right", which lands it between the two.
+        self.signal_label = ctk.CTkLabel(
+            master=self._status_right_cluster,
+            text=t("● Standby"),
+            font=ctk.CTkFont(family=FONTS["caption"][0], size=FONTS["caption"][1]),
+            text_color=COLORS["text_muted"],
+        )
+        self.signal_label.pack(side="right", padx=(0, 8))
+
+        # The microphone choice lives here rather than in the header. It was in
+        # the header until item 88c, where it cost that row more width than it
+        # had: at 800 design px in Japanese it was already 5 px past the right
+        # edge before anything else was added. The status strip has room at
+        # every width, so this control needs no breakpoint to hide behind, and
+        # it now sits beside the session state it belongs with.
+        # Packed LAST of the three, all side="right", which puts it leftmost --
+        # to the left of the standby indicator.
         self.mic_switch = ctk.CTkCheckBox(
             master=self._status_right_cluster,
             text=t("Mic off"),
@@ -3654,14 +3675,6 @@ class AlphaApp(
             command=self.toggle_microphone_capture,
         )
         self.mic_switch.pack(side="right", padx=(0, 12))
-
-        self.signal_label = ctk.CTkLabel(
-            master=self._status_right_cluster,
-            text=t("● Standby"),
-            font=ctk.CTkFont(family=FONTS["caption"][0], size=FONTS["caption"][1]),
-            text_color=COLORS["text_muted"],
-        )
-        self.signal_label.pack(side="right", padx=(0, 8))
 
     def _get_waveform_bar_count(self):
         """14 bars in hamburger layout; 35 bars when header controls are visible."""
