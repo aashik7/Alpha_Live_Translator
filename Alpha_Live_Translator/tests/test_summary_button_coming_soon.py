@@ -24,6 +24,8 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from alpha.ui.strings import t  # noqa: E402
+
 
 class TheButtonAnnouncesItIsNotReady(unittest.TestCase):
     """Drives the real `AlphaApp.show_meeting_summary`."""
@@ -74,11 +76,11 @@ class TheButtonAnnouncesItIsNotReady(unittest.TestCase):
 
     def test_the_notice_says_the_feature_is_coming(self):
         self.host.show_meeting_summary()
-        self.assertIn("coming soon", self.shown[0][1].lower())
+        self.assertEqual(self.shown[0][1], t("This feature is coming soon."))
 
     def test_the_title_matches_the_button(self):
         self.host.show_meeting_summary()
-        self.assertEqual(self.shown[0][0], self.mw.MEETING_SUMMARY_BUTTON_TEXT)
+        self.assertEqual(self.shown[0][0], t(self.mw.MEETING_SUMMARY_BUTTON_TEXT))
 
     def test_it_does_not_open_the_panel(self):
         self.host.show_meeting_summary()

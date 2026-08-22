@@ -64,7 +64,7 @@ import os
 
 # Change this one word to turn the feature off completely. See the module
 # docstring: with "en" the table below is never consulted at all.
-DEFAULT_UI_LANGUAGE = "en"
+DEFAULT_UI_LANGUAGE = "ja"
 
 ENV_VAR = "ALPHA_UI_LANGUAGE"
 

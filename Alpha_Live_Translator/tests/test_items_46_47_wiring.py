@@ -45,6 +45,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from alpha.ui.strings import t  # noqa: E402
 from alpha.utils.service_status import CredentialProblem  # noqa: E402
 
 
@@ -318,30 +319,30 @@ class TheIndicatorReflectsTheConnection(unittest.TestCase):
 
     def test_a_healthy_session_shows_signal_ok(self):
         self.host._sync_connection_indicator()
-        self.assertEqual(self._text(), "● Signal OK")
+        self.assertEqual(self._text(), t("● Signal OK"))
         self.assertEqual(self.host.published, [])
 
     def test_not_listening_shows_standby(self):
         self.host.is_listening = False
         self.host._sync_connection_indicator()
-        self.assertEqual(self._text(), "● Standby")
+        self.assertEqual(self._text(), t("● Standby"))
 
     def test_force_idle_shows_standby_even_while_listening(self):
         """Stop and finalise keep `is_listening` True for a while."""
         self.host._sync_connection_indicator(force_idle=True)
-        self.assertEqual(self._text(), "● Standby")
+        self.assertEqual(self._text(), t("● Standby"))
 
     def test_a_dropped_socket_shows_reconnecting(self):
         self.host._dg_disconnected_at = 1.0
         self.host._sync_connection_indicator()
-        self.assertEqual(self._text(), "● Reconnecting")
+        self.assertEqual(self._text(), t("● Reconnecting"))
 
     def test_a_rejected_key_shows_failed_and_outranks_a_reconnect(self):
         self.host._dg_disconnected_at = 1.0
         self.host._dg_reconnecting = True
         self.host._dg_auth_failed = True
         self.host._sync_connection_indicator()
-        self.assertEqual(self._text(), "● Key rejected")
+        self.assertEqual(self._text(), t("● Key rejected"))
 
     def test_translation_trouble_shows_degraded(self):
         class Worker:
@@ -350,7 +351,7 @@ class TheIndicatorReflectsTheConnection(unittest.TestCase):
 
         self.host.translation_worker = Worker()
         self.host._sync_connection_indicator()
-        self.assertEqual(self._text(), "● Translation degraded")
+        self.assertEqual(self._text(), t("● Translation degraded"))
 
     def test_a_reconnect_outranks_a_degraded_translation(self):
         """Losing words beats losing their translation. The ordering lives in
@@ -363,7 +364,7 @@ class TheIndicatorReflectsTheConnection(unittest.TestCase):
         self.host.translation_worker = Worker()
         self.host._dg_disconnected_at = 1.0
         self.host._sync_connection_indicator()
-        self.assertEqual(self._text(), "● Reconnecting")
+        self.assertEqual(self._text(), t("● Reconnecting"))
 
     def test_the_message_is_published_once_per_transition_not_per_tick(self):
         self.host._dg_disconnected_at = 1.0
@@ -423,7 +424,7 @@ class TheIndicatorReflectsTheConnection(unittest.TestCase):
         # NOT "● Reconnecting": the severity is the same but nothing is
         # reconnecting, and naming the state after its severity would tell the
         # operator to wait for a recovery that will never come.
-        self.assertEqual(self._text(), "● Audio device changed")
+        self.assertEqual(self._text(), t("● Audio device changed"))
         self.assertTrue(
             any("default audio output" in m for m, _s, _r in self.host.published),
             f"the operator was never told what to do: {self.host.published}",
@@ -445,20 +446,20 @@ class TheIndicatorReflectsTheConnection(unittest.TestCase):
         self.host._audio_device_changed = True
         self.host._dg_auth_failed = True
         self.host._sync_connection_indicator()
-        self.assertEqual(self._text(), "● Key rejected")
+        self.assertEqual(self._text(), t("● Key rejected"))
 
     def test_restoring_the_device_clears_the_warning(self):
         self.host._audio_device_changed = True
         self.host._sync_connection_indicator()
         self.host._audio_device_changed = False
         self.host._sync_connection_indicator()
-        self.assertEqual(self._text(), "● Signal OK")
+        self.assertEqual(self._text(), t("● Signal OK"))
 
     def test_a_socket_reconnect_still_says_reconnecting(self):
         """The device wording must not leak onto an ordinary reconnect."""
         self.host._dg_disconnected_at = 1.0
         self.host._sync_connection_indicator()
-        self.assertEqual(self._text(), "● Reconnecting")
+        self.assertEqual(self._text(), t("● Reconnecting"))
 
     def test_a_device_change_during_a_reconnect_names_the_device(self):
         """Both true: `describe_connection` gives the device message, so the
@@ -467,7 +468,7 @@ class TheIndicatorReflectsTheConnection(unittest.TestCase):
         self.host._dg_reconnecting = True
         self.host._audio_device_changed = True
         self.host._sync_connection_indicator()
-        self.assertEqual(self._text(), "● Audio device changed")
+        self.assertEqual(self._text(), t("● Audio device changed"))
         self.assertTrue(
             any("default audio output" in m for m, _s, _r in self.host.published)
         )

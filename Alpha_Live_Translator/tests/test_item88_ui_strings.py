@@ -73,8 +73,13 @@ class LanguageRestoringTestCase(unittest.TestCase):
 
 
 class TestEnglishIsFree(LanguageRestoringTestCase):
-    def test_shipped_default_is_english(self):
-        self.assertEqual(strings.DEFAULT_UI_LANGUAGE, "en")
+    def test_shipped_default_is_a_language_that_exists(self):
+        """Whatever ships, it has to be a code the table can actually serve.
+
+        A typo here would not raise -- `_resolve_language` would quietly fall
+        back to English and the feature would look broken rather than off.
+        """
+        self.assertIn(strings.DEFAULT_UI_LANGUAGE, ("en",) + tuple(strings._TABLES))
 
     def test_english_returns_the_very_same_object(self):
         strings.set_language("en")

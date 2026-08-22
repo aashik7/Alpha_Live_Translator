@@ -44,6 +44,30 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from alpha.ui.strings import get_language, set_language  # noqa: E402
+
+_LANGUAGE_BEFORE = None
+
+
+def setUpModule():
+    """Pin this file to English: every number in it is an English measurement.
+
+    Japanese glyphs are wider, which legitimately moves two things -- the width
+    at which the action group leaves the footer for the hamburger menu
+    (measured: 410 design px in English, 450 in Japanese) and the primary
+    button natural width (183 vs 203). Both are the responsive rules working,
+    not regressions, so this file keeps guarding the layout it was written for
+    and tests/test_item88_ui_strings.py guards the Japanese one.
+    """
+    global _LANGUAGE_BEFORE
+    _LANGUAGE_BEFORE = get_language()
+    set_language('en')
+
+
+def tearDownModule():
+    set_language(_LANGUAGE_BEFORE)
+
+
 
 def _close(root):
     """Destroy a CTk root without leaving its own `after` jobs armed."""
