@@ -30,6 +30,7 @@ import os
 import subprocess
 import sys
 import time
+import zipfile
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -265,6 +266,128 @@ your Desktop; send that. It contains no passwords or API keys.
 """
 
 
+PORTABLE_NOTE = r"""Alpha Live Translator {version} - portable copy
+==================================================
+
+WHY THIS EXISTS
+---------------
+Windows shows "Windows protected your PC" for the installer, because the
+installer is not signed with a code-signing certificate and Windows checks
+anything downloaded from the internet against Microsoft's reputation service.
+This copy sidesteps that. There is nothing to install, and the only program it
+starts is pythonw.exe, which Microsoft already trusts -- it is signed by the
+Python Software Foundation.
+
+HOW TO UNPACK IT - USE THIS COMMAND, NOT DOUBLE-CLICK
+-----------------------------------------------------
+This part matters. Double-clicking the zip and dragging the folder out puts the
+"came from the internet" mark on every file Windows extracts, and the warning
+comes straight back. The command below does not do that.
+
+Open Command Prompt and paste these two lines, pressing Enter after each:
+
+    cd /d "%USERPROFILE%"
+    tar -xf "%USERPROFILE%\Downloads\{zipname}"
+
+tar comes with Windows 10 and 11; nothing needs installing. If the zip is not
+in Downloads, change that part of the path.
+
+That leaves a folder called "Alpha Live Translator" in your user folder. Keep
+it somewhere with a SHORT path like that. Buried very deep - past about 200
+characters - Windows cannot load the app's font file and the corners and
+buttons render roughly. It still works, it just looks worse.
+
+HOW TO RUN IT
+-------------
+Open that folder and double-click Alpha.bat.
+
+Handy: right-click Alpha.bat, then "Send to", then "Desktop (create shortcut)".
+
+WHERE THINGS LIVE
+-----------------
+Everything stays inside the folder you extracted, logs included. Nothing goes
+into the registry and nothing is installed, so removing the app means deleting
+that folder.
+
+IF SOMETHING GOES WRONG
+-----------------------
+Run the log collector with the bundled Python, from inside that folder:
+
+    python\pythonw.exe app\collect_logs.py
+
+It writes one zip to your Desktop. Send that. It carries no API keys.
+"""
+
+
+def write_portable_zip(
+    bundle: Path, output: Path, version: str, deepgram: str, deepl: str
+) -> Path:
+    """A no-install copy, for when the installer cannot get past SmartScreen.
+
+    SmartScreen's check needs BOTH an unsigned file and a Mark of the Web, so
+    this route breaks both. The only executable the operator launches is
+    `pythonw.exe`, which is signed by the Python Software Foundation and already
+    carries Microsoft's reputation; and `Expand-Archive`, unlike Explorer, does
+    not copy the mark onto what it extracts.
+
+    Both halves are measured on the build machine rather than assumed. Signature
+    check on the bundled interpreter:
+
+        python\\pythonw.exe    Valid   CN=Python Software Foundation
+
+    and extracting a real 37 MB build of this zip after writing
+    `Zone.Identifier` on it, the way a browser download would:
+
+        Explorer / Shell COM      2514 files, MOTW propagated to all
+        Expand-Archive            clean, but over 120 s
+        .NET ExtractToDirectory   clean, 32 s
+        tar -xf                   clean, 27 s        <- what the note says
+
+    `tar` ships with Windows 10 and 11, so the note can ask for the fastest
+    option without asking the operator to install anything. Unblocking the zip
+    before extracting also works, but it is a step that is easy to do in the
+    wrong order and impossible to verify afterwards by looking.
+
+    `.env` is written straight into the archive and never touches the disk, so a
+    build cannot leave the delivery keys sitting in `build\\`.
+    """
+    output.mkdir(parents=True, exist_ok=True)
+    zip_path = output / f"AlphaLiveTranslator-Portable-{version}.zip"
+    root = "Alpha Live Translator"
+
+    files = sorted(path for path in bundle.rglob("*") if path.is_file())
+    if not files:
+        raise SystemExit(f"the bundle at {bundle} is empty; nothing to package")
+
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
+        for path in files:
+            if path.name == ".env":
+                continue
+            archive.write(path, f"{root}/{path.relative_to(bundle).as_posix()}")
+        archive.writestr(
+            f"{root}/app/.env",
+            "\n".join(
+                (
+                    "# Written by installer/build_installer.py --portable.",
+                    "# These are delivery-specific keys. If they stop working,",
+                    "# ask whoever gave you this build for a new copy.",
+                    f"DEEPGRAM_API_KEY={deepgram}",
+                    f"DEEPL_AUTH_KEY={deepl}",
+                    "DEEPL_API_PLAN=auto",
+                    "",
+                )
+            ),
+        )
+
+    note = output / "README-PORTABLE.txt"
+    note.write_text(
+        PORTABLE_NOTE.format(version=version, zipname=zip_path.name),
+        encoding="utf-8",
+        newline="\r\n",
+    )
+    return zip_path
+
+
 def write_delivery_note(output: Path, version: str) -> Path:
     note = output / "README-INSTALL.txt"
     note.write_text(DELIVERY_NOTE.format(version=version), encoding="utf-8", newline="\r\n")
@@ -277,17 +400,35 @@ def main() -> None:
     parser.add_argument("--output", default=str(DEFAULT_OUTPUT))
     parser.add_argument("--version", default="1.0.0")
     parser.add_argument("--rebuild", action="store_true", help="rebuild the bundle even if present")
+    parser.add_argument(
+        "--portable",
+        action="store_true",
+        help="build the no-install zip INSTEAD of the installer (no Inno Setup needed)",
+    )
     args = parser.parse_args()
 
     bundle = Path(args.bundle).resolve()
     output = Path(args.output).resolve()
-    iscc = find_iscc()
+    # Only the installer needs Inno Setup. Looking for it in the portable path
+    # would refuse to build on a machine that has no reason to have it.
+    iscc = None if args.portable else find_iscc()
     deepgram, deepl = read_keys()
     sign_command = read_sign_command()
     quad = version_quad(args.version)
 
     ensure_bundle(bundle, args.rebuild)
     verify_bundle(bundle)
+
+    if args.portable:
+        zip_path = write_portable_zip(bundle, output, args.version, deepgram, deepl)
+        log("")
+        log(f"portable   {zip_path.stat().st_size // 1024 // 1024} MB  ->  {zip_path}")
+        log(f"note       {output / 'README-PORTABLE.txt'}")
+        log("")
+        log("Nothing to install. Send the zip AND the note: the note carries the")
+        log("`tar -xf` command, and double-clicking the zip instead puts the Mark")
+        log("of the Web on every extracted file and brings SmartScreen with it.")
+        return
 
     output.mkdir(parents=True, exist_ok=True)
     command = [

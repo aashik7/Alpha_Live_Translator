@@ -6,3 +6,20 @@
 [keys]
 deepgram = your-deepgram-api-key
 deepl = your-deepl-auth-key
+
+; OPTIONAL. Uncomment and fill in once a code-signing certificate exists, and
+; the build signs both the installer and the uninstaller. That is the only
+; thing that stops SmartScreen showing "Windows protected your PC" for a copy
+; that arrived over the internet — see installer/DELIVERY.md.
+;
+; $f is where Inno Setup substitutes the file being signed. The build REFUSES
+; to start without it, because a signing command missing that placeholder makes
+; Inno sign nothing and still report success.
+;
+; The command reaches Inno Setup as a /S argument, so for the length of the
+; compile it is visible in this machine's process list. Prefer a certificate in
+; the Windows certificate store (/n "<subject>") or a cloud-signing provider
+; over a .pfx with /p <password> written here.
+;
+; [signing]
+; command = "C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\signtool.exe" sign /fd sha256 /tr http://timestamp.digicert.com /td sha256 /n "Your Company Ltd" $f

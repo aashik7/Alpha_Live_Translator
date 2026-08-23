@@ -57,15 +57,60 @@ one step after downloading it:
 
 - right-click the `.exe` → **Properties** → tick **Unblock** → OK
 
-or, if it has already been zipped, unblock the **zip** first and then extract:
-files extracted from an unblocked archive inherit no mark. Note that in Windows
-11 extracting a *still-blocked* zip propagates the mark to everything inside
-it, so the order matters.
+or, if it has already been zipped, unblock the **zip** first and then extract.
+
+**Zipping alone does not help, and this was learned the hard way**: the
+installer was zipped, sent through Google Drive, and SmartScreen appeared
+anyway. Measured afterwards, by writing `Zone.Identifier` on a zip exactly as a
+browser download does and extracting it four ways:
+
+| how the zip is extracted | mark on the extracted files | time (37 MB, 2514 files) |
+| --- | --- | --- |
+| Explorer / double-click | **propagated to every file** | — |
+| `Expand-Archive` | clean | over 120 s |
+| .NET `ExtractToDirectory` | clean | 32 s |
+| `tar -xf` | clean | 27 s |
+| unblock the zip first, then Explorer | clean | — |
+
+So Explorer moves the mark inward rather than dropping it. Any of the other
+rows removes it.
 
 `README-INSTALL.txt` is written next to the installer by
 `installer/build_installer.py` and says all of this in operator language.
 
-## Route B — buy a code-signing certificate (the real fix)
+## Route B — the portable copy (no installer, no certificate)
+
+    python installer/build_installer.py --portable --version 1.0.1
+
+Writes `AlphaLiveTranslator-Portable-<version>.zip` plus its own
+`README-PORTABLE.txt`. This needs no Inno Setup, so it builds on a machine that
+has none.
+
+It removes **both** halves of the SmartScreen condition rather than one:
+
+- **Nothing unsigned is launched.** There is no installer. The only executable
+  the operator starts is `python\pythonw.exe`, and that is signed —
+  `Get-AuthenticodeSignature` reports `Valid`,
+  `CN=Python Software Foundation`. Microsoft already has reputation for it.
+- **Nothing carries a mark**, provided the operator extracts with `tar -xf`,
+  which the note beside the zip gives them as a copy-paste line. `tar` ships
+  with Windows 10 and 11.
+
+Verified end to end on a real 37 MB build: tagged the zip as a download, ran
+`tar -xf`, and got 2514 files with **zero** carrying `Zone.Identifier`; the
+extracted copy resolves `PROJECT_ROOT` to its own `app\` folder and reports
+both API keys configured.
+
+`.env` is written directly into the archive and never onto the build machine's
+disk, so a portable build cannot leave the delivery keys behind in `build\`.
+
+One caveat worth passing on: extract it somewhere with a **short path**. Past
+roughly 200 characters `AddFontResourceEx` cannot load CustomTkinter's shape
+font and the corners render roughly — measured, the same bundle is silent at a
+105-character path and warns at 180. It still runs; it just looks worse. The
+note tells the operator to keep it in their user folder.
+
+## Route C — buy a code-signing certificate (the real fix)
 
 This is the only thing that removes the screen for a file that arrived over the
 internet, on any machine, without the operator doing anything.
