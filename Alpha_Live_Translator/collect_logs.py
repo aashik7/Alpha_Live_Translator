@@ -1,4 +1,4 @@
-"""Collect everything needed to diagnose a problem, into one file (item 49).
+r"""Collect everything needed to diagnose a problem, into one file (item 49).
 
 WHY THIS EXISTS
 ---------------
@@ -9,7 +9,25 @@ button that gathers the whole trail into a single file they can send back.
 
 Run from the Start Menu shortcut, or:
 
-    python collect_logs.py [--with-audio] [--runs N] [--out DIR]
+    python collect_logs.py [--with-audio] [--runs N] [--out DIR] [--no-dialog]
+
+ONE COMMAND, FROM ANYWHERE, THAT PRINTS THE PATH
+------------------------------------------------
+For driving this from a script or a support call, where the person needs to be
+told exactly which file to send. Finds the app whether it was installed or
+extracted portable, and prints the bundle's full path last:
+
+    $app = @("$env:LOCALAPPDATA\Programs\Alpha Live Translator",
+             "$env:USERPROFILE\Alpha Live Translator") |
+           Where-Object { Test-Path "$_\app\collect_logs.py" } | Select-Object -First 1
+    $out = & "$app\python\python.exe" "$app\app\collect_logs.py" `
+             --with-audio --runs 5 --no-dialog
+    ($out | Select-String '^LOG_BUNDLE=(.+)$').Matches.Groups[1].Value
+
+`--no-dialog` matters there: without it the message box blocks the command
+until somebody clicks it, and the caller never reaches the line that prints the
+path. Measured on a real bundle, that is the difference between 4.8 seconds and
+waiting forever.
 
 WHAT GOES IN
 ------------
@@ -198,9 +216,28 @@ def add_tree(
     return count
 
 
+# Set by --no-dialog. A module-level switch rather than a parameter threaded
+# through every call site, because `tell` is also reached from the failure path.
+_SHOW_DIALOG = True
+
+
 def tell(message: str, *, error: bool = False) -> None:
-    """Say it on screen: launched from a shortcut there is no console to read."""
-    print(message)
+    """Say it on screen, whichever screen there is.
+
+    The dialog exists because the Start Menu shortcut runs `pythonw.exe` and has
+    no console to print to. From a script it is the opposite problem: a modal
+    box blocks the command until somebody clicks it, and the caller never gets
+    to print the path.
+
+    Which case this is cannot be detected reliably -- measured on this machine,
+    `sys.stdout.isatty()` and `GetConsoleWindow()` BOTH report "no console" when
+    the output is merely being captured by the caller. So it is not detected at
+    all: `--no-dialog` says so explicitly, and the shortcut simply never passes
+    it.
+    """
+    print(message, flush=True)
+    if not _SHOW_DIALOG:
+        return
     try:
         import tkinter as tk
         from tkinter import messagebox
@@ -221,7 +258,15 @@ def main() -> None:
     parser.add_argument("--with-audio", action="store_true", help="include the recorded audio")
     parser.add_argument("--runs", type=int, default=5, help="newest N sessions (0 = all)")
     parser.add_argument("--out", default="", help="where to write the zip (default: Desktop)")
+    parser.add_argument(
+        "--no-dialog",
+        action="store_true",
+        help="print only; do not pop the message box (use when scripting this)",
+    )
     args = parser.parse_args()
+
+    global _SHOW_DIALOG
+    _SHOW_DIALOG = not args.no_dialog
 
     out_dir = Path(args.out) if args.out else Path.home() / "Desktop"
     if not out_dir.is_dir():
@@ -266,6 +311,10 @@ def main() -> None:
         f"{size_mb:.1f} MB. Send this file to whoever supports the app.\n"
         "API keys have been removed from it."
     )
+    # Last line, on its own, always the same shape. Whatever is driving this --
+    # a person reading the console or a script parsing it -- gets the full path
+    # without having to pick it out of a sentence.
+    print(f"LOG_BUNDLE={out_path}", flush=True)
 
 
 if __name__ == "__main__":
