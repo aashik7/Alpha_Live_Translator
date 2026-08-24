@@ -3348,13 +3348,27 @@ class AlphaApp(
                 return
 
             mode = self._get_layout_mode(design_width)
+            try:
+                scaling = float(ctk.ScalingTracker.get_widget_scaling(self) or 1.0)
+            except Exception:
+                scaling = 1.0
             if (
                 UI_PERFORMANCE_MODE
                 and design_width == getattr(self, "_last_layout_width", -1)
                 and mode == getattr(self, "_last_layout_mode_applied", None)
+                # Scaling belongs in the key. Moving the window to a monitor at
+                # a different DPI changes it, and CustomTkinter then replays
+                # every widget's last geometry call -- which puts panes that
+                # were `grid_remove()`d back on the grid. Measured: a hidden
+                # transcript column returns MAPPED at 2 px while
+                # `_initial_verse_visible` is still False. Design width and
+                # mode can both be unchanged across that, so without this the
+                # cache says "nothing to do" and the sliver stays.
+                and scaling == getattr(self, "_last_layout_scaling", None)
             ):
                 return
             self._last_layout_width = design_width
+            self._last_layout_scaling = scaling
             if mode != self._layout_mode:
                 self._layout_mode = mode
             self._last_layout_mode_applied = mode
@@ -3431,6 +3445,12 @@ class AlphaApp(
                               "signal_label", "timer_label")),
         ("footer_frame", ("listen_button", "copy_translation_btn", "export_btn",
                           "clear_btn")),
+        # The reading grid. The hide/show report could not be settled from a
+        # bundle because this row was missing: the file recorded every button
+        # and none of the panes the complaint was actually about.
+        ("content_wrapper", ("left_column", "transcript_column", "right_column",
+                             "initial_verse_frame", "hide_initial_button",
+                             "show_initial_button")),
     )
 
     def _record_layout_snapshot(self, mode):
