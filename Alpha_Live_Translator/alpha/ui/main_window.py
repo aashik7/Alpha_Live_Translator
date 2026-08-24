@@ -2803,8 +2803,18 @@ class AlphaApp(
         def on_select(choice):
             plain = self._strip_language_flag(choice)
             if variable.get() != plain:
+                # `source_language` / `target_language` carry a write trace that
+                # calls `on_language_change` already, and a Tk trace fires
+                # synchronously inside `set`. Calling it again here as well ran
+                # the whole handler TWICE for every selection -- visible in the
+                # 2nd-PC console log as paired `LANGUAGE_DROPDOWN_CHANGED` and
+                # `Listening to dropdown:` lines, and re-resolving the Deepgram
+                # language each time.
                 variable.set(plain)
-            self.on_language_change(changed_key)
+            else:
+                # Re-picking the value already selected writes nothing, so the
+                # trace stays quiet and this is the only thing that would run.
+                self.on_language_change(changed_key)
 
         wrapper = ctk.CTkFrame(
             master=master,
@@ -3397,6 +3407,112 @@ class AlphaApp(
             self._schedule_waveform_layout()
         except Exception as exc:
             print(f"Error applying responsive layout: {exc}")
+        # Let Tk settle before measuring: reading widths in the same turn that
+        # re-gridded them reports the old ones.
+        try:
+            self.after(120, lambda m=mode: self._record_layout_snapshot(m))
+        except Exception:
+            pass
+
+    # Controls whose position or visibility a layout complaint is ever about,
+    # and the container each one has to stay inside.
+    _SNAPSHOT_CONTROLS = (
+        ("header_frame", (
+            "header_lang_frame", "summary_button", "always_on_top_switch",
+            "ui_language_button", "hamburger_button", "brand_sub_label",
+        )),
+        ("status_bar_frame", ("live_indicator", "status_text_label", "mic_switch",
+                              "signal_label", "timer_label")),
+        ("footer_frame", ("listen_button", "copy_translation_btn", "export_btn",
+                          "clear_btn")),
+    )
+
+    def _record_layout_snapshot(self, mode):
+        """Write what the window ACTUALLY looks like into the run's evidence.
+
+        Every layout complaint so far has cost several rounds of screenshots,
+        because a diagnostic bundle carried no geometry at all -- grep a bundle
+        for a window size, a screen size, a scaling factor or a layout mode and
+        there is nothing. So a user who can see the problem has no way to hand
+        it over, and this end can only re-measure widths it already believes are
+        fine.
+
+        This records the numbers instead: the screen, the window, the scaling
+        CustomTkinter is running at, the design width the breakpoints were
+        compared against, and for every control a layout bug could be about,
+        whether it is on screen, how wide it is, how wide it asked to be, and
+        how far past its container's right edge it sits. `past_edge > 0` or
+        `w < req` IS the bug, stated as a number.
+
+        Written once per real layout change -- `_apply_responsive_layout`
+        already returns early when nothing changed -- so a long session leaves a
+        handful of rows, not a stream.
+
+        Never raises. Diagnostics that can break the UI they are diagnosing are
+        worse than no diagnostics.
+        """
+        try:
+            from alpha.utils.evidence_jsonl import append_jsonl_named
+
+            try:
+                scaling = float(ctk.ScalingTracker.get_widget_scaling(self) or 1.0)
+            except Exception:
+                scaling = 1.0
+
+            payload = {
+                "event": "layout_snapshot",
+                "mode": mode,
+                "design_width": self._design_width(),
+                "scaling": scaling,
+                "ui_language": get_language(),
+                "screen": {
+                    "width": self.winfo_screenwidth(),
+                    "height": self.winfo_screenheight(),
+                },
+                "window": {
+                    "device_width": self.winfo_width(),
+                    "device_height": self.winfo_height(),
+                    # Which monitor the window is on: a second screen starts
+                    # beyond the first one's width, so x alone identifies it.
+                    "x": self.winfo_rootx(),
+                    "y": self.winfo_rooty(),
+                    "state": str(self.state()),
+                },
+                "controls": {},
+            }
+
+            for container_name, control_names in self._SNAPSHOT_CONTROLS:
+                container = getattr(self, container_name, None)
+                try:
+                    edge = container.winfo_rootx() + container.winfo_width()
+                except Exception:
+                    edge = None
+                for name in control_names:
+                    widget = getattr(self, name, None)
+                    if widget is None:
+                        continue
+                    try:
+                        mapped = bool(widget.winfo_ismapped())
+                        entry = {
+                            "in": container_name,
+                            "mapped": mapped,
+                            "w": widget.winfo_width(),
+                            "req": widget.winfo_reqwidth(),
+                        }
+                        if mapped and edge is not None:
+                            entry["past_edge"] = (
+                                widget.winfo_rootx() + widget.winfo_width()
+                            ) - edge
+                        payload["controls"][name] = entry
+                    except Exception:
+                        continue
+
+            # The registered key from `_HEALTH_NAME_MAP`, not the filename --
+            # `get_health_path` raises KeyError on an unregistered name, and the
+            # guard below would have swallowed it into silence.
+            append_jsonl_named("health", "layout_snapshot", payload)
+        except Exception:
+            return
 
     def _schedule_waveform_layout(self):
         if not UI_PERFORMANCE_MODE:

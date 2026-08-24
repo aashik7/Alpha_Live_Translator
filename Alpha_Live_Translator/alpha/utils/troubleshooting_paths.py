@@ -91,6 +91,11 @@ _HEALTH_NAME_MAP = {
     "process_health_timeline": ("health", "PROCESS_HEALTH_TIMELINE.jsonl"),
     "queue_health_timeline": ("health", "QUEUE_HEALTH_TIMELINE.jsonl"),
     "memory_trend_summary": ("health", "MEMORY_TREND_SUMMARY.json"),
+    # What the window actually looked like: screen, window, scaling, layout
+    # mode, and every control's mapped state and width. A diagnostic bundle
+    # used to carry no geometry at all, so a layout complaint could only be
+    # argued from screenshots.
+    "layout_snapshot": ("health", "LAYOUT_SNAPSHOT.jsonl"),
 }
 
 _ARTIFACT_NAME_MAP = {

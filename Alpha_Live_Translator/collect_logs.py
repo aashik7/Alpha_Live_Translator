@@ -164,6 +164,57 @@ def newest_runs(limit: int) -> list[Path]:
     return runs[:limit] if limit > 0 else runs
 
 
+def last_layout() -> list[str]:
+    """The newest recorded window geometry, and anything wrong with it.
+
+    Lifted to the front of the bundle because layout complaints are the ones
+    that cost the most round trips: the reporter can see the problem and has no
+    vocabulary for it, and this end can only re-measure widths it already
+    believes are fine. Screen, window, scaling and any control that is off the
+    edge answer it in four lines, without anyone opening the zip.
+    """
+    for run in newest_runs(5):
+        path = run / "health" / "LAYOUT_SNAPSHOT.jsonl"
+        if not path.is_file():
+            continue
+        try:
+            rows = [
+                json.loads(line)
+                for line in path.read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            ]
+        except Exception:
+            continue
+        if not rows:
+            continue
+        last = rows[-1]
+        screen, window = last.get("screen", {}), last.get("window", {})
+        out = [
+            "",
+            "last layout  {}x{} screen, {}x{} window at ({},{}), {}".format(
+                screen.get("width"), screen.get("height"),
+                window.get("device_width"), window.get("device_height"),
+                window.get("x"), window.get("y"), window.get("state"),
+            ),
+            "             mode {}, design width {}, scaling {}".format(
+                last.get("mode"), last.get("design_width"), last.get("scaling"),
+            ),
+        ]
+        broken = []
+        for name, control in (last.get("controls") or {}).items():
+            if not control.get("mapped"):
+                continue
+            if control.get("past_edge", 0) > 0:
+                broken.append(f"{name} is {control['past_edge']}px past its container")
+            elif control.get("w", 0) < control.get("req", 0):
+                broken.append(f"{name} squeezed to {control['w']} of {control['req']}")
+        out += ["             " + problem for problem in broken] or [
+            "             nothing clipped or pushed off"
+        ]
+        return out
+    return []
+
+
 def summary(included: list[str], skipped_audio: bool) -> str:
     lines = [
         "Alpha Live Translator - diagnostic bundle",
@@ -174,6 +225,9 @@ def summary(included: list[str], skipped_audio: bool) -> str:
         "windows      " + platform.platform(),
         "machine      " + platform.machine(),
         "ui language  " + ui_language(),
+    ]
+    lines += last_layout()
+    lines += [
         "",
         "audio        " + ("EXCLUDED (re-run with --with-audio)" if skipped_audio else "included"),
         "",
