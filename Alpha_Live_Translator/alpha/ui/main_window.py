@@ -5080,6 +5080,50 @@ class AlphaApp(
         except Exception:
             pass
 
+    def _trace_transcript_toggle(self, previous):
+        """One line per toggle, in the console log, plus a full snapshot.
+
+        The console line is the point: it lands in `logs/console-*.log`, which
+        is readable without unzipping anything, and it carries the four numbers
+        that separate the candidate explanations --
+
+            mapped 0, width 0     the grid never placed it
+            mapped 1, width tiny  it was placed with no weight
+            mapped 1, width real  it was placed correctly and the problem is
+                                  above this layer
+
+        Never raises. A trace that can break the toggle it is tracing is worse
+        than no trace.
+        """
+        try:
+            parts = []
+            for name in ("transcript_column", "initial_verse_frame",
+                         "hide_initial_button", "show_initial_button"):
+                widget = getattr(self, name, None)
+                if widget is None:
+                    parts.append(f"{name}=absent")
+                    continue
+                parts.append(
+                    f"{name}=mapped:{int(bool(widget.winfo_ismapped()))}"
+                    f"/w:{widget.winfo_width()}/req:{widget.winfo_reqwidth()}"
+                )
+            print(
+                "TRANSCRIPT_TOGGLE "
+                f"{previous}->{self._initial_verse_visible} "
+                f"design_width={self._design_width():.0f} "
+                f"mode={self._get_layout_mode(self._design_width())} "
+                + " ".join(parts),
+                flush=True,
+            )
+        except Exception:
+            pass
+        try:
+            self._record_layout_snapshot(
+                self._get_layout_mode(self._design_width())
+            )
+        except Exception:
+            pass
+
     def toggle_initial_verse(self):
         """Show or hide the original-transcript reference pane. Item 71.
 
@@ -5092,6 +5136,13 @@ class AlphaApp(
         try:
             self._initial_verse_visible = not previous
             self._sync_transcript_visibility()
+            # Record what the window ACTUALLY looks like the instant the toggle
+            # finishes. Two fixes for this have now been shipped from reasoning
+            # rather than from the failing machine, and both were wrong -- the
+            # development display cannot reproduce it. `_SNAPSHOT_CONTROLS`
+            # gained the reading grid for exactly this, so one press on the
+            # affected monitor now writes down which widget did not draw.
+            self._trace_transcript_toggle(previous)
         except Exception as exc:
             # A swallowed failure here is exactly the reported bug: the flag
             # flips, the button swaps, and the grid is never told -- so the
