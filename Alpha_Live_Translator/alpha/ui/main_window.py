@@ -5068,6 +5068,17 @@ class AlphaApp(
                 self.translated_title_row, "Show Transcript", 128
             )
         self._apply_content_layout(design_width=self._design_width())
+        # Apply the geometry now rather than leaving it for whenever Tk next
+        # reaches an idle pass. `grid_remove()` unmaps on its own, which is why
+        # Hide always looked fine; the `grid()` that brings a pane BACK needs
+        # the geometry manager to run. Measured on the real window: the column
+        # is still unmapped when the click returns, and only maps on the next
+        # update. That is the reported bug exactly -- pressing Show did nothing
+        # until the window was resized by hand, which is what finally ran it.
+        try:
+            self.update_idletasks()
+        except Exception:
+            pass
 
     def toggle_initial_verse(self):
         """Show or hide the original-transcript reference pane. Item 71.
