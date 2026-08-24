@@ -5164,11 +5164,34 @@ class AlphaApp(
                 return
             if column.winfo_ismapped():
                 return
-            column.grid(row=0, column=1, sticky="nsew", padx=(8, 0), pady=0)
-            self.content_wrapper.grid_columnconfigure(
-                1, weight=CONTENT_REFERENCE_WEIGHT, minsize=0
-            )
+            # Ask the layout again. Do NOT place the pane here.
+            #
+            # This used to grid it at row 0, column 1 with a reference weight --
+            # which is only where it belongs in the COLUMN layout. Below
+            # `CONTENT_STACK_BREAKPOINT` the panes are ROWS in column 0, so the
+            # hardcoded position dropped the transcript on top of the
+            # translation. Measured at 640 design px:
+            #
+            #     healthy   grid(row=1 col=0)  940x327  at (10, 705)
+            #     repaired  grid(row=0 col=1)  897x461  at (53, 252)
+            #
+            # That is the "the mobile layout is broken" half of the report, and
+            # it was introduced by this guard rather than found by it.
+            #
+            # `_apply_content_layout` owns where every pane goes, in both
+            # branches. A postcondition check that re-implements placement is a
+            # second authority on it, and this is what a second authority costs.
+            self._apply_content_layout(design_width=self._design_width())
             self.update_idletasks()
+            if not column.winfo_ismapped():
+                # The layout ran and still did not place it. Restore the pane's
+                # OWN remembered position -- `grid()` with no arguments is the
+                # pair to `grid_remove()`, and what it remembers was written by
+                # `_apply_content_layout` for whichever branch was last in
+                # force. So the pane goes back where that layout put it, in
+                # rows or in columns, without this function knowing which.
+                column.grid()
+                self.update_idletasks()
             print(
                 "TRANSCRIPT_PANE_REASSERTED mapped_after="
                 f"{int(bool(column.winfo_ismapped()))}",

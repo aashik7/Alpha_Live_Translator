@@ -204,5 +204,80 @@ class TheGridOwnerAlsoOwnsBeingOnScreen(unittest.TestCase):
         self.assertTrue(self.app.content_wrapper.winfo_ismapped())
 
 
+@unittest.skipUnless(TK_AVAILABLE, "Tk display unavailable in this environment")
+class TheGuardDoesNotInventAPosition(unittest.TestCase):
+    """The postcondition guard must ASK the layout, not place the pane itself.
+
+    It used to grid the column at row 0, column 1 with a reference weight --
+    correct in the column layout, wrong below `CONTENT_STACK_BREAKPOINT` where
+    the panes are ROWS in column 0. Measured at 640 design px before the fix:
+
+        healthy   grid(row=1 col=0)  940x327  at (10, 705)
+        repaired  grid(row=0 col=1)  897x461  at ( 53, 252)   <- over the translation
+
+    So the guard written to rescue the pane was itself breaking the small
+    "mobile" layout -- the second half of the report. Two authorities on where a
+    pane goes, and this is what the second one cost.
+    """
+
+    def setUp(self):
+        self.app = AlphaApp()
+        self.addCleanup(lambda: _close(self.app))
+        self.app.deiconify()
+
+    def _settle(self, times=10):
+        for _ in range(times):
+            self.app.update_idletasks()
+            self.app.update()
+
+    def _place_at(self, device_width):
+        self.app.geometry(f"{device_width}x900")
+        self._settle()
+        self.app._apply_responsive_layout()
+        self._settle()
+        self.app._initial_verse_visible = True
+        self.app._sync_transcript_visibility()
+        self._settle()
+        info = self.app.transcript_column.grid_info() or {}
+        return (str(info.get("row")), str(info.get("column")))
+
+    def _repair_from_unmapped(self):
+        self.app.transcript_column.grid_remove()
+        self._settle()
+        self.assertFalse(self.app.transcript_column.winfo_ismapped())
+        self.app._ensure_transcript_pane_matches_flag(True)
+        self._settle()
+        info = self.app.transcript_column.grid_info() or {}
+        return (str(info.get("row")), str(info.get("column")))
+
+    def test_the_column_layout_is_restored_where_it_was(self):
+        healthy = self._place_at(1350)
+        self.assertEqual(healthy, ("0", "1"), "the column layout moved")
+        self.assertEqual(self._repair_from_unmapped(), healthy)
+
+    def test_the_stacked_layout_is_restored_where_it_was(self):
+        """The one that was wrong: rows in column 0, not column 1."""
+        healthy = self._place_at(640)
+        self.assertEqual(healthy, ("1", "0"), "the stacked layout moved")
+        self.assertEqual(
+            self._repair_from_unmapped(), healthy,
+            "the guard put the transcript somewhere the layout never would",
+        )
+
+    def test_the_repaired_pane_does_not_sit_on_the_translation(self):
+        """Overlap is what made it look like components had disappeared."""
+        self._place_at(640)
+        self._repair_from_unmapped()
+        transcript = self.app.transcript_column
+        translation = self.app.left_column
+        self.assertTrue(transcript.winfo_ismapped())
+        top = transcript.winfo_rooty()
+        translation_bottom = translation.winfo_rooty() + translation.winfo_height()
+        self.assertGreaterEqual(
+            top, translation_bottom - 2,
+            "the transcript is drawn over the translation pane",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
