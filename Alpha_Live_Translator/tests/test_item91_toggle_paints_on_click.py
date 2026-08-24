@@ -126,3 +126,87 @@ class ShowDrawsTheTranscript(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ShowSurvivesALayoutThatDoesNotPlaceThePane(unittest.TestCase):
+    """The postcondition, enforced rather than assumed.
+
+    On the reporter's machine `_apply_content_layout` returned without leaving
+    the pane mapped -- their own log, every widget under the column reading
+    mapped:0 including the Hide button that had just been gridded. That display
+    runs at scaling 1.0 and cannot be reproduced here, so the failure is
+    injected instead: the layout is wrapped so that it unmaps the column on the
+    way out, which is exactly the state their log recorded.
+
+    `_sync_transcript_visibility` must still end with the pane on screen.
+    """
+
+    def setUp(self):
+        from alpha.ui.main_window import AlphaApp
+
+        self.app = AlphaApp()
+        self.addCleanup(self._destroy)
+        self.app.deiconify()
+        self.app.update()
+        for _ in range(8):
+            self.app.update_idletasks()
+            self.app.update()
+
+    def _destroy(self):
+        try:
+            self.app.destroy()
+        except Exception:
+            pass
+
+    def _sabotage(self):
+        real = self.app._apply_content_layout
+
+        def unmapping(*args, **kwargs):
+            result = real(*args, **kwargs)
+            self.app.transcript_column.grid_remove()
+            return result
+
+        self.app._apply_content_layout = unmapping
+
+    def test_show_still_ends_with_the_pane_on_screen(self):
+        self.app._initial_verse_visible = True
+        self.app._sync_transcript_visibility()
+        for _ in range(6):
+            self.app.update_idletasks()
+            self.app.update()
+
+        self._sabotage()
+        self.app.toggle_initial_verse()   # hide
+        self.app.toggle_initial_verse()   # show
+        for _ in range(6):
+            self.app.update_idletasks()
+            self.app.update()
+
+        self.assertTrue(
+            self.app.transcript_column.winfo_ismapped(),
+            "Show left the transcript column unmapped",
+        )
+        self.assertTrue(
+            self.app.initial_verse_frame.winfo_ismapped(),
+            "the column mapped but the card inside it did not",
+        )
+        self.assertTrue(
+            self.app.hide_initial_button.winfo_ismapped(),
+            "the Hide button is the reporter's symptom: it vanished with the pane",
+        )
+
+    def test_hiding_is_not_undone_by_the_check(self):
+        """The re-assert must never fight the flag it is enforcing."""
+        self.app._initial_verse_visible = True
+        self.app._sync_transcript_visibility()
+        for _ in range(6):
+            self.app.update_idletasks()
+            self.app.update()
+
+        self.app.toggle_initial_verse()   # hide
+        for _ in range(6):
+            self.app.update_idletasks()
+            self.app.update()
+
+        self.assertFalse(self.app.transcript_column.winfo_ismapped())
+        self.assertTrue(self.app.show_initial_button.winfo_ismapped())

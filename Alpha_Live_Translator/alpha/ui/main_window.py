@@ -5079,6 +5079,53 @@ class AlphaApp(
             self.update_idletasks()
         except Exception:
             pass
+        self._ensure_transcript_pane_matches_flag(visible)
+
+    def _ensure_transcript_pane_matches_flag(self, visible):
+        """Guarantee the RESULT, not just that the layout was asked for.
+
+        This function's contract is that the button and the pane agree with the
+        flag. Until now it only guaranteed `_apply_content_layout` was called,
+        and on the reporter's machine that call did not leave the pane mapped --
+        measured, from their own log:
+
+            TRANSCRIPT_TOGGLE False->True design_width=884 mode=medium
+              transcript_column=mapped:0  initial_verse_frame=mapped:0
+              hide_initial_button=mapped:0  show_initial_button=mapped:0
+
+        Everything unmapped, including the Hide button that had just been
+        gridded -- which is what a container that never mapped does to its
+        descendants. Their display runs at scaling 1.0 and cannot be reproduced
+        here (`set_widget_scaling` compounds with this laptop's own 1.5), so
+        rather than guess at the cause a third time, the postcondition is
+        checked and enforced.
+
+        Costs one `winfo_ismapped()` on a toggle a user presses by hand. The
+        re-grid is the same call `_apply_content_layout` makes, so a pane that
+        mapped correctly the first time is left completely alone.
+        """
+        column = getattr(self, "transcript_column", None)
+        if column is None or not visible:
+            return
+        try:
+            # Nothing under an unmapped window can map, so during construction
+            # this would "fail" every time and log a line saying so.
+            if not self.winfo_ismapped():
+                return
+            if column.winfo_ismapped():
+                return
+            column.grid(row=0, column=1, sticky="nsew", padx=(8, 0), pady=0)
+            self.content_wrapper.grid_columnconfigure(
+                1, weight=CONTENT_REFERENCE_WEIGHT, minsize=0
+            )
+            self.update_idletasks()
+            print(
+                "TRANSCRIPT_PANE_REASSERTED mapped_after="
+                f"{int(bool(column.winfo_ismapped()))}",
+                flush=True,
+            )
+        except Exception as exc:
+            print(f"Error re-asserting the transcript pane: {exc}", flush=True)
 
     def _trace_transcript_toggle(self, previous):
         """One line per toggle, in the console log, plus a full snapshot.

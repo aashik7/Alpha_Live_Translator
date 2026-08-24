@@ -76,6 +76,15 @@ def _host(width=1400):
         _design_px = AlphaApp._design_px
         _place_toggle_button = AlphaApp._place_toggle_button
         _sync_transcript_visibility = AlphaApp._sync_transcript_visibility
+        # `_sync_transcript_visibility` ends by enforcing its own
+        # postcondition, and `toggle_initial_verse` writes a trace. A host
+        # missing either turns this file's every test into an AttributeError.
+        _ensure_transcript_pane_matches_flag = (
+            AlphaApp._ensure_transcript_pane_matches_flag
+        )
+        _trace_transcript_toggle = AlphaApp._trace_transcript_toggle
+        _get_layout_mode = AlphaApp._get_layout_mode
+        _record_layout_snapshot = lambda self, mode: None
         toggle_initial_verse = AlphaApp.toggle_initial_verse
         summary_panel_visible = False
 
