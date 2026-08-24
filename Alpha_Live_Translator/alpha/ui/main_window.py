@@ -3290,6 +3290,7 @@ class AlphaApp(
         # to both at once, once both exist.
         self._sync_mic_switches()
         self._sync_ui_language_controls()
+        self._make_combos_fully_clickable()
 
     # -----------------------------------------------------------------------
     # Responsive layout switching
@@ -10871,6 +10872,14 @@ class AlphaApp(
         """
         self.context_menu = Menu(self, tearoff=0)
         self.context_menu.add_command(label="Copy Transcript")
+        # Clear stays on this menu. Item 88d dropped it for being destructive
+        # next to the text, and replaced it rather than adding beside it -- a
+        # removal nobody asked for. The separator is the guard against the slip
+        # of the mouse that motivated the removal.
+        self.context_menu.add_separator()
+        self.context_menu.add_command(
+            label=t("Clear All Text"), command=self.clear_text
+        )
 
         for box, label_source, copier in (
             (self.initial_verse_box, "Copy Transcript",
@@ -10887,6 +10896,39 @@ class AlphaApp(
                 ),
             )
 
+    def _make_combos_fully_clickable(self):
+        """Open the dropdown from anywhere on a combo, not just its arrow.
+
+        CustomTkinter 5.2.2 binds `<Button-1>` to the canvas tags "right_parts"
+        and "dropdown_arrow" only, so clicking the text half of a readonly combo
+        does nothing at all. Every combo in this window is a picker -- there is
+        nothing to type into one -- so the whole control should open it.
+
+        Done in one place rather than at the five construction sites: they are
+        spread across the header and the hamburger, and a sixth combo added
+        later would otherwise quietly be half-clickable again.
+        """
+        for name in (
+            "source_combo",
+            "target_combo",
+            "source_combo_menu",
+            "target_combo_menu",
+            "ui_language_combo_menu",
+        ):
+            combo = getattr(self, name, None)
+            entry = getattr(combo, "_entry", None)
+            if entry is None:
+                continue
+            try:
+                entry.configure(cursor="hand2")
+                entry.bind(
+                    "<Button-1>",
+                    lambda event, c=combo: c._open_dropdown_menu(),
+                    add=True,
+                )
+            except Exception as exc:
+                print(f"Error making {name} fully clickable: {exc}")
+
     def _show_context_menu(self, event, label_source="Copy Transcript", action=None):
         """Display the context menu at the cursor, labelled for this pane."""
         if action is None:
@@ -10895,6 +10937,9 @@ class AlphaApp(
             self.context_menu.entryconfigure(
                 0, label=t(label_source), command=action
             )
+            # Entry 2 -- after the separator. Relabelled here too so a language
+            # switch reaches it without the menu being rebuilt.
+            self.context_menu.entryconfigure(2, label=t("Clear All Text"))
             self.context_menu.tk_popup(event.x_root, event.y_root)
         except Exception as exc:
             print(f"Error showing the context menu: {exc}")

@@ -415,14 +415,16 @@ class TestTheMicControl(TkHostTestCase):
 
 @unittest.skipUnless(TK_AVAILABLE, "Tk display unavailable in this environment")
 class TestTheRightClickMenuCopies(LanguageRestoringTestCase):
-    """Right-clicking a pane offers to copy it, not to destroy it.
+    """Right-clicking a pane offers copy FIRST, and clear still below it.
 
-    The menu used to hold a single "Clear All Text", which throws the meeting
-    away and sat one slip of the mouse from wherever the reader was looking.
-    Clear is still a labelled button in the footer, which is where a
-    destructive action belongs. Driven through the real AlphaApp because the
-    binding, the menu and both panes have to exist for any of this to mean
-    anything.
+    Item 88d replaced the menu's only entry, "Clear All Text", with a copy
+    entry. Copy on right-click was asked for; dropping Clear was not, and the
+    user reported it as a regression. Both are there now, separated -- the
+    separator is the actual guard against the slip of the mouse that motivated
+    the removal, and it costs nothing that a removal costs.
+
+    Driven through the real AlphaApp because the binding, the menu and both
+    panes have to exist for any of this to mean anything.
     """
 
     def setUp(self):
@@ -451,15 +453,35 @@ class TestTheRightClickMenuCopies(LanguageRestoringTestCase):
         )
         return self.app.context_menu.entrycget(0, "label")
 
-    def test_the_menu_has_no_destructive_entry(self):
+    def _entries(self):
+        """Every entry as (type, label). A separator has no -label at all, so
+        asking one for its label raises rather than returning empty."""
         end = self.app.context_menu.index("end")
-        labels = [
-            self.app.context_menu.entrycget(i, "label")
-            for i in range(0 if end is None else end + 1)
-        ]
-        self.assertTrue(labels, "the context menu is empty")
-        for label in labels:
-            self.assertNotIn("Clear", label)
+        out = []
+        for i in range(0 if end is None else end + 1):
+            kind = self.app.context_menu.type(i)
+            label = "" if kind == "separator" else self.app.context_menu.entrycget(i, "label")
+            out.append((kind, label))
+        return out
+
+    def test_copy_comes_first(self):
+        kinds_and_labels = self._entries()
+        self.assertTrue(kinds_and_labels, "the context menu is empty")
+        self.assertIn("Copy", kinds_and_labels[0][1])
+
+    def test_clear_is_still_offered(self):
+        labels = [label for _, label in self._entries()]
+        self.assertTrue(
+            any("Clear" in label for label in labels),
+            f"clear was dropped from the pane menu: {labels}",
+        )
+
+    def test_a_separator_keeps_clear_away_from_copy(self):
+        kinds = [kind for kind, _ in self._entries()]
+        self.assertIn(
+            "separator", kinds,
+            "nothing separates the copy entry from the destructive one",
+        )
 
     def test_both_panes_are_bound(self):
         for box in (self.app.initial_verse_box, self.app.translated_verse_box):

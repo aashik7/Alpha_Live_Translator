@@ -169,6 +169,7 @@ _JA: dict[str, str] = {
     # `_place_toggle_button` compares against to decide which of the two
     # buttons to show, so it stays English in the code and is translated only
     # where it is painted.
+    "Clear All Text": "すべての文字を消去",
     "Hide": "隠す",
     "Show Transcript": "文字起こしを表示",
     "The display language changed, but the choice could not be saved.": (
