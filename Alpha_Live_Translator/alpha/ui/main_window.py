@@ -11081,10 +11081,10 @@ class AlphaApp(
                     ),
                     command=lambda chosen=code: self._apply_ui_language(chosen),
                 )
-            menu.tk_popup(
-                button.winfo_rootx(),
-                button.winfo_rooty() + button.winfo_height(),
-            )
+            # At the pointer, not the button's left edge. Tk already knows where
+            # the cursor is, so this needs no <Button-1> binding to carry an
+            # event in.
+            menu.tk_popup(self.winfo_pointerx(), self.winfo_pointery())
         except Exception as exc:
             print(f"Error opening the display-language menu: {exc}")
         finally:
@@ -11460,6 +11460,25 @@ class AlphaApp(
     def on_language_change(self, changed="both"):
         """Handle language dropdown changes and log selections to console."""
         try:
+            # Two languages, and a session never translates one into itself, so
+            # picking either dropdown decides the other. Acting ONLY when the two
+            # already match is what ends the recursion: the write below makes
+            # them differ, so the trace it fires finds nothing left to do.
+            # "both" is `swap_languages`, which has already set the pair.
+            if changed in ("source", "target"):
+                source = self._strip_language_flag(self.source_language.get())
+                target = self._strip_language_flag(self.target_language.get())
+                if source == target:
+                    other = next(
+                        (lang for lang in SOURCE_LANGUAGES if lang != source), ""
+                    )
+                    if other:
+                        if changed == "source":
+                            self.target_language.set(other)
+                        else:
+                            self.source_language.set(other)
+                        self._sync_language_combo_displays()
+
             if changed in ("source", "both"):
                 dropdown = self._strip_language_flag(self.source_language.get())
                 if dropdown != self.source_language.get():
