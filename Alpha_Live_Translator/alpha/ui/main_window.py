@@ -3077,7 +3077,12 @@ class AlphaApp(
         # ("日本"). Clicking it posts a real dropdown, which Tk draws over the
         # window and so costs no layout space at all.
         ui_language_button_config = self._glass_button_config(width=1)
-        ui_language_button_config["font"] = self._ui_font(FONTS["caption"][1])
+        # Bold, and bordered in the accent colour instead of the glass border,
+        # which is #26354F against a #101827 button -- near invisible. Reported
+        # as "the language button does not catch the eye". No new tokens: the
+        # accent is the one already on the primary button and the combo arrows.
+        ui_language_button_config["font"] = self._ui_font(FONTS["caption"][1], "bold")
+        ui_language_button_config["border_color"] = COLORS["accent_blue"]
         self.ui_language_button = ctk.CTkButton(
             master=self.right_header_cluster,
             text=UI_LANGUAGE_SHORT_LABELS.get(get_language(), "EN"),
