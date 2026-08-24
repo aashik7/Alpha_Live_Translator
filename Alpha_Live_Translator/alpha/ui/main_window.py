@@ -4324,6 +4324,35 @@ class AlphaApp(
         if self.left_column is None:
             return
 
+        # Re-assert the container before laying out what is inside it.
+        #
+        # This function owned the reading grid but never the frame holding it,
+        # and nothing else did either except `_apply_responsive_layout`, which
+        # only runs on a resize. That is the whole of the reported bug: clicking
+        # Show computed a correct grid inside a frame that was not on screen, so
+        # nothing appeared, while resizing the window "fixed" it -- because the
+        # resize path re-grids this frame on its way past.
+        #
+        # The reporter's log is that signature exactly: every widget reads
+        # `mapped:0` after Show, including the `hide_initial_button` that had
+        # just been gridded, which is what an unmapped ANCESTOR does to its
+        # descendants rather than four separate failures.
+        #
+        # `grid()` with NO arguments is the pair to `grid_remove()`: it restores
+        # the slave's own remembered row, column, sticky and padding. Passing
+        # them explicitly would impose this window's layout on every caller --
+        # measured, that collapsed five reading-grid tests whose host grids the
+        # wrapper its own way.
+        #
+        # Guarded on the toplevel being mapped, because nothing under an
+        # unmapped window can map and during construction this would fire on
+        # every call for no reason.
+        try:
+            if self.winfo_ismapped() and not self.content_wrapper.winfo_ismapped():
+                self.content_wrapper.grid()
+        except Exception as exc:
+            print(f"Error re-asserting the content wrapper: {exc}")
+
         if design_width is None:
             design_width = self._design_width()
         stacked = design_width < CONTENT_STACK_BREAKPOINT
@@ -5067,14 +5096,35 @@ class AlphaApp(
             self._place_toggle_button(
                 self.translated_title_row, "Show Transcript", 128
             )
+        # Run the SAME pass a resize runs, not a smaller one.
+        #
+        # This used to call `_apply_content_layout` alone, which touches the
+        # reading grid and nothing above it. A resize runs
+        # `_apply_responsive_layout`, which also re-grids `content_wrapper`
+        # itself, the status bar, the footer and the brand block, and re-applies
+        # the header layout before reaching the same content call.
+        #
+        # That difference is the whole report. The reporter's own summary was
+        # "clicking the button changes nothing, but resizing the window makes it
+        # correct" -- the layout is right the next time it runs, so the click was
+        # not computing a wrong layout, it was running a smaller one. Their log
+        # agrees: every probed widget reads `mapped:0` after Show, including the
+        # `hide_initial_button` that had just been gridded, which is what an
+        # unmapped ANCESTOR does to its descendants rather than four separate
+        # failures. And the same report says the whole compact layout is broken
+        # after the monitor move -- a symptom larger than this pane, so the
+        # repair has to be larger than this pane.
+        #
+        # The repair itself lives in `_apply_content_layout`, which now
+        # re-asserts its own container -- so every caller gets it, and this one
+        # stays a single call.
         self._apply_content_layout(design_width=self._design_width())
         # Apply the geometry now rather than leaving it for whenever Tk next
         # reaches an idle pass. `grid_remove()` unmaps on its own, which is why
         # Hide always looked fine; the `grid()` that brings a pane BACK needs
         # the geometry manager to run. Measured on the real window: the column
         # is still unmapped when the click returns, and only maps on the next
-        # update. That is the reported bug exactly -- pressing Show did nothing
-        # until the window was resized by hand, which is what finally ran it.
+        # update.
         try:
             self.update_idletasks()
         except Exception:
