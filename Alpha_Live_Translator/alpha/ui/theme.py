@@ -450,7 +450,12 @@ WAVEFORM_CANVAS_HEIGHT = 30
 
 # Empty-state copy
 PLACEHOLDER_TRANSCRIPT = "Live meeting transcript will appear here..."
-PLACEHOLDER_TRANSLATION = "Translated text will appear here..."
+# Empty on purpose: the translation pane shows nothing until there is
+# something to show. Asked for directly. Kept as a constant rather than
+# deleted because it is ALSO the sentinel the copy path compares the pane
+# against to decide whether there is real content -- see
+# `_get_translated_transcript_for_copy_export`.
+PLACEHOLDER_TRANSLATION = ""
 PLACEHOLDER_SUMMARY = (
     "Meeting summary will appear here after summarization is enabled in a later version."
 )
