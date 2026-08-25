@@ -450,7 +450,7 @@ WAVEFORM_CANVAS_HEIGHT = 30
 
 # Empty-state copy
 PLACEHOLDER_TRANSCRIPT = "Live meeting transcript will appear here..."
-PLACEHOLDER_TRANSLATION = "This feature is coming soon."
+PLACEHOLDER_TRANSLATION = "Translated text will appear here..."
 PLACEHOLDER_SUMMARY = (
     "Meeting summary will appear here after summarization is enabled in a later version."
 )

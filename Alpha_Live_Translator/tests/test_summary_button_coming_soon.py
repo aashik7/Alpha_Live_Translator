@@ -76,7 +76,7 @@ class TheButtonAnnouncesItIsNotReady(unittest.TestCase):
 
     def test_the_notice_says_the_feature_is_coming(self):
         self.host.show_meeting_summary()
-        self.assertEqual(self.shown[0][1], t("This feature is coming soon."))
+        self.assertEqual(self.shown[0][1], t("This Feature will coming soon"))
 
     def test_the_title_matches_the_button(self):
         self.host.show_meeting_summary()

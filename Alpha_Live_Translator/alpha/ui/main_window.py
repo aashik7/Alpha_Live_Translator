@@ -11586,7 +11586,7 @@ class AlphaApp(
         try:
             messagebox.showinfo(
                 t(MEETING_SUMMARY_BUTTON_TEXT),
-                t("This feature is coming soon."),
+                t("This Feature will coming soon"),
             )
         except Exception as exc:
             print(f"Error showing meeting summary notice: {exc}")

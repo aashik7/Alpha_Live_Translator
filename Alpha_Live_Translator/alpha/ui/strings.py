@@ -204,7 +204,8 @@ _JA: dict[str, str] = {
     "Live meeting transcript will appear here...": (
         "会議の文字起こしがここに表示されます..."
     ),
-    "This feature is coming soon.": "この機能は近日公開予定です。",
+    "Translated text will appear here...": "翻訳がここに表示されます...",
+    "This Feature will coming soon": "この機能は近日公開予定です。",
     "Meeting summary will appear here after summarization is enabled in a later version.": (
         "要約機能が有効になると、会議の要約がここに表示されます。"
     ),
