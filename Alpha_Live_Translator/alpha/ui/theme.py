@@ -190,6 +190,24 @@ TIMESTAMP_FONT = (FONT_FAMILY, 12)
 # `line_height` is the design's CSS ratio, not a pixel count: the actual extra
 # inter-line space depends on the font's measured linespace at the current DPI,
 # so it is resolved at runtime rather than baked in here.
+# ONE reading size, at every width and in both panes.
+#
+# These four numbers used to be 18 / 17 for the translation and 14 / 14 for the
+# transcript -- taken straight from the CSS, where the two panes sit at
+# different visual weights and the mobile breakpoint steps the primary one
+# down. On screen that read as "the font is small, and it is not consistent":
+# the transcript, which is half of what the user is reading, was 29 % smaller
+# than the pane beside it, and narrowing the window made the translation
+# smaller still, which is backwards -- a narrow window needs more legibility,
+# not less.
+#
+# Measured before the change at 1.5 scaling: transcript linespace 30 px against
+# the translation's 37. Now both render the same.
+#
+# 18 is not a new number: it is the design's own primary reading size. Raising
+# the floor to it keeps the type scale the design chose and drops only the
+# hierarchy BETWEEN the two panes, which is what was being read as a defect.
+# One value to change if it should be larger still.
 READING_TYPOGRAPHY = {
     # .atf-translation-entry p { font-size: 18px; line-height: 1.58 }
     # .atf-translation-entry  { padding: 16px 0 }
@@ -206,7 +224,7 @@ READING_TYPOGRAPHY = {
     # .atf-mobile-preview .atf-translation-entry p { font-size: 17px }
     # .atf-mobile-preview .atf-translation-content { padding: 4px 14px 14px }
     ("translation", True): {
-        "font_px": 17,
+        "font_px": 18,
         "line_height": 1.58,
         "space_above_px": 16,
         "space_below_px": 16,
@@ -218,7 +236,7 @@ READING_TYPOGRAPHY = {
     # .atf-original-entry   { padding: 14px 0 }
     # .atf-original-content { padding: 5px 15px 16px }
     ("transcript", False): {
-        "font_px": 14,
+        "font_px": 18,
         "line_height": 1.55,
         "space_above_px": 14,
         "space_below_px": 14,
@@ -229,7 +247,7 @@ READING_TYPOGRAPHY = {
     # The design gives the original pane no mobile font override, only tighter
     # padding: .atf-mobile-preview .atf-original-content { padding: 4px 13px 13px }
     ("transcript", True): {
-        "font_px": 14,
+        "font_px": 18,
         "line_height": 1.55,
         "space_above_px": 14,
         "space_below_px": 14,

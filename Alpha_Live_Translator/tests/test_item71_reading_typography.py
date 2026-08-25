@@ -343,26 +343,44 @@ class TestDesignValues(unittest.TestCase):
             for stacked in (False, True):
                 self.assertIn((role, stacked), READING_TYPOGRAPHY)
 
-    def test_sizes_match_the_design_stylesheet(self):
-        # .atf-translation-entry p { font-size: 18px; line-height: 1.58 }
-        self.assertEqual(READING_TYPOGRAPHY[("translation", False)]["font_px"], 18)
+    def test_one_reading_size_everywhere(self):
+        """Both panes, both breakpoints, the same size.
+
+        The stylesheet had four different values -- translation 18/17,
+        transcript 14/14 -- and on screen that read as "the font is small and
+        it is not consistent". The transcript, half of what is being read, was
+        29 % smaller than the pane beside it, and narrowing the window made the
+        translation smaller still. Reported directly; the size hierarchy the
+        CSS specified is deliberately not reproduced.
+
+        18 is the design's own primary reading size, so this raises the floor
+        to it rather than inventing a number.
+        """
+        sizes = {
+            (role, stacked): READING_TYPOGRAPHY[(role, stacked)]["font_px"]
+            for role in ("translation", "transcript")
+            for stacked in (False, True)
+        }
+        self.assertEqual(set(sizes.values()), {18}, sizes)
+
+    def test_no_pane_shrinks_when_the_window_narrows(self):
+        """A narrow window needs more legibility, not less."""
+        for role in ("translation", "transcript"):
+            self.assertGreaterEqual(
+                READING_TYPOGRAPHY[(role, True)]["font_px"],
+                READING_TYPOGRAPHY[(role, False)]["font_px"],
+                f"{role} gets smaller on the mobile breakpoint",
+            )
+
+    def test_the_line_height_ratios_are_untouched(self):
+        """Only the size changed; the design's rhythm stays."""
         self.assertEqual(READING_TYPOGRAPHY[("translation", False)]["line_height"], 1.58)
-        # .atf-mobile-preview .atf-translation-entry p { font-size: 17px }
-        self.assertEqual(READING_TYPOGRAPHY[("translation", True)]["font_px"], 17)
-        # .atf-original-entry p { font-size: 14px; line-height: 1.55 }
-        self.assertEqual(READING_TYPOGRAPHY[("transcript", False)]["font_px"], 14)
-        self.assertEqual(READING_TYPOGRAPHY[("transcript", True)]["font_px"], 14)
+        self.assertEqual(READING_TYPOGRAPHY[("transcript", False)]["line_height"], 1.55)
+
+    def test_the_smaller_supporting_sizes_are_untouched(self):
         # .atf-incoming-entry { font-size: 12px } / .atf-entry-meta { font-size: 11px }
         self.assertEqual(INTERIM_FONT_PX, 12)
         self.assertEqual(SPEAKER_LABEL_FONT_PX, 11)
-
-    def test_translation_reads_larger_than_the_reference_transcript(self):
-        """The whole point of the redesign: translation is the primary pane."""
-        for stacked in (False, True):
-            self.assertGreater(
-                READING_TYPOGRAPHY[("translation", stacked)]["font_px"],
-                READING_TYPOGRAPHY[("transcript", stacked)]["font_px"],
-            )
 
     def test_the_two_panes_are_tinted_apart(self):
         self.assertNotEqual(PANE_BG["translation"], PANE_BG["transcript"])
