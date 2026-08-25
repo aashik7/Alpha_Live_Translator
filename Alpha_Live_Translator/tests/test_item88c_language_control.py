@@ -232,11 +232,16 @@ class TestTheLanguageControlIsAlwaysReachable(TkHostTestCase):
     """
 
     # (width, language button on screen, hamburger on screen)
+    # The threshold is `LAYOUT_HAMBURGER_BREAKPOINT`, back at its original 800.
+    # It was briefly raised to 880 to make room for this button; moving the mic
+    # switch out of the header freed that room, and the raise was never
+    # re-measured afterwards. Measured now: nothing is past the header's right
+    # edge at 800, 820, 860 or 879, in English or Japanese.
     EXPECTED = (
         (700, False, True),
-        (800, False, True),
-        (879, False, True),
-        (880, True, False),   # the one threshold
+        (799, False, True),
+        (800, True, False),   # the one threshold
+        (879, True, False),
         (900, True, False),   # the width the window opens at
         (1050, True, False),
         (1400, True, False),

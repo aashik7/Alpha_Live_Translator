@@ -473,7 +473,7 @@ LAYOUT_MEDIUM_BREAKPOINT = 700
 # tight. Measured: the header is clean to 0 px past its right edge from 860 up
 # in English and Japanese alike. 880 also leaves margin below
 # DEFAULT_WINDOW_WIDTH (900), so the window still opens in the header layout.
-LAYOUT_HAMBURGER_BREAKPOINT = 880
+LAYOUT_HAMBURGER_BREAKPOINT = 800
 LAYOUT_MIN_WIDTH = 400
 LAYOUT_MIN_HEIGHT = 650
 LAYOUT_STATUS_COMPACT_BREAKPOINT = 520
