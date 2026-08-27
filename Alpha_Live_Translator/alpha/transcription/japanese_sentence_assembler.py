@@ -275,6 +275,11 @@ _SUSPICIOUS_NOISE_FRAGMENTS = (
     "して重ねて、その",
 )
 
+# item 94: the commit gate refuses at most this many commits in a row before it
+# force-clears itself. Bounds the blast radius of a broken transaction to a
+# handful of segments; the live latch it replaces cost 85 commits / 16.5 min.
+_COMMIT_GATE_MAX_CONSECUTIVE_REJECTS = 3
+
 _SAFE_HOLD_TIMEOUT_ENDINGS = (
     "の",
     "けど",
@@ -829,6 +834,9 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
         self._current_source_version: int = 0
         self._last_stable_source_raw_event_ids: list[str] = []
         self._assembler_commit_gate_failed: bool = False
+        # item 94: how many commits the gate has refused in a row. This, not an
+        # utterance id minted below the gate, is what bounds the refusal.
+        self._commit_gate_consecutive_rejects: int = 0
         self._stable_hold_pending: Optional[dict[str, Any]] = None
         self._stable_hold_generation: int = 0
         self._stop_boundary_active: bool = False
@@ -967,6 +975,7 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
             self._stop_boundary_active = False
             self._assembler_exception_recovery_buffer = None
             self._commit_gate_failed_utterance_id = ""
+            self._commit_gate_consecutive_rejects = 0
             self._punctuation_start_count = 0
             self._short_fragment_count = 0
             self._incomplete_tail_hold_count = 0
@@ -3522,6 +3531,33 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
             final_speaker = locked_speaker
         return final_speaker
 
+    def _trip_commit_gate(
+        self,
+        *,
+        failure_reason: str,
+        text_preview: str,
+        transaction_id: str = "",
+    ) -> None:
+        """Refuse further commits after a broken transaction -- but bounded.
+
+        item 94: this used to be three copies of the same two assignments, and
+        the escape they armed (`_commit_gate_failed_utterance_id` vs
+        `_current_canonical_utterance_id`) could never fire, because the only
+        site that mints a new utterance id sits below the gate's own `return`.
+        The refusal is now counted, and `_publish_sentence` force-clears it
+        after `_COMMIT_GATE_MAX_CONSECUTIVE_REJECTS`.
+        """
+        self._assembler_commit_gate_failed = True
+        self._commit_gate_failed_utterance_id = str(self._current_canonical_utterance_id or "")
+        self._commit_gate_consecutive_rejects = 0
+        jp_accuracy_log(
+            "ASSEMBLER_COMMIT_GATE_FAILED",
+            failure_reason=failure_reason,
+            transaction_id=transaction_id,
+            text_preview=text_preview,
+            max_consecutive_rejects=_COMMIT_GATE_MAX_CONSECUTIVE_REJECTS,
+        )
+
     def _publish_sentence(
         self,
         speaker: int,
@@ -3539,36 +3575,44 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
         host = self._host
         is_stop_incomplete = stop_incomplete or reason == "stop_flush_incomplete_tail"
         if self._assembler_commit_gate_failed:
-            # fixes item 60. This gate was set at three sites and cleared at
-            # exactly ONE -- inside `reset()` -- so a single failed proposal
-            # silently discarded EVERY remaining commit of the session. Nothing
-            # surfaced it: the run still reported `completed`. It has never
-            # fired in the recorded corpus, which is precisely why it would go
-            # unnoticed the first time it does.
+            # fixes item 94. Item 60 turned this from a latch-until-`reset()`
+            # into a latch-until-the-utterance-changes, and that escape was
+            # UNREACHABLE: the only site that mints a new
+            # `_current_canonical_utterance_id` is further down THIS method,
+            # below the `return` two lines under here. Clearing the gate needed
+            # a new utterance id; minting one needed to get past the gate.
+            # `ASSEMBLER_COMMIT_GATE_CLEARED_NEW_UTTERANCE` appears 0 times in
+            # every recorded run. Live cost: one
+            # `missing_exact_revision_target` at 19:22:52.773 discarded the next
+            # 85 commits and 16.5 minutes of a client session, while the run
+            # still reported `completed`.
             #
-            # The gate's integrity purpose is real and is kept: do not keep
-            # committing into a transaction that has already broken. But that
-            # concern is scoped to the utterance that broke, not to the rest of
-            # the session -- a NEW utterance is a clean slate. So the gate now
-            # clears itself when the utterance changes, the same
-            # degrade-then-recover shape as item 45's circuit breaker, instead
-            # of latching until `reset()`.
+            # The integrity purpose is kept, and is now BOUNDED on something
+            # this method can actually change: consecutive rejections. Refusing
+            # to keep committing into a transaction that just broke costs at
+            # most `_COMMIT_GATE_MAX_CONSECUTIVE_REJECTS` segments; after that
+            # the gate force-clears and says so. Never gate on state minted
+            # below the gate again -- see item 94's structural regression test.
             gate_utterance = str(self._commit_gate_failed_utterance_id or "")
-            current_utterance = str(self._current_canonical_utterance_id or "")
-            if gate_utterance and current_utterance == gate_utterance:
+            self._commit_gate_consecutive_rejects += 1
+            if self._commit_gate_consecutive_rejects <= _COMMIT_GATE_MAX_CONSECUTIVE_REJECTS:
                 jp_accuracy_log(
                     "ASSEMBLER_COMMIT_GATE_FAILED_REJECT",
                     reason=reason,
                     text_preview=(text or "")[:80],
                     gate_utterance_id=gate_utterance,
+                    consecutive_rejects=self._commit_gate_consecutive_rejects,
+                    max_consecutive_rejects=_COMMIT_GATE_MAX_CONSECUTIVE_REJECTS,
                 )
                 return
             self._assembler_commit_gate_failed = False
             self._commit_gate_failed_utterance_id = ""
+            self._commit_gate_consecutive_rejects = 0
             jp_accuracy_log(
-                "ASSEMBLER_COMMIT_GATE_CLEARED_NEW_UTTERANCE",
+                "ASSEMBLER_COMMIT_GATE_FORCE_CLEARED_BOUNDED",
                 reason=reason,
                 previous_gate_utterance_id=gate_utterance,
+                rejects_before_clear=_COMMIT_GATE_MAX_CONSECUTIVE_REJECTS,
             )
         metadata = dict(metadata or {})
         if _is_synthetic_stop_only_ingress(
@@ -4070,12 +4114,9 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
                     raw_fragments=raw_fragments,
                 )
                 if not pipeline_txn.success:
-                    self._assembler_commit_gate_failed = True
-                    self._commit_gate_failed_utterance_id = str(self._current_canonical_utterance_id or "")
-                    jp_accuracy_log(
-                        "ASSEMBLER_COMMIT_GATE_FAILED",
-                        failure_reason=pipeline_txn.failure_reason,
-                        transaction_id=pipeline_txn.transaction_id,
+                    self._trip_commit_gate(
+                        failure_reason=str(pipeline_txn.failure_reason or ""),
+                        transaction_id=str(pipeline_txn.transaction_id or ""),
                         text_preview=cleaned[:120],
                     )
                     return
@@ -4187,6 +4228,7 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
                 from alpha.transcription.utterance_lifecycle import get_utterance_lifecycle
 
                 controller = get_utterance_lifecycle(host)
+                revision_downgraded_to_new = False
                 proposal_result = controller.accept_boundary_proposal(
                     action=proposed_action,
                     text=cleaned,
@@ -4205,13 +4247,59 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
                     lifecycle_state="COMMITTED" if not is_stop_incomplete else "ACTIVE_FINAL_CHUNK",
                     translation_eligible=bool(metadata.get("translation_eligible", True)),
                 )
-                if not proposal_result.get("success"):
-                    self._assembler_commit_gate_failed = True
-                    self._commit_gate_failed_utterance_id = str(self._current_canonical_utterance_id or "")
+                # fixes item 94 (trigger half). `missing_exact_revision_target`
+                # is a *proposal* rejection, not a broken transaction: the
+                # canonical record id for the line we wanted to revise is
+                # registered on the Tk main thread's ~100ms poll tick, and
+                # `_resolve_correction_target_locked`'s own bounded 3x60ms retry
+                # can lose that race under UI-drain pressure (the live run had
+                # `ui_event_drain_budget_exceeded_count: 97`). Nothing is
+                # corrupt -- we simply cannot revise, so commit the text as a
+                # NEW line instead. Arming the gate here is what silenced the
+                # remaining 16.5 minutes of run `...-20260826-190152`.
+                if (
+                    not proposal_result.get("success")
+                    and str(proposal_result.get("reason") or "")
+                    == "missing_exact_revision_target"
+                    and proposed_action == "revise_previous"
+                ):
                     jp_accuracy_log(
-                        "ASSEMBLER_COMMIT_GATE_FAILED",
-                        failure_reason=proposal_result.get("reason"),
-                        transaction_id=proposal_result.get("transaction_id", ""),
+                        "ASSEMBLER_REVISION_TARGET_MISS_COMMITTED_AS_NEW",
+                        previous_utterance_id=self._current_canonical_utterance_id,
+                        commit_reason=reason,
+                        text_preview=cleaned[:120],
+                    )
+                    proposed_action = "commit_new"
+                    revision_downgraded_to_new = True
+                    self._current_canonical_utterance_id = f"jp-utt-{uuid.uuid4().hex[:12]}"
+                    self._current_source_version = 1
+                    metadata["canonical_utterance_id"] = self._current_canonical_utterance_id
+                    metadata["source_version"] = self._current_source_version
+                    # This is an append now, not a revision. Leaving the update
+                    # flag set would hand `post_update_previous` a stale True
+                    # and let a brand-new line overwrite the previous one --
+                    # the item 20b failure shape.
+                    metadata["stable_layer_update_previous"] = False
+                    proposal_result = controller.accept_boundary_proposal(
+                        action="commit_new",
+                        text=cleaned,
+                        speaker=speaker,
+                        channel=metadata.get("channel_index", metadata.get("channel")),
+                        canonical_utterance_id=self._current_canonical_utterance_id,
+                        source_version=self._current_source_version,
+                        revision_target_id="",
+                        provider_utterance_id=str(
+                            metadata.get("provider_utterance_id") or metadata.get("event_id") or ""
+                        ),
+                        source_raw_event_ids=candidate_raw_event_ids,
+                        commit_reason=reason,
+                        lifecycle_state="COMMITTED" if not is_stop_incomplete else "ACTIVE_FINAL_CHUNK",
+                        translation_eligible=bool(metadata.get("translation_eligible", True)),
+                    )
+                if not proposal_result.get("success"):
+                    self._trip_commit_gate(
+                        failure_reason=str(proposal_result.get("reason") or ""),
+                        transaction_id=str(proposal_result.get("transaction_id", "")),
                         text_preview=cleaned[:120],
                     )
                     return
@@ -4253,13 +4341,12 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
                         else ""
                     )
                     metadata["canonical_record_id"] = self._last_stable_line_id
+                if revision_downgraded_to_new:
+                    metadata["stable_layer_update_previous"] = False
                 stable_layer_update_previous = bool(metadata.get("stable_layer_update_previous"))
                 post_update_previous = stable_layer_update_previous
         except Exception as exc:
-            self._assembler_commit_gate_failed = True
-            self._commit_gate_failed_utterance_id = str(self._current_canonical_utterance_id or "")
-            jp_accuracy_log(
-                "ASSEMBLER_COMMIT_GATE_FAILED",
+            self._trip_commit_gate(
                 failure_reason=f"{type(exc).__name__}:{exc}",
                 text_preview=cleaned[:120],
             )

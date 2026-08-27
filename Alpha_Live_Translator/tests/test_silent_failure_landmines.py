@@ -59,29 +59,67 @@ class CommitGateScopeTest(unittest.TestCase):
         )
 
     def test_a_new_utterance_clears_the_gate(self):
-        """The whole point: one broken transaction must not kill the session."""
+        """The whole point: one broken transaction must not kill the session.
+
+        RETRACTED AS WRITTEN -- see tests/test_item94_commit_gate_unlatch.py.
+        This test used to hand-assign::
+
+            assembler._commit_gate_failed_utterance_id = "jp-utt-broken"
+            assembler._current_canonical_utterance_id  = "jp-utt-fresh"
+
+        and then assert the gate cleared. Production can never hold those two
+        apart: both gate set sites record the id the assembler is *currently*
+        on, and the only site that mints a new one sits below `_publish_sentence`'s
+        own gate `return`. So this asserted on a state the running app cannot
+        reach, went green, and item 60 shipped with the latch intact. Live cost:
+        run `...-20260826-190152` lost 16.5 minutes and 85 commits to a single
+        `missing_exact_revision_target`.
+
+        It now trips the gate the way the failure site actually trips it, and
+        still requires the session to recover.
+        """
         assembler = self._assembler()
+        assembler._current_canonical_utterance_id = "jp-utt-broken"
         assembler._assembler_commit_gate_failed = True
-        assembler._commit_gate_failed_utterance_id = "jp-utt-broken"
-        assembler._current_canonical_utterance_id = "jp-utt-fresh"
-        assembler._publish_sentence(1, "新しい発話です。", {}, "test_new_utterance")
-        # The gate may legitimately re-trip on THIS utterance (the fixture has
-        # no real commit path). What must never survive is the OLD utterance's
-        # failure latching the session shut.
-        self.assertNotEqual(
-            "jp-utt-broken",
-            assembler._commit_gate_failed_utterance_id,
-            "the previous utterance's failure is still latched, so every "
-            "remaining commit of the session would be silently discarded",
+        assembler._commit_gate_failed_utterance_id = str(
+            assembler._current_canonical_utterance_id
+        )
+        from unittest.mock import patch
+
+        from alpha.transcription import japanese_sentence_assembler as jsa
+
+        events: list[str] = []
+        real_log = jsa.jp_accuracy_log
+
+        def _spy(event, *a, **k):
+            events.append(str(event))
+            return real_log(event, *a, **k)
+
+        attempts = 12
+        with patch.object(jsa, "jp_accuracy_log", _spy):
+            for i in range(attempts):
+                assembler._publish_sentence(
+                    1, f"新しい発話です。[{i}]", {}, "test_new_utterance"
+                )
+        # The fixture host has no store behind it, so the gate may legitimately
+        # re-trip. What must never happen is what happened live: every single
+        # attempt refused, for the rest of the session.
+        self.assertLess(
+            events.count("ASSEMBLER_COMMIT_GATE_FAILED_REJECT"),
+            attempts,
+            "the gate refused every attempt, so every remaining commit of the "
+            "session would be silently discarded",
         )
 
     def test_the_gate_still_blocks_the_utterance_that_broke(self):
         """The integrity purpose is kept: do not keep committing into a
         transaction that has already failed."""
         assembler = self._assembler()
-        assembler._assembler_commit_gate_failed = True
-        assembler._commit_gate_failed_utterance_id = "jp-utt-broken"
         assembler._current_canonical_utterance_id = "jp-utt-broken"
+        assembler._assembler_commit_gate_failed = True
+        assembler._commit_gate_failed_utterance_id = str(
+            assembler._current_canonical_utterance_id
+        )
         assembler._publish_sentence(1, "同じ発話の続きです。", {}, "test_same_utterance")
         self.assertTrue(
             assembler._assembler_commit_gate_failed,

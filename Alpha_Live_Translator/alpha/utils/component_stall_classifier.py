@@ -15,7 +15,15 @@ _consecutive_bad: dict[str, int] = {}
 _consecutive_good: dict[str, int] = {}
 _component_state: dict[str, str] = {}
 _component_final_states: dict[str, str] = {}
-_component_history: list[dict[str, Any]] = {}
+# fixes item 94 (incidental): annotated `list`, initialised `{}`. Every call to
+# `_emit_classification` therefore raised AttributeError on `.append` at the
+# line below `_component_state[component] = classification` -- so the runtime
+# state was recorded, but `_component_final_states`, the jp_accuracy_log event
+# and the flight-recorder event, all of which come after it, never ran. The
+# whole stall-classification subsystem has been silently dead: run
+# `...-20260826-190152` held a 16.5-minute confirmed stable_pipeline stall and
+# logged COMPONENT_STALL_CLASSIFICATION exactly 0 times.
+_component_history: list[dict[str, Any]] = []
 
 _KNOWN_COMPONENTS = (
     "ui_mainloop",
@@ -369,9 +377,27 @@ def finalize_stall_classifications(
     metrics = dict(final_metrics or {})
     healthy_end = _metrics_look_healthy(metrics)
     components: dict[str, dict[str, Any]] = {}
+    # item 94: snapshot the runtime verdict BEFORE the loop below, because the
+    # downgrade path calls `_emit_classification(..., "recovered", ...)`, which
+    # overwrites `_component_state[component]`. Reading it afterwards reported
+    # `last_runtime_state: "recovered"` for a component that was confirmed
+    # stalled -- the finalizer was erasing the only field that still carried
+    # the truth.
+    runtime_states = dict(_component_state)
 
     for component in _KNOWN_COMPONENTS:
         state = _component_final_states.get(component, "healthy")
+        # fixes item 94: `healthy_end` is measured AFTER the stop flush, which
+        # resets the very ages this is judged on -- `stable_commit_age_ms` was
+        # 987147.8 during the live stall and ~120 by the time this ran. So a
+        # component that stalled for 16.5 minutes was downgraded here and the
+        # run shipped as `completed`. The runtime verdict is now the floor: a
+        # component seen suspected/confirmed while listening can be reported as
+        # recovered, never as healthy, and is counted separately below so the
+        # headline number cannot read 0 when a stall actually happened.
+        runtime_state = runtime_states.get(component, "healthy")
+        if state == "healthy" and runtime_state in ("suspected", "confirmed"):
+            state = "recovered"
         if state in ("suspected", "confirmed", "transient_recovered") and healthy_end:
             state = "recovered"
             _emit_classification(
@@ -390,7 +416,7 @@ def finalize_stall_classifications(
             state = "healthy"
         components[component] = {
             "final_state": state,
-            "last_runtime_state": _component_state.get(component, "healthy"),
+            "last_runtime_state": runtime_states.get(component, "healthy"),
         }
         _component_final_states[component] = state
 
@@ -402,6 +428,14 @@ def finalize_stall_classifications(
             1 for c in components.values() if c["final_state"] == "transient_recovered"
         ),
         "unresolved_stall_count": sum(1 for c in components.values() if c["final_state"] == "unresolved"),
+        # item 94: what the pipeline actually did while listening, not what the
+        # post-flush metrics make it look like. This is the number to read.
+        "stall_confirmed_at_runtime_count": sum(
+            1 for c in components.values() if c["last_runtime_state"] == "confirmed"
+        ),
+        "stall_suspected_at_runtime_count": sum(
+            1 for c in components.values() if c["last_runtime_state"] == "suspected"
+        ),
         "components": components,
         "finalized_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
         "final_metrics_healthy": healthy_end,
