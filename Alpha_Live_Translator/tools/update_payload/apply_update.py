@@ -57,6 +57,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from typing import Optional
 
 # Runtime state that lives inside app\ but is not part of the app.
 PRESERVE_FILES = frozenset({".env", "user_settings.json"})
@@ -122,7 +123,7 @@ def read_app_version(app_dir: Path) -> str:
     return match.group(1) if match else "unknown"
 
 
-def running_instances(install: Path) -> list[str]:
+def running_instances(install: Path) -> Optional[list[str]]:
     r"""Executables running out of this install.
 
     A running Alpha does not lock its own `.py` files -- Python reads and closes
@@ -147,9 +148,11 @@ def running_instances(install: Path) -> list[str]:
             capture_output=True, text=True, timeout=30,
         )
     except (OSError, subprocess.SubprocessError):
-        # No PowerShell, or it refused. Do not invent a verdict from a check that
-        # did not run; the caller is told the check was skipped.
-        return []
+        # No PowerShell, or it refused. `None` is not `[]`: a check that could
+        # not run must not read as "nothing is running", or the one failure mode
+        # this guard exists for -- a live session left running a mix of old and
+        # new code -- passes silently. preflight() says so out loud instead.
+        return None
 
     prefix = str(install.resolve()).lower()
     mine = {os.getpid(), os.getppid()}
@@ -194,6 +197,10 @@ def preflight(install: Path, payload: Path, force: bool) -> None:
         )
 
     live = running_instances(install)
+    if live is None:
+        say("NOTE: could not check whether Alpha is running (PowerShell did not answer).")
+        say("      Make sure Alpha Live Translator is closed before continuing.")
+        live = []
     if live and not force:
         listing = "\n".join(f"    {p}" for p in live)
         raise UpdateError(

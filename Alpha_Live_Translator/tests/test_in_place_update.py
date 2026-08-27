@@ -274,6 +274,9 @@ class TheRunningCheckDoesNotSeeItselfTest(unittest.TestCase):
         install = Path(sys.executable).resolve().parent
         live = module.running_instances(install)
 
+        self.assertIsNotNone(
+            live, "the check could not run; it must not be reported as a clean result"
+        )
         self.assertNotIn(
             str(Path(sys.executable).resolve()), live,
             "the updater sees the interpreter it is running on as a live Alpha "
