@@ -2,6 +2,15 @@
 
 **Status:** findings confirmed, fixes not yet implemented.
 **Raised:** 2026-08-27, after item 94.
+**Re-verified:** 2026-08-27, same day. All 25 code references checked line by
+line against the tree; all correct. Five things were wrong and are corrected
+below rather than silently replaced — the `log_exception` caller list named a
+module that does not use it; the scanner count disagreed with the committed tool;
+two read-confirmed findings did not say why they were not executed; the
+one-way-state half of the tool output was never reconciled against the finding
+list; and the test baseline was stated as a pass count, which varies with Tk
+availability and would have raised a false alarm. **Step 3's A5 fix was also
+wrong** and is corrected in place — see A5.
 **Ownership:** steps 1 and 2 are being implemented from a second account; steps 3
 and 4 follow, after step 1–2 is verified against the acceptance criteria below.
 
@@ -27,18 +36,19 @@ session is a design defect, not a bug report.**
 
 ### How the audit was done
 
-Not by grep. Three AST scanners over `alpha/**/*.py`, kept as `tools/audit_unrecoverable_latches.py`
-so this list is reproducible:
+Not by grep. Two AST scans over `alpha/**/*.py`, kept as
+`tools/audit_unrecoverable_latches.py` so this list is reproducible:
 
-1. **One-way boolean state** — `self.*` attributes and module globals whose
-   "bad" value is set on a live path, read from a *different* function, and
-   cleared only in `__init__` / `reset*` / `start`.
-2. **Never-cleared state** — the same, but where no clear site exists at all.
-   The first version of the scanner *skipped* these, which is the worst case; it
-   was corrected.
-3. **Thread targets** whose **outermost** loop body cannot swallow an exception.
-   The first version counted inner loops too and produced false positives; it
-   was corrected before anything was reported.
+1. **One-way state** — a `self.*` attribute or module global whose "bad" value is
+   set on a live path, read from a *different* function, and cleared only in
+   `__init__` / `reset*` / `start`, **or never cleared at all**. The first draft
+   required a clear site to exist before reporting, which skipped the
+   never-cleared case entirely — the worst one. Corrected before anything was
+   reported.
+2. **Thread targets** whose **outermost** loop body cannot swallow an exception.
+   The first draft examined every loop in the function, including inner ones, so
+   a correctly guarded outer loop containing a bare inner loop came back as a
+   risk. Corrected the same way.
 
 Findings marked **PROVEN** were reproduced by executing the real module, not by
 reading it. Findings marked **read-confirmed** were not executed, and say why.
@@ -85,8 +95,9 @@ Three separate failures compound:
   nothing anywhere reports the loss.
 
 **Blast radius:** the crash guard log itself. `log_exception()` writes here from
-the assembler, the language pipeline worker and the audio path. If this dies,
-the evidence for the *next* failure does not exist.
+`japanese_sentence_assembler.py`, `japanese_final_chunk_stabilizer.py` and
+`language_pipeline_worker.py` -- checked, not assumed; the audio path does not
+use it. If this dies, the evidence for the *next* failure does not exist.
 
 #### A2. `diagnostic_test_log._writer_loop` — PROVEN
 
@@ -181,9 +192,30 @@ This is a distinct sub-shape of the same class, and it deserves its own name:
 > is reachable, correct, and wired to the one moment it is guaranteed to be
 > unnecessary.
 
-**Fix (step 3, not step 1–2):** call the existing function from the session
-watchdog tick. No new mechanism — the mechanism is already written and tested by
-its own startup path.
+It is worse than mis-scheduled, and better to fix, than it first looked.
+`_check_queue_health()` (`:248`) runs on **every enqueue** and **already detects
+this exact condition** at `:273`:
+
+```python
+    if _writer_started and _writer_thread is not None and not _writer_thread.is_alive():
+        emergency_sync_write("ASYNC_LOG_WRITER_STALLED")
+```
+
+So the app already notices the writer is dead, already says so, and then stops —
+sixty lines above the repair that would fix it.
+
+**Fix (step 3, not step 1–2):** call `ensure_async_logger_healthy_non_blocking()`
+from that branch. The detection already exists and already runs on a path that is
+guaranteed to be hot; it just stops one line short.
+
+**An earlier draft of this plan said "call it from the session watchdog tick,
+two lines". That was wrong and is recorded here rather than quietly replaced.**
+The watchdog ticks every 2.0 s (`session_watchdog.py:22`), and
+`ensure_async_logger_healthy_non_blocking()` opens with an unconditional
+`emergency_sync_write(...)`, which is a *synchronous* disk write. That would have
+added ~1100 needless synchronous writes to a 37-minute session and defeated the
+point of an async logger — a performance regression shipped as a reliability
+fix.
 
 #### A6. `stop_finalize_worker._watchdog_loop` — read-confirmed
 
@@ -192,6 +224,10 @@ its own startup path.
 `_host_snapshot(host)` and `freeze_guard_log(...)` are unguarded inside the
 loop. If either raises, the stop-freeze watchdog dies — during stop, which is
 exactly when a freeze needs reporting.
+
+Not executed: reproducing it means driving a real stop-finalize to the point
+where this loop is running, which needs a live session rather than a harness.
+The structure is not in doubt.
 
 ### B. Flags with no reachable clear
 
@@ -205,6 +241,10 @@ exactly when a freeze needs reporting.
 
 One queue spike degrades verbose logging permanently, and it stays degraded long
 after the queue has drained.
+
+Not executed: the call-site count is the whole finding and `grep -c` answers it
+exactly. There is no runtime behaviour left to check once the clear site is
+known not to exist.
 
 #### B2. `TranslationWorker._quota_disabled` and `_accepting` — PROVEN
 
@@ -280,7 +320,7 @@ A1, A2, A3, A4 and A6. A5 is step 3 (its repair already exists).
 |---|---|---|
 | A1 | `crash_guard_log.py:102` | The file handle is opened **outside** the `while`. On restart it must be reopened, and the failing line must not be retried forever — drop it and count it. |
 | A2 | `diagnostic_test_log.py:202` | Same. Also `_enqueue_line`'s full-queue path silently drops the oldest line; once the writer is supervised, that drop should be counted and surfaced. |
-| A3 | `wasapi.py:140` | Only the loop body needs supervising. `com_initialize_mta()` / `com_uninitialize()` are per-thread and must be re-run per restart, not hoisted. Do not lose the two-consecutive-reads debounce or the `_wasapi_device_change_reported` un-latch. |
+| A3 | `wasapi.py:140` | Supervise the whole target, not the loop body: COM apartment state is per-thread, and `com_initialize_mta()` / `com_uninitialize()` already sit inside this function, so a whole-function restart re-runs them correctly. Do not hoist them out. Do not lose the two-consecutive-reads debounce or the `_wasapi_device_change_reported` un-latch — that un-latch is the one piece of recovery this function already gets right. |
 | A4 | `performance_timeline.py:40` | Also fix the restart guard: `start_heartbeat` returning early on `_heartbeat is not None`, and `_heartbeat_stop` never being cleared. |
 | A6 | `stop_finalize_worker.py:662` | Runs only during stop. Keep the `worker_done` break exact — a supervised restart must not resurrect the watchdog after finalize completed. |
 
@@ -292,21 +332,31 @@ Additionally, delete the `_writer_started` latches in A1/A2 in favour of a
 liveness check, or the supervisor cannot restart anything.
 
 **Acceptance criteria:** for each of the five, a test injecting one exception
-must show the loop still running afterwards, and the health snapshot must report
-a non-zero `restart_count`.
+must show the loop still running afterwards, and `restart_count` must be non-zero
+on the supervisor. Reaching `LAST_HEALTH_SNAPSHOT.json` is required for A1–A4
+only: A6 runs during stop-finalize, after the snapshot the run reports is
+written, so demand it on the supervisor object there instead of in the artifact.
 
 ### Step 3 — reachable clears, and one repair that only needs scheduling *(this account)*
 
-* **B1 `_degraded_mode`.** Add the clear. Auto-recover when the async log queue
-  has been healthy for a sustained window — the same degrade-then-recover shape
-  as item 45's translation circuit breaker, which does re-close correctly. Log
-  `DEGRADED_LOGGING_MODE_CLEARED` so the recovery is visible, exactly as the
-  entry into degraded mode already is.
+* **B1 `_degraded_mode`.** The clear belongs in the same function that sets it,
+  `_check_queue_health()` (`async_debug_log.py:248`) — the two sites that turn
+  degraded mode ON are its `qsize > _QUEUE_CRITICAL` / `> _QUEUE_DEGRADED`
+  branches (`:265`, `:268`). Add the `else`: once `qsize` has stayed under
+  `_QUEUE_WARN` (1000) for a sustained window, `set_degraded_logging_mode(False)`.
+  Same degrade-then-recover shape as item 45's translation circuit breaker, which
+  does re-close correctly. Log `DEGRADED_LOGGING_MODE_CLEARED` so the recovery is
+  visible, exactly as entering degraded mode already is.
+  Require a sustained window, not a single sample: clearing on one low reading
+  next to a queue oscillating around the threshold flaps degraded mode on and off
+  and writes a synchronous line each time.
 * **A5 `async_debug_log`.** Call the existing
-  `ensure_async_logger_healthy_non_blocking()` from the session watchdog tick, not
-  only from `main.py:59`. Two lines, no new mechanism. Its
-  `_writer_started = False` reset is also the reference implementation for what
-  step 1's supervisor must do, and for what A1 and A2 are missing.
+  `ensure_async_logger_healthy_non_blocking()` from the dead-writer branch that
+  already exists in `_check_queue_health()` (`async_debug_log.py:273`), which runs
+  on every enqueue. Not from the session watchdog: that function opens with an
+  unconditional synchronous disk write, and the watchdog ticks every 2.0 s.
+  Its `_writer_started = False` reset is also the reference implementation for
+  what step 1's supervisor must do, and for exactly what A1 and A2 are missing.
 * **B2 `TranslationWorker`.** Add a public `resume_after_quota()` that clears
   `_quota_disabled` and `_accepting`, plus a UI affordance for it.
   **Deliberately not automatic:** exhausted quota is real, and silently retrying
@@ -342,12 +392,28 @@ Step 4  (guard test)              - last, but not optional
 
 ### Reconciling the tool output with this list
 
-`tools/audit_unrecoverable_latches.py` reports **6** unsupervised thread loops and
-this document lists 6 findings (A1–A6) — they agree, but only after A5 was looked
-at properly. The scanner cannot see that A5 has an external repair; a reader who
-trusts the raw list without reading the code would either miss that A5 needs a
-different fix from the others, or dismiss it as already handled. The tool's own
-closing line says as much: neither list is a verdict.
+Run the tool and you get more rows than this document has findings. That is
+expected — the scan is deliberately over-inclusive — but the difference has to be
+written down, or the next person either re-investigates all of it or trusts the
+raw list as a verdict.
+
+**Threads: 6 rows, 6 findings (A1–A6).** They agree, but only after A5 was read
+properly. The scanner cannot see that A5 already has an external repair; taking
+the raw row at face value would have meant either building a supervisor around
+working code, or dismissing the row as already handled.
+
+**One-way state: 9 rows, 2 findings (B1–B2).** The other rows, and why each is
+not a defect:
+
+| Tool row | Verdict |
+|---|---|
+| `async_debug_log._degraded_mode` | **B1.** No clear site exists anywhere. |
+| `translation_worker._quota_disabled` | **B2.** |
+| `translation_worker._accepting` | **B2** — same finding, second row. One defect, two flags. |
+| `main_window.translation_enabled` | Not a latch. Re-assigned from config at `:8841` and `:8903` on every session start. The scan only sees literal `True`/`False` assignments, so it misses the non-literal ones that clear it. |
+| `timeline_mixer._sys_source_available`, `._mic_source_available` | Not a failure latch — they latch *on*, not off, and `reset()` clears both. Worth a look if audio source selection ever misbehaves, but nothing here degrades after a failure. |
+| `japanese_sentence_assembler._stop_boundary_active` | Checked, not assumed. Set only in `flush()`, and both wrappers that reach it (`flush_japanese_assembler_on_stop`, `flush_japanese_final_stabilizer`) close the transcript gate first and are stop-only; the first also calls `assembler.reset()`, which clears it. Cannot latch mid-session. |
+| `tk_thread_guard._session_listening_active`, `._stop_finalize_active` | Module-level initialisers, flipped by their own setters as the session moves between phases. Normal state, not failure state. |
 
 ---
 
@@ -363,12 +429,19 @@ reported plainly either way:
    cannot produce).
 2. The five conversions are driven by injecting a real exception into the real
    loop, not by asserting on the supervisor in isolation.
-3. Full suite compared against the baseline: **8 failed / 1132 passed / 20
-   skipped**, on commit `cc4763b`. The 8 are pre-existing
-   (`test_final_transcript_commit_v3_2_5` ×2, `test_keepalive_ping_thread_cannot_crash`,
-   `test_package_glossary_flags_85253` ×4, `test_stop_finalize_v3_2_3`).
-   `test_item48_audio_manifest_bounded` is a full-suite ordering flake that
-   passes standalone.
+3. Full suite compared against the baseline: **8 failures out of 1152 collected**.
+   Compare the FAILURE COUNT and the failing NAMES, not the passed/skipped split
+   — roughly a dozen `test_item71_*` cases skip or run depending on whether Tk
+   has a display in that environment, so the same tree legitimately reports
+   `1132 passed / 20 skipped` on one machine and `1144 passed / 8 skipped` on
+   another. Both were measured here. Reading the pass count as the baseline is a
+   false alarm waiting to happen.
+
+   The 8 pre-existing failures, by name:
+   `test_final_transcript_commit_v3_2_5` ×2, `test_keepalive_ping_thread_cannot_crash`,
+   `test_package_glossary_flags_85253` ×4, `test_stop_finalize_v3_2_3`.
+   `test_item48_audio_manifest_bounded` sometimes joins them: it is a full-suite
+   ordering flake that passes standalone 3/3 and shares no code with any of this.
 4. `restart_count` and `gave_up` appear in `LAST_HEALTH_SNAPSHOT.json` on a real
    run — a supervisor whose state nothing reports is the item 94 stall detector
    again, which fired correctly and could not tell anyone.
@@ -380,11 +453,13 @@ reported plainly either way:
 Six of the eight findings are in **logging or watchdog code** — the components
 whose entire job is to tell you something went wrong.
 
-That is the same failure as item 94 itself, where the stall detector fired,
+That was the same failure as item 94 itself, where the stall detector fired,
 classified the stall as `confirmed`, and then could not report it: a
 one-character type bug (`_component_history` annotated `list`, initialised `{}`)
 raised on every call before the log line, so `COMPONENT_STALL_CLASSIFICATION`
-appears **zero** times in a run holding a 16.5-minute confirmed stall.
+appears **zero** times in a run holding a 16.5-minute confirmed stall. That one
+is already fixed, in `b04ec9f` — it is quoted here as the pattern, not as
+outstanding work.
 
 The rule this produces for the V2 architecture:
 
