@@ -1,13 +1,19 @@
 # Unrecoverable-failure audit and mitigation plan
 
-**Status:** steps 1, 2 and 3 implemented and verified. Step 4 remains.
-Run `python tools/verify_mitigation_claims.py` for the current state — it now
-asserts the FIXED shape (27/27), not the presence of the defects.
+**Status:** ALL FOUR STEPS DONE. Two checks, both cheap, both authoritative:
+
+```
+python tools/verify_mitigation_claims.py     # 27/27 - the fixed shape, incl. live probes
+python -m pytest tests/test_no_unrecoverable_latches.py   # the guard against the ninth
+```
 **Raised:** 2026-08-27, after item 94.
 **Re-verified twice:** 2026-08-27 and again 2026-08-28 under
-`tools/verify_mitigation_claims.py`, which re-checks all 14 structural claims
-mechanically so they no longer rest on anyone's memory. Run it yourself: it
-prints PASS/FAIL per claim.
+`tools/verify_mitigation_claims.py`, which checks the recovery paths mechanically
+so they no longer rest on anyone's memory. Rewritten when steps 1-3 landed: it
+used to assert the DEFECTS existed, so once they were fixed it read 6/14 and
+every FAIL was good news — a detector that cannot tell "fixed" from "broken",
+the same shape as the bugs it was written to find. It now asserts the fixed
+shape, with three probes that actually run the supervisor. 27/27.
 
 **First re-verification, 2026-08-27:** All 25 code references checked line by
 line against the tree; all correct. Five things were wrong and are corrected
@@ -18,8 +24,11 @@ one-way-state half of the tool output was never reconciled against the finding
 list; and the test baseline was stated as a pass count, which varies with Tk
 availability and would have raised a false alarm. **Step 3's A5 fix was also
 wrong** and is corrected in place — see A5.
-**Ownership:** steps 1 and 2 are being implemented from a second account; steps 3
-and 4 follow, after step 1–2 is verified against the acceptance criteria below.
+**Ownership, as it happened:** steps 1 and 2 from a second account, then verified
+here against all five §3 criteria before step 3 began — 15 of that account's 18
+conversion tests fail in a clean worktree at `96316eb` (the 3 that pass both are
+preservation controls), and A1–A4 and A6 were re-driven here with real injected
+faults rather than accepted on their report. Steps 3 and 4 done here.
 
 ---
 
@@ -405,7 +414,49 @@ open, and it is the user's call whether that risk is worth taking.**
   a paid API in a loop is a worse failure than staying paused. The operator gets
   a way back; the software does not guess.
 
-### Step 4 — stop the class from recurring *(this account)*
+### Step 4 — stop the class from recurring — DONE
+
+`tests/test_no_unrecoverable_latches.py`. The audit now runs as a test, with an
+allowlist of 12 entries where **every entry carries an executable reason**, not
+prose: `still_true()` asserts the specific thing that makes the finding safe. If
+someone deletes the clear site, the setter, or the supervisor a reason names, the
+entry stops being justified and the suite goes red — even when the scanner's own
+output has not changed by one character. Three rules are enforced rather than
+described: every finding allowlisted, every entry still matching something, every
+reason still true.
+
+Proven in both directions: planting a one-way flag and an unsupervised loop in
+the real tree fails the guard on both counts, and removing them turns it green.
+
+**It found a blind spot in the audit tool on its first run, and four findings
+behind it.** `TheAuditToolItselfStillWorksTest` plants a synthetic latch and
+asserts the scanner sees it — it did not. The scanner counted a module-level
+`_flag = False` initialiser as a live-path clear, so it skipped exactly the shape
+A1 had:
+
+```python
+_writer_started = False        # module level -- read as "it gets cleared"
+def _start_writer():
+    global _writer_started
+    _writer_started = True     # live path, never undone
+```
+
+crash_guard_log's latch had been caught by the *thread* scan instead. Had it not
+also been a thread, this tool would have reported nothing. Fixed, and four
+previously-invisible findings appeared:
+
+| Finding | Verdict |
+|---|---|
+| `japanese_accuracy_log._writer_started` | **The nearest miss.** Byte-for-byte the A1/A2 latch, in the evidence logger. Safe **only** because that module's `_writer_loop` body wraps everything in `try/except Exception: continue` — the thread cannot die, so the latch is never consulted after a death. Allowlisted on that swallow; delete it and the guard fails. |
+| `crash_guard_log._shutdown_requested` | Terminal by design — after shutdown the writer must not restart. |
+| `diagnostic_test_log._shutdown_requested` | Same. |
+| `japanese_accuracy_cleaner._live_skip_second_idempotency_pass` | One-shot startup decision, the legitimate case the tool's own docstring names. |
+
+Three earlier findings dropped out for the same reason, correctly: `_degraded_mode`
+and the two `tk_thread_guard` phase flags are module-level initialisers moved by
+non-literal setters, which the scan should never have counted as live sets.
+
+#### Original plan, kept for the reasoning
 
 The audit scanners become a repo test. A new one-way flag, or a new thread loop
 whose outermost body cannot swallow an exception, turns the suite red.
@@ -497,8 +548,15 @@ reported plainly either way:
    test_stop_finalize_v3_2_3            ::test_phase_constants_match_spec
    ```
 
-   `test_item48_audio_manifest_bounded` sometimes joins them: a full-suite
-   ordering flake that passes standalone 3/3 and shares no code with any of this.
+   Two known flakes join them at random and are NOT regressions:
+
+   * `test_item48_audio_manifest_bounded` — a full-suite ordering flake; passes
+     standalone 3/3.
+   * `test_item90_language_pairing.py::TheDropdownsStayOpposite` — worse, because
+     it flakes **standalone**: six consecutive isolated runs on `3c6485f` gave
+     2, 1, 1, 1, 0, 2 failures. Measured on two different trees before being
+     called a flake rather than assumed. It shares no code with any of this work
+     and is worth fixing on its own account.
 
 5. **Run the suite twice, and concurrently with something else.** A test that
    passes alone and fails under load is not a regression test. This is not

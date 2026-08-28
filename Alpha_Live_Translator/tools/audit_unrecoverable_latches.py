@@ -45,7 +45,23 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 
 # Clearing state here is setup, not recovery: it happens between sessions, which
 # is exactly the window a mid-session failure cannot reach.
+#
+# `<module>` belongs in this set for the same reason, and leaving it out was a
+# real blind spot -- caught by the planted-latch probe in
+# tests/test_no_unrecoverable_latches.py, not by reading. A module-level
+# `_flag = False` is an import-time initialiser, not a recovery path. Counting it
+# as a live-path clear made the scanner SKIP the exact shape A1 had:
+#
+#     _writer_started = False        # module level -- read as "it gets cleared"
+#     ...
+#     def _start_writer():
+#         global _writer_started
+#         _writer_started = True     # live path, never undone
+#
+# crash_guard_log's latch was found by the thread scan instead. Had it not also
+# been a thread, this tool would have reported nothing.
 RESET_FUNCS = frozenset({
+    "<module>",
     "__init__", "reset", "reset_session", "reset_for_new_run", "reset_state",
     "_reset", "clear", "start", "_start", "reset_stall_classification",
     "reset_utterance_lifecycle", "reset_japanese_sentence_assembler",
