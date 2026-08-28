@@ -324,6 +324,29 @@ def build_long_session_health_payload(host: Any = None) -> dict[str, Any]:
         payload["watchdog_thread_alive"] = get_watchdog_thread_alive()
     except Exception:
         pass
+    # Supervised worker loops (mitigation.md steps 1-2). A supervisor whose
+    # state nothing reports is item 94's stall detector again: it fired
+    # correctly and could not tell anyone. `restart_count` and `gave_up` have to
+    # reach LAST_HEALTH_SNAPSHOT.json or a thread that died and came back three
+    # times looks identical to one that never faltered.
+    try:
+        from alpha.utils.supervised_thread import supervisor_health_summary
+
+        payload.update(supervisor_health_summary())
+    except Exception:
+        pass
+    try:
+        from alpha.utils.crash_guard_log import get_crash_guard_writer_stats
+
+        payload.update(get_crash_guard_writer_stats())
+    except Exception:
+        pass
+    try:
+        from alpha.utils.diagnostic_test_log import get_diagnostic_writer_stats
+
+        payload.update(get_diagnostic_writer_stats())
+    except Exception:
+        pass
     return payload
 
 

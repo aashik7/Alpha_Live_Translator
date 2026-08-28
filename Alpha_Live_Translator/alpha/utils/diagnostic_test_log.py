@@ -46,8 +46,14 @@ _MAJOR_AFTER_LOOPS = frozenset(
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 _log_queue: queue.Queue[Optional[str]] = queue.Queue(maxsize=5000)
-_writer_started = False
-_writer_thread: Optional[threading.Thread] = None
+# Supervised, not latched -- same defect as crash_guard_log (mitigation.md A2):
+# `_writer_started` was set once and never reset, so a dead writer could not be
+# restarted for the rest of the session.
+_writer_supervisor: Any = None
+_writer_lock = threading.Lock()
+_shutdown_requested = False
+_dropped_line_count = 0
+_write_failure_count = 0
 _app_start_mono: Optional[float] = None
 _first_render_logged = False
 _hooks_installed = False
@@ -103,17 +109,25 @@ def _format_line(category: str, event: str, data: Optional[dict[str, Any]] = Non
 
 
 def _enqueue_line(line: str) -> None:
+    global _dropped_line_count
     if not DIAGNOSTIC_LOGGING:
         return
     try:
         _log_queue.put_nowait(line)
     except queue.Full:
+        # Dropping the OLDEST line to make room is deliberate -- the newest
+        # diagnostic is the one worth keeping. What was wrong was that the loss
+        # was invisible, so a dead writer looked like a quiet system rather than
+        # a broken one. The drop is now counted and reaches the health snapshot.
         if not _should_throttle("log_queue_overflow", 5000):
             try:
                 _log_queue.get_nowait()
                 _log_queue.put_nowait(line)
+                _dropped_line_count += 1
             except Exception:
-                pass
+                _dropped_line_count += 1
+        else:
+            _dropped_line_count += 1
 
 
 def diag_log(category: str, event: str, data: Optional[dict[str, Any]] = None) -> None:
@@ -200,25 +214,50 @@ def _resolve_log_file() -> Path:
 
 
 def _writer_loop() -> None:
+    """Drain to the active run's log file. Supervised: raising means "reopen".
+
+    `current_path`/`handle` are locals, so a supervised restart re-enters with
+    both reset and the file is reopened. Before this was supervised, one write
+    failure ended the thread and `_writer_started` made restart impossible
+    (mitigation.md A2).
+
+    A line whose write raises is dropped and counted rather than retried: it is
+    already off the queue, and re-enqueueing one poisoned line would burn the
+    restart budget on it.
+    """
+    global _write_failure_count
     current_path: Optional[Path] = None
     handle = None
-    while True:
-        line = _log_queue.get()
-        if line is None:
-            break
-        target = _resolve_log_file()
-        if target != current_path:
+    try:
+        while True:
+            line = _log_queue.get()
+            if line is None:
+                # Shutdown sentinel: a clean return, so no restart.
+                return
+            target = _resolve_log_file()
+            if target != current_path:
+                if handle is not None:
+                    try:
+                        handle.close()
+                    except Exception:
+                        pass
+                    handle = None
+                target.parent.mkdir(parents=True, exist_ok=True)
+                handle = open(target, "a", encoding="utf-8")
+                current_path = target
             if handle is not None:
                 try:
-                    handle.close()
+                    handle.write(line + "\n")
+                    handle.flush()
                 except Exception:
-                    pass
-            target.parent.mkdir(parents=True, exist_ok=True)
-            handle = open(target, "a", encoding="utf-8")
-            current_path = target
+                    _write_failure_count += 1
+                    raise
+    finally:
         if handle is not None:
-            handle.write(line + "\n")
-            handle.flush()
+            try:
+                handle.close()
+            except Exception:
+                pass
 
 
 def rebind_runtime_log_writer() -> None:
@@ -227,26 +266,74 @@ def rebind_runtime_log_writer() -> None:
 
 
 def _start_writer() -> None:
-    global _writer_started, _writer_thread
-    if _writer_started or not DIAGNOSTIC_LOGGING:
+    """Start the writer, or restart it if it died. Gated on liveness, not a flag."""
+    global _writer_supervisor
+    if not DIAGNOSTIC_LOGGING or _shutdown_requested:
         return
-    _writer_started = True
-    _writer_thread = threading.Thread(
-        target=_writer_loop, name="DiagnosticLogWriter", daemon=True
-    )
-    _writer_thread.start()
-    atexit.register(shutdown_diagnostic_logging)
+    with _writer_lock:
+        supervisor = _writer_supervisor
+        if supervisor is not None and supervisor.is_alive():
+            return
+        try:
+            from alpha.utils.supervised_thread import SupervisedThread
+
+            if supervisor is None:
+                supervisor = SupervisedThread(
+                    _writer_loop, name="DiagnosticLogWriter"
+                )
+                _writer_supervisor = supervisor
+                atexit.register(shutdown_diagnostic_logging)
+            supervisor.start()
+        except Exception:
+            pass
 
 
 def shutdown_diagnostic_logging() -> None:
-    if not _writer_started:
+    global _shutdown_requested
+    _shutdown_requested = True
+    supervisor = _writer_supervisor
+    if supervisor is None:
         return
     try:
         _log_queue.put_nowait(None)
     except Exception:
         pass
-    if _writer_thread is not None:
-        _writer_thread.join(timeout=2.0)
+    try:
+        supervisor.join(timeout=2.0)
+    except Exception:
+        pass
+
+
+def get_diagnostic_writer_stats() -> dict[str, Any]:
+    """Loss and restart counters, for the health snapshot."""
+    # Always present -- see the same note in crash_guard_log: a key that only
+    # appears once a supervisor exists cannot distinguish "never started" from
+    # "not reported".
+    stats: dict[str, Any] = {
+        "diagnostic_dropped_line_count": _dropped_line_count,
+        "diagnostic_write_failure_count": _write_failure_count,
+        "diagnostic_writer_alive": False,
+        "diagnostic_writer_restart_count": 0,
+        "diagnostic_writer_gave_up": False,
+        "diagnostic_writer_last_error": "",
+        "diagnostic_writer_started": False,
+    }
+    try:
+        stats["diagnostic_queue_size"] = int(_log_queue.qsize())
+    except Exception:
+        stats["diagnostic_queue_size"] = -1
+    supervisor = _writer_supervisor
+    if supervisor is not None:
+        stats["diagnostic_writer_started"] = True
+        try:
+            snap = supervisor.snapshot()
+            stats["diagnostic_writer_alive"] = snap["alive"]
+            stats["diagnostic_writer_restart_count"] = snap["restart_count"]
+            stats["diagnostic_writer_gave_up"] = snap["gave_up"]
+            stats["diagnostic_writer_last_error"] = snap["last_error"]
+        except Exception:
+            pass
+    return stats
 
 
 def diag_init() -> None:

@@ -23,8 +23,14 @@ _LOG_DIR = _PROJECT_ROOT / "logs"
 _LOG_FILE = _LOG_DIR / f"v{APP_VERSION}_crash_guard.log"
 
 _log_queue: queue.Queue[Optional[str]] = queue.Queue(maxsize=2000)
-_writer_started = False
-_writer_thread: Optional[threading.Thread] = None
+# Supervised, not latched. The old `_writer_started = True` was set once and
+# never reset, so when one OSError ended the writer thread `_start_writer()`
+# returned immediately forever and restart was impossible (mitigation.md A1).
+_writer_supervisor: Any = None
+_writer_lock = threading.Lock()
+_shutdown_requested = False
+_dropped_line_count = 0
+_write_failure_count = 0
 _installed = False
 _orig_excepthook = sys.excepthook
 _orig_threading_excepthook = getattr(threading, "excepthook", None)
@@ -100,45 +106,115 @@ def _format_line(event: str, data: dict[str, Any]) -> str:
 
 
 def _writer_loop() -> None:
+    """Drain the queue to disk. Supervised: raising here means "reopen and continue".
+
+    The handle is opened INSIDE the supervised target on purpose. It used to be
+    opened outside the `while`, so once a write failed there was no path that
+    could ever reopen it -- the thread simply ended (mitigation.md A1). A restart
+    now re-enters this function and reopens the file.
+
+    A line whose write raises is DROPPED, not retried: it has already been
+    removed from the queue, and re-enqueueing it would spin the supervisor's
+    restart budget on one poisoned line. It is counted instead, so the loss is
+    reportable rather than silent.
+    """
+    global _write_failure_count
     _LOG_DIR.mkdir(parents=True, exist_ok=True)
     with open(_LOG_FILE, "a", encoding="utf-8") as handle:
         while True:
             line = _log_queue.get()
             if line is None:
-                break
-            handle.write(line + "\n")
-            handle.flush()
+                # Shutdown sentinel. Returning normally tells the supervisor
+                # this finished on purpose, so it does not restart.
+                return
+            try:
+                handle.write(line + "\n")
+                handle.flush()
+            except Exception:
+                _write_failure_count += 1
+                raise
 
 
 def _start_writer() -> None:
-    global _writer_started, _writer_thread
-    if _writer_started:
+    """Start the writer, or restart it if it died. Gated on liveness, not a flag."""
+    global _writer_supervisor
+    if _shutdown_requested:
         return
-    _writer_started = True
-    _writer_thread = threading.Thread(
-        target=_writer_loop, name="CrashGuardLogWriter", daemon=True
-    )
-    _writer_thread.start()
-    atexit.register(shutdown_crash_guard_logging)
+    with _writer_lock:
+        supervisor = _writer_supervisor
+        if supervisor is not None and supervisor.is_alive():
+            return
+        try:
+            from alpha.utils.supervised_thread import SupervisedThread
+
+            if supervisor is None:
+                supervisor = SupervisedThread(
+                    _writer_loop, name="CrashGuardLogWriter"
+                )
+                _writer_supervisor = supervisor
+                atexit.register(shutdown_crash_guard_logging)
+            supervisor.start()
+        except Exception:
+            # The crash guard must never be the reason the app fails to start.
+            pass
 
 
 def shutdown_crash_guard_logging() -> None:
-    if not _writer_started:
+    global _shutdown_requested
+    _shutdown_requested = True
+    supervisor = _writer_supervisor
+    if supervisor is None:
         return
     try:
         _log_queue.put_nowait(None)
     except Exception:
         pass
-    if _writer_thread is not None:
-        _writer_thread.join(timeout=2.0)
+    try:
+        supervisor.join(timeout=2.0)
+    except Exception:
+        pass
+
+
+def get_crash_guard_writer_stats() -> dict[str, Any]:
+    """Loss and restart counters, for the health snapshot."""
+    # The keys are always present. A missing key would make "the writer was
+    # never started" indistinguishable from "nobody reported it", which is the
+    # reporting failure this whole change exists to remove.
+    stats: dict[str, Any] = {
+        "crash_guard_dropped_line_count": _dropped_line_count,
+        "crash_guard_write_failure_count": _write_failure_count,
+        "crash_guard_queue_size": _safe_qsize(_log_queue),
+        "crash_guard_writer_alive": False,
+        "crash_guard_writer_restart_count": 0,
+        "crash_guard_writer_gave_up": False,
+        "crash_guard_writer_last_error": "",
+        "crash_guard_writer_started": False,
+    }
+    supervisor = _writer_supervisor
+    if supervisor is not None:
+        stats["crash_guard_writer_started"] = True
+        try:
+            snap = supervisor.snapshot()
+            stats["crash_guard_writer_alive"] = snap["alive"]
+            stats["crash_guard_writer_restart_count"] = snap["restart_count"]
+            stats["crash_guard_writer_gave_up"] = snap["gave_up"]
+            stats["crash_guard_writer_last_error"] = snap["last_error"]
+        except Exception:
+            pass
+    return stats
 
 
 def crash_guard_log(event: str, **data: Any) -> None:
+    global _dropped_line_count
     _start_writer()
     try:
         _log_queue.put_nowait(_format_line(event, data))
     except queue.Full:
-        pass
+        # Still swallowed -- a logging call must not raise into the caller --
+        # but no longer invisible: the count reaches the health snapshot.
+        _dropped_line_count += 1
+    except Exception:
+        _dropped_line_count += 1
 
 
 def _write_thread_stacks_sync() -> str:

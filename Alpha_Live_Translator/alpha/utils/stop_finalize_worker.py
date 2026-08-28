@@ -660,6 +660,18 @@ def reconcile_translation_gaps(host: Any) -> dict[str, int]:
 
 
 def _watchdog_loop(host: Any) -> None:
+    """Heartbeat the stop-finalize path until the worker reports done.
+
+    SUPERVISED (mitigation.md A6). `_host_snapshot(host)` and
+    `freeze_guard_log(...)` below are unguarded, and this runs *during stop* --
+    exactly when a freeze needs reporting. One exception used to end the
+    watchdog silently.
+
+    The `worker_done` break must stay a normal `return`/`break`, not an
+    exception: the supervisor treats a clean return as "finished" and does not
+    restart, which is what stops a supervised watchdog being resurrected after
+    finalize has already completed.
+    """
     while True:
         with _state_lock:
             if _stop_state["worker_done"]:
@@ -706,9 +718,24 @@ def _start_watchdog(host: Any) -> None:
         old = _stop_state.get("watchdog_thread")
         if old is not None and getattr(old, "is_alive", lambda: False)():
             return
-        t = threading.Thread(
-            target=_watchdog_loop, name="StopFreezeWatchdog", daemon=True, args=(host,)
-        )
+        try:
+            from alpha.utils.supervised_thread import SupervisedThread
+
+            # A fresh supervisor per stop: the previous one has finished
+            # cleanly, and reusing it would carry its restart budget forward
+            # into an unrelated stop.
+            t: Any = SupervisedThread(
+                lambda: _watchdog_loop(host),
+                name="StopFreezeWatchdog",
+                register=False,
+            )
+        except Exception:
+            t = threading.Thread(
+                target=_watchdog_loop,
+                name="StopFreezeWatchdog",
+                daemon=True,
+                args=(host,),
+            )
         _stop_state["watchdog_thread"] = t
         t.start()
 

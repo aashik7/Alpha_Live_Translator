@@ -155,6 +155,20 @@ class WasapiCaptureMixin:
         Requires TWO consecutive disagreeing reads before reporting: a
         sleep/resume or a driver re-enumeration can momentarily report a
         different endpoint. Reports once per distinct new device.
+
+        SUPERVISED (mitigation.md A3). This used to end the thread on the first
+        exception -- `except Exception` sat OUTSIDE the `while`, printed one line
+        to a console nobody reads, and returned. Once dead, nothing restarted it
+        and the app stopped noticing that the default endpoint had moved, which
+        is the item 80 audio-loss class (word recall 93.5% -> 42.9%).
+
+        The exception now propagates to the supervisor, which restarts this
+        WHOLE function. That is deliberate rather than wrapping the loop body:
+        COM apartment state is per-thread, and `com_initialize_mta()` /
+        `com_uninitialize()` live here, so a whole-function restart re-runs them
+        in the right order. `pending` resets on restart, which costs at most one
+        extra poll before a change is reported; `_wasapi_device_change_reported`
+        is instance state and survives, so the un-latch still works.
         """
         from alpha.audio.default_endpoint import com_initialize_mta, com_uninitialize
 
@@ -198,8 +212,6 @@ class WasapiCaptureMixin:
                     self._wasapi_device_change_reported = True
                     self._report_default_device_changed(baseline, current)
                 pending = ""
-        except Exception as exc:
-            print(f"[WASAPI] Device watch stopped: {exc}")
         finally:
             if com_ready:
                 com_uninitialize()
@@ -285,10 +297,19 @@ class WasapiCaptureMixin:
             # nothing to compare against and the thread would just burn COM
             # calls.
             if self._wasapi_default_endpoint_baseline:
-                self._wasapi_device_watch_thread = threading.Thread(
-                    target=self._wasapi_device_watch_worker,
+                # Supervised so one COM hiccup cannot end device-change
+                # detection for the session (mitigation.md A3). The supervisor
+                # gets its OWN stop event rather than sharing `self._stop_event`:
+                # `SupervisedThread.start()` clears whatever event it is given,
+                # and clearing the shared audio stop event would un-stop the
+                # reader and mixer too. The loop still exits on
+                # `self._stop_event`, so `_close_wasapi_stream` ends it normally
+                # -- a clean return, which the supervisor does not restart.
+                from alpha.utils.supervised_thread import SupervisedThread
+
+                self._wasapi_device_watch_thread = SupervisedThread(
+                    self._wasapi_device_watch_worker,
                     name="WasapiDeviceWatch",
-                    daemon=True,
                 )
                 self._wasapi_device_watch_thread.start()
             print("WASAPI loopback stream started successfully")

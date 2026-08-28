@@ -31,23 +31,59 @@ class PerformanceTimeline:
         self._t0 = time.perf_counter()
         self._last_progress = self._t0
         self._heartbeat_stop = threading.Event()
-        self._heartbeat: Optional[threading.Thread] = None
+        self._heartbeat: Any = None
 
     def start_heartbeat(self, interval_s: float = 10.0) -> None:
-        if self._heartbeat is not None:
+        """Start, or restart, the progress heartbeat.
+
+        Two defects fixed here (mitigation.md A4), and they compounded:
+
+        * this returned early on ``_heartbeat is not None``, so once the thread
+          existed a second call was a silent no-op even if the thread was dead;
+        * ``stop_heartbeat`` set ``_heartbeat_stop`` and nothing ever cleared it,
+          so stopping the heartbeat was irreversible *on purpose* as well as by
+          accident. Measured before the fix: alive after start True, after stop
+          False, after a restart attempt False.
+
+        The supervisor clears the stop event on ``start()``, and the liveness
+        gate replaces the flag. ``self.progress("heartbeat")`` was also
+        unguarded, so one exception from it ended the thread; it is now
+        restarted within a bounded budget.
+        """
+        supervisor = self._heartbeat
+        if supervisor is not None and supervisor.is_alive():
             return
 
         def _loop() -> None:
             while not self._heartbeat_stop.wait(interval_s):
                 self.progress("heartbeat")
 
-        self._heartbeat = threading.Thread(
-            target=_loop, name="PerformanceTimelineHeartbeat", daemon=True
-        )
-        self._heartbeat.start()
+        try:
+            from alpha.utils.supervised_thread import SupervisedThread
+
+            if supervisor is None:
+                supervisor = SupervisedThread(
+                    _loop,
+                    name=f"PerformanceTimelineHeartbeat:{self.run_id or id(self)}",
+                    stop_event=self._heartbeat_stop,
+                )
+                self._heartbeat = supervisor
+            supervisor.start()
+        except Exception:
+            # Telemetry must never stop the timeline it is measuring.
+            pass
 
     def stop_heartbeat(self) -> None:
         self._heartbeat_stop.set()
+
+    def heartbeat_snapshot(self) -> dict[str, Any]:
+        supervisor = self._heartbeat
+        if supervisor is None:
+            return {"alive": False, "restart_count": 0, "gave_up": False}
+        try:
+            return supervisor.snapshot()
+        except Exception:
+            return {"alive": False, "restart_count": 0, "gave_up": False}
 
     def begin(
         self,
