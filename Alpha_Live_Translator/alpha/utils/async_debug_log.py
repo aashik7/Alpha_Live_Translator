@@ -39,6 +39,45 @@ _QUEUE_DEGRADED = 3000
 _QUEUE_CRITICAL = 5000
 _HEALTH_SNAPSHOT_INTERVAL_S = 30.0
 
+# mitigation.md step 3.
+#
+# A5: `ensure_async_logger_healthy_non_blocking()` below is a correct repair --
+# it clears the started flag, drops the dead handle and respawns the writer. It
+# was reachable from exactly one place, `main.py:59`, at startup, before the
+# writer can have died. `_check_queue_health()` meanwhile already DETECTED the
+# dead writer and emitted ASYNC_LOG_WRITER_STALLED, then stopped sixty lines
+# above the repair. The detection is now wired to it.
+#
+# Throttled and bounded, and neither is optional. `_check_queue_health()` runs
+# on EVERY enqueue and the repair opens with a synchronous disk write, so
+# calling it per detection would be a performance regression shipped as a
+# reliability fix. And retrying a writer that will never come back forever is
+# the spin this document names as its own bug -- so it stops, and says so.
+_WRITER_REPAIR_INTERVAL_S = 5.0
+_WRITER_REPAIR_MAX_ATTEMPTS = 5
+_last_writer_repair_mono = 0.0
+_writer_repair_attempts = 0
+_writer_repair_gave_up = False
+
+# B1: `set_degraded_logging_mode(True)` had three call sites and
+# `set_degraded_logging_mode(False)` had none, so one queue spike degraded
+# verbose logging for the rest of the session. A sustained window, not a single
+# low sample: a queue oscillating around the threshold would otherwise flap the
+# mode on and off, and every transition writes synchronously.
+_DEGRADED_RECOVERY_S = 30.0
+_degraded_healthy_since_mono = 0.0
+
+
+def _reset_writer_recovery_state() -> None:
+    """Re-arm the repair budget and the recovery window. Called when the writer
+    comes back, and by tests."""
+    global _last_writer_repair_mono, _writer_repair_attempts
+    global _writer_repair_gave_up, _degraded_healthy_since_mono
+    _last_writer_repair_mono = 0.0
+    _writer_repair_attempts = 0
+    _writer_repair_gave_up = False
+    _degraded_healthy_since_mono = 0.0
+
 _CRITICAL_EVENTS = frozenset(
     {
         "RUN_PROGRESS_HEARTBEAT",
@@ -262,16 +301,76 @@ def _check_queue_health() -> None:
     if (now - _last_health_snapshot_mono) >= _HEALTH_SNAPSHOT_INTERVAL_S:
         _last_health_snapshot_mono = now
         emergency_sync_write("ASYNC_LOG_HEALTH_SNAPSHOT", **get_async_log_health())
+    global _degraded_healthy_since_mono
     if qsize > _QUEUE_CRITICAL:
+        _degraded_healthy_since_mono = 0.0
         set_degraded_logging_mode(True)
         emergency_sync_write("ASYNC_LOG_QUEUE_HIGH", queue_size=qsize, level="critical")
     elif qsize > _QUEUE_DEGRADED:
+        _degraded_healthy_since_mono = 0.0
         set_degraded_logging_mode(True)
         emergency_sync_write("ASYNC_LOG_QUEUE_HIGH", queue_size=qsize, level="degraded")
     elif qsize > _QUEUE_WARN:
+        # Above the warning line is not recovery. Restart the window so a queue
+        # that is still misbehaving cannot look drained.
+        _degraded_healthy_since_mono = 0.0
         emergency_sync_write("ASYNC_LOG_QUEUE_HIGH", queue_size=qsize, level="warning")
-    if _writer_started and _writer_thread is not None and not _writer_thread.is_alive():
-        emergency_sync_write("ASYNC_LOG_WRITER_STALLED")
+    elif _degraded_mode:
+        # B1: the way back. Sustained-healthy, then clear -- and say so, because
+        # entering degraded mode is announced and a silent exit leaves the log
+        # unreadable as to which lines were dropped.
+        if _degraded_healthy_since_mono <= 0.0:
+            _degraded_healthy_since_mono = now
+        elif (now - _degraded_healthy_since_mono) >= _DEGRADED_RECOVERY_S:
+            _degraded_healthy_since_mono = 0.0
+            set_degraded_logging_mode(False)
+            emergency_sync_write(
+                "DEGRADED_LOGGING_MODE_CLEARED",
+                queue_size=qsize,
+                healthy_for_s=_DEGRADED_RECOVERY_S,
+            )
+    else:
+        _degraded_healthy_since_mono = 0.0
+    _repair_writer_if_dead(now)
+
+
+def _repair_writer_if_dead(now: float) -> None:
+    """A5: run the repair from the branch that already found the problem."""
+    global _last_writer_repair_mono, _writer_repair_attempts, _writer_repair_gave_up
+
+    alive = _writer_thread is not None and _writer_thread.is_alive()
+    if not _writer_started or alive:
+        # Re-arm on recovery, or the second outage of a long session gets fewer
+        # attempts than the first.
+        if _writer_repair_attempts or _writer_repair_gave_up:
+            _writer_repair_attempts = 0
+            _writer_repair_gave_up = False
+            _last_writer_repair_mono = 0.0
+        return
+    if _writer_repair_gave_up:
+        return
+    if _last_writer_repair_mono and (now - _last_writer_repair_mono) < _WRITER_REPAIR_INTERVAL_S:
+        return
+    _last_writer_repair_mono = now
+    emergency_sync_write(
+        "ASYNC_LOG_WRITER_STALLED",
+        repair_attempt=_writer_repair_attempts + 1,
+        max_attempts=_WRITER_REPAIR_MAX_ATTEMPTS,
+    )
+    if _writer_repair_attempts >= _WRITER_REPAIR_MAX_ATTEMPTS:
+        _writer_repair_gave_up = True
+        emergency_sync_write(
+            "ASYNC_LOG_WRITER_UNRECOVERABLE",
+            attempts=_WRITER_REPAIR_MAX_ATTEMPTS,
+        )
+        return
+    _writer_repair_attempts += 1
+    try:
+        ensure_async_logger_healthy_non_blocking()
+    except Exception:
+        # The repair is best-effort by contract; a failure here must not take
+        # down the enqueue path it is called from.
+        pass
 
 
 def emergency_sync_write(message: str, **data: Any) -> None:

@@ -256,6 +256,38 @@ class TranslationWorker:
         """Visible degradation for item 47's status indicator."""
         return self.circuit_is_open() or self._quota_disabled
 
+    def resume_after_quota(self) -> bool:
+        """Lift a quota pause. Returns True only if there was one to lift.
+
+        mitigation.md B2. `_quota_disabled` and `_accepting` were cleared only in
+        `__init__` / `reset_session` / `start`, and nothing public re-armed them,
+        so a quota pause could only be lifted by restarting the session. For
+        genuinely exhausted quota that is the right behaviour; the gap is that a
+        transient `quota_exceeded` from the provider, or a top-up in the middle
+        of a meeting, stranded the operator the same way.
+
+        Deliberately NOT automatic. Exhausted quota is real, and silently
+        retrying a paid API in a loop is a worse failure than staying paused.
+        The operator gets a way back; the software does not guess.
+
+        Gated on `_quota_disabled` specifically, because `_accepting` is also
+        cleared by `stop_accepting()` and `shutdown()`. Re-arming it on those
+        would restart a worker the session deliberately stopped.
+        """
+        with self._lock:
+            if not self._quota_disabled:
+                return False
+            self._quota_disabled = False
+            self._accepting = True
+            self._status_message = "Translation resumed after quota pause."
+        try:
+            from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+            jp_accuracy_log("TRANSLATION_RESUMED_AFTER_QUOTA")
+        except Exception:
+            pass
+        return True
+
     def _record_translation_success(self) -> None:
         with self._lock:
             was_open = self._circuit_open_until > 0.0

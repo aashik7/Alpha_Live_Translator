@@ -1,6 +1,8 @@
 # Unrecoverable-failure audit and mitigation plan
 
-**Status:** findings confirmed, fixes not yet implemented.
+**Status:** steps 1, 2 and 3 implemented and verified. Step 4 remains.
+Run `python tools/verify_mitigation_claims.py` for the current state — it now
+asserts the FIXED shape (27/27), not the presence of the defects.
 **Raised:** 2026-08-27, after item 94.
 **Re-verified twice:** 2026-08-27 and again 2026-08-28 under
 `tools/verify_mitigation_claims.py`, which re-checks all 14 structural claims
@@ -342,7 +344,42 @@ on the supervisor. Reaching `LAST_HEALTH_SNAPSHOT.json` is required for A1–A4
 only: A6 runs during stop-finalize, after the snapshot the run reports is
 written, so demand it on the supervisor object there instead of in the artifact.
 
-### Step 3 — reachable clears, and one repair that only needs scheduling *(this account)*
+### Step 3 — reachable clears, and one repair that only needs scheduling — DONE
+
+Shipped as described below, with tests that were confirmed to fail against the
+pre-fix tree first (21 of 21, including the five host-level ones).
+
+**A5** — `_check_queue_health()`'s dead-writer branch now calls
+`ensure_async_logger_healthy_non_blocking()` through a new
+`_repair_writer_if_dead()`. Throttled at `_WRITER_REPAIR_INTERVAL_S = 5.0`
+because that branch runs on every enqueue and the repair opens with a
+synchronous disk write; bounded at `_WRITER_REPAIR_MAX_ATTEMPTS = 5`, after
+which it emits `ASYNC_LOG_WRITER_UNRECOVERABLE` once and stops rather than
+spinning; and the budget re-arms when the writer comes back, so the second
+outage of a long session gets the same allowance as the first.
+
+**B1** — `_degraded_mode` clears in the same function that sets it, once the
+queue has stayed under `_QUEUE_WARN` for `_DEGRADED_RECOVERY_S = 30.0`. A fresh
+spike restarts the window. `DEGRADED_LOGGING_MODE_CLEARED` is emitted, because
+entering degraded mode was already announced and a silent exit leaves the log
+unreadable as to which lines were dropped.
+
+**B2** — `TranslationWorker.resume_after_quota()` plus
+`AlphaApp.resume_translation_after_quota()`. Gated on `_quota_disabled`
+specifically: `_accepting` is also cleared by `stop_accepting()` and
+`shutdown()`, and re-arming it there would restart a worker the session
+deliberately stopped. Manual, never automatic.
+
+**One thing deliberately NOT done, so it is a decision and not an omission.**
+The plan said "plus a UI affordance". The quota status is rendered as
+placeholder text inside the translated verse box, not a widget with controls, so
+a button means editing either the Tk text placeholder path or the responsive
+hamburger menu — the two areas items 71, 92 and 93 have churned most. What
+shipped instead is the wiring plus a status line that names the way out
+("Restart listening, or resume once the quota is topped up"). **The button is
+open, and it is the user's call whether that risk is worth taking.**
+
+#### Original plan, kept for the reasoning
 
 * **B1 `_degraded_mode`.** The clear belongs in the same function that sets it,
   `_check_queue_health()` (`async_debug_log.py:248`) — the two sites that turn

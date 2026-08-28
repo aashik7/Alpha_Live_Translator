@@ -8925,6 +8925,28 @@ class AlphaApp(
         box._placeholder_text = message
         self._show_text_placeholder(box)
 
+    def resume_translation_after_quota(self) -> bool:
+        """Lift a DeepL quota pause without restarting the session.
+
+        mitigation.md B2. `_quota_disabled` / `_accepting` were cleared only in
+        the worker's `__init__` / `reset_session` / `start`, so a transient
+        `quota_exceeded` -- or a top-up mid-meeting -- cost the operator the
+        whole session. Manual by design: exhausted quota is real, and silently
+        retrying a paid API in a loop is a worse failure than staying paused.
+
+        Returns True only if there was a quota pause to lift.
+        """
+        worker = self.translation_worker
+        if worker is None:
+            return False
+        try:
+            resumed = bool(worker.resume_after_quota())
+        except Exception:
+            return False
+        if resumed:
+            self._set_translation_status(worker.status_message)
+        return resumed
+
     def submit_text_for_translation(
         self,
         text,
@@ -9486,7 +9508,13 @@ class AlphaApp(
         except Exception:
             pass
         if status == "quota_exceeded":
-            self._set_translation_status("Translation paused (quota exceeded).")
+            # mitigation.md B2: name the way out. Before `resume_translation_after_quota`
+            # existed there was none, and the message correctly described a state
+            # the operator could only leave by restarting the session.
+            self._set_translation_status(
+                "Translation paused (quota exceeded). "
+                "Restart listening, or resume once the quota is topped up."
+            )
         if bool(getattr(result, "obsolete_result_rejected", False)) or terminal in {
             "superseded",
             "cancelled",
