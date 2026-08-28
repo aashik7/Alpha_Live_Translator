@@ -266,23 +266,33 @@ def rebind_runtime_log_writer() -> None:
 
 
 def _start_writer() -> None:
-    """Start the writer, or restart it if it died. Gated on liveness, not a flag."""
+    """Create the writer once. The supervisor owns restarts from then on.
+
+    Same shape as `crash_guard_log._start_writer`, and for the same reasons:
+    a single global read on the fast path, no liveness polling (the supervisor
+    handles death), and no implicit re-arm of a supervisor that gave up.
+    """
     global _writer_supervisor
+    if _writer_supervisor is not None:
+        return
     if not DIAGNOSTIC_LOGGING or _shutdown_requested:
         return
     with _writer_lock:
-        supervisor = _writer_supervisor
-        if supervisor is not None and supervisor.is_alive():
+        if _writer_supervisor is not None:
             return
         try:
             from alpha.utils.supervised_thread import SupervisedThread
 
-            if supervisor is None:
-                supervisor = SupervisedThread(
-                    _writer_loop, name="DiagnosticLogWriter"
-                )
-                _writer_supervisor = supervisor
-                atexit.register(shutdown_diagnostic_logging)
+            supervisor: Any = SupervisedThread(_writer_loop, name="DiagnosticLogWriter")
+        except Exception:
+            # An unsupervised writer beats no writer -- see the note in
+            # crash_guard_log._start_writer.
+            supervisor = threading.Thread(
+                target=_writer_loop, name="DiagnosticLogWriter", daemon=True
+            )
+        _writer_supervisor = supervisor
+        try:
+            atexit.register(shutdown_diagnostic_logging)
             supervisor.start()
         except Exception:
             pass

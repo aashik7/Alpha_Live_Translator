@@ -110,7 +110,7 @@ class A1_CrashGuardWriterRestarts(unittest.TestCase):
         self.assertTrue(wait_until(lambda: (good / "crash_guard.log").exists(), timeout=6.0))
         self.assertTrue(supervisor.is_alive())
 
-    def test_the_start_gate_is_liveness_not_a_latch(self):
+    def test_the_never_reset_latch_is_gone(self):
         """`_writer_started = True` was never reset, so restart was impossible."""
         source = (PROJECT_ROOT / "alpha" / "utils" / "crash_guard_log.py").read_text(
             encoding="utf-8", errors="replace"
@@ -118,8 +118,48 @@ class A1_CrashGuardWriterRestarts(unittest.TestCase):
         code = "\n".join(
             line for line in source.splitlines() if not line.strip().startswith("#")
         )
+        # The latch signature, not the word: both files still NAME the old
+        # flag in prose explaining why it is gone.
         self.assertNotIn("_writer_started = True", code)
-        self.assertIn("supervisor.is_alive()", code)
+        self.assertNotIn("global _writer_started", code)
+        self.assertIn("SupervisedThread", code)
+
+    def test_the_start_path_stays_cheap_on_the_hot_path(self):
+        """`_start_writer` runs on EVERY log call, so it must not poll liveness.
+
+        Measured: a lock plus `is_alive()` per call cost 214 ns against the old
+        flag's 25 ns. Restarts are the supervisor's job, not this function's.
+        """
+        cg = self.cg
+        cg._writer_supervisor = object()  # any non-None sentinel
+        cg._shutdown_requested = False
+        calls = {"n": 0}
+        real_lock = cg._writer_lock
+
+        class CountingLock:
+            def __enter__(self_inner):
+                calls["n"] += 1
+                return real_lock.__enter__()
+
+            def __exit__(self_inner, *args):
+                return real_lock.__exit__(*args)
+
+        cg._writer_lock = CountingLock()
+        try:
+            for _ in range(50):
+                cg._start_writer()
+        finally:
+            cg._writer_lock = real_lock
+        self.assertEqual(
+            calls["n"], 0, "_start_writer took the lock on an already-started writer"
+        )
+
+    def test_it_degrades_to_an_unsupervised_writer_rather_than_none(self):
+        """No writer at all would be worse than what this change replaced."""
+        source = (PROJECT_ROOT / "alpha" / "utils" / "crash_guard_log.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        self.assertIn("threading.Thread(", source)
 
     def test_a_dropped_line_is_counted_rather_than_silent(self):
         stats = self.cg.get_crash_guard_writer_stats()
@@ -170,7 +210,7 @@ class A2_DiagnosticWriterRestarts(unittest.TestCase):
         self.assertIn("diagnostic_dropped_line_count", stats)
         self.assertIn("diagnostic_writer_restart_count", stats)
 
-    def test_the_start_gate_is_liveness_not_a_latch(self):
+    def test_the_never_reset_latch_is_gone(self):
         source = (PROJECT_ROOT / "alpha" / "utils" / "diagnostic_test_log.py").read_text(
             encoding="utf-8", errors="replace"
         )
@@ -178,7 +218,9 @@ class A2_DiagnosticWriterRestarts(unittest.TestCase):
             line for line in source.splitlines() if not line.strip().startswith("#")
         )
         self.assertNotIn("_writer_started = True", code)
-        self.assertIn("supervisor.is_alive()", code)
+        self.assertNotIn("global _writer_started", code)
+        self.assertIn("SupervisedThread", code)
+        self.assertIn("threading.Thread(", source)
 
 
 class A3_WasapiDeviceWatchRestarts(unittest.TestCase):
