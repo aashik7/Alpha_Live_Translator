@@ -2,7 +2,12 @@
 
 **Status:** findings confirmed, fixes not yet implemented.
 **Raised:** 2026-08-27, after item 94.
-**Re-verified:** 2026-08-27, same day. All 25 code references checked line by
+**Re-verified twice:** 2026-08-27 and again 2026-08-28 under
+`tools/verify_mitigation_claims.py`, which re-checks all 14 structural claims
+mechanically so they no longer rest on anyone's memory. Run it yourself: it
+prints PASS/FAIL per claim.
+
+**First re-verification, 2026-08-27:** All 25 code references checked line by
 line against the tree; all correct. Five things were wrong and are corrected
 below rather than silently replaced — the `log_exception` caller list named a
 module that does not use it; the scanner count disagreed with the committed tool;
@@ -429,19 +434,45 @@ reported plainly either way:
    cannot produce).
 2. The five conversions are driven by injecting a real exception into the real
    loop, not by asserting on the supervisor in isolation.
-3. Full suite compared against the baseline: **8 failures out of 1152 collected**.
-   Compare the FAILURE COUNT and the failing NAMES, not the passed/skipped split
-   — roughly a dozen `test_item71_*` cases skip or run depending on whether Tk
-   has a display in that environment, so the same tree legitimately reports
-   `1132 passed / 20 skipped` on one machine and `1144 passed / 8 skipped` on
-   another. Both were measured here. Reading the pass count as the baseline is a
-   false alarm waiting to happen.
+3. Full suite: **compare the set of FAILING TEST NAMES. Nothing else.**
 
-   The 8 pre-existing failures, by name:
-   `test_final_transcript_commit_v3_2_5` ×2, `test_keepalive_ping_thread_cannot_crash`,
-   `test_package_glossary_flags_85253` ×4, `test_stop_finalize_v3_2_3`.
-   `test_item48_audio_manifest_bounded` sometimes joins them: it is a full-suite
+   Not the pass count, not the skip count, and not the collected total. All three
+   move for reasons that have nothing to do with whether the code is correct:
+
+   * roughly a dozen `test_item71_*` cases skip or run depending on whether Tk
+     has a display, so the same tree legitimately reported `1132 passed / 20
+     skipped` and `1144 passed / 8 skipped` on different runs here;
+   * the collected total moves whenever anyone adds a test — including you, in
+     step 2;
+   * an earlier draft of this document quoted a total anyway, and got it wrong
+     twice. That is the evidence for this rule, not a hypothetical.
+
+   The 8 pre-existing failures, by name — this list is the baseline:
+
+   ```
+   test_final_transcript_commit_v3_2_5  ::test_commit_allowed_while_finalizing
+   test_final_transcript_commit_v3_2_5  ::test_commit_allowed_while_listening
+   test_keepalive_ping_thread_cannot_crash::test_the_crash_is_reproducible_on_the_unguarded_base_class
+   test_package_glossary_flags_85253    ::test_glossary_helper_absent
+   test_package_glossary_flags_85253    ::test_glossary_helper_present
+   test_package_glossary_flags_85253    ::test_main_glossary_absent_no_unbound_local
+   test_package_glossary_flags_85253    ::test_main_glossary_present_after_successful_inclusion
+   test_stop_finalize_v3_2_3            ::test_phase_constants_match_spec
+   ```
+
+   `test_item48_audio_manifest_bounded` sometimes joins them: a full-suite
    ordering flake that passes standalone 3/3 and shares no code with any of this.
+
+5. **Run the suite twice, and concurrently with something else.** A test that
+   passes alone and fails under load is not a regression test. This is not
+   theoretical either: `test_the_updater_does_not_report_its_own_interpreter`,
+   written for the updater in this same session, called the real
+   `running_instances()` and asserted its own interpreter was absent from the
+   result. True only while no other process happens to be running that
+   interpreter — so it passed alone and failed the moment a second pytest run
+   shared it, and it reported as a build failure. It now feeds the check a fixed
+   synthetic process table instead. Do the same with anything you write that
+   reads live machine state.
 4. `restart_count` and `gave_up` appear in `LAST_HEALTH_SNAPSHOT.json` on a real
    run — a supervisor whose state nothing reports is the item 94 stall detector
    again, which fired correctly and could not tell anyone.

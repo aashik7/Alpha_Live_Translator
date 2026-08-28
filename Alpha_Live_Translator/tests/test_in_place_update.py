@@ -18,6 +18,7 @@ evidence that makes a failure on a machine we cannot reach diagnosable at all.
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -260,28 +261,79 @@ class TheRunningCheckDoesNotSeeItselfTest(unittest.TestCase):
     was running, and refused. Not an edge case: it would have failed 100% of
     runs on 100% of machines, and the package would have been useless on
     arrival.
+
+    The FIRST version of this test was itself defective, and it is worth saying
+    why rather than quietly replacing it. It called `running_instances()` for
+    real and asserted that `sys.executable` was absent from the result. That
+    holds only while no other process happens to be running the same
+    interpreter -- so it passed alone and failed the moment a second pytest run
+    shared it. A test that depends on what else is running on the machine is not
+    a regression test; it is a coin flip that reports as a build failure.
+
+    It now feeds the check a synthetic process table containing our own PID and
+    a foreign one at the same path, which is exactly the condition the bug was
+    about and is independent of the machine.
     """
 
-    def test_the_updater_does_not_report_its_own_interpreter(self):
+    def _module(self):
         import importlib.util
 
         spec = importlib.util.spec_from_file_location("apply_update", UPDATER)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
+        return module
 
-        # The exact shape the .bat produces: the interpreter running this code
-        # lives under the folder being treated as the install.
+    def _with_process_table(self, module, rows):
+        """Drive running_instances() against a fixed process list."""
+        from unittest.mock import patch
+
+        class _Result:
+            stdout = "\n".join(rows)
+
+        return patch.object(module.subprocess, "run", return_value=_Result())
+
+    def test_the_updater_does_not_report_its_own_interpreter(self):
+        module = self._module()
         install = Path(sys.executable).resolve().parent
-        live = module.running_instances(install)
+        own = str(Path(sys.executable).resolve())
 
-        self.assertIsNotNone(
-            live, "the check could not run; it must not be reported as a clean result"
-        )
-        self.assertNotIn(
-            str(Path(sys.executable).resolve()), live,
+        with self._with_process_table(module, [f"{os.getpid()}|{own}"]):
+            live = module.running_instances(install)
+
+        self.assertEqual(
+            [], live,
             "the updater sees the interpreter it is running on as a live Alpha "
             "session and will refuse every update on every machine",
         )
+
+    def test_a_genuinely_running_instance_is_still_reported(self):
+        """The PID filter must not blind the check to a real live session."""
+        module = self._module()
+        install = Path(sys.executable).resolve().parent
+        own = str(Path(sys.executable).resolve())
+        other = str(install / "pythonw.exe")
+        foreign_pid = os.getpid() + 100000          # cannot collide with ours
+
+        with self._with_process_table(
+            module, [f"{os.getpid()}|{own}", f"{foreign_pid}|{other}"]
+        ):
+            live = module.running_instances(install)
+
+        self.assertEqual(
+            [other], live,
+            "a real running Alpha was filtered out along with the updater's own "
+            "process -- the guard would pass while the app is live",
+        )
+
+    def test_a_check_that_could_not_run_is_not_a_clean_result(self):
+        from unittest.mock import patch
+
+        module = self._module()
+        with patch.object(module.subprocess, "run", side_effect=OSError("no powershell")):
+            self.assertIsNone(
+                module.running_instances(Path(sys.executable).resolve().parent),
+                "a check that could not run reported as 'nothing is running'",
+            )
 
 
 class ItRollsBackTest(UpdaterHarness):
