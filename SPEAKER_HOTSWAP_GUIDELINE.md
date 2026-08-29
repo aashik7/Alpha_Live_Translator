@@ -7,6 +7,32 @@ folder and the evidence all restart with it. The ask is to change the speaker
 
 **Status:** design only. No production code has been changed for this.
 
+**Revision 2 — after driving the code instead of reading it.** Revision 1 was
+written from reading. Executing it found **four defects in the plan itself**,
+three of them critical, and one of them would have *caused* the worst bug the
+plan exists to prevent. They are corrected below and listed here rather than
+silently rewritten, because the next reader needs to know which parts were
+verified by execution and which were not:
+
+| # | What revision 1 got wrong | Consequence had it shipped |
+|---|---|---|
+| P1 | Treated the swap as able to drain `sys_audio_queue` and call `configure_sources()` from its own thread. **`TimelineMixer` has no lock at all** (`timeline_mixer.py` — zero `Lock`), and `audio_mixer_worker` is its sole owner and drains that queue itself (`main_window.py:8556` → `timeline_mixer.py:131-139`). | A data race on unsynchronised numpy buffers — which produces exactly the R1 corruption the plan is written to prevent. **The plan would have caused its own critical bug.** |
+| P2 | `configure_sources` was described as re-callable. It is called **once**, at `main_window.py:8551`, *before* the mixer loop, reading `self._wasapi_channels` / `self._wasapi_rate` into locals. | Setting the attributes mid-session changes nothing. The swap would silently keep the old format. |
+| P3 | Promised a rollback: "try the previous device again". **Not implementable.** `_get_wasapi_loopback_device()` resolves only `pa.get_default_wasapi_loopback()` (`wasapi.py:28-39`) — there is no open-by-id path — and the old PyAudio instance must be terminated *before* the new default is visible (C1). Once terminated, the previous device index is meaningless. | An operator promised a safety net that does not exist. The swap is **one-way**. |
+| P4 | Ranked wrong-rate as the R1 example. **Wrong channel count is far worse**, and it was not measured. | Understated the severity of the one risk that matters most. |
+
+P4 measured, by running the real `pcm_to_mono_16k_np` on a 440 Hz tone, 48 kHz
+stereo, 1.000 s:
+
+| Told | Samples out | Duration | Peak | Raised? |
+|---|---|---|---|---|
+| 48 kHz, 2 ch *(correct)* | 16000 | 1.000 s | 440.0 Hz | — |
+| 44.1 kHz, 2 ch | 17414 | 1.088 s | 404.3 Hz | **no** |
+| 48 kHz, **1 ch** | 32000 | **2.000 s** | **220.0 Hz** | **no** |
+
+A wrong channel count halves the pitch and doubles the duration, and nothing
+raises. That is not a degraded transcript; it is a confident, fluent, wrong one.
+
 ---
 
 ## 0. The one fact that makes this feasible
@@ -76,97 +102,158 @@ folder, the ledger and the transcript; this must not. The only correct framing:
 > Replace the *capture source* behind a live mixer, without the mixer, Deepgram,
 > or the transcript ever learning that it happened.
 
-### Ordering — the whole feature is in the order
+### Ownership — decide this before ordering, or the ordering is a race
 
-Every step below exists because doing it later, or not at all, corrupts
-something specific. The rationale is in the risk register.
+Revision 1 got this wrong (P1), so it is stated first and explicitly.
+
+`TimelineMixer` has **no lock**. It is single-threaded by convention: the sole
+owner is `audio_mixer_worker`, which drains `sys_audio_queue` itself
+(`main_window.py:8556` → `timeline_mixer.py:131-139`) and mutates `_sys_buffer` /
+`_mic_buffer` as plain numpy arrays. Any second thread touching the mixer or that
+queue is a data race on unsynchronised buffers.
+
+So the swap has **two owners and a hard line between them**:
+
+| Owner | Does | Never touches |
+|---|---|---|
+| **Swap worker** (posted from the UI, off the Tk thread) | stop old stream, join reader, terminate PyAudio, re-enumerate, open new stream, start new reader | the mixer, `sys_audio_queue`, `_sys_buffer` |
+| **`audio_mixer_worker`** (existing) | applies the new format at a frame boundary, where it is sole owner | PortAudio, streams, device enumeration |
+
+### The format stamp removes the coordination entirely
+
+Revision 1 tried to make the two owners hand off safely with ordering — drain,
+flush, then reconfigure. That needs cross-thread coordination, which needs a lock
+the mixer does not have.
+
+**Stamp the format onto every chunk instead** and the problem disappears:
 
 ```
- 1. ENTER SWAP STATE        set _system_capture_swapping = True
-                            (readers stop enqueuing; mixer keeps draining)
- 2. QUIESCE THE READER      stop the old stream, join the reader thread
-                            with a bounded timeout
- 3. DRAIN IN-FLIGHT AUDIO   empty sys_audio_queue COMPLETELY before any
-                            format change  -- R2
- 4. FLUSH THE MIXER         let _sys_buffer play out or discard it explicitly
-                            -- never mix across a format change  -- R3
- 5. RELEASE PORTAUDIO       terminate PyAudio  (C1: the only way to see the
-                            new device)
- 6. RE-ENUMERATE            new PyAudio(), resolve the new default loopback
- 7. RECONFIGURE THE MIXER   configure_sources(new_channels, new_rate)
-                            BEFORE a single new chunk is pushed  -- R1
- 8. OPEN + START            open the stream, start the reader
- 9. RE-BASELINE ITEM 73     _wasapi_default_endpoint_baseline = new id
+reader:   put_bounded(sys_audio_queue, (pcm_bytes, channels, rate))
+mixer:    for (pcm, ch, rate) in drained:  push_system(pcm, ch, rate)
+```
+
+`push_system` then resamples with the values that **arrived with the chunk**, not
+with whatever `configure_sources` was last told. Consequences, all good:
+
+* old-device chunks still in flight resample **correctly**;
+* new-device chunks resample **correctly**;
+* **no ordering requirement at all** between the swap worker and the mixer;
+* no drain step, no flush step, no lock, no race;
+* R1 and R2 stop being risks-to-mitigate and become **impossible by construction**.
+
+This is the single change that makes the feature safe. It is also worth doing on
+its own merits, before any swap feature exists: today the mixer's format is a
+piece of shared mutable state read on one thread and written on another, and the
+only reason it is currently safe is that nothing writes it after startup.
+
+`configure_sources()` stays, demoted to supplying defaults for a chunk that
+carries no stamp, and `mic_available`.
+
+### Ordering — what is left after the stamp
+
+```
+ 1. POST THE REQUEST        UI posts to the swap worker; UI thread returns
+                            immediately                          -- R14
+ 2. MARK SWAPPING           _system_capture_swapping = True, in try/finally,
+                            with a bounded auto-clear            -- R9
+ 3. STOP + JOIN THE READER  join with a bounded timeout. If the join times
+                            out, ABORT -- do not terminate PortAudio under a
+                            live reader                          -- R4
+ 4. TERMINATE PORTAUDIO     the only way to see the new device   -- C1
+                            *** FROM HERE THERE IS NO WAY BACK -- see below ***
+ 5. RE-ENUMERATE + OPEN     new PyAudio(), resolve the default loopback,
+                            open, start the reader with the new stamp values
+ 6. RE-BASELINE ITEM 73     baseline = new endpoint id
                             _wasapi_device_change_reported = False   -- R7
-10. LEAVE SWAP STATE        _system_capture_swapping = False
-11. RECORD THE GAP          emit one evidence event with the measured
-                            silent-gap duration  -- R6, R12
+ 7. CONFIRM POSITIVELY      first stamped chunk from the new device must
+                            arrive within the budget             -- R12
+ 8. RECORD                  one evidence event: old/new device, old/new
+                            format, measured gap, outcome        -- R6, R10
+ 9. CLEAR SWAPPING          in `finally`, on every path          -- R9
 ```
 
-**Step 7 before step 8 is the single most important ordering constraint in this
-document.** Reversing them means the first chunks of the new device are resampled
-with the old device's rate — see R1.
+The mixer is not in that list. It needs no step: it keeps draining and mixing
+throughout, resampling each chunk by its own stamp, and never learns a swap
+happened. That is the correctness argument for the whole design.
 
-### Failure policy
+### Failure policy — there is no rollback, and revision 1 was wrong to promise one
 
-A swap can fail (the new device disappears between enumeration and open, PortAudio
-refuses, the operator unplugs a dock). The policy must be decided up front:
+Revision 1 said "try the previous device again". **That cannot be implemented**
+(P3). `_get_wasapi_loopback_device()` resolves only
+`pa.get_default_wasapi_loopback()` (`wasapi.py:28-39`) — there is no open-by-id
+path — and the old PyAudio instance must be terminated before the new default is
+visible at all (C1). After step 4 the previous device index is meaningless and
+the previous instance is gone.
 
-* **Try the previous device again**, once, with the previous parameters.
-* If that also fails: **stay in a clearly-reported degraded state** — mic-only
-  capture continues, the UI says system audio is unavailable, and the session is
-  NOT killed. Killing the session on a failed swap is worse than the problem the
-  feature solves.
-* Never leave `_system_capture_swapping = True` on any path. It is a latch, and
-  this repo has spent a week on that exact class — see `mitigation.md`.
+**Step 4 is a one-way door.** The honest policy:
 
----
+* **Before step 4**: any failure aborts cleanly. The old stream is still open, so
+  abort and keep capturing. This is the only safe abort window, and steps 1-3 must
+  do all the validation they can inside it.
+* **After step 4**: retry `get_default_wasapi_loopback()` a bounded number of
+  times with backoff, because the OS may still be settling. If it never opens,
+  **degrade and report**: mic-only capture continues, the UI says system audio is
+  unavailable, the session is NOT killed, and the operator is told plainly that a
+  restart is needed to recover system audio.
+* Never kill the session on a failed swap. The feature exists to avoid a restart;
+  a failure mode that forces one is worse than not having the feature.
 
 ## 3. Risk register
 
 Severity is about what the *client* loses, not about implementation difficulty.
 
-### R1 — Wrong resample ratio across the swap · **CRITICAL**
+### R1 — Wrong resample ratio across the swap · **CRITICAL** → *eliminated by the format stamp*
 
-**Mechanism.** `push_system` resamples using `self._wasapi_rate` /
-`self._wasapi_channels` (`timeline_mixer.py:55-57`). If a chunk captured at 48 kHz
-stereo is pushed after `configure_sources()` has been told 44.1 kHz mono — or the
-reverse — the audio is pitch-shifted and length-distorted. It is **not** silence
-and **not** an exception. Deepgram transcribes it confidently and wrongly.
+**Mechanism.** `push_system` resamples with `self._wasapi_rate` /
+`self._wasapi_channels` (`timeline_mixer.py:55-57`). A chunk captured on one
+device and resampled with the other device's parameters is pitch-shifted and
+length-distorted. **Measured on the real function**, 440 Hz / 48 kHz stereo / 1.000 s:
 
-**Why it is the worst one.** It is invisible. Every counter stays green, the
-transcript keeps flowing, and the words are wrong. That is the same signature as
-this project's top-5 defect list: *looks healthy, output wrong*.
+| Told | Duration out | Peak | Raised? |
+|---|---|---|---|
+| 48 kHz, 2 ch *(correct)* | 1.000 s | 440.0 Hz | — |
+| 44.1 kHz, 2 ch | 1.088 s | 404.3 Hz | **no** |
+| 48 kHz, **1 ch** | **2.000 s** | **220.0 Hz** | **no** |
 
-**Mitigation.**
-* Steps 3, 4 and 7 of the ordering — drain the queue and flush the mixer before
-  the format changes, and reconfigure before the first new chunk.
-* **Stamp the format onto the chunk.** Do not rely on ordering alone; enqueue
-  `(chunk, channels, rate)` and have `push_system` resample with the values that
-  came *with the chunk*. Ordering can be broken by a future refactor; a stamped
-  chunk cannot be resampled with someone else's rate.
-* Assert in `push_system` that the stamped rate matches the configured rate, and
-  count mismatches into the health payload rather than silently accepting them.
+**Why it is the worst risk in this document.** Nothing raises, no counter moves,
+the transcript keeps flowing — and Deepgram transcribes half-speed audio
+fluently and wrongly. That is this project's signature failure: *looks healthy,
+output wrong*. A wrong channel count is materially worse than a wrong rate, which
+revision 1 had backwards.
 
-**Verification.** Replay a known tone through a simulated swap from 48 kHz stereo
-to 44.1 kHz mono and assert the output samples are bit-identical to resampling
-each half separately. A duration check alone will not catch a channel-count error.
+**Mitigation — construction, not discipline.** Stamp `(pcm, channels, rate)` onto
+every chunk at the reader and resample with the stamp. Then no chunk can ever be
+resampled with another device's parameters, regardless of thread timing, ordering,
+or a future refactor. See §2.
+
+**Do not rely on drain-then-reconfigure ordering.** That was revision 1's answer,
+and it required the swap thread to touch a mixer that has no lock — a data race
+that would have produced this very corruption. Ordering is a convention; a stamp
+is a fact carried with the data.
+
+**Verification.** The table above, as a test: a known tone through a simulated
+48 kHz stereo → 44.1 kHz mono swap, asserting each half is bit-identical to
+resampling it alone. Assert on samples, not duration — duration alone passes the
+wrong-channel case at some rates.
 
 ---
 
-### R2 — In-flight chunks in `sys_audio_queue` · **CRITICAL**
+### R2 — In-flight chunks in `sys_audio_queue` · **CRITICAL** → *eliminated by the format stamp*
 
-**Mechanism.** The reader `put_bounded`s into `sys_audio_queue` (`wasapi.py:235`)
-and the mixer drains it. At the moment of a swap the queue holds old-device bytes.
-If the format changes while they are still queued, they are resampled wrongly —
-R1 by another route.
+**Mechanism.** `ingest_queues` drains the queue with `get_nowait()` until empty
+(`timeline_mixer.py:133-139`), on the mixer thread. At a swap the queue holds
+old-device bytes; unstamped, they are resampled with whatever format is current.
 
-**Mitigation.** Step 3: drain the queue to empty *before* step 7, and count what
-was drained. Combined with the per-chunk format stamp (R1), draining becomes a
-belt-and-braces measure rather than the only defence.
+`MAX_AUDIO_QUEUE_SIZE = 100` (`alpha/config.py:47`) and `put_bounded` **drops the
+oldest item** when full (`alpha/utils/queues.py:6-18`), so a swap that stalls the
+mixer also loses old audio silently.
 
-**Verification.** Assert `sys_audio_queue.qsize() == 0` at the entry to step 7, and
-that the drained count is reported.
+**Mitigation.** The same stamp. Every queued chunk carries the format it was
+captured with, so draining order stops mattering entirely — which is what removes
+the need for the swap thread to touch the queue at all, and with it the P1 race.
+
+Count dropped chunks during a swap into the evidence event; a silent drop under
+`put_bounded` is indistinguishable from quiet audio otherwise.
 
 ---
 
@@ -177,7 +264,9 @@ that the drained count is reported.
 are format-safe — but they are also **up to 3 seconds of the old device's audio**
 that will be mixed into frames emitted after the swap.
 
-**Mitigation.** Decide explicitly, and write the decision down:
+**With the stamp, this is no longer a correctness risk** — the buffered samples
+are already 16 kHz mono and resample-safe. It is purely a latency-vs-content
+choice. Decide explicitly, and write the decision down:
 * **Play it out** (preferred): keep draining `_sys_buffer` normally, accept up to
   3 s of latency across the swap, lose nothing.
 * **Discard it**: lose up to 3 s of speech. Only acceptable if the swap is a
@@ -394,8 +483,48 @@ worker must not touch Tk directly.
 **Mechanism.** Steps 6 and 8 are not atomic. A device unplugged in between makes
 `open()` fail.
 
-**Mitigation.** The failure policy in §2: one retry on the previous device, then a
-reported degraded state. Never a session kill.
+**Mitigation.** The one-way-door policy in §2. Note that "retry the previous
+device" is NOT available (P3) — after `terminate()` the only thing that can be
+opened is whatever the OS now calls the default. Bounded retries of *that*, then
+degrade and report. Never a session kill.
+
+---
+
+### R16 — The swap worker touches the mixer · **CRITICAL** *(the plan's own defect)*
+
+**Mechanism.** `TimelineMixer` has no lock; `audio_mixer_worker` is its sole owner
+and drains `sys_audio_queue` itself. Any swap implementation that drains the queue
+or calls `configure_sources()` from the swap thread is racing unsynchronised numpy
+buffer mutation — and the corruption it produces is R1.
+
+This is recorded as a risk rather than just fixed silently because it was
+**revision 1's own design**. The next person to write a "quick" version of this
+feature will reach for the same shape.
+
+**Mitigation.** The ownership split and the format stamp in §2. If a future change
+does need cross-thread mixer access, the mixer needs a lock **first** — and adding
+one is its own review, because `emit_due_frames` runs at 50 Hz.
+
+**Verification.** A test that asserts no thread other than the mixer worker calls
+`push_system` / `ingest_queues` / `configure_sources`, in the same shape as the
+existing `background_tk_call_blocked_count` guard.
+
+---
+
+### R17 — `configure_sources` is read once, into locals · **HIGH**
+
+**Mechanism.** `main_window.py:8551` calls it **before** the mixer loop, having
+read `self._wasapi_channels` / `self._wasapi_rate` into local variables at
+`:8548-8549`. Setting those attributes mid-session changes nothing — the worker
+already captured them.
+
+**Why it matters.** An implementation that "updates the format" by assigning the
+attributes will appear to work, log nothing, and keep resampling with the old
+device's parameters indefinitely: R1 with no swap-time symptom at all.
+
+**Mitigation.** The stamp makes the attributes defaults-only, so this stops being
+load-bearing. If they are kept for anything else, they must be read per chunk, not
+hoisted.
 
 ---
 
@@ -414,6 +543,13 @@ feature is worth:
   explicit operation with an explicit result; conflating them means neither can be
   reported honestly.
 * **Do not make the swap invisible to the assembler.** R11.
+* **Do not drain the queue or call `configure_sources()` from the swap thread.**
+  R16. It is the obvious implementation and it is a data race.
+* **Do not "update the format" by assigning `self._wasapi_rate`.** R17. It is read
+  once into a local before the loop and your assignment will do nothing.
+* **Do not promise the operator a rollback.** P3 — after `terminate()` there is
+  none. Say "system audio unavailable, restart to recover" rather than implying a
+  retry that cannot happen.
 * **Do not ship this before R5.** A feature whose most likely failure mode lands
   on a thread that cannot restart is a feature that turns a recoverable annoyance
   into a dead session.
@@ -466,18 +602,31 @@ shipped a green test over a dead code path twice.
 7. **Full suite twice, concurrently**, comparing the SET OF FAILING NAMES only.
 8. **The step-4 guard must stay green**, with `_system_capture_swapping`
    allowlisted with an executable reason.
+9. **Assert on samples, not durations** (R1). The wrong-channel case produces a
+   signal of a plausible length at some rate pairs; only a sample-level or
+   spectral comparison catches it. The measured table in R1 is the fixture.
+10. **A thread-ownership test** (R16): nothing but the mixer worker may call
+    `push_system` / `ingest_queues` / `configure_sources`.
+11. **The abort window** (§2): a failure injected *before* `terminate()` must
+    leave the old stream capturing, and a failure injected *after* it must leave
+    a live session with system audio reported unavailable — not a dead session and
+    not a silent one.
 
 ---
 
 ## 7. Suggested sequencing
 
-| Stage | Content | Why this order |
-|---|---|---|
-| 0 | R5 — supervised, restartable reader + the scan-2 fix | The feature's most likely failure lands here |
-| 1 | Per-chunk format stamping (R1) with the assertion and counter | Makes the swap safe by construction rather than by ordering |
-| 2 | `swap_system_audio_device()` on a worker thread, evidence event, no UI | Testable end-to-end without touching the UI |
-| 3 | Positive confirmation (R12), debounce and cap (R13) | Turns "it swapped" into "it is working" |
-| 4 | UI control | Last, and see the note below |
+| Stage | Content | Why this order | Shippable alone? |
+|---|---|---|---|
+| 0 | **R5** — supervised, restartable reader; plus the scan-2 blind-spot fix in the audit tool | The feature's most likely failure lands on a thread that currently dies for good | **Yes** — a real reliability fix with no swap feature at all |
+| 1 | **Per-chunk format stamp** (R1, R2, R16, R17) | Makes the swap correct *by construction*. Also fixes a live latent hazard: the mixer's format is shared mutable state read on one thread and written on another, safe today only because nothing writes it after startup | **Yes** — behaviour-neutral today, verifiable by the tone test |
+| 2 | `swap_system_audio_device()` on a worker thread, evidence event, no UI | Testable end to end without touching the UI | Yes |
+| 3 | Positive confirmation (R12), debounce and cap (R13) | Turns "it swapped" into "it is working" | Yes |
+| 4 | UI control | Last, and see the note below | — |
+
+**Stages 0 and 1 are worth shipping even if the swap feature is cancelled.** That
+is the test of whether the sequencing is right: each stage stands on its own, and
+nothing is a stub waiting for the next stage to justify it.
 
 **On the UI**: the same caution as the B2 quota button in `mitigation.md` applies —
 the responsive hamburger and the reading-pane layout are the areas items 71, 92 and
