@@ -4,14 +4,16 @@ import re
 import time
 import traceback
 
-import tkinter as tk
-
 from alpha.constants import (
     DEBUG_TEAMS_DIAGNOSTICS,
     UI_MAX_UPDATES_PER_TICK,
     UI_QUEUE_POLL_MS,
     UI_UPDATE_INTERVAL_MS,
 )
+# `alpha.ui.follow_tail` imports nothing but tkinter, so this stays a leaf
+# import and does not put `alpha.ui.main_window` -- which imports THIS
+# module -- into a cycle.
+from alpha.ui.follow_tail import scroll_to_tail
 
 
 class TranscriptStabilityCounters:
@@ -150,7 +152,7 @@ class DuplicateProtectionMixin:
         elif hasattr(self, "_show_text_placeholder"):
             self._show_text_placeholder(box)
         box.configure(state="disabled")
-        box.see(tk.END)
+        scroll_to_tail(box)
 
         scrollbar = getattr(box, "_scrollbar", None)
         if scrollbar is not None and hasattr(self, "check_scrollbar_visibility"):

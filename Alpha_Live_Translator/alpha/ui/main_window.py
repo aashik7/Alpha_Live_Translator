@@ -240,6 +240,7 @@ from alpha.ui.theme import (
     WAVEFORM_CANVAS_WIDTH,
     WAVEFORM_CANVAS_WIDTH_WIDE,
 )
+from alpha.ui.follow_tail import FOLLOW_TAIL_BOTTOM_EPS, scroll_to_tail
 from alpha.ui.strings import (
     LANGUAGE_NAMES,
     available_languages,
@@ -314,6 +315,13 @@ CONTENT_STACK_BREAKPOINT = LAYOUT_MEDIUM_BREAKPOINT
 # window, where transcript and translation share one column as rows.
 TRANSCRIPT_PANEL_WEIGHT = 65
 TRANSLATION_PANEL_WEIGHT = 35
+
+# The floating jump-to-latest arrow. `PAD_X` clears the auto-hiding
+# scrollbar (16 px wide) with a little air. Both pads are plain pixels
+# because `place` offsets sit outside the design's scaled spacing scale.
+FOLLOW_BUTTON_SIZE = 30
+FOLLOW_BUTTON_PAD_X = 26
+FOLLOW_BUTTON_PAD_Y = 14
 
 
 class AlphaApp(
@@ -1251,7 +1259,7 @@ class AlphaApp(
         now = time.monotonic()
         min_interval = 1.0 / max(1, TRANSCRIPT_UI_SCROLL_MAX_HZ)
         if now - self._transcript_ui_scroll_last_mono >= min_interval:
-            box.see(tk.END)
+            scroll_to_tail(box)
             self._transcript_ui_scroll_last_mono = now
 
     def _cancel_lag_monitor_tick(self):
@@ -2220,7 +2228,7 @@ class AlphaApp(
                 "body",
             )
         box.configure(state="disabled")
-        box.see(tk.END)
+        scroll_to_tail(box)
         self._interim_log(
             "[INTERIM] update_done",
             {"new_box_end_index": str(box.index("end"))},
@@ -4836,17 +4844,140 @@ class AlphaApp(
         except Exception:
             pass
 
+    def _sync_follow_tail_button(self, box):
+        """Hand the tail back when nothing is scrollable, then show or hide
+        the jump-to-latest arrow.
+
+        `yview() == (0.0, 1.0)` is the same "content fits the pane" test
+        `check_scrollbar_visibility` uses directly above. While it holds there
+        is no scrolled-up position to preserve, so Clear, a language switch and
+        a shrinking pane all re-arm following without any of them needing to
+        know this feature exists.
+        """
+        try:
+            first, last = box.yview()
+        except Exception:
+            return
+        if first == 0.0 and last == 1.0:
+            box._follow_tail = True
+        button = getattr(box, "_follow_button", None)
+        if button is None:
+            return
+        show = not getattr(box, "_follow_tail", True)
+        # This runs from `yscroll_callback`, which `check_scrollbar_visibility`
+        # can re-enter through the `<Configure>` its own pack/pack_forget
+        # raises. Touching geometry only on a real state change keeps the
+        # repeat visits free and cannot oscillate.
+        if show == bool(getattr(box, "_follow_button_shown", False)):
+            return
+        box._follow_button_shown = show
+        try:
+            if show:
+                # The arrow floats OVER the pane. Tk stacks a
+                # later-created sibling above an earlier one, which the
+                # creation order in `_create_styled_text` already
+                # satisfies -- but that is an invisible dependency on
+                # where one line happens to sit, and the failure would be
+                # an arrow hidden behind the text. One lift on a state
+                # change removes it.
+                button.lift()
+                button.place(
+                    relx=1.0,
+                    rely=1.0,
+                    anchor="se",
+                    x=-FOLLOW_BUTTON_PAD_X,
+                    y=-FOLLOW_BUTTON_PAD_Y,
+                )
+            else:
+                button.place_forget()
+        except Exception:
+            pass
+
+    def _note_reader_scrolled(self, box):
+        """Record where the reader left a pane after scrolling it themselves.
+
+        Only reader-driven scrolls reach here. A programmatic `see(tk.END)`
+        deliberately does not: if it could set this flag, the pane's own
+        auto-scroll would keep re-arming itself and the reader could never stay
+        put -- which is the behaviour this whole path exists to fix.
+        """
+        try:
+            _first, last = box.yview()
+        except Exception:
+            return
+        box._follow_tail = last >= FOLLOW_TAIL_BOTTOM_EPS
+        self._sync_follow_tail_button(box)
+
+    def _jump_to_latest(self, box):
+        """The floating arrow: go to the last line and follow it again."""
+        if box is None:
+            return
+        box._follow_tail = True
+        try:
+            box.see(tk.END)
+        except Exception:
+            pass
+        self._sync_follow_tail_button(box)
+
+    def _bind_follow_tail(self, text_widget, scrollbar):
+        """Let the reader's own scrolling decide whether a pane follows."""
+        text_widget._follow_tail = True
+        text_widget._follow_button_shown = False
+
+        def on_reader_scroll(_event=None):
+            # A widget's own bindings run BEFORE the `Text` class binding that
+            # actually moves the view, so the new position is only readable
+            # once Tk has processed the event.
+            try:
+                text_widget.after_idle(self._note_reader_scrolled, text_widget)
+            except Exception:
+                pass
+
+        for sequence in (
+            "<MouseWheel>",
+            "<Button-4>",
+            "<Button-5>",
+            "<B1-Motion>",
+            "<Prior>",
+            "<Next>",
+            "<Up>",
+            "<Down>",
+            "<Home>",
+            "<End>",
+            "<Control-Home>",
+            "<Control-End>",
+        ):
+            text_widget.bind(sequence, on_reader_scroll, add="+")
+
+        def scroll_from_scrollbar(*args):
+            # CTkScrollbar 5.2.2 routes the thumb drag, the trough click and
+            # its own `<MouseWheel>` through this single command
+            # (`ctk_scrollbar.py` `_clicked` / `_mouse_scroll_event`), so
+            # wrapping it catches every scrollbar-driven scroll at once.
+            result = text_widget.yview(*args)
+            self._note_reader_scrolled(text_widget)
+            return result
+
+        scrollbar.configure(command=scroll_from_scrollbar)
+
     def _bind_scroll_autohide(self, text_widget, scrollbar):
         """Link scrollbar to text widget and refresh visibility on scroll/resize."""
 
         def yscroll_callback(first, last):
             scrollbar.set(first, last)
             self.check_scrollbar_visibility(text_widget, scrollbar)
+            self._sync_follow_tail_button(text_widget)
 
         text_widget.configure(yscrollcommand=yscroll_callback)
 
         def on_configure(_event=None):
             self.check_scrollbar_visibility(text_widget, scrollbar)
+            # A resize can turn overflowing content into content that
+            # fits. Without this the arrow can stay mapped over a pane
+            # with nothing left to scroll. Placing the button raises
+            # `<Configure>` on the button, never on the text widget, so
+            # this cannot re-enter.
+            self._sync_follow_tail_button(text_widget)
 
         text_widget.bind("<Configure>", on_configure, add="+")
         text_widget._scroll_refresh = lambda: self.check_scrollbar_visibility(
@@ -4911,6 +5042,25 @@ class AlphaApp(
 
         text_widget._scrollbar = scrollbar
         text_widget._pane_frame = text_frame
+
+        # Jump-to-latest. Floated over the pane instead of added to the
+        # card header so it sits where the reader is already looking, and
+        # so the two panes can be in different follow states without the
+        # header moving. Created here and left unplaced:
+        # `_sync_follow_tail_button` is the only thing that ever maps it.
+        text_widget._follow_button = ctk.CTkButton(
+            master=text_frame,
+            text="\u2193",
+            width=FOLLOW_BUTTON_SIZE,
+            height=FOLLOW_BUTTON_SIZE,
+            corner_radius=FOLLOW_BUTTON_SIZE // 2,
+            fg_color=COLORS["border"],
+            hover_color=COLORS["border_soft"],
+            text_color=COLORS["text_primary"],
+            font=self._ui_font(15, "bold"),
+            command=lambda: self._jump_to_latest(text_widget),
+        )
+        self._bind_follow_tail(text_widget, scrollbar)
 
         if pane_role:
             stacked = self._design_width() < CONTENT_STACK_BREAKPOINT
@@ -6443,7 +6593,7 @@ class AlphaApp(
             if not content.endswith("\n"):
                 box.insert("end", "\n")
             box.configure(state="disabled")
-            box.see(tk.END)
+            scroll_to_tail(box)
             self._displayed_segment_count = len(window)
             scrollbar = getattr(box, "_scrollbar", None)
             if scrollbar is not None and hasattr(self, "check_scrollbar_visibility"):
@@ -9252,10 +9402,7 @@ class AlphaApp(
                     "source_version": int(source_version or 1),
                     "state": "loading",
                 }
-        try:
-            box.see(tk.END)
-        except Exception:
-            pass
+        scroll_to_tail(box)
 
     def _clear_translation_loading_item(
         self,
@@ -9439,10 +9586,7 @@ class AlphaApp(
             )
         except Exception:
             pass
-        try:
-            box.see(tk.END)
-        except Exception:
-            pass
+        scroll_to_tail(box)
 
     def loading_indicators_pending(self) -> int:
         return len(getattr(self, "_translation_loading_items", None) or {})
@@ -9811,10 +9955,7 @@ class AlphaApp(
             pass
         if hasattr(box, "_scrollbar"):
             self.check_scrollbar_visibility(box, box._scrollbar)
-        try:
-            box.see(tk.END)
-        except Exception:
-            pass
+        scroll_to_tail(box)
         self._record_translation_segment(
             original_text,
             translated_text,
@@ -10885,7 +11026,7 @@ class AlphaApp(
 
         box.configure(state="disabled")
         self.check_scrollbar_visibility(box, box._scrollbar)
-        box.see(tk.END)
+        scroll_to_tail(box)
 
     def _on_close(self):
         """Clean up audio/WebSocket resources before closing the window."""
