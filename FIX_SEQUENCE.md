@@ -117,7 +117,7 @@ a day of phase 1; otherwise ship phase 1 alone and phase 2 second.
 
 ---
 
-## Phase 3 — Close the audit gap (no code changes) — 1 of 5 done
+## Phase 3 — Close the audit gap (no code changes) — 2 of 5 done
 
 Audit the five areas the review never reached, listed in its
 *What this review did NOT cover* section:
@@ -144,12 +144,18 @@ promoted to their own phase below rather than waiting for the other four
 audits. Its third finding (item 12) folds into the log-rotation work, because
 the same change fixes both.
 
-Remaining, highest expected value first: **commit-authority internals**,
-**global concurrency sweep**, **UI threading**, **Japanese assembler**.
+**Done — commit-authority internals** (review item 13, plus three invariants
+confirmed holding and a correction to item 1's stated mechanism). The single
+commit authority, the frozen-ledger export and the revise-target guard all
+hold; the one finding is a dead stale-session guard, which folds into phase 3b
+because it is the same failure window.
+
+Remaining, highest expected value first: **global concurrency sweep**,
+**UI threading**, **Japanese assembler**.
 
 ---
 
-## Phase 3b — The Stop/Start window (items 10 and 11)
+## Phase 3b — The Stop/Start window (items 10, 11 and 13)
 
 These two are one failure wearing two hats, and both fixes are a few lines.
 They jump ahead of the old phase 4 because they are HIGH rather than MEDIUM,
@@ -171,6 +177,22 @@ Gate `toggle_listening` (`main_window.py:10116`) on the worker rather than on
 the UI flag — `stop_core_completed_event` is already set at
 `stop_finalize_worker.py:2060`, after the last artifact write, and is exactly
 the right signal. The button can read "Finishing previous session…" until then.
+
+**Item 13 third**, because it is the same window seen from the other side: a
+stale event arriving while a second session has begun. The lifecycle's guard
+against that cannot fire — `session_id` is compared against itself. Compare
+against the host instead, which is the only value that can differ:
+
+```python
+host_sid = str(getattr(self._host, "_live_session_id", "") or "")
+if host_sid and self._session_id and host_sid != self._session_id:
+    ... reject
+session_id = self._session_id or host_sid
+```
+
+The ledger already refuses the write (`canonical_identity_registry.py:116`),
+so this is about the lifecycle's own state being mutated by a stale final
+before anything downstream says no.
 
 **Test.** Drive a Start during a finalize that is deliberately slowed, and
 assert the second session cannot begin until the worker is done. That is also
@@ -295,8 +317,8 @@ design; answer them before scoping stages 2-4.
 |---|---|---|
 | 1 | Item 1 — translation queue hole | ✅ shipped `49a5178`, package 26.5.5 |
 | 2 | Item 3 — WASAPI reader + the audit-tool blind spot | ✅ shipped `fd93e61`, package 26.5.6 |
-| 3 | Audit the five unreviewed subsystems | 1 of 5 done (stop/finalize → items 10-12) |
-| **3b** | **Items 11 then 10 — the Stop/Start window** | **next code change** |
+| 3 | Audit the five unreviewed subsystems | 2 of 5 done (stop/finalize → 10-12; commit authority → 13) |
+| **3b** | **Items 11, 10, 13 — the Stop/Start window** | **next code change** |
 | 4 | Items 2, 8, 9, 4 + 12 | one package |
 | 5 | Item 5 — device re-bind | alone |
 | 6 | Items 6, 7 + the follow-tail leftovers | batch |

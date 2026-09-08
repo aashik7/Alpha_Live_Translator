@@ -40,6 +40,7 @@ this as a complete picture — four subsystems were never reached.
 | **10** | The UI says "Stopped" 5 s in while the deliverable has up to 66 s still to be written | `_stop_ui_watchdog_tick` force-restores at `>= 5.0` s and clears BOTH guards that keep a new session out (`_is_finalizing`, `_stop_finalize_started`). `toggle_listening` has no other guard. Measured from the step table: 20 steps, **66.0 s** of budget before `write_final_alpha`, 71.0 s for the whole worker. | A second session can begin while the previous one has not written its transcript. The two big budgets are real: `drain_audio_queue` 25 s spends it when audio is still queued, and `translation_worker_shutdown` 16 s is longest under exactly the slow-DeepL condition item 1 lives in. **PLAUSIBLE** — every link verified, but not driven to corruption. | **HIGH** | FIX-SOON |
 | **11** | `SECOND_RUN_FOLDER_CREATION_BLOCKED` blocks nothing | The guard body has NO `return`/`raise` — it only logs — and `set_active_run_folder` at `:712` sits outside it. Verified by AST, not by eye. | With item 10, a second Start repoints every runtime writer at the new run's folder and force-closes the pending ones while the old worker is still writing. Worse than the direct cost: the event NAME asserts a guard that does not exist, so anyone reading a client's logs concludes the rebind was prevented and stops asking. | **HIGH** | FIX-SOON |
 | **12** | Every rebind migrates the unbounded `_pending` pile | `rebind_all_runtime_writers` runs `migrate_pending_files_to_run_folder`, and item 4 established `_pending/logs/*` is the one file nothing rotates across sessions. | Measured today on this machine: **~457 MB** (`japanese_accuracy` 358 MB + `freeze_guard` 66 MB + `async_debug` 33 MB) copied on every rebind. A bare harness calling it twice **did not finish in 120 s**. This is item 4's second-order cost that item 4 did not name: not just disk, but latency on a path the user waits on at Start — growing without bound. | MEDIUM | FIX-SOON |
+| **13** | The lifecycle's stale-session guard cannot fire | `session_id` is assigned `self._session_id` whenever that is truthy, so the comparison `session_id != self._session_id` is between one value and itself; when it is falsy the `and self._session_id` term already made the guard False. Evaluated over all three input shapes: never fires. | The commit authority still fails closed — `canonical_identity_registry.py:116` is a real comparison and does reject. But a stale event reaches the lifecycle's OWN state first, so a final from a previous session can extend or replace the CURRENT session's active utterance. Matters more with item 10, where a second session can begin while the first is finalizing. | MEDIUM | FIX-SOON |
 
 ## 1. A full translation queue silently stops the translation pane for the rest of the session
 
@@ -603,6 +604,115 @@ proportionally longer one every session.
 this shrinks with it. Additionally, migration should be incremental or skipped
 for files above a size threshold -- copying a 358 MB log into a run folder is
 not evidence collection, it is an accident.
+
+---
+
+## 13. The lifecycle's stale-session guard cannot fire
+
+**Verdict: CONFIRMED** · Severity **MEDIUM** · Importance **FIX-SOON**
+`alpha/transcription/utterance_lifecycle.py:1503-1506`
+
+```python
+session_id = self._session_id or str(
+    getattr(self._host, "_live_session_id", "") or ""
+)
+if session_id and self._session_id and session_id != self._session_id:
+    ... return IGNORE_DUPLICATE / "session_mismatch"
+```
+
+`session_id` is assigned `self._session_id` **whenever that is truthy**, so by
+the time the comparison runs the two are the same value. And when
+`self._session_id` is falsy, the `and self._session_id` term has already made
+the guard False. Evaluated over every input shape:
+
+```
+self._session_id='S1'  host='S2'  -> session_id='S1'  guard fires? False
+self._session_id=''    host='S2'  -> session_id='S2'  guard fires? False
+self._session_id='S1'  host='S1'  -> session_id='S1'  guard fires? False
+```
+
+The `session_mismatch` branch is unreachable. The host's `_live_session_id` --
+the only value that could disagree -- is consulted **only** when the lifecycle
+has no session of its own, which is exactly when there is nothing to disagree
+with.
+
+**Risk, stated precisely.** The commit authority still fails closed: an
+independent guard in `canonical_identity_registry.py:116` compares the
+incoming session against the registry's own and rejects with
+`IDENTITY_REJECTION / session_mismatch`. That one is a real comparison of two
+independent values and does fire. So a stale event cannot reach the ledger.
+
+What it *can* do is reach the lifecycle's own state first. `_ingest` proceeds
+into its interim/final cases and updates `self._active`, so a final belonging
+to a previous session can extend or replace the **current** session's active
+utterance before anything downstream refuses the write. The visible result is
+corruption of a live utterance rather than a bad ledger record.
+
+This matters more given item 10: a second session can begin while the previous
+one is still finalizing, which is precisely when a stale event is in flight.
+
+Second cost, the same shape as item 11: the log will say the *registry*
+rejected a session mismatch and never that the *lifecycle* accepted one, so a
+reader cannot tell the first guard did nothing.
+
+**Fix.** Compare against the host, which is the only value that can differ:
+
+```python
+host_sid = str(getattr(self._host, "_live_session_id", "") or "")
+if host_sid and self._session_id and host_sid != self._session_id:
+    ... reject
+session_id = self._session_id or host_sid
+```
+
+Regression test: drive `_ingest` with `self._session_id` set and a different
+`_live_session_id` on the host, and assert the decision is `IGNORE_DUPLICATE`
+with reason `session_mismatch`. It must fail against the current code, which
+returns a normal decision.
+
+---
+
+## Correction to item 1
+
+Item 1 said the delivered translated transcript ends at the drop "because the
+pane is read back on export". **The mechanism was misstated.** Checked while
+auditing the commit authority:
+
+* The **final Alpha output** is written from the frozen ledger, not a widget --
+  `FINAL_EXPORT_FROM_FROZEN_LEDGER_ONLY` is `True` at runtime and
+  `write_final_alpha_output_from_snapshot` (`run_artifacts.py:694`) goes
+  through `get_frozen_snapshot`. That invariant holds.
+* The user-facing **Export Transcript** action
+  (`main_window.py:11843`) takes its translated section from
+  `_get_translated_transcript_for_copy_export`, which reads
+  `_translation_items_by_utterance` first and only falls back to the widget.
+  That registry's `line_text` is written by `_clear_translation_loading_item`,
+  which runs only when a translation actually reaches the UI.
+
+So the **consequence stands** -- a stalled ordering gate means the later
+translations never reach the UI, never get a registry entry, and are absent
+from the exported file -- but the reason is the registry the stall starves,
+not a widget read. Item 1 is fixed either way; the file should not carry a
+wrong mechanism.
+
+---
+
+## Commit authority: three invariants checked, all holding
+
+Recorded because "no finding" is a result, and an audit that reports only what
+it disliked is not an audit.
+
+| Invariant | Verdict |
+|---|---|
+| One commit authority | **Holds.** An AST sweep of every caller of the ledger's write API across `alpha/` finds exactly one: `apply_decision` from `execute_pipeline_commit` (`pipeline_commit_transaction.py:324`). |
+| Export from the frozen ledger, never a widget | **Holds** for the final output -- see the correction above. |
+| A revise cannot address a bad target | **Holds.** `_revise_record_unlocked` (`canonical_transcript_ledger.py:541`) raises `PipelineIntegrityError` when the target is missing, inactive or suppressed, so the self-referential shape of the old item 20b fails closed at the ledger even if a caller regresses. A `source_version` ordering guard sits beside it. |
+
+One apparent second writer was checked and cleared: `suppress_record` called
+directly from `accept_boundary_proposal` (`utterance_lifecycle.py:1187`). It is
+not a bypass -- it quarantines a record the authority had already committed,
+when identity binding afterwards failed, and it fails closed (`success: False`,
+`quarantined: True`), recording even a failed quarantine rather than swallowing
+it.
 
 ---
 
