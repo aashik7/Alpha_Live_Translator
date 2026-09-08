@@ -5,7 +5,11 @@ import time
 
 from tkinter import messagebox
 
-from alpha.config import WASAPI_FRAMES_PER_BUFFER
+from alpha.config import (
+    WASAPI_FRAMES_PER_BUFFER,
+    WASAPI_READER_ERROR_BACKOFF_S,
+    WASAPI_READER_MAX_CONSECUTIVE_ERRORS,
+)
 from alpha.utils.queues import put_bounded
 
 
@@ -217,18 +221,45 @@ class WasapiCaptureMixin:
                 com_uninitialize()
 
     def _wasapi_reader_worker(self):
-        """Blocking read loop — more reliable than callbacks on some Python builds."""
+        """Blocking read loop — more reliable than callbacks on some Python builds.
+
+        A failing read is survivable and used not to be. The handler ended in
+        `break`, so one exception from `stream.read()`, `put_bounded()` or
+        `is_active()` ended the loop, the function returned, and this plain
+        thread was gone -- with `_stop_event` still clear, the stream object
+        still reporting itself active, and the connection indicator still
+        reading Signal OK over a dead capture path. The far end of the meeting
+        went silent for the rest of the session.
+
+        It now backs off and stays in the loop. Giving up is a LOOP CONDITION
+        rather than a `break` inside the handler, for two reasons: the run has
+        to be consecutive (a good read clears it, so scattered glitches across a
+        long meeting never accumulate), and a handler that cannot leave the loop
+        is what `tools/audit_unrecoverable_latches.py` scan 2 can actually
+        verify -- this function is the reason that scan learned to look inside
+        handlers at all.
+
+        A genuinely dead stream still ends the loop, loudly. A PortAudio stream
+        does not self-heal; reopening it is the device-rebind work, not this.
+        """
         idle_polls = 0
-        while not self._stop_event.is_set():
+        consecutive_errors = 0
+        while (
+            not self._stop_event.is_set()
+            and consecutive_errors < WASAPI_READER_MAX_CONSECUTIVE_ERRORS
+        ):
             try:
                 stream = self._wasapi_stream
                 if stream is None or not stream.is_active():
+                    # The clean shutdown exit. `_close_wasapi_stream` nulls
+                    # `_wasapi_stream`, and this is how the loop learns.
                     break
 
                 frames = self._wasapi_frames_per_buffer
                 available = stream.get_read_available()
                 if available >= frames:
                     data = stream.read(frames, exception_on_overflow=False)
+                    consecutive_errors = 0
                     if data and self.sys_audio_queue is not None:
                         if getattr(self, "_dg_stop_sending_audio", False):
                             continue
@@ -244,15 +275,32 @@ class WasapiCaptureMixin:
                         idle_polls = 0
                     time.sleep(0.01)
             except Exception as exc:
-                if not self._stop_event.is_set():
-                    print(f"[WASAPI] Reader error: {exc}")
+                consecutive_errors += 1
+                if self._stop_event.is_set():
+                    # Teardown closed the stream out from under the read. The
+                    # loop condition ends it; do not sleep out the backoff.
+                    continue
+                if (
+                    consecutive_errors == 1
+                    or consecutive_errors % 10 == 0
+                ):
+                    print(
+                        f"[WASAPI] Reader error {consecutive_errors}/"
+                        f"{WASAPI_READER_MAX_CONSECUTIVE_ERRORS}: {exc}"
+                    )
                 try:
                     from alpha.utils.runtime_audio_counters import note_capture_error
 
                     note_capture_error()
                 except Exception:
                     pass
-                break
+                time.sleep(WASAPI_READER_ERROR_BACKOFF_S)
+        if consecutive_errors >= WASAPI_READER_MAX_CONSECUTIVE_ERRORS:
+            print(
+                "[WASAPI] Reader stopped: "
+                f"{consecutive_errors} consecutive read errors. System audio "
+                "will not resume until the session is restarted."
+            )
 
     def _start_wasapi_loopback(self):
         """Start capturing all system audio via WASAPI loopback (zero user setup)."""

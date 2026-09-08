@@ -41,6 +41,15 @@ from alpha.stt_settings import (  # noqa: E402
 TRANSCRIPT_MERGE_WINDOW_S = 3.5  # merge same-speaker finals within this window
 AUDIO_BLOCKSIZE = 4000  # silence padding chunk size at 16 kHz
 WASAPI_FRAMES_PER_BUFFER = 2048
+# How the reader loop treats a failing read. It backs off and stays in the loop
+# rather than ending capture on the first error -- a device glitch, a driver
+# reset or a format change used to kill system audio for the whole session.
+# The run must be CONSECUTIVE: one good read resets it, so scattered glitches
+# across a long meeting never accumulate into a give-up. 50 x 0.05 s is about
+# 2.5 seconds of solid failure before the loop concludes the stream is gone,
+# which a transient never reaches and a removed device always does.
+WASAPI_READER_ERROR_BACKOFF_S = 0.05
+WASAPI_READER_MAX_CONSECUTIVE_ERRORS = 50
 MIC_BLOCKSIZE = 1024  # microphone capture block size at 16 kHz
 MIC_NOISE_GATE_INITIAL_RMS = 200.0  # CHANGED: adaptive gate seed for first 2s (fix 7)
 MIC_RMS_ROLLING_WINDOW_S = 2.0  # CHANGED: rolling mic RMS window (fix 7)

@@ -209,13 +209,56 @@ def _catches_everything(try_node: ast.Try) -> bool:
     return False
 
 
+def _leaves_loop(node, in_nested_loop: bool = False) -> bool:
+    """True if `node` can end the loop this handler sits in.
+
+    `break` ends it only when it belongs to THIS loop -- one inside a nested
+    `for`/`while` leaves the inner construct. `return` ends the target function
+    from anywhere, and the target function returning IS the thread ending, so
+    only a nested function body hides one. `continue` never leaves; at handler
+    level it is exactly what a surviving loop does.
+    """
+    for child in ast.iter_child_nodes(node):
+        if isinstance(
+            child,
+            (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda, ast.ClassDef),
+        ):
+            continue                      # a different frame entirely
+        if isinstance(child, ast.Return):
+            return True
+        if isinstance(child, ast.Break) and not in_nested_loop:
+            return True
+        deeper = in_nested_loop or isinstance(
+            child, (ast.For, ast.While, ast.AsyncFor)
+        )
+        if _leaves_loop(child, deeper):
+            return True
+    return False
+
+
+def _try_protects(try_node: ast.Try) -> bool:
+    """True only if catching here actually keeps the loop alive.
+
+    The original question was just "does the body catch Exception?", which
+    treats "the exception does not propagate" as "the loop survives". That is
+    false for a handler ending in `break` or `return`: the thread dies just as
+    surely, only silently. Measured on the shipped tree, `break`, `continue`,
+    `return` and `pass` handlers were indistinguishable to this scan -- which
+    is how `_wasapi_reader_worker` sat here unreported while one read error
+    killed system audio for a whole session.
+    """
+    if not _catches_everything(try_node):
+        return False
+    return not any(_leaves_loop(handler) for handler in try_node.handlers)
+
+
 def _body_swallows(loop) -> bool:
     for statement in loop.body:
-        if isinstance(statement, ast.Try) and _catches_everything(statement):
+        if isinstance(statement, ast.Try) and _try_protects(statement):
             return True
         if isinstance(statement, (ast.With, ast.If)):
             for inner in statement.body:
-                if isinstance(inner, ast.Try) and _catches_everything(inner):
+                if isinstance(inner, ast.Try) and _try_protects(inner):
                     return True
     return False
 

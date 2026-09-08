@@ -211,6 +211,43 @@ ALLOWLIST: tuple[Allowed, ...] = (
         "the reason asserts the supervision instead.",
         lambda: "SupervisedThread" in src("alpha/utils/stop_finalize_worker.py"),
     ),
+    # Both entries below were surfaced by phase 2's fix to the scan itself:
+    # `_body_swallows` used to stop at "does the body catch Exception?" and
+    # never look inside the handler, so a handler ending in `break` read as
+    # protection. Now that it looks, these two appear -- correctly, and in both
+    # cases the exit is the intended contract rather than a defect.
+    Allowed(
+        "thread", "alpha/utils/supervised_thread.py", "_supervise",
+        "This IS the supervisor. Its two handler exits are its published "
+        "contract: raised while stopping (not a fault to recover from), and "
+        "restart budget exhausted, which sets `_gave_up` and emits "
+        "SUPERVISED_THREAD_GAVE_UP. A supervisor that never gave up would spin "
+        "on a permanently broken target. The reason holds only while giving up "
+        "stays bounded AND observable.",
+        lambda: (
+            "self._gave_up = True" in src("alpha/utils/supervised_thread.py")
+            and "SUPERVISED_THREAD_GAVE_UP" in src("alpha/utils/supervised_thread.py")
+            and "def _budget_exhausted" in src("alpha/utils/supervised_thread.py")
+        ),
+    ),
+    Allowed(
+        "thread", "alpha/transcription/deepgram_client.py", "stream_audio",
+        "Its three handler exits are all WEBSOCKET SEND failures -- a failed "
+        "send means the socket is gone, so ending the sender is right and the "
+        "reconnect chain re-spawns it with a fresh socket. That is a different "
+        "shape from the WASAPI reader, where the device read failed but the "
+        "device was still there. NOT a clean bill of health: whether every "
+        "send failure really reaches the reconnect chain is a question about "
+        "the Deepgram transport, which this review never audited -- see "
+        "CODE_REVIEW_20260904.md, 'What this review did NOT cover'. The reason "
+        "asserts only what was checked: that a reconnect path exists and that "
+        "the sender is spawned from it.",
+        lambda: (
+            "def _reconnect_deepgram" in src("alpha/transcription/deepgram_client.py")
+            and "threading.Thread(target=stream_audio"
+            in src("alpha/transcription/deepgram_client.py")
+        ),
+    ),
 )
 
 
