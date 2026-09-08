@@ -392,13 +392,59 @@ Cheap, low risk, batch with whatever else is shipping.
 ## Phase 7 — Only after everything above is green
 
 Speaker hot-swap (`SPEAKER_HOTSWAP_GUIDELINE.md`). Its Stage 0 was completed in
-phase 2. Start with **Stage 1, the per-chunk format stamp** — stamping
-`(pcm, channels, rate)` on every chunk at the reader is behaviour-neutral today,
-verifiable with a tone test, and it makes the two worst risks impossible by
-construction rather than by discipline.
+phase 2.
 
-Four design questions in §8 of that guideline are still open and change the
-design; answer them before scoping stages 2-4.
+### Stage 1 — the per-chunk format stamp — ✅ SHIPPED `c33f5f6`, package 26.5.11
+
+Behaviour-neutral today, and it closes R1, R2, R16 and R17 by construction.
+
+The reader stamps `(pcm, channels, rate)` on every chunk; `push_system`
+resamples with the values that arrived WITH the chunk. `configure_sources` is
+demoted to supplying the default for an unstamped chunk, and bare bytes still
+work on the queue.
+
+Checked before changing the queue's item shape: **one producer** (`wasapi.py`),
+**one consumer** (`ingest_queues` on the mixer worker). Every other
+`sys_audio_queue` reference in the app is `qsize()` — shape-agnostic.
+
+The stamp is read **once at reader start**, not per iteration. Per-iteration
+would recreate exactly the cross-thread read this removes; once is correct
+because a device change tears the reader down and `_start_wasapi_loopback` sets
+the attributes before starting the next one, so each reader stamps its own
+device's format for its whole life.
+
+R17 was confirmed live at today's line numbers, not quoted from the guideline:
+`main_window.py:8800-8801` hoists `_wasapi_channels` / `_wasapi_rate` into
+locals and `:8803` calls `configure_sources` once before the loop, so assigning
+those attributes mid-session never did anything. After the stamp they are
+defaults only.
+
+Tests (`tests/test_audio_chunks_carry_their_format.py`, 12) **assert on samples,
+never on durations** — duration alone passes the wrong-channel case at some rate
+pairs, which is how this class of bug hides. Six fail against the pre-fix tree.
+R16 is pinned statically: no call to `push_system` / `ingest_queues` /
+`configure_sources` anywhere in `alpha/` outside `audio_mixer_worker`.
+
+Verified: full suite 1361 tests, failing set = the eight-name baseline **plus
+the documented item48 intermittent**, which fired in this run and passes in
+isolation; `verify_mitigation_claims.py` 27/27; latch audit unchanged at its 4
+allowlisted loops; the package driven end-to-end against a synthetic 26.5.10
+install.
+
+> ⚠️ **A note on suite timing, so the next run is not misread.** The first full
+> run of this stage took **5994 s and showed two extra failures**
+> (`test_item88_ui_strings` — both of them file-write assertions). The
+> post-commit graphify rebuild was running through it. A clean re-run took
+> **834 s** and both passed. If the suite is suddenly 20× slow, check
+> `~/.cache/graphify-rebuild.log` before believing the failures.
+
+### Stages 2-4 — still blocked
+
+Four design questions in §8 of that guideline are open and change the design;
+answer them before scoping stages 2-4. Question 1 (follow the OS default
+automatically, or an explicit picker) is **partly answered by phase 5 already
+shipping the automatic follow** — that decision needs confirming rather than
+taking.
 
 ---
 
@@ -413,7 +459,8 @@ design; answer them before scoping stages 2-4.
 | 4 | Items 2, 8, 9, then 14 → 4 + 12 | ✅ shipped, package 26.5.8 |
 | 5 | Item 5 — device re-bind | ✅ shipped `c2bdab2`, package 26.5.9 |
 | 6 | Items 17, 16, 6, 7 + the follow-tail leftovers | shipped `42f0d29`, package 26.5.10 |
-| **7** | **Speaker hot-swap** | **next — blocked on the four §8 design answers** |
+| 7 stage 1 | Per-chunk format stamp — R1, R2, R16, R17 | ✅ shipped `c33f5f6`, package 26.5.11 |
+| **7 stages 2-4** | **Speaker hot-swap proper** | **blocked on the four §8 design answers** |
 
 Phase 3's four remaining audits are read-only and touch no code, so they can run
 between the code phases rather than blocking them.

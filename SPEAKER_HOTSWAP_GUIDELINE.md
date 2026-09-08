@@ -202,6 +202,16 @@ the previous instance is gone.
 
 Severity is about what the *client* loses, not about implementation difficulty.
 
+> **R1, R2, R16 and R17 are CLOSED as of stage 1** (`c33f5f6`, package 26.5.11).
+> The stamp shipped: the reader puts `(pcm, channels, rate)` on the queue and
+> `push_system(chunk, channels=None, rate=None)` resamples with the stamp,
+> falling back to `configure_sources` only for an unstamped chunk. Pinned by
+> `tests/test_audio_chunks_carry_their_format.py` — twelve tests, six of which
+> fail against the pre-fix tree, asserting on samples rather than durations, and
+> one static check that nothing outside `audio_mixer_worker` calls the mixer's
+> three format-touching methods. The mechanisms below are kept as the record of
+> why the design is what it is.
+
 ### R1 — Wrong resample ratio across the swap · **CRITICAL** → *eliminated by the format stamp*
 
 **Mechanism.** `push_system` resamples with `self._wasapi_rate` /
@@ -619,7 +629,7 @@ shipped a green test over a dead code path twice.
 | Stage | Content | Why this order | Shippable alone? |
 |---|---|---|---|
 | 0 | **R5** — supervised, restartable reader; plus the scan-2 blind-spot fix in the audit tool | The feature's most likely failure lands on a thread that currently dies for good | **Yes** — a real reliability fix with no swap feature at all |
-| 1 | **Per-chunk format stamp** (R1, R2, R16, R17) | Makes the swap correct *by construction*. Also fixes a live latent hazard: the mixer's format is shared mutable state read on one thread and written on another, safe today only because nothing writes it after startup | **Yes** — behaviour-neutral today, verifiable by the tone test |
+| 1 | **Per-chunk format stamp** (R1, R2, R16, R17) — ✅ **SHIPPED** `c33f5f6`, package 26.5.11 | Makes the swap correct *by construction*. Also fixes a live latent hazard: the mixer's format is shared mutable state read on one thread and written on another, safe today only because nothing writes it after startup | **Yes** — behaviour-neutral today, verifiable by the tone test |
 | 2 | `swap_system_audio_device()` on a worker thread, evidence event, no UI | Testable end to end without touching the UI | Yes |
 | 3 | Positive confirmation (R12), debounce and cap (R13) | Turns "it swapped" into "it is working" | Yes |
 | 4 | UI control | Last, and see the note below | — |
