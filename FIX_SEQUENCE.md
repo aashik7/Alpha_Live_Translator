@@ -231,7 +231,7 @@ unproven claim once it is cheap to prove.
 
 ---
 
-## Phase 4 — The provable batch (items 2, 8, 9, 14, 4 + 12)
+## Phase 4 — The provable batch (items 2, 8, 9, 14, 4 + 12) — ✅ SHIPPED
 
 One update package. Ordered by severity within the phase.
 
@@ -364,8 +364,8 @@ design; answer them before scoping stages 2-4.
 | 2 | Item 3 — WASAPI reader + the audit-tool blind spot | ✅ shipped `fd93e61`, package 26.5.6 |
 | 3 | Audit the five unreviewed subsystems | ✅ 5 of 5 (items 10-17) |
 | 3b | Items 11, 10, 13 + 15 — the Stop/Start window and the naming fix | ✅ shipped, package 26.5.7 |
-| **4** | **Items 2, 8, 9, then 14 → 4 + 12** | **next code change**, one package |
-| 5 | Item 5 — device re-bind | alone |
+| 4 | Items 2, 8, 9, then 14 → 4 + 12 | ✅ shipped, package 26.5.8 |
+| **5** | **Item 5 — device re-bind** | **next code change**, alone |
 | 6 | Items 17, 16, 6, 7 + the follow-tail leftovers | batch |
 | 7 | Speaker hot-swap | after the rest is green |
 

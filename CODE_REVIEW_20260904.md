@@ -31,9 +31,9 @@ this as a complete picture — four subsystems were never reached.
 | Phase 1 | 1 | 26.5.5 |
 | Phase 2 | 3 | 26.5.6 |
 | Phase 3b | 10, 11, 13, 15 | 26.5.7 |
+| Phase 4 | 2, 8, 9, 14, 4, 12 | 26.5.8 |
 
-Still open: **2, 4, 5, 6, 7, 8, 9, 12, 14, 16, 17** — see `FIX_SEQUENCE.md`
-for the order and why.
+Still open: **5, 6, 7, 16, 17** — see `FIX_SEQUENCE.md` for the order and why.
 
 ## The whole review in one table
 
@@ -113,7 +113,7 @@ paints it with no new UI code. No test covers this today.
 
 ---
 
-## 2. The wrong-language warning is a stub that always says "commit"
+## 2. The wrong-language warning is a stub that always says "commit" — ✅ FIXED (phase 4)
 
 | | |
 |---|---|
@@ -218,7 +218,7 @@ True only when the handler body also cannot leave the loop.
 
 ---
 
-## 4. Four log writers have no rotation; one file is unbounded across sessions
+## 4. Four log writers have no rotation; one file is unbounded across sessions — ✅ FIXED (phase 4)
 
 | | |
 |---|---|
@@ -417,7 +417,7 @@ fail-closed identity gate this measurement just showed working.
 
 ---
 
-## 8. Every DeepL placeholder key the project ships passes the Start check
+## 8. Every DeepL placeholder key the project ships passes the Start check — ✅ FIXED (phase 4)
 
 **Verdict: CONFIRMED** · Severity **MEDIUM** · Importance **FIX-SOON**
 `alpha/config.py:109`
@@ -464,7 +464,7 @@ the sentence, not refusing to start.
 
 ---
 
-## 9. The installer's own key template passes both the build gate and the runtime check
+## 9. The installer's own key template passes both the build gate and the runtime check — ✅ FIXED (phase 4)
 
 **Verdict: CONFIRMED** · Severity **MEDIUM** · Importance **FIX-SOON**
 `installer/keys.local.ini.example:7`, `installer/build_installer.py:85`
@@ -586,7 +586,7 @@ while the code does another.
 
 ---
 
-## 12. Every rebind migrates the unbounded `_pending` pile
+## 12. Every rebind migrates the unbounded `_pending` pile — ✅ FIXED (phase 4)
 
 **Verdict: CONFIRMED** · Severity **MEDIUM** · Importance **FIX-SOON**
 `alpha/utils/troubleshooting_paths.py:683`, compounds item 4
@@ -731,7 +731,7 @@ it.
 
 ---
 
-## 14. `rebind_all_runtime_writers` self-deadlocks, and the workaround that hides it is why `_pending` grows
+## 14. `rebind_all_runtime_writers` self-deadlocks, and the workaround that hides it is why `_pending` grows — ✅ FIXED (phase 4)
 
 **Verdict: CONFIRMED** · Severity **HIGH** · Importance **FIX-SOON**
 `alpha/utils/troubleshooting_paths.py:739-742` and `:343`
