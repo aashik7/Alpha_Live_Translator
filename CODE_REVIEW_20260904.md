@@ -32,8 +32,11 @@ this as a complete picture — four subsystems were never reached.
 | Phase 2 | 3 | 26.5.6 |
 | Phase 3b | 10, 11, 13, 15 | 26.5.7 |
 | Phase 4 | 2, 8, 9, 14, 4, 12 | 26.5.8 |
+| Phase 5 | 5 | 26.5.9 |
 
-Still open: **5, 6, 7, 16, 17** — see `FIX_SEQUENCE.md` for the order and why.
+Still open: **6, 7, 16, 17** — see `FIX_SEQUENCE.md` for the order and why. (6
+and 7 are the two REFUTED items; what remains in each is the latent hazard or
+the missing event, not the reported defect.)
 
 ## The whole review in one table
 
@@ -261,7 +264,7 @@ file is the only one unbounded *across* sessions rather than merely within one.
 
 ---
 
-## 5. A default-audio-device change is detected but capture is never re-bound
+## 5. A default-audio-device change is detected but capture is never re-bound — ✅ FIXED (phase 5)
 
 | | |
 |---|---|
@@ -293,13 +296,34 @@ dead. The claim's "silent" is true at the audio layer but **not** at the UI
 layer: within ~4 s the indicator shows "● Audio device changed" with the device
 name and the remedy. Recovery is manual only.
 
-**Fix.** After raising the signal, marshal a rebind through `_run_on_ui_thread`:
-set `_stop_event`, `_close_wasapi_stream()`, clear the event,
-`_start_wasapi_loopback()`. `PyAudio.terminate()` plus a fresh `PyAudio()` is what
-actually picks up the new default — a re-query on the live handle provably cannot
-(measured: same index). Two hazards in the same change: it must not run on the
-watcher thread, and the old watcher must be stopped before the rebind, or the 1 s
-join times out and a **second** watcher is spawned.
+**Fix — shipped in 26.5.9 (`c2bdab2`), with one correction to the plan above.**
+The originally proposed rebind was "set `_stop_event`, close, clear it, start
+again". That would have been **worse than the bug**: `self._stop_event` is the
+session-wide stop event, read in 28 places including the microphone, the audio
+mixer worker and the Deepgram sender and reconnect loops. Setting it stops the
+whole session; clearing it brings none of those threads back.
+
+What shipped instead: the capture owns its own `_wasapi_stop_event`, and
+`_wasapi_stop_requested()` is true when either it or the session event is set —
+so capture can be torn down and restarted alone. `_close_wasapi_stream` sets it,
+`_start_wasapi_loopback` clears it. `_rebind_wasapi_to_default_device()` closes
+then starts (`PyAudio.terminate()` plus a fresh `PyAudio()` is the only thing
+that picks up the new default; a re-query on the live handle provably cannot —
+measured, same index), is marshalled through `_run_on_ui_thread` so it never
+runs on the watcher thread, and is single-flight with a 10 s cooldown so a
+flapping device cannot storm. A failed rebind leaves the warning up.
+
+Both predicted hazards were real, and the second needed more than the plan
+said. Stopping the old watcher was not sufficient: it *waited* on the session
+event, which a rebind leaves clear, so it could not wake inside the 1.0 s join —
+the join timed out, the handle was dropped and the restart spawned a second
+watcher beside the sleeping first. It now waits on the capture event, which
+every stop path sets. Pinned at the production timings by
+`TheWatcherWakesInsideTheJoinWindowTest`, proven to fail pre-fix.
+
+Still resting on one untestable-without-hardware inference, unchanged from item
+73: that a real default-device switch changes the endpoint ID, and that the
+reopened stream binds to the new endpoint.
 
 ---
 
@@ -1057,7 +1081,8 @@ real finding inside it.
 
 ## Test baseline
 
-1239 tests. Eight fail, and the **set of eight names** — never the count — is the
+1313 tests at 26.5.9 (1239 when this review was written; the phases added the
+rest). Eight fail, and the **set of eight names** — never the count — is the
 baseline. All eight are stale tests, listed in the previous audit.
 Runner (there is no `tests/__init__.py`, so `-t .` fails):
 
