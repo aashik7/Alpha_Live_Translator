@@ -7259,13 +7259,43 @@ class AlphaApp(
             )
 
     def _evaluate_language_reliability(self, text, metadata, selected_profile):
+        """Warn when a segment does not match the selected profile. Never block.
+
+        This used to return a constant dict -- 96 varied inputs collapsed to one
+        output -- with `allowed_languages` hardcoded to `["en"]` and
+        `script_warning` never computed, while a working detector
+        (`_language_script_warning`) sat two methods above with zero call sites.
+        A segment detected as Bengali at 0.99 confidence under a Japanese
+        profile was committed and translated exactly like a clean one.
+
+        Deliberately warn-only. The decision recorded in `constants.py` was to
+        stop FORCING a language after an English-selection regression, not to
+        stop warning; the manual dropdown stays authoritative and nothing is
+        ever dropped or held. The four `LANGUAGE_*` flags are left False
+        because they were never the cause.
+        """
+        meta = metadata or {}
+        # Passed through as-is, None included: `_language_script_warning`
+        # already treats a missing allow-list as "no opinion" and returns None,
+        # so absent metadata keeps exactly the old behaviour instead of
+        # inventing a profile to judge against.
+        allowed = meta.get("allowed_languages")
+        detected = self._normalize_lang_code(meta.get("detected_language"))
+        script_warning = None
+        try:
+            script_warning = self._language_script_warning(
+                text, allowed, meta.get("detected_language")
+            )
+        except Exception:
+            script_warning = None
+        decision = "warn" if script_warning else "commit"
         return {
-            "decision": "commit",
-            "reason": "language_gate_disabled",
-            "detected_language": self._normalize_lang_code(metadata.get("detected_language")),
-            "language_confidence": metadata.get("language_confidence"),
-            "allowed_languages": ["en"],
-            "script_warning": None,
+            "decision": decision,
+            "reason": script_warning or "language_matches_profile",
+            "detected_language": detected,
+            "language_confidence": meta.get("language_confidence"),
+            "allowed_languages": list(allowed) if allowed is not None else None,
+            "script_warning": script_warning,
         }
 
     def _log_language_commit_warning(self, text, metadata, reliability):
@@ -7311,7 +7341,11 @@ class AlphaApp(
                     stats.get("low_confidence_warning_count", 0)
                 ),
                 "missing_metadata_count": int(stats.get("missing_metadata_count", 0)),
-                "blocked_count": 0,
+                # Was a hardcoded 0. Nothing is blocked in warning-only mode, so
+                # the honest number is the count of warnings that were committed
+                # anyway -- a zero that could never be anything else told a
+                # post-mortem the opposite of what it needed to know.
+                "warned_but_committed_count": int(stats.get("warning_commit_count", 0)),
             },
         )
 
@@ -8605,6 +8639,18 @@ class AlphaApp(
             script_warning=reliability.get("script_warning"),
         )
         self._language_stats["stable_commit_count"] += 1
+        # Act on the decision instead of only logging it. Warn-only: the
+        # segment is still committed below, exactly as before -- what changes
+        # is that a mismatch is now counted and named, so a post-mortem can
+        # see it. Guarded because a diagnostic must never be able to stop a
+        # transcript commit.
+        if reliability.get("decision") == "warn":
+            try:
+                self._language_stats["unexpected_language_warning_count"] += 1
+                self._language_stats["warning_commit_count"] += 1
+                self._log_language_commit_warning(text, language_meta, reliability)
+            except Exception:
+                pass
         self._clear_unstable_language_candidate()
 
         if MEETING_SEGMENT_REPAIR_ENABLED and self._try_segment_repair(item):
