@@ -749,10 +749,30 @@ def rebind_all_runtime_writers(run_folder: Path, *, startup_phase: bool = False)
         start_flight_recorder(get_artifact_path("flight_recorder").parent)
     except Exception:
         pass
+    # Snapshot under the lock, then release it before the loop.
+    #
+    # This used to call `rebind_runtime_writer` from INSIDE the `with _lock`
+    # block, and that function's first statement takes `_lock` again. `_lock`
+    # is a non-reentrant `threading.Lock`, and the registry is populated by
+    # ordinary use -- `get_log_path` registers a writer on every call -- so the
+    # loop body blocked forever on the first entry, taking the
+    # JapaneseAccuracyLogWriter thread down with it on the same lock.
+    #
+    # Start survived only because `create_run_folder` reaches this function
+    # through an `else` branch that STARTUP_RECOVERY_MODE / EVIDENCE_SAFE_MODE
+    # skip, which is also why `runs/_pending/logs/*` grew without bound: the
+    # rebind that moves writers out of `_pending` is this one. It stayed
+    # reachable through `preflight_upload_evidence`.
+    #
+    # Not an RLock: this module has 35 `with _lock` sites, and changing the
+    # primitive would legitimise re-entry at all of them instead of removing
+    # one bug. `rebind_runtime_writer` takes the lock itself and is written to
+    # be called unlocked.
     with _lock:
         _writers_rebound = True
-        for writer_name in list(_writer_registry.keys()):
-            rebind_runtime_writer(writer_name, run_folder)
+        writer_names = list(_writer_registry.keys())
+    for writer_name in writer_names:
+        rebind_runtime_writer(writer_name, run_folder)
     pending_after = assert_no_pending_writers_active()
     write_writer_registry_snapshot(run_folder)
     try:
