@@ -37,6 +37,9 @@ this as a complete picture — four subsystems were never reached.
 | **7** | ~~English lifecycle bypasses the commit authority~~ — **REFUTED**, but the utterance is lost | The authority is not in `deepgram_client`; it is re-entered downstream at `main_window.py:8309` and **fails closed** correctly (`observe_identity` → `missing_identity_key`). Nothing escapes it. | The opposite failure: if the lifecycle block raises, the utterance vanishes from the ledger, the store **and** the screen. The only trace naming the cause is a bare `print()`; the two Japanese siblings each emit a structured event, the English one does not. Latent — needs the lifecycle to raise. | MEDIUM | FIX-SOON |
 | **8** | Every DeepL placeholder key the project ships passes the Start check | `has_deepl_api_key()` is bare truthiness and never consults `PLACEHOLDER_API_KEYS`. That set's DeepL entry (`your_deepl_api_key_here`) matches **nothing the project ships** — `.env.example` uses `your_deepl_auth_key_here`. | No signal at Start for any non-empty-but-invalid DeepL key. It surfaces mid-session as `auth_failed`, and the indicator blames the **provider**, never the key — after segments have already been lost. | MEDIUM | FIX-SOON |
 | **9** | The installer's own key template passes both the build gate and the runtime check | `read_keys()` rejects only an *empty* value, so `your-deepgram-api-key` compiles and is written into `{app}pp\.env`. `PLACEHOLDER_API_KEYS` does not know the hyphenated spelling either. | A build from an unedited template installs, launches, shows green, passes Start — then fails the Deepgram handshake with a 401 on the client's machine. Only a human reading `keys loaded (deepgram 21 chars…)` stands in the way. | MEDIUM | FIX-SOON |
+| **10** | The UI says "Stopped" 5 s in while the deliverable has up to 66 s still to be written | `_stop_ui_watchdog_tick` force-restores at `>= 5.0` s and clears BOTH guards that keep a new session out (`_is_finalizing`, `_stop_finalize_started`). `toggle_listening` has no other guard. Measured from the step table: 20 steps, **66.0 s** of budget before `write_final_alpha`, 71.0 s for the whole worker. | A second session can begin while the previous one has not written its transcript. The two big budgets are real: `drain_audio_queue` 25 s spends it when audio is still queued, and `translation_worker_shutdown` 16 s is longest under exactly the slow-DeepL condition item 1 lives in. **PLAUSIBLE** — every link verified, but not driven to corruption. | **HIGH** | FIX-SOON |
+| **11** | `SECOND_RUN_FOLDER_CREATION_BLOCKED` blocks nothing | The guard body has NO `return`/`raise` — it only logs — and `set_active_run_folder` at `:712` sits outside it. Verified by AST, not by eye. | With item 10, a second Start repoints every runtime writer at the new run's folder and force-closes the pending ones while the old worker is still writing. Worse than the direct cost: the event NAME asserts a guard that does not exist, so anyone reading a client's logs concludes the rebind was prevented and stops asking. | **HIGH** | FIX-SOON |
+| **12** | Every rebind migrates the unbounded `_pending` pile | `rebind_all_runtime_writers` runs `migrate_pending_files_to_run_folder`, and item 4 established `_pending/logs/*` is the one file nothing rotates across sessions. | Measured today on this machine: **~457 MB** (`japanese_accuracy` 358 MB + `freeze_guard` 66 MB + `async_debug` 33 MB) copied on every rebind. A bare harness calling it twice **did not finish in 120 s**. This is item 4's second-order cost that item 4 did not name: not just disk, but latency on a path the user waits on at Start — growing without bound. | MEDIUM | FIX-SOON |
 
 ## 1. A full translation queue silently stops the translation pane for the rest of the session
 
@@ -481,6 +484,128 @@ Start with the accurate message rather than a 401.
 
 ---
 
+## 10. The UI says "Stopped" 5 s in, while the deliverable has up to 66 s still to be written
+
+**Verdict: PLAUSIBLE** · Severity **HIGH** · Importance **FIX-SOON**
+`alpha/ui/main_window.py:10756`, `alpha/utils/stop_finalize_worker.py:1961`
+
+`_stop_ui_watchdog_tick` force-restores the UI once
+`(time.monotonic() - started) >= 5.0`, and `_restore_ui_after_stop_watchdog`
+clears **both** guards that keep a new session out: `_is_finalizing` and
+`_stop_finalize_started`. `toggle_listening` (`:10116`) has no other guard.
+
+Measured mechanically from the step table and the invocation order:
+
+| | |
+|---|---|
+| steps invoked by `_run_finalize_worker` | 20 |
+| budget before `write_final_alpha` | **66.0 s** |
+| budget for the whole worker | **71.0 s** |
+| UI force-restore | **5.0 s** |
+| window where Start is unblocked and the worker still runs | up to **66 s** |
+
+The two big budgets are real, not padding: `drain_audio_queue` is 25 s and
+genuinely spends it when there is queued audio still to send, and
+`translation_worker_shutdown` is 16 s -- which is longest under exactly the
+condition item 1 lives in, a slow DeepL with a backlog.
+
+The trade-off itself is deliberate and the message is honest ("Stopped.
+Diagnostics may still be saving."). What is not accounted for is that the
+restore also re-enables **Start**, so a second session can begin while the
+previous one has not yet written its transcript. Item 11 is what makes that
+harmful rather than merely untidy.
+
+**Why PLAUSIBLE and not CONFIRMED.** Every link in the chain is verified --
+the constant, the two cleared flags, the absence of any other guard, and the
+66 s budget computed from the code. What has NOT been done is driving a real
+Start during a real finalize and showing the corrupted output. Per this file's
+own rule, that makes it a hazard with a proven mechanism, not a demonstrated
+bug.
+
+**Fix.** Keep the 5 s UI restore -- it exists for a good reason -- but do not
+let it clear the Start guards. Gate `toggle_listening` on the worker instead of
+on the UI flag: `_stop_state["finalize_thread"].is_alive()`, or the existing
+`stop_core_completed_event`. The button can say "Finishing previous session…"
+for the remainder.
+
+---
+
+## 11. `SECOND_RUN_FOLDER_CREATION_BLOCKED` blocks nothing
+
+**Verdict: CONFIRMED** · Severity **HIGH** · Importance **FIX-SOON**
+`alpha/utils/troubleshooting_paths.py:700-712`
+
+`rebind_all_runtime_writers` increments `_run_rebind_count`, and on any rebind
+after the first it logs `SECOND_RUN_FOLDER_CREATION_BLOCKED`. Then it calls
+`set_active_run_folder(run_folder)` **unconditionally** and closes the pending
+writers.
+
+Verified by walking the AST rather than by eye:
+
+```
+guard test  : int(_run_rebind_count) > 1
+body exits  : NONE -- it only logs
+set_active_run_folder at :712  inside the guard? False
+```
+
+**Risk.** Two costs, and the second is worse than the first.
+
+The direct one: with item 10, a second Start during the finalize window
+repoints every runtime writer at the new run's folder and force-closes the
+pending ones while the previous run's worker is still writing. The old
+session's remaining evidence -- and, in the window before `write_final_alpha`,
+potentially its transcript -- lands in the wrong folder or hits a closed
+writer.
+
+The indirect one: **the event name asserts a guard that does not exist.**
+Anyone reading a client's logs sees `SECOND_RUN_FOLDER_CREATION_BLOCKED` and
+concludes the second rebind was prevented. It was not. That is worse than
+having no log line at all, because it retires the question.
+
+**Fix.** Decide which the name should be. If a second rebind is genuinely
+wrong, `return` from the guard. If it is legitimate, rename the event to
+something that describes what happened (`RUN_FOLDER_REBOUND_AGAIN`) and carry
+the previous folder in the payload. Do not leave a name that says one thing
+while the code does another.
+
+---
+
+## 12. Every rebind migrates the unbounded `_pending` pile
+
+**Verdict: CONFIRMED** · Severity **MEDIUM** · Importance **FIX-SOON**
+`alpha/utils/troubleshooting_paths.py:683`, compounds item 4
+
+`rebind_all_runtime_writers` runs `migrate_pending_files_to_run_folder`, and
+item 4 established that `troubleshooting/runs/_pending/logs/*` is the one
+evidence file nothing ever rotates or truncates **across** sessions.
+
+Measured on this machine today:
+
+```
+japanese_accuracy.log   358 MB
+freeze_guard.log         66 MB
+async_debug.log          33 MB
+                        ------
+                        ~457 MB migrated on every rebind
+```
+
+A bare harness calling `rebind_all_runtime_writers` twice **did not finish in
+120 seconds** and had to be killed -- which is also why item 11's behaviour was
+settled from the AST rather than from that probe.
+
+**Risk.** This is the second-order cost of item 4 that item 4 did not name: the
+pile is not merely disk, it is latency on a path the user waits on. It grows
+without bound, so the wait grows with it, and it is paid at run binding -- at
+Start, and again on any rebind. A client several months into daily use pays a
+proportionally longer one every session.
+
+**Fix.** Item 4's fix already bounds the `_pending` files; do that first and
+this shrinks with it. Additionally, migration should be incremental or skipped
+for files above a size threshold -- copying a 358 MB log into a run folder is
+not evidence collection, it is an accident.
+
+---
+
 ## What this review did NOT cover
 
 Stated plainly rather than left as an implied clean bill of health. The
@@ -496,7 +621,7 @@ were never audited**:
 | Global concurrency sweep | **not audited** |
 | Config + startup | audited; items 8 and 9 came from it |
 
-Items 8 and 9 came from the one area that finished. Their three-lens refutation
+Items 8 and 9 came from the one area that finished in the original pass; items 10-12 came from stop/finalize, audited afterwards in phase 3. Their three-lens refutation
 pass died with the rest, so unlike items 1–7 they carry **no adversarial
 verification** — I re-ran both against the real config myself instead, which is
 why they are marked CONFIRMED, but they have not been attacked the way items
