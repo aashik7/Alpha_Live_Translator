@@ -24,6 +24,17 @@ this as a complete picture — four subsystems were never reached.
 
 ---
 
+## Status
+
+| Shipped | Items | Package |
+|---|---|---|
+| Phase 1 | 1 | 26.5.5 |
+| Phase 2 | 3 | 26.5.6 |
+| Phase 3b | 10, 11, 13, 15 | 26.5.7 |
+
+Still open: **2, 4, 5, 6, 7, 8, 9, 12, 14, 16, 17** — see `FIX_SEQUENCE.md`
+for the order and why.
+
 ## The whole review in one table
 
 | # | Issue | Details | Risk | Severity | Importance |
@@ -46,7 +57,7 @@ this as a complete picture — four subsystems were never reached.
 | **16** | Four recurring `after` jobs are never cancelled, and `_on_close` cancels nothing | Of 31 `after`/`after_idle` calls, 16 store an id and 15 discard it; of 13 stored job attributes, `_jp_pipeline_hb_after_id`, `_transcript_ui_batch_after_id`, `_ui_event_bus_after_id` and `_ui_queue_defer_after_id` are never passed to `after_cancel`. `_on_close` (`:11031`) contains no `after_cancel` at all. | Small, and filed as such. Tk discards pending callbacks when the interpreter is torn down, so at a clean exit this is tidiness; the observable form is the `invalid command name … ("after" script)` teardown noise this project's own test runs produce. No user-visible failure was measured. | LOW | BACKLOG |
 | **17** | A raise inside the continuity-hold tick discards the buffered sentence silently | `try_execute_continuity_hold`'s handler sets `self._buffer = None` under `JAPANESE_CONTINUITY_ASSEMBLER_SAFE_MODE` (True at runtime) and returns `True`. The sibling `_handle_assembler_exception` faces the same situation and instead emits `ASSEMBLER_EXCEPTION_CAUGHT`, then recovers the fragment and re-commits it. | **Driven on a real assembler** with a real buffered sentence: returned `True`, buffer `None`, and the only event was the crash logger's own `ASYNC_LOG_EMERGENCY_WRITE`. Nothing names the loss — no event, no counter. A spoken Japanese sentence never reaches the transcript, the ledger or the delivered file, and the evidence gives a reader no way to know one went missing. Trigger is abnormal (needs the inner call to raise), so the mechanism is proven and the frequency is not. | MEDIUM | FIX-SOON |
 
-## 1. A full translation queue silently stops the translation pane for the rest of the session
+## 1. A full translation queue silently stops the translation pane for the rest of the session — ✅ FIXED (phase 1)
 
 | | |
 |---|---|
@@ -153,7 +164,7 @@ to stop *warning*, and the warning went with it.
 
 ---
 
-## 3. The WASAPI reader thread dies permanently on one error
+## 3. The WASAPI reader thread dies permanently on one error — ✅ FIXED (phase 2)
 
 | | |
 |---|---|
@@ -489,7 +500,7 @@ Start with the accurate message rather than a 401.
 
 ---
 
-## 10. The UI says "Stopped" 5 s in, while the deliverable has up to 66 s still to be written
+## 10. The UI says "Stopped" 5 s in, while the deliverable has up to 66 s still to be written — ✅ FIXED (phase 3b)
 
 **Verdict: PLAUSIBLE** · Severity **HIGH** · Importance **FIX-SOON**
 `alpha/ui/main_window.py:10756`, `alpha/utils/stop_finalize_worker.py:1961`
@@ -535,7 +546,7 @@ for the remainder.
 
 ---
 
-## 11. `SECOND_RUN_FOLDER_CREATION_BLOCKED` blocks nothing
+## 11. `SECOND_RUN_FOLDER_CREATION_BLOCKED` blocks nothing — ✅ FIXED (phase 3b)
 
 **Verdict: CONFIRMED** · Severity **HIGH** · Importance **FIX-SOON**
 `alpha/utils/troubleshooting_paths.py:700-712`
@@ -611,7 +622,7 @@ not evidence collection, it is an accident.
 
 ---
 
-## 13. The lifecycle's stale-session guard cannot fire
+## 13. The lifecycle's stale-session guard cannot fire — ✅ FIXED (phase 3b)
 
 **Verdict: CONFIRMED** · Severity **MEDIUM** · Importance **FIX-SOON**
 `alpha/transcription/utterance_lifecycle.py:1503-1506`
@@ -817,7 +828,7 @@ positive. Requiring the call to be lexically inside the `with` block cut it to
 
 ---
 
-## 15. `TK_CALL_SITE_SAFE` counts a substring and calls it safe
+## 15. `TK_CALL_SITE_SAFE` counts a substring and calls it safe — ✅ FIXED (phase 3b)
 
 **Verdict: CONFIRMED** · Severity **MEDIUM** · Importance **FIX-SOON**
 `alpha/utils/tk_thread_guard.py:198-220`

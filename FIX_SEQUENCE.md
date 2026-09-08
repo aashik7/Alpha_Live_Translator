@@ -177,7 +177,7 @@ them is a proof of absence.
 
 ---
 
-## Phase 3b — The Stop/Start window (items 10, 11, 13) + the naming fix (15)
+## Phase 3b — The Stop/Start window (items 10, 11, 13) + the naming fix (15) — ✅ SHIPPED
 
 These two are one failure wearing two hats, and both fixes are a few lines.
 They jump ahead of the old phase 4 because they are HIGH rather than MEDIUM,
@@ -363,8 +363,8 @@ design; answer them before scoping stages 2-4.
 | 1 | Item 1 — translation queue hole | ✅ shipped `49a5178`, package 26.5.5 |
 | 2 | Item 3 — WASAPI reader + the audit-tool blind spot | ✅ shipped `fd93e61`, package 26.5.6 |
 | 3 | Audit the five unreviewed subsystems | ✅ 5 of 5 (items 10-17) |
-| **3b** | **Items 11, 10, 13 + 15 — the Stop/Start window and the naming fix** | **next code change** |
-| 4 | Items 2, 8, 9, then 14 → 4 + 12 | one package |
+| 3b | Items 11, 10, 13 + 15 — the Stop/Start window and the naming fix | ✅ shipped, package 26.5.7 |
+| **4** | **Items 2, 8, 9, then 14 → 4 + 12** | **next code change**, one package |
 | 5 | Item 5 — device re-bind | alone |
 | 6 | Items 17, 16, 6, 7 + the follow-tail leftovers | batch |
 | 7 | Speaker hot-swap | after the rest is green |
