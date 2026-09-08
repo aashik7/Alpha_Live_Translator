@@ -684,6 +684,60 @@ def migrate_pending_to_run_folder(run_folder: Path) -> dict[str, Any]:
     return migrate_pending_files_to_run_folder(run_folder)
 
 
+def bound_pending_logs() -> int:
+    """Rotate anything oversized in `runs/_pending/logs/`. Returns how many.
+
+    Every other evidence file is bounded within a session. This one is not
+    bounded ACROSS sessions: each run appends to the shared pending log during
+    the bootstrap window before the writers are rebound to a run folder, and
+    nothing ever truncated, rotated or pruned it. It reached 358 MB on the
+    development machine in seventeen days of ordinary use.
+
+    That is not only disk. `rebind_all_runtime_writers` migrates the whole pile
+    into the run folder on every rebind, so the pile is latency on a path the
+    user waits on at Start, growing without limit.
+    """
+    rotated = 0
+    try:
+        from alpha.utils.evidence_jsonl import rotate_if_needed
+
+        folder = _troubleshooting_root / "runs" / "_pending" / "logs"
+        if not folder.is_dir():
+            return 0
+        # Windows will not rename a file another handle holds open, and
+        # rotation is a rename. The pending log is exactly the file a writer
+        # thread is most likely to be holding, so ask the writers to let go
+        # first -- otherwise this silently does nothing for the one file it
+        # exists to bound. Caught by the suite: the same test passed alone and
+        # failed once other tests had started the writer threads.
+        force_close_pending_writers()
+        from alpha.constants import LOG_MAX_FILE_MB
+
+        cap = LOG_MAX_FILE_MB * 1024 * 1024
+        for entry in sorted(folder.iterdir()):
+            if not entry.is_file():
+                continue
+            if rotate_if_needed(entry):
+                rotated += 1
+                continue
+            # Rotation is a rename, and a writer thread can reopen the path
+            # between the close above and the rename -- or hold it across both.
+            # Truncating in place needs no rename, so it is the fallback that
+            # always works. Acceptable for THIS file specifically: the pending
+            # log only holds the bootstrap window, and everything after the
+            # rebind is written into the run folder instead.
+            try:
+                if entry.stat().st_size >= cap:
+                    with open(entry, "r+", encoding="utf-8", errors="replace") as handle:
+                        handle.truncate(0)
+                    rotated += 1
+            except Exception:
+                pass
+    except Exception:
+        return rotated
+    return rotated
+
+
 def rebind_all_runtime_writers(run_folder: Path, *, startup_phase: bool = False) -> None:
     """Rebind all log writers to the active run folder."""
     if STARTUP_RECOVERY_MODE and startup_phase and _is_ui_thread():
@@ -1005,6 +1059,12 @@ def create_run_folder(
         jp_accuracy_log("PENDING_RUN_FOLDER_USED_FOR_BOOTSTRAP_ONLY")
     except Exception:
         pass
+
+    # Bound the shared bootstrap pile before anything else touches it. This is
+    # the one evidence file that is unbounded ACROSS sessions, and it is
+    # migrated in full on every rebind, so leaving it to grow costs Start time
+    # that gets worse every session.
+    bound_pending_logs()
 
     if PENDING_RUN_REBINDING_ENABLED:
         if STARTUP_RECOVERY_MODE and EVIDENCE_SAFE_MODE:

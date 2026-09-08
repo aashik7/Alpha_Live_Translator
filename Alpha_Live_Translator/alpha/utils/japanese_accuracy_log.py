@@ -26,6 +26,49 @@ from alpha.constants import (
     UI_PERFORMANCE_MODE,
 )
 
+
+def _rotate_log_if_needed(path) -> bool:
+    """Bound this writer's file, reusing the one rotation that already exists.
+
+    Deferred import so this module keeps no import-time dependency on the
+    evidence layer, and wrapped because a diagnostic writer must never raise
+    into the path it is observing.
+    """
+    try:
+        from alpha.utils.evidence_jsonl import rotate_if_needed
+
+        return bool(rotate_if_needed(path))
+    except Exception:
+        return False
+
+
+from alpha.constants import LOG_MAX_FILE_MB, LOG_ROTATION_ENABLED
+
+_ROTATION_CHECK_EVERY = 500
+_rotation_check_counter = 0
+
+
+def _should_rotate(path) -> bool:
+    """Size check for a writer that holds one handle for the whole session.
+
+    Sampled rather than run on every line. Measured at 12.9 us per call when it
+    did the size check and its imports each time -- at a thousand lines a second
+    that is ~1.3% of a core spent asking a question whose answer changes once
+    per 50 MB. Checking every 500th line bounds the overshoot to a few hundred
+    lines, which is nothing against the cap.
+    """
+    global _rotation_check_counter
+    try:
+        if not LOG_ROTATION_ENABLED or path is None:
+            return False
+        _rotation_check_counter += 1
+        if _rotation_check_counter % _ROTATION_CHECK_EVERY:
+            return False
+        return path.exists() and path.stat().st_size >= LOG_MAX_FILE_MB * 1024 * 1024
+    except Exception:
+        return False
+
+
 JAPANESE_ACCURACY_LOGGING = True
 LOG_PREVIEW_CHARS = 160
 HELD_LOG_THROTTLE_MS = 2000
@@ -164,6 +207,21 @@ def _writer_loop() -> None:
                 target.parent.mkdir(parents=True, exist_ok=True)
                 handle = open(target, "a", encoding="utf-8")
                 current_path = target
+            if handle is not None and _should_rotate(current_path):
+                # This writer keeps ONE handle for the whole session and
+                # reopens only when the resolved path changes, so a
+                # rotate-on-open hook would fire at most once per session and
+                # would not bound anything. Close, rotate, reopen.
+                try:
+                    handle.close()
+                except Exception:
+                    pass
+                handle = None
+                _rotate_log_if_needed(current_path)
+                try:
+                    handle = open(current_path, "a", encoding="utf-8")
+                except Exception:
+                    handle = None
             if handle is not None:
                 handle.write(line + "\n")
                 handle.flush()

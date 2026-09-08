@@ -13,6 +13,22 @@ from typing import Any, Optional
 from alpha.constants import APP_CODENAME, APP_VERSION
 from alpha.utils.logging_utils import sanitize_log_data
 
+
+def _rotate_log_if_needed(path) -> bool:
+    """Bound this writer's file, reusing the one rotation that already exists.
+
+    Deferred import so this module keeps no import-time dependency on the
+    evidence layer, and wrapped because a diagnostic writer must never raise
+    into the path it is observing.
+    """
+    try:
+        from alpha.utils.evidence_jsonl import rotate_if_needed
+
+        return bool(rotate_if_needed(path))
+    except Exception:
+        return False
+
+
 DEBUG_SESSION_ID = "46ae0c"
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
@@ -212,6 +228,7 @@ def _flush_buffer(path: Path, lines: list[str]) -> None:
     if not lines:
         return
     try:
+        _rotate_log_if_needed(path)
         with open(path, "a", encoding="utf-8") as handle:
             handle.write("\n".join(lines) + "\n")
         _last_flush_mono = time.monotonic()
@@ -392,6 +409,7 @@ def emergency_sync_write(message: str, **data: Any) -> None:
     }
     line = json.dumps(payload, ensure_ascii=True)
     try:
+        _rotate_log_if_needed(path)
         with open(path, "a", encoding="utf-8") as handle:
             handle.write(line + "\n")
             handle.flush()
