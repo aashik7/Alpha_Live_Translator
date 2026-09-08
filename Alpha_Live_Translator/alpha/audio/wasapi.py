@@ -354,6 +354,14 @@ class WasapiCaptureMixin:
         """
         idle_polls = 0
         consecutive_errors = 0
+        # The format this stream was OPENED with, read once here rather than
+        # per chunk. Reading it per iteration would put it back where it was --
+        # shared mutable state read on this thread and written on another. Once
+        # here is correct because a device change tears this reader down and
+        # `_start_wasapi_loopback` sets the attributes before starting the next
+        # one, so each reader stamps its own device's format for its whole life.
+        stamp_channels = int(getattr(self, "_wasapi_channels", 2) or 2)
+        stamp_rate = int(getattr(self, "_wasapi_rate", 48000) or 48000)
         while (
             not self._wasapi_stop_requested()
             and consecutive_errors < WASAPI_READER_MAX_CONSECUTIVE_ERRORS
@@ -373,7 +381,13 @@ class WasapiCaptureMixin:
                     if data and self.sys_audio_queue is not None:
                         if getattr(self, "_dg_stop_sending_audio", False):
                             continue
-                        put_bounded(self.sys_audio_queue, data)
+                        # Stamped, so the mixer resamples with the format this
+                        # chunk was captured at rather than whatever it was
+                        # last configured with.
+                        put_bounded(
+                            self.sys_audio_queue,
+                            (data, stamp_channels, stamp_rate),
+                        )
                     idle_polls = 0
                 else:
                     idle_polls += 1

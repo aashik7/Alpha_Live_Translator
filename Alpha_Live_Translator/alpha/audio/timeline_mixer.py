@@ -42,6 +42,13 @@ class DeepgramTimelineMixer:
         return self._source_gate.get_summary()
 
     def configure_sources(self, wasapi_channels, wasapi_rate, mic_available=True):
+        """Supply the DEFAULT format, used only by a chunk that carries no stamp.
+
+        This used to be the only source of truth, which made it shared mutable
+        state: written on one thread, read on the mixer thread, and safe only
+        because nothing writes it after startup. A chunk that arrives with its
+        own format ignores these values entirely -- see `push_system`.
+        """
         self._wasapi_channels = max(1, int(wasapi_channels or 1))
         self._wasapi_rate = max(1, int(wasapi_rate or DEEPGRAM_SAMPLE_RATE))
         self._mic_source_available = bool(mic_available)
@@ -49,11 +56,27 @@ class DeepgramTimelineMixer:
     def set_mic_gate(self, gate_fn):
         """Legacy hook retained; Teams source gate owns mix decisions."""
 
-    def push_system(self, chunk_bytes):
+    def push_system(self, chunk_bytes, channels=None, rate=None):
+        """Resample one system-audio chunk with the format IT was captured at.
+
+        `channels` / `rate` are the stamp the reader put on the chunk. They win
+        over the configured defaults, which is what makes a device change safe
+        by construction: a chunk captured on the old device and still in flight
+        when the format moves on resamples correctly anyway, so there is no
+        ordering requirement between the capture side and this one -- no drain,
+        no flush, no lock.
+
+        Resampling with the wrong format is this project's worst failure shape:
+        measured on a 1.000 s 440 Hz tone at 48 kHz stereo, being told 1 channel
+        yields 2.000 s at 220 Hz, nothing raises, no counter moves, and Deepgram
+        transcribes the half-speed audio fluently and wrongly.
+        """
         if not chunk_bytes:
             return
         mono = pcm_to_mono_16k_np(
-            chunk_bytes, self._wasapi_channels, self._wasapi_rate
+            chunk_bytes,
+            self._wasapi_channels if channels is None else max(1, int(channels)),
+            self._wasapi_rate if rate is None else max(1, int(rate)),
         )
         if mono.size == 0:
             return
@@ -136,7 +159,13 @@ class DeepgramTimelineMixer:
                     chunk = sys_queue.get_nowait()
                 except Exception:
                     break
-                self.push_system(chunk)
+                # A stamped chunk is `(pcm, channels, rate)`; bare bytes are
+                # still accepted and fall back to the configured defaults, so
+                # anything that enqueues raw PCM keeps working.
+                if isinstance(chunk, tuple) and len(chunk) == 3:
+                    self.push_system(chunk[0], chunk[1], chunk[2])
+                else:
+                    self.push_system(chunk)
                 try:
                     from alpha.utils.runtime_audio_counters import note_system_audio_chunk_received
 
