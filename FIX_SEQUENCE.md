@@ -117,7 +117,7 @@ a day of phase 1; otherwise ship phase 1 alone and phase 2 second.
 
 ---
 
-## Phase 3 — Close the audit gap (no code changes) — 3 of 5 done
+## Phase 3 — Close the audit gap (no code changes) — 4 of 5 done
 
 Audit the five areas the review never reached, listed in its
 *What this review did NOT cover* section:
@@ -158,11 +158,17 @@ point. It also explains item 12 — the rebind that would move writers out of
 the pile has been refilling ever since. Lock-ordering inversions are
 structurally absent: no function in `alpha/` nests one lock inside another.
 
-Remaining: **UI threading**, **Japanese assembler**.
+**Done — UI threading** (review items 15, 16). The headline is a negative and
+it is the useful part: an AST sweep from all 20 real background-thread roots
+found **no** widget mutation reachable without a marshal hop. The two findings
+are an evidence event that asserts safety it never checked (item 15) and four
+`after` jobs that are never cancelled (item 16, LOW).
+
+Remaining: **Japanese assembler**.
 
 ---
 
-## Phase 3b — The Stop/Start window (items 10, 11 and 13)
+## Phase 3b — The Stop/Start window (items 10, 11, 13) + the naming fix (15)
 
 These two are one failure wearing two hats, and both fixes are a few lines.
 They jump ahead of the old phase 4 because they are HIGH rather than MEDIUM,
@@ -200,6 +206,13 @@ session_id = self._session_id or host_sid
 The ledger already refuses the write (`canonical_identity_registry.py:116`),
 so this is about the lifecycle's own state being mutated by a stale final
 before anything downstream says no.
+
+**Item 15 rides along**, because it is the same defect in a different place: a
+name asserting something nothing checked. `scan_tk_call_sites` writes
+`TK_CALL_SITE_SAFE` after counting the substring `.after(` in two files.
+Rename the events to `TK_AFTER_CALL_SITE_COUNT` and drop the word safe, or
+replace the body with the sweep this audit ran. Either is small; leaving a
+log line that retires a question nobody asked is not.
 
 **Test.** Drive a Start during a finalize that is deliberately slowed, and
 assert the second session cannot begin until the worker is done. That is also
@@ -290,19 +303,23 @@ failure keep the current warning, which is a correct fallback.
 
 Cheap, low risk, batch with whatever else is shipping.
 
-1. **Item 6** — delete the synchronous fallback at
+1. **Item 16** — give `_on_close` the cancellation `_stop_ui_loops` already
+   has: four recurring `after` jobs are never cancelled anywhere, and the
+   close path cancels nothing at all. Small, and worth doing mainly so the
+   next person has somewhere to put a cancellation that does matter.
+2. **Item 6** — delete the synchronous fallback at
    `audio_temp_capture.py:271-275`. By the time control reaches it the item is
    already counted and logged, so returning is consistent with the function's
    own contract. That removes the only edge from inside the `:377` lock back
    into the lock. Do **not** reach for `threading.RLock` — it would legitimise
    re-entry at all 16 `with _lock` sites and mask this class of bug.
-2. **Item 7** — in the `except Exception as exc` at `deepgram_client.py:1741`,
+3. **Item 7** — in the `except Exception as exc` at `deepgram_client.py:1741`,
    emit a structured `ENGLISH_LIFECYCLE_INGEST_FAILED` event alongside the
    print, mirroring the two Japanese siblings at :1601-1611 and :1652-1662.
    That makes the downstream `IDENTITY_REJECTION` attributable. Do **not** mint
    a synthetic `canonical_utterance_id` to let the fall-through commit — that
    would defeat the fail-closed identity gate, which measurement showed working.
-3. **From the follow-tail review** — `_render_transcript_from_store_now`
+4. **From the follow-tail review** — `_render_transcript_from_store_now`
    (`main_window.py:6596`) wipes the widget via `_insert_formatted_text`, so a
    reader who has scrolled up now lands at the *top* of the pane. Preserve the
    reader's index across the re-render. Also add a behavioural test through a
@@ -330,11 +347,11 @@ design; answer them before scoping stages 2-4.
 |---|---|---|
 | 1 | Item 1 — translation queue hole | ✅ shipped `49a5178`, package 26.5.5 |
 | 2 | Item 3 — WASAPI reader + the audit-tool blind spot | ✅ shipped `fd93e61`, package 26.5.6 |
-| 3 | Audit the five unreviewed subsystems | 3 of 5 done (stop/finalize → 10-12; commit authority → 13; concurrency → 14) |
-| **3b** | **Items 11, 10, 13 — the Stop/Start window** | **next code change** |
+| 3 | Audit the five unreviewed subsystems | 4 of 5 done (10-12, 13, 14, 15-16); JP assembler left |
+| **3b** | **Items 11, 10, 13 + 15 — the Stop/Start window and the naming fix** | **next code change** |
 | 4 | Items 2, 8, 9, then 14 → 4 + 12 | one package |
 | 5 | Item 5 — device re-bind | alone |
-| 6 | Items 6, 7 + the follow-tail leftovers | batch |
+| 6 | Items 16, 6, 7 + the follow-tail leftovers | batch |
 | 7 | Speaker hot-swap | after the rest is green |
 
 Phase 3's four remaining audits are read-only and touch no code, so they can run

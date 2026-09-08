@@ -42,6 +42,8 @@ this as a complete picture — four subsystems were never reached.
 | **12** | Every rebind migrates the unbounded `_pending` pile | `rebind_all_runtime_writers` runs `migrate_pending_files_to_run_folder`, and item 4 established `_pending/logs/*` is the one file nothing rotates across sessions. | Measured today on this machine: **~457 MB** (`japanese_accuracy` 358 MB + `freeze_guard` 66 MB + `async_debug` 33 MB) copied on every rebind. A bare harness calling it twice **did not finish in 120 s**. This is item 4's second-order cost that item 4 did not name: not just disk, but latency on a path the user waits on at Start — growing without bound. | MEDIUM | FIX-SOON |
 | **13** | The lifecycle's stale-session guard cannot fire | `session_id` is assigned `self._session_id` whenever that is truthy, so the comparison `session_id != self._session_id` is between one value and itself; when it is falsy the `and self._session_id` term already made the guard False. Evaluated over all three input shapes: never fires. | The commit authority still fails closed — `canonical_identity_registry.py:116` is a real comparison and does reject. But a stale event reaches the lifecycle's OWN state first, so a final from a previous session can extend or replace the CURRENT session's active utterance. Matters more with item 10, where a second session can begin while the first is finalizing. | MEDIUM | FIX-SOON |
 | **14** | `rebind_all_runtime_writers` self-deadlocks, and the workaround hiding it is why `_pending` grows | The loop at `:742` calls `rebind_runtime_writer` while holding `_lock`; that function's first statement takes `_lock` again, and `_lock` is a non-reentrant `threading.Lock` confirmed at runtime. The registry is populated by ordinary use — `get_log_path` registers on every call. | **Driven through the real entry point**: did not return in 25 s, stack blocked at `:343` under `:742`, and the `JapaneseAccuracyLogWriter` thread taken down with it at `:337`. Start survives only because `STARTUP_RECOVERY_MODE`/`EVIDENCE_SAFE_MODE` defer the rebind — which is **why item 12's `_pending` pile reached 358 MB**: the writers are never moved out of it. Still reachable via `preflight_upload_evidence` on the evidence-packaging path. | **HIGH** | FIX-SOON |
+| **15** | `TK_CALL_SITE_SAFE` counts a substring and calls it safe | `scan_tk_call_sites` returns `str.count(".after(")` over two files — comments and docstrings included — applies no test, and writes an event named `TK_CALL_SITE_SAFE`. Measured on the shipped tree: `{'safe': 31, 'refactored': 0}`. | Item 11's shape in the evidence stream: a name asserting a property nothing established. A reader of a client's log concludes the Tk call sites were audited and cleared; they were counted. The cost is a question retired without being asked — the same way the WASAPI reader sat behind a scan that could not see it. | MEDIUM | FIX-SOON |
+| **16** | Four recurring `after` jobs are never cancelled, and `_on_close` cancels nothing | Of 31 `after`/`after_idle` calls, 16 store an id and 15 discard it; of 13 stored job attributes, `_jp_pipeline_hb_after_id`, `_transcript_ui_batch_after_id`, `_ui_event_bus_after_id` and `_ui_queue_defer_after_id` are never passed to `after_cancel`. `_on_close` (`:11031`) contains no `after_cancel` at all. | Small, and filed as such. Tk discards pending callbacks when the interpreter is torn down, so at a clean exit this is tidiness; the observable form is the `invalid command name … ("after" script)` teardown noise this project's own test runs produce. No user-visible failure was measured. | LOW | BACKLOG |
 
 ## 1. A full translation queue silently stops the translation pane for the rest of the session
 
@@ -814,6 +816,115 @@ positive. Requiring the call to be lexically inside the `with` block cut it to
 
 ---
 
+## 15. `TK_CALL_SITE_SAFE` counts a substring and calls it safe
+
+**Verdict: CONFIRMED** · Severity **MEDIUM** · Importance **FIX-SOON**
+`alpha/utils/tk_thread_guard.py:198-220`
+
+```python
+def scan_tk_call_sites(project_root=None) -> dict[str, int]:
+    """Static scan of .after( in allowed modules — diagnostic only."""
+    patterns = ("alpha/ui/main_window.py",
+                "alpha/transcription/japanese_sentence_assembler.py")
+    safe = 0
+    for rel in patterns:
+        if path.exists():
+            safe += path.read_text(...).count(".after(")
+    ...
+    jp_accuracy_log("TK_CALL_SITE_SCAN_COMPLETED", safe_count=safe)
+    jp_accuracy_log("TK_CALL_SITE_SAFE", count=safe)
+```
+
+Run against the shipped tree it returns `{'safe': 31, 'refactored': 0}`.
+
+Nothing about those 31 was checked. `safe` is `str.count(".after(")` over **two**
+files — it counts occurrences in comments and docstrings as readily as in code,
+looks at no other module, and applies no test of any kind before writing an
+event named `TK_CALL_SITE_SAFE`.
+
+**Risk.** This is item 11's shape again, in the evidence stream rather than in
+control flow: a name that asserts a property nothing established. A reader
+working through a client's `japanese_accuracy.log` finds
+`TK_CALL_SITE_SAFE count=31` and concludes the Tk call sites were audited and
+cleared. They were counted. The cost is not a crash — it is that the question
+gets retired without being asked, which is how the WASAPI reader sat unreported
+behind a scan that could not see it (item 3).
+
+**Fix.** Either make it a real check or make the name honest. The cheap honest
+version is to rename the events to `TK_AFTER_CALL_SITE_COUNT` and drop the word
+safe. The useful version is the sweep this audit ran: walk the AST from each
+real thread target and report widget mutations reachable without a marshal
+hop — which is a check, and which returns a defensible answer.
+
+---
+
+## 16. Four recurring `after` jobs are never cancelled, and `_on_close` cancels nothing
+
+**Verdict: CONFIRMED** · Severity **LOW** · Importance **BACKLOG**
+`alpha/ui/main_window.py`, `_on_close` at `:11031-11172`
+
+`main_window.py` schedules 31 `after`/`after_idle` calls: 16 store the id so it
+can be cancelled, 15 discard it. Of the 13 stored job attributes, four are never
+passed to `after_cancel` anywhere in the module:
+
+| Job attribute | Cancelled by |
+|---|---|
+| `_jp_pipeline_hb_after_id` | **never** |
+| `_transcript_ui_batch_after_id` | **never** |
+| `_ui_event_bus_after_id` | **never** |
+| `_ui_queue_defer_after_id` | **never** |
+
+and `_on_close()` contains no `after_cancel` call at all and names none of the
+job attributes.
+
+All four are self-rescheduling loops, so each keeps re-arming until the
+interpreter goes away.
+
+**Risk, stated small because it is small.** Tk discards pending `after`
+callbacks when the interpreter is torn down, so at a clean exit this is
+tidiness rather than a fault. The observable form is the
+`invalid command name "..." while executing ("after" script)` noise this
+project's own test runs produce on teardown. What has NOT been measured is a
+user-visible failure, so this is filed LOW and BACKLOG rather than as a bug.
+It is worth fixing mainly because a close path that cancels nothing gives the
+next person no place to put a cancellation that does matter.
+
+**Fix.** Give `_on_close` the same treatment `_stop_ui_loops` already gets:
+cancel each stored job id, guarded, before teardown.
+
+---
+
+## UI threading: the sweep found nothing reachable, after its own blind spot was fixed
+
+`main.py:324` installs `tk_thread_guard`, which patches `after` and
+`after_cancel` and reroutes a background-thread `after` through the UI event
+bus. It does **not** patch `insert`, `delete`, `configure`, `see`, `grid`,
+`pack` or `destroy`, so those are unguarded and had to be checked directly.
+
+An AST sweep took every real background-thread root in `alpha/` -- the targets
+of `threading.Thread(target=...)` and `SupervisedThread(...)`, 20 of them -- and
+looked for widget mutations reachable within four call hops without passing
+through `after`, `after_idle`, `_run_on_ui_thread` or an event-bus publish.
+
+**Result: none.**
+
+That is the corrected answer, and the correction is worth recording. The first
+run reported seven hits, all through
+`worker() -> _finish_start_listening -> ...` in `main_window.py`. Every one was
+a false positive: the real call is
+`self._run_on_ui_thread(lambda: self._finish_start_listening(error))` at
+`:10341`, and the scan only recognised a marshal when the target was passed as a
+bare name, not when it was wrapped in a lambda. Teaching it to treat everything
+inside a marshal call's arguments -- lambda bodies included -- as marshalled
+took the count to zero.
+
+Scope of that result, stated plainly: same-module reachability, depth four,
+receivers identified by name shape (`*_box`, `*_label`, `*_button`, …). A
+cross-module path, or a widget held in a variable that does not look like one,
+would not be seen.
+
+---
+
 ## What this review did NOT cover
 
 Stated plainly rather than left as an implied clean bill of health. The
@@ -824,7 +935,7 @@ were never audited**:
 |---|---|
 | Commit-authority internals (`utterance_lifecycle`, `pipeline_commit_transaction`) | **not audited** — only reached indirectly via item 7 |
 | Japanese assembler + stabilizers | **not audited** |
-| UI threading (worker threads reaching Tk widgets, `after()` lifetime) | **not audited** |
+| UI threading (worker threads reaching Tk widgets, `after()` lifetime) | **audited** (phase 3) - items 15, 16 |
 | Stop / finalize internals | **not audited** |
 | Global concurrency sweep | **not audited** |
 | Config + startup | audited; items 8 and 9 came from it |
