@@ -91,9 +91,17 @@ LANGUAGE_CONFIG = {
 
 LANGUAGE_MAP = {cfg["name"]: code for code, cfg in LANGUAGE_CONFIG.items()}
 
+# Every placeholder string this project ships, in both spellings. `.env.example`
+# uses the underscore form and `installer/keys.local.ini.example` the hyphenated
+# one; before this, of the four strings shipped across those two files exactly
+# ONE was in here, and the DeepL entry (`your_deepl_api_key_here`) matched
+# nothing the project ships at all.
 PLACEHOLDER_API_KEYS = {
     "your_deepgram_api_key_here",
     "your_deepl_api_key_here",
+    "your_deepl_auth_key_here",
+    "your-deepgram-api-key",
+    "your-deepl-auth-key",
     "your_api_key_here",
     "replace_with_your_key",
     "paste_your_key_here",
@@ -115,9 +123,33 @@ def has_deepgram_api_key() -> bool:
     return get_deepgram_key_status() == "configured"
 
 
+def get_deepl_key_status() -> str:
+    """Return DeepL key state: missing, placeholder, or configured.
+
+    Mirrors `get_deepgram_key_status`. It did not exist, and
+    `has_deepl_api_key()` was a bare truthiness test, so every placeholder the
+    project ships sailed through the Start-time preflight and surfaced instead
+    as a mid-session `auth_failed` -- where the indicator blames the provider
+    rather than the key, and only after enough segments have been lost to trip
+    the circuit breaker.
+    """
+    key = (DEEPL_AUTH_KEY or DEEPL_API_KEY or "").strip()
+    if not key:
+        return "missing"
+    if key.lower() in PLACEHOLDER_API_KEYS:
+        return "placeholder"
+    return "configured"
+
+
 def has_deepl_api_key() -> bool:
-    """Return True when a non-empty DeepL auth key is configured."""
-    return bool(DEEPL_AUTH_KEY or DEEPL_API_KEY)
+    """Return True when a real (non-placeholder) DeepL auth key is configured.
+
+    Three production call sites read this to decide whether to build a
+    translation worker at all. A placeholder is not a usable key, so it now
+    answers False -- previously it answered True and the worker was built
+    around junk.
+    """
+    return get_deepl_key_status() == "configured"
 
 
 __all__ = [

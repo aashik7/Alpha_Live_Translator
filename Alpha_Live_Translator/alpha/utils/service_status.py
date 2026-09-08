@@ -69,6 +69,7 @@ def preflight_credentials(
     *,
     deepgram_status: Optional[str] = None,
     deepl_configured: Optional[bool] = None,
+    deepl_status: Optional[str] = None,
     translation_enabled: bool = True,
 ) -> list[CredentialProblem]:
     """Check both providers' credentials before a session starts (item 46).
@@ -87,10 +88,17 @@ def preflight_credentials(
         from alpha.config import get_deepgram_key_status
 
         deepgram_status = get_deepgram_key_status()
-    if deepl_configured is None:
-        from alpha.config import has_deepl_api_key
+    if deepl_status is None:
+        if deepl_configured is None:
+            from alpha.config import get_deepl_key_status
 
-        deepl_configured = has_deepl_api_key()
+            deepl_status = get_deepl_key_status()
+        else:
+            # Callers that predate `deepl_status` pass a bool. Keep their
+            # meaning exactly: True is a usable key, False is an absent one.
+            deepl_status = "configured" if deepl_configured else "missing"
+    if deepl_configured is None:
+        deepl_configured = deepl_status == "configured"
 
     problems: list[CredentialProblem] = []
 
@@ -120,7 +128,23 @@ def preflight_credentials(
             )
         )
 
-    if translation_enabled and not deepl_configured:
+    if translation_enabled and deepl_status == "placeholder":
+        problems.append(
+            CredentialProblem(
+                service="DeepL",
+                code="deepl_key_placeholder",
+                message=(
+                    "The DeepL auth key is still the example placeholder, so "
+                    "this session will transcribe but not translate. Replace "
+                    "it with your real key in the .env file."
+                ),
+                # Not blocking, deliberately: the Deepgram/DeepL asymmetry
+                # above is the point. A session without translation is
+                # degraded, not broken.
+                blocks_start=False,
+            )
+        )
+    elif translation_enabled and not deepl_configured:
         problems.append(
             CredentialProblem(
                 service="DeepL",

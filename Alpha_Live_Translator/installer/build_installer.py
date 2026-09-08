@@ -88,8 +88,32 @@ def read_keys() -> tuple[str, str]:
             f"Create {KEYS_FILE} from keys.local.ini.example, or set "
             "ALPHA_DEEPGRAM_KEY / ALPHA_DEEPL_KEY."
         )
-    # Never printed. The only signal is the length, which is enough to tell a
-    # real key from an empty string or a placeholder.
+    # A placeholder is not empty, so the check above waved it through and the
+    # template's own `your-deepgram-api-key` compiled into a real installer.
+    # That is exactly what this function's docstring says must not happen: a
+    # build that looks successful and fails on the target machine -- here as a
+    # 401 on the Deepgram handshake after a clean install, with nothing between
+    # it and the client but a human reading the length below and knowing what a
+    # real key looks like.
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+        from alpha.config import PLACEHOLDER_API_KEYS
+    except Exception:
+        PLACEHOLDER_API_KEYS = set()
+    placeholders = [
+        name
+        for name, value in (("deepgram", deepgram), ("deepl", deepl))
+        if value.strip().lower() in PLACEHOLDER_API_KEYS
+    ]
+    if placeholders:
+        raise SystemExit(
+            f"placeholder key(s): {', '.join(placeholders)}\n"
+            f"{KEYS_FILE} still holds the example value(s). Put the real "
+            "delivery keys in before building."
+        )
+
+    # Never printed; the length is the only signal, and it is now a sanity
+    # check rather than the guard -- the placeholder check above is the guard.
     log(f"keys loaded (deepgram {len(deepgram)} chars, deepl {len(deepl)} chars)")
     return deepgram, deepl
 
