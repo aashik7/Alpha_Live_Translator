@@ -117,7 +117,7 @@ a day of phase 1; otherwise ship phase 1 alone and phase 2 second.
 
 ---
 
-## Phase 3 — Close the audit gap (no code changes) — 2 of 5 done
+## Phase 3 — Close the audit gap (no code changes) — 3 of 5 done
 
 Audit the five areas the review never reached, listed in its
 *What this review did NOT cover* section:
@@ -150,8 +150,15 @@ commit authority, the frozen-ledger export and the revise-target guard all
 hold; the one finding is a dead stale-session guard, which folds into phase 3b
 because it is the same failure window.
 
-Remaining, highest expected value first: **global concurrency sweep**,
-**UI threading**, **Japanese assembler**.
+**Done — global concurrency sweep** (review item 14). One real defect out of
+four candidates: `rebind_all_runtime_writers` takes a non-reentrant lock and
+then calls a function that takes it again, reproduced through the real entry
+point. It also explains item 12 — the rebind that would move writers out of
+`_pending` is the deadlocking one, so it was disabled by a safe-mode flag and
+the pile has been refilling ever since. Lock-ordering inversions are
+structurally absent: no function in `alpha/` nests one lock inside another.
+
+Remaining: **UI threading**, **Japanese assembler**.
 
 ---
 
@@ -202,7 +209,7 @@ unproven claim once it is cheap to prove.
 
 ---
 
-## Phase 4 — The provable batch (items 2, 8, 9, 4 + 12)
+## Phase 4 — The provable batch (items 2, 8, 9, 14, 4 + 12)
 
 One update package. Ordered by severity within the phase.
 
@@ -228,8 +235,14 @@ One update package. Ordered by severity within the phase.
    `blocks_start=False`. Separately, make `build_installer.read_keys()` reject a
    placeholder, not only an empty value.
 
-3. **Items 4 and 12 — log rotation, and what the unbounded pile costs at
-   Start.** Lift `_rotate_if_needed` out of `_JsonlWriter`
+3. **Item 14 first, then items 4 and 12 — the rebind deadlock, then log
+   rotation and what the unbounded pile costs at Start.** Item 14 comes
+   first because it is the reason the pile exists: snapshot the registry
+   keys under `_lock`, release it, then call `rebind_runtime_writer` for
+   each — it takes the lock itself. Do NOT switch `_lock` to an `RLock`;
+   this module has 35 `with _lock` sites and that would legitimise re-entry
+   at all of them. Only once the rebind works can the safe-mode deferral be
+   revisited, and only then does the pile stop refilling. Lift `_rotate_if_needed` out of `_JsonlWriter`
    (`evidence_jsonl.py:39-59`) into a module-level function and call it from
    `async_debug_log.py:213` and `:394` and `freeze_guard_log.py:69`. The two
    writers holding a long-lived handle (`japanese_accuracy_log`,
@@ -317,9 +330,9 @@ design; answer them before scoping stages 2-4.
 |---|---|---|
 | 1 | Item 1 — translation queue hole | ✅ shipped `49a5178`, package 26.5.5 |
 | 2 | Item 3 — WASAPI reader + the audit-tool blind spot | ✅ shipped `fd93e61`, package 26.5.6 |
-| 3 | Audit the five unreviewed subsystems | 2 of 5 done (stop/finalize → 10-12; commit authority → 13) |
+| 3 | Audit the five unreviewed subsystems | 3 of 5 done (stop/finalize → 10-12; commit authority → 13; concurrency → 14) |
 | **3b** | **Items 11, 10, 13 — the Stop/Start window** | **next code change** |
-| 4 | Items 2, 8, 9, 4 + 12 | one package |
+| 4 | Items 2, 8, 9, then 14 → 4 + 12 | one package |
 | 5 | Item 5 — device re-bind | alone |
 | 6 | Items 6, 7 + the follow-tail leftovers | batch |
 | 7 | Speaker hot-swap | after the rest is green |

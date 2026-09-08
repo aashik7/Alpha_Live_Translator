@@ -41,6 +41,7 @@ this as a complete picture — four subsystems were never reached.
 | **11** | `SECOND_RUN_FOLDER_CREATION_BLOCKED` blocks nothing | The guard body has NO `return`/`raise` — it only logs — and `set_active_run_folder` at `:712` sits outside it. Verified by AST, not by eye. | With item 10, a second Start repoints every runtime writer at the new run's folder and force-closes the pending ones while the old worker is still writing. Worse than the direct cost: the event NAME asserts a guard that does not exist, so anyone reading a client's logs concludes the rebind was prevented and stops asking. | **HIGH** | FIX-SOON |
 | **12** | Every rebind migrates the unbounded `_pending` pile | `rebind_all_runtime_writers` runs `migrate_pending_files_to_run_folder`, and item 4 established `_pending/logs/*` is the one file nothing rotates across sessions. | Measured today on this machine: **~457 MB** (`japanese_accuracy` 358 MB + `freeze_guard` 66 MB + `async_debug` 33 MB) copied on every rebind. A bare harness calling it twice **did not finish in 120 s**. This is item 4's second-order cost that item 4 did not name: not just disk, but latency on a path the user waits on at Start — growing without bound. | MEDIUM | FIX-SOON |
 | **13** | The lifecycle's stale-session guard cannot fire | `session_id` is assigned `self._session_id` whenever that is truthy, so the comparison `session_id != self._session_id` is between one value and itself; when it is falsy the `and self._session_id` term already made the guard False. Evaluated over all three input shapes: never fires. | The commit authority still fails closed — `canonical_identity_registry.py:116` is a real comparison and does reject. But a stale event reaches the lifecycle's OWN state first, so a final from a previous session can extend or replace the CURRENT session's active utterance. Matters more with item 10, where a second session can begin while the first is finalizing. | MEDIUM | FIX-SOON |
+| **14** | `rebind_all_runtime_writers` self-deadlocks, and the workaround hiding it is why `_pending` grows | The loop at `:742` calls `rebind_runtime_writer` while holding `_lock`; that function's first statement takes `_lock` again, and `_lock` is a non-reentrant `threading.Lock` confirmed at runtime. The registry is populated by ordinary use — `get_log_path` registers on every call. | **Driven through the real entry point**: did not return in 25 s, stack blocked at `:343` under `:742`, and the `JapaneseAccuracyLogWriter` thread taken down with it at `:337`. Start survives only because `STARTUP_RECOVERY_MODE`/`EVIDENCE_SAFE_MODE` defer the rebind — which is **why item 12's `_pending` pile reached 358 MB**: the writers are never moved out of it. Still reachable via `preflight_upload_evidence` on the evidence-packaging path. | **HIGH** | FIX-SOON |
 
 ## 1. A full translation queue silently stops the translation pane for the rest of the session
 
@@ -713,6 +714,103 @@ not a bypass -- it quarantines a record the authority had already committed,
 when identity binding afterwards failed, and it fails closed (`success: False`,
 `quarantined: True`), recording even a failed quarantine rather than swallowing
 it.
+
+---
+
+## 14. `rebind_all_runtime_writers` self-deadlocks, and the workaround that hides it is why `_pending` grows
+
+**Verdict: CONFIRMED** · Severity **HIGH** · Importance **FIX-SOON**
+`alpha/utils/troubleshooting_paths.py:739-742` and `:343`
+
+```python
+# rebind_all_runtime_writers, :739
+with _lock:
+    _writers_rebound = True
+    for writer_name in list(_writer_registry.keys()):
+        rebind_runtime_writer(writer_name, run_folder)   # :742
+
+# rebind_runtime_writer, :342
+def rebind_runtime_writer(writer_name, run_folder):
+    with _lock:                                          # :343  -- same lock
+```
+
+`_lock` is `threading.Lock()` (`:40`) -- confirmed non-reentrant at runtime.
+The loop body therefore blocks forever the moment the registry has a single
+entry, and the registry is populated by ordinary use: `get_log_path`
+(`:418`) registers a writer on **every call**.
+
+**Driven through the real entry point**, with the registry populated by a real
+`get_log_path` and the `_pending` roots pointed at an empty tree so a slow copy
+could not be mistaken for a hang:
+
+```
+rebind_all_runtime_writers returned within 25 s: False
+  troubleshooting_paths.py:343  in rebind_runtime_writer       <- blocked on _lock
+  troubleshooting_paths.py:742  in rebind_all_runtime_writers  <- holds _lock
+```
+
+A second thread is taken down with it -- `JapaneseAccuracyLogWriter` is blocked
+at `:337 register_runtime_writer`, also waiting on `_lock`. So the deadlock
+stops the logging writer as well as the caller.
+
+**Why the app still starts.** `create_run_folder` (`:976-984`) reaches the
+rebind only in an `else` branch. Measured at runtime,
+`STARTUP_RECOVERY_MODE` and `EVIDENCE_SAFE_MODE` are both `True`, so Start takes
+the other branch and logs `PENDING_WRITER_REBIND_DEFERRED_NON_BLOCKING`. The
+deadlock is skipped, not fixed.
+
+**This is the real cause of item 12.** Item 12 recorded that
+`troubleshooting/runs/_pending/logs/*` is the one evidence file nothing bounds
+across sessions, and treated that as missing rotation. The deeper reason is
+here: the rebind that would move the writers **out of** `_pending` and into the
+run folder is the deadlocking function, so it was disabled by a safe-mode flag,
+and every session since has kept appending to the shared pending file. That is
+how it reached 358 MB.
+
+**Still reachable.** `preflight_upload_evidence` (`:1223`) calls the same
+function with only a UI-thread guard, from `run_artifacts.py:1442` -- the
+evidence-packaging path. A client asked to produce a diagnostic bundle can hang
+there.
+
+**Fix.** Take the lock once, not twice. Snapshot the registry keys under the
+lock, release it, then call `rebind_runtime_writer` for each -- it takes the
+lock itself and is written to be called unlocked:
+
+```python
+with _lock:
+    _writers_rebound = True
+    names = list(_writer_registry.keys())
+for writer_name in names:
+    rebind_runtime_writer(writer_name, run_folder)
+```
+
+Do **not** switch `_lock` to an `RLock`: this module has 35 `with _lock` sites
+and that would legitimise re-entry at all of them rather than remove one bug.
+Once this is fixed, the safe-mode deferral can be revisited -- and only then
+does item 12's pile stop refilling.
+
+**Regression test.** Populate the registry through the real `get_log_path`,
+call `rebind_all_runtime_writers` in a thread, and assert it returns within a
+few seconds. It hangs against the current code.
+
+---
+
+## Concurrency sweep: what else the scan found, and what it cleared
+
+An AST sweep over all of `alpha/` -- 35 non-reentrant `Lock()` sites, 10
+`RLock()`, 1 `Condition`.
+
+| Question | Result |
+|---|---|
+| Non-reentrant lock re-taken from inside its own `with` block | 4 candidates; **1 real** (item 14). The others: `audio_temp_capture` (already refuted, unreachable), `transcript_store.clear()` (the inner call is `self._segments.clear()`, a list method the name-based scan matched), `_start_watchdog` (the inner call is `t.start()`, so the lock is taken on a *different* thread, which blocks only until the parent exits its block). |
+| Two locks held at once, in inconsistent order | **None.** No function in `alpha/` nests one lock inside another, so classic AB/BA deadlock is structurally absent. |
+| Unbounded queues | 4: `main_window.py:481` (`Queue()`), and `SimpleQueue()` at `evidence_jsonl.py:21`, `multidomain_gate_evidence.py:41`, `ui_event_bus.py:57`. `SimpleQueue` **cannot** take a bound, so those three are unbounded by construction and would need a different type to fix; none is on the audio path. Not filed as findings -- no growth was measured on any of them. |
+
+The first pass of this scan produced ~40 hits by asking whether a function
+takes the lock *anywhere* and calls a lock-taking function *anywhere*. That is
+the same loose test that made the `audio_temp_capture` deadlock a false
+positive. Requiring the call to be lexically inside the `with` block cut it to
+4, and driving each cut it to 1.
 
 ---
 
