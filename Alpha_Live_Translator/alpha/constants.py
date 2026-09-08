@@ -291,6 +291,13 @@ TRANSLATION_ENABLED = True
 TRANSLATION_PROVIDER = "deepl"
 TRANSLATE_STABLE_ONLY = True
 TRANSLATION_QUEUE_MAX_SIZE = 100
+# How long a queue-full drop keeps the translation indicator degraded.
+# A window, not a latch: the other two contributors to `degraded` (the
+# item-45 circuit breaker and the quota pause) are states that clear
+# themselves, and a bare flag here would leave the indicator red for the
+# rest of the meeting after one dropped line. Matched to
+# TRANSLATION_CIRCUIT_COOLDOWN_S so the two degradations read alike.
+TRANSLATION_QUEUE_FULL_DEGRADED_S = 30.0
 # Item 44. A reconnect faster than this is not worth annotating -- the marker
 # would be noisier than the hole it describes. Longer gaps are real lost speech
 # and must be visible in the transcript, not silently stitched over.

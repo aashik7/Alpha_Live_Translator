@@ -22,6 +22,7 @@ from alpha.constants import (
     TRANSLATION_CONTEXT_MAX_CHARS,
     TRANSLATION_MAX_RETRIES,
     TRANSLATION_PROVIDER,
+    TRANSLATION_QUEUE_FULL_DEGRADED_S,
     TRANSLATION_QUEUE_MAX_SIZE,
     TRANSLATION_SHUTDOWN_TIMEOUT_SECONDS,
     TRANSLATE_STABLE_ONLY,
@@ -181,6 +182,13 @@ class TranslationWorker:
         # be translated, not have the second one rejected as a duplicate.
         self._seen_text_hash_by_utterance_version: Dict[str, str] = {}
         self._accepted_sequences: Set[int] = set()
+        # Sequences allocated and then discarded because the queue was
+        # full. They are holes in an otherwise dense ordering key, and the
+        # commit gate has to be told to step over them -- see the gate loop
+        # in `_handle_result`. Nothing will ever produce a result for one,
+        # because the job was never queued.
+        self._dropped_sequences: Set[int] = set()
+        self._last_queue_full_drop_at = 0.0
         self._provider_sent_sequences: Set[int] = set()
         self._committed_sequences: Set[int] = set()
         self._failed_sequences: Set[int] = set()
@@ -216,6 +224,7 @@ class TranslationWorker:
             "DUPLICATE_TRANSLATION_COMMITS": 0,
             "OUT_OF_ORDER_TRANSLATION_COMMITS": 0,
             "MISSING_ACCEPTED_TRANSLATION_SEQUENCES": 0,
+            "TRANSLATION_QUEUE_FULL_DROPS": 0,
             "out_of_order_completions": 0,
             "successful": 0,
             "failed": 0,
@@ -253,8 +262,19 @@ class TranslationWorker:
 
     @property
     def degraded(self) -> bool:
-        """Visible degradation for item 47's status indicator."""
-        return self.circuit_is_open() or self._quota_disabled
+        """Visible degradation for item 47's status indicator.
+
+        The third term is a WINDOW, not a latch. A queue-full drop is an
+        event rather than a state, so it expires on its own; a bare flag
+        would paint the indicator red for the rest of the meeting after one
+        dropped line, which is worse than saying nothing.
+        """
+        recent_drop = (
+            self._last_queue_full_drop_at > 0.0
+            and (time.time() - self._last_queue_full_drop_at)
+            < float(TRANSLATION_QUEUE_FULL_DEGRADED_S)
+        )
+        return self.circuit_is_open() or self._quota_disabled or recent_drop
 
     def resume_after_quota(self) -> bool:
         """Lift a quota pause. Returns True only if there was one to lift.
@@ -524,6 +544,23 @@ class TranslationWorker:
                 seq,
             )
             with self._lock:
+                # The sequence was already allocated by the
+                # `_next_translation_sequence += 1` above and is NOT rolled
+                # back: it is allocated under `_lock` while `put_nowait`
+                # runs outside it, so a concurrent submit
+                # could re-issue a rolled-back number and two jobs would
+                # share one ordering key. Record the hole instead, so the
+                # commit gate can step over it. Without this the gate parks
+                # on the hole forever and every later translation is
+                # withheld -- the pane stops for the rest of the session,
+                # and export reads the pane.
+                self._dropped_sequences.add(seq)
+                self._last_queue_full_drop_at = time.time()
+                self._counters["TRANSLATION_QUEUE_FULL_DROPS"] += 1
+                self._status_message = (
+                    "Translation falling behind - some lines were not "
+                    "translated."
+                )
                 self._accepted_sequences.discard(seq)
                 self._sequence_to_source.pop(seq, None)
                 self._seen_request_ids.discard(sid)
@@ -1019,8 +1056,22 @@ class TranslationWorker:
             if seq > self._next_translation_sequence_to_commit:
                 self._counters["out_of_order_completions"] += 1
             self._held[seq] = result
-            while self._next_translation_sequence_to_commit in self._held:
-                held = self._held.pop(self._next_translation_sequence_to_commit)
+            while True:
+                pending = self._next_translation_sequence_to_commit
+                if pending in self._dropped_sequences:
+                    # A queue-full drop left a hole here. Nothing will ever
+                    # arrive for it, so step over it: the line it stood for
+                    # is lost, but everything after it must still reach the
+                    # pane. Only a DROPPED sequence may be skipped -- a
+                    # sequence that is merely still in flight has to keep
+                    # holding the gate, or a later translation would be
+                    # committed ahead of an earlier one.
+                    self._dropped_sequences.discard(pending)
+                    self._next_translation_sequence_to_commit += 1
+                    continue
+                if pending not in self._held:
+                    break
+                held = self._held.pop(pending)
                 held_seq = int(held.translation_sequence)
                 if held_seq in self._committed_sequences:
                     self._counters["DUPLICATE_TRANSLATION_COMMITS"] += 1
@@ -1324,6 +1375,8 @@ class TranslationWorker:
             self._seen_request_ids.clear()
             self._seen_text_hash_by_utterance_version.clear()
             self._accepted_sequences.clear()
+            self._dropped_sequences.clear()
+            self._last_queue_full_drop_at = 0.0
             self._provider_sent_sequences.clear()
             self._committed_sequences.clear()
             self._failed_sequences.clear()
