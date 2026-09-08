@@ -117,7 +117,7 @@ a day of phase 1; otherwise ship phase 1 alone and phase 2 second.
 
 ---
 
-## Phase 3 — Close the audit gap (no code changes) — 4 of 5 done
+## Phase 3 — Close the audit gap (no code changes) — ✅ COMPLETE, 5 of 5
 
 Audit the five areas the review never reached, listed in its
 *What this review did NOT cover* section:
@@ -164,7 +164,16 @@ found **no** widget mutation reachable without a marshal hop. The two findings
 are an evidence event that asserts safety it never checked (item 15) and four
 `after` jobs that are never cancelled (item 16, LOW).
 
-Remaining: **Japanese assembler**.
+**Done — Japanese assembler + stabilizers** (review item 17). Three hunts came
+back empty and are recorded as such: no unbounded buffer (bounded three ways at
+100 chars / MAX_PARTS / 8000 ms), no boundary proposal that cannot be accepted,
+and all seven item-94-shaped guards benign. The one finding is a silent
+discard: a raise inside the continuity-hold tick throws the buffered Japanese
+sentence away and returns success, while the sibling handler in the same class
+recovers and re-commits it. It joins phase 6, since the trigger is abnormal.
+
+**All five areas are now audited.** Each sweep states its own scope; none of
+them is a proof of absence.
 
 ---
 
@@ -303,23 +312,29 @@ failure keep the current warning, which is a correct fallback.
 
 Cheap, low risk, batch with whatever else is shipping.
 
-1. **Item 16** — give `_on_close` the cancellation `_stop_ui_loops` already
+1. **Item 17** — mirror the sibling handler: before
+   `try_execute_continuity_hold` clears the buffer, name the loss
+   (`CONTINUITY_HOLD_TICK_DISCARDED_BUFFER` + a counter) and hand the text
+   to the same recovery `_handle_assembler_exception` uses. If dropping is
+   really the policy, it still has to be named — an unnamed loss is what
+   makes a live report undiagnosable.
+2. **Item 16** — give `_on_close` the cancellation `_stop_ui_loops` already
    has: four recurring `after` jobs are never cancelled anywhere, and the
    close path cancels nothing at all. Small, and worth doing mainly so the
    next person has somewhere to put a cancellation that does matter.
-2. **Item 6** — delete the synchronous fallback at
+3. **Item 6** — delete the synchronous fallback at
    `audio_temp_capture.py:271-275`. By the time control reaches it the item is
    already counted and logged, so returning is consistent with the function's
    own contract. That removes the only edge from inside the `:377` lock back
    into the lock. Do **not** reach for `threading.RLock` — it would legitimise
    re-entry at all 16 `with _lock` sites and mask this class of bug.
-3. **Item 7** — in the `except Exception as exc` at `deepgram_client.py:1741`,
+4. **Item 7** — in the `except Exception as exc` at `deepgram_client.py:1741`,
    emit a structured `ENGLISH_LIFECYCLE_INGEST_FAILED` event alongside the
    print, mirroring the two Japanese siblings at :1601-1611 and :1652-1662.
    That makes the downstream `IDENTITY_REJECTION` attributable. Do **not** mint
    a synthetic `canonical_utterance_id` to let the fall-through commit — that
    would defeat the fail-closed identity gate, which measurement showed working.
-4. **From the follow-tail review** — `_render_transcript_from_store_now`
+5. **From the follow-tail review** — `_render_transcript_from_store_now`
    (`main_window.py:6596`) wipes the widget via `_insert_formatted_text`, so a
    reader who has scrolled up now lands at the *top* of the pane. Preserve the
    reader's index across the re-render. Also add a behavioural test through a
@@ -347,11 +362,11 @@ design; answer them before scoping stages 2-4.
 |---|---|---|
 | 1 | Item 1 — translation queue hole | ✅ shipped `49a5178`, package 26.5.5 |
 | 2 | Item 3 — WASAPI reader + the audit-tool blind spot | ✅ shipped `fd93e61`, package 26.5.6 |
-| 3 | Audit the five unreviewed subsystems | 4 of 5 done (10-12, 13, 14, 15-16); JP assembler left |
+| 3 | Audit the five unreviewed subsystems | ✅ 5 of 5 (items 10-17) |
 | **3b** | **Items 11, 10, 13 + 15 — the Stop/Start window and the naming fix** | **next code change** |
 | 4 | Items 2, 8, 9, then 14 → 4 + 12 | one package |
 | 5 | Item 5 — device re-bind | alone |
-| 6 | Items 16, 6, 7 + the follow-tail leftovers | batch |
+| 6 | Items 17, 16, 6, 7 + the follow-tail leftovers | batch |
 | 7 | Speaker hot-swap | after the rest is green |
 
 Phase 3's four remaining audits are read-only and touch no code, so they can run

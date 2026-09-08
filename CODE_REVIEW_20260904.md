@@ -44,6 +44,7 @@ this as a complete picture — four subsystems were never reached.
 | **14** | `rebind_all_runtime_writers` self-deadlocks, and the workaround hiding it is why `_pending` grows | The loop at `:742` calls `rebind_runtime_writer` while holding `_lock`; that function's first statement takes `_lock` again, and `_lock` is a non-reentrant `threading.Lock` confirmed at runtime. The registry is populated by ordinary use — `get_log_path` registers on every call. | **Driven through the real entry point**: did not return in 25 s, stack blocked at `:343` under `:742`, and the `JapaneseAccuracyLogWriter` thread taken down with it at `:337`. Start survives only because `STARTUP_RECOVERY_MODE`/`EVIDENCE_SAFE_MODE` defer the rebind — which is **why item 12's `_pending` pile reached 358 MB**: the writers are never moved out of it. Still reachable via `preflight_upload_evidence` on the evidence-packaging path. | **HIGH** | FIX-SOON |
 | **15** | `TK_CALL_SITE_SAFE` counts a substring and calls it safe | `scan_tk_call_sites` returns `str.count(".after(")` over two files — comments and docstrings included — applies no test, and writes an event named `TK_CALL_SITE_SAFE`. Measured on the shipped tree: `{'safe': 31, 'refactored': 0}`. | Item 11's shape in the evidence stream: a name asserting a property nothing established. A reader of a client's log concludes the Tk call sites were audited and cleared; they were counted. The cost is a question retired without being asked — the same way the WASAPI reader sat behind a scan that could not see it. | MEDIUM | FIX-SOON |
 | **16** | Four recurring `after` jobs are never cancelled, and `_on_close` cancels nothing | Of 31 `after`/`after_idle` calls, 16 store an id and 15 discard it; of 13 stored job attributes, `_jp_pipeline_hb_after_id`, `_transcript_ui_batch_after_id`, `_ui_event_bus_after_id` and `_ui_queue_defer_after_id` are never passed to `after_cancel`. `_on_close` (`:11031`) contains no `after_cancel` at all. | Small, and filed as such. Tk discards pending callbacks when the interpreter is torn down, so at a clean exit this is tidiness; the observable form is the `invalid command name … ("after" script)` teardown noise this project's own test runs produce. No user-visible failure was measured. | LOW | BACKLOG |
+| **17** | A raise inside the continuity-hold tick discards the buffered sentence silently | `try_execute_continuity_hold`'s handler sets `self._buffer = None` under `JAPANESE_CONTINUITY_ASSEMBLER_SAFE_MODE` (True at runtime) and returns `True`. The sibling `_handle_assembler_exception` faces the same situation and instead emits `ASSEMBLER_EXCEPTION_CAUGHT`, then recovers the fragment and re-commits it. | **Driven on a real assembler** with a real buffered sentence: returned `True`, buffer `None`, and the only event was the crash logger's own `ASYNC_LOG_EMERGENCY_WRITE`. Nothing names the loss — no event, no counter. A spoken Japanese sentence never reaches the transcript, the ledger or the delivered file, and the evidence gives a reader no way to know one went missing. Trigger is abnormal (needs the inner call to raise), so the mechanism is proven and the frequency is not. | MEDIUM | FIX-SOON |
 
 ## 1. A full translation queue silently stops the translation pane for the rest of the session
 
@@ -925,26 +926,111 @@ would not be seen.
 
 ---
 
-## What this review did NOT cover
+## 17. A raise inside the continuity-hold tick discards the buffered sentence silently
 
-Stated plainly rather than left as an implied clean bill of health. The
-subsystem fan-out was killed twice by the session token limit, so **four areas
-were never audited**:
+**Verdict: CONFIRMED** (mechanism driven; trigger abnormal) · Severity **MEDIUM**
+· Importance **FIX-SOON**
+`alpha/transcription/japanese_sentence_assembler.py:3178-3193`
+
+```python
+except Exception as exc:
+    log_exception(exc, source="continuity_hold_tick", ...)
+    if JAPANESE_CONTINUITY_ASSEMBLER_SAFE_MODE:
+        self._buffer = None          # the buffered sentence, gone
+        self._cancel_timer()
+    return True                      # ...and the tick reports success
+```
+
+`JAPANESE_CONTINUITY_ASSEMBLER_SAFE_MODE` is `True` at runtime. Driven on a real
+`JapaneseContinuityAssembler` with a real buffered sentence, forcing
+`_execute_continuity_hold_locked` to raise:
+
+```
+returned              : True   <- reports success
+buffer after          : None
+spoken text survived? : False
+events emitted        : ['ASYNC_LOG_EMERGENCY_WRITE']
+```
+
+The only event is the crash logger's own plumbing. **Nothing names the content
+loss** -- no `jp_accuracy_log` event, no counter; `grep` for a discard event in
+that module returns nothing.
+
+**What makes this a defect rather than a policy.** The sibling handler does it
+correctly. `_handle_assembler_exception` (`:1193`) faces the same situation and
+emits `ASSEMBLER_EXCEPTION_CAUGHT`, clears the buffer, and then **recovers the
+fragment and re-commits it**. Two exception paths in one class, one preserving
+the speech and naming the event, the other dropping both.
+
+**Risk.** A Japanese sentence that was spoken, captured and buffered never
+reaches the transcript, the ledger or the delivered file, and the run's own
+evidence gives a reader no way to know a sentence went missing -- only that an
+exception happened somewhere in a hold tick. Trigger is abnormal: it needs
+`_execute_continuity_hold_locked` to raise. So the mechanism is proven and the
+frequency is not, which is why this is MEDIUM rather than HIGH.
+
+**Fix.** Mirror the sibling. Before clearing, emit
+`jp_accuracy_log("CONTINUITY_HOLD_TICK_DISCARDED_BUFFER", text_preview=...,
+exception_type=...)` and bump a counter, and hand the text to the same recovery
+`_handle_assembler_exception` uses rather than dropping it. If dropping really
+is the intended policy for this path, it still has to be named -- an unnamed
+loss is the thing that makes a live report undiagnosable.
+
+---
+
+## Japanese assembler: three hunts that came back empty
+
+| Hunt | Result |
+|---|---|
+| **Unbounded buffer growth over a long session** | **None.** The assembler holds one `Optional[dict]` buffer, not a growing list, and it is bounded three ways: `JAPANESE_CONTINUITY_MAX_BUFFER_CHARS = 100`, `JAPANESE_CONTINUITY_MAX_PARTS`, and `JAPANESE_CONTINUITY_MAX_HOLD_MS = 8000`, all enforced in `_check_emergency_commit`. An AST pass for data containers grown without a trim, clear or length check found none in any of the four modules. |
+| **A boundary proposal that can never be accepted** | **None found.** The quarantine path looked like a candidate -- `_schedule_quarantine_drop` (`:2127`) latches `_quarantine_drop_scheduled = True` and depends on `language_pipeline_worker` to run the drop that clears it. But that worker's loop has handlers at `:201` and `:206` that both stay in the loop, so it cannot die from an exception, and the fixed audit tool does not report it. The flag is cleared at `:2005` and `:2009`. |
+| **The item-94 shape** (a guard testing state whose only write is below its own return) | 7 hits, **all benign**. Four are idempotency or emptiness guards (`_schedule_quarantine_drop`, `_drop_expired_quarantine_locked`, and the two `install_japanese_stabilizer_hooks` hook guards); two are the bounded commit-gate breaker added for item 94 itself. |
+
+The one-way-flag scan's single hit, `JAPANESE_FINAL_STABILIZER_ENABLED`, is a
+module-level constant, not runtime state.
+
+---
+
+## Coverage — all six areas now audited
+
+The original pass left five subsystems unreached because the fan-out died twice
+on the session token limit. They were then audited one per session, inline.
 
 | Area | Status |
 |---|---|
-| Commit-authority internals (`utterance_lifecycle`, `pipeline_commit_transaction`) | **not audited** — only reached indirectly via item 7 |
-| Japanese assembler + stabilizers | **not audited** |
-| UI threading (worker threads reaching Tk widgets, `after()` lifetime) | **audited** (phase 3) - items 15, 16 |
-| Stop / finalize internals | **not audited** |
-| Global concurrency sweep | **not audited** |
-| Config + startup | audited; items 8 and 9 came from it |
+| Config + startup | audited (original pass) — items 8, 9 |
+| Stop / finalize internals | audited (phase 3) — items 10, 11, 12 |
+| Commit-authority internals (`utterance_lifecycle`, `pipeline_commit_transaction`) | audited (phase 3) — item 13, three invariants confirmed holding, and a correction to item 1 |
+| Global concurrency sweep | audited (phase 3) — item 14; lock-ordering inversions structurally absent |
+| UI threading (worker threads reaching Tk widgets, `after()` lifetime) | audited (phase 3) — items 15, 16; **no** unmarshalled widget mutation reachable |
+| Japanese assembler + stabilizers | audited (phase 3) — item 17; three hunts came back empty |
 
-Items 8 and 9 came from the one area that finished in the original pass; items 10-12 came from stop/finalize, audited afterwards in phase 3. Their three-lens refutation
-pass died with the rest, so unlike items 1–7 they carry **no adversarial
-verification** — I re-ran both against the real config myself instead, which is
-why they are marked CONFIRMED, but they have not been attacked the way items
-1–7 were.
+**What that does and does not mean.** Every area has now been looked at with a
+scan plus targeted driving, and the negatives are recorded alongside the
+findings. It is not a proof of absence: each sweep states its own scope in its
+section — same-module reachability, bounded depth, receivers matched by name
+shape — and a defect outside those bounds would not have been seen.
+
+**Items 8 and 9 remain the weakest entries.** Their three-lens adversarial
+verification died with the original fan-out. I re-ran both against the real
+config myself, which is why they are CONFIRMED, but they have not been attacked
+the way items 1–7 were.
+
+**A note on method, since it decided several verdicts.** Four of the sweeps in
+this review first produced a large number of hits from a question looser than
+the claim being made, and each time tightening the question to match the claim
+cut them to a handful or to none:
+
+| Sweep | Loose question | Tight question | Hits |
+|---|---|---|---|
+| Concurrency | takes the lock anywhere AND calls a lock-taker anywhere | the call is lexically inside the `with` block | ~40 → 4 → **1** |
+| UI threading | a marshal is a bare-name target | a marshal is anything in its arguments, lambda bodies included | 7 → **0** |
+| JP accumulators | any `+=` on an attribute | only attributes initialised as a container | ~35 → **0** |
+| Audit tool (item 3) | does the loop body catch? | can the handler leave the loop? | missed the real one → **found it** |
+
+That is the same failure as the audio-retention "deadlock" in item 6, and it is
+worth stating because a looser test does not merely add noise — it hides the
+real finding inside it.
 
 ---
 
