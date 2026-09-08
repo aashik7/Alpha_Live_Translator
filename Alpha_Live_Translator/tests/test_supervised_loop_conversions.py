@@ -235,6 +235,12 @@ class A3_WasapiDeviceWatchRestarts(unittest.TestCase):
 
         class Host:
             _wasapi_device_watch_worker = WasapiCaptureMixin._wasapi_device_watch_worker
+            # Borrowed, not stubbed. The worker waits on the capture's own stop
+            # event so a device rebind can end it without setting the
+            # session-wide one; the real object is a WasapiCaptureMixin
+            # subclass and always has both of these.
+            _wasapi_capture_stop_event = WasapiCaptureMixin._wasapi_capture_stop_event
+            _wasapi_stop_requested = WasapiCaptureMixin._wasapi_stop_requested
 
             def __init__(self):
                 self._stop_event = threading.Event()

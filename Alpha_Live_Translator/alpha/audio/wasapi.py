@@ -9,6 +9,7 @@ from alpha.config import (
     WASAPI_FRAMES_PER_BUFFER,
     WASAPI_READER_ERROR_BACKOFF_S,
     WASAPI_READER_MAX_CONSECUTIVE_ERRORS,
+    WASAPI_REBIND_COOLDOWN_S,
 )
 from alpha.utils.queues import put_bounded
 
@@ -22,6 +23,32 @@ def _import_pyaudio():
 
 class WasapiCaptureMixin:
     """Mixin providing WASAPI loopback capture methods."""
+
+    def _wasapi_capture_stop_event(self):
+        """The capture's OWN stop event, created on first use.
+
+        Separate from `self._stop_event` on purpose. That one is session-wide:
+        created once in main_window, cleared at Start, set at Stop, and read in
+        28 places including the microphone, the audio mixer worker and the
+        Deepgram sender and reconnect loops. Setting it to rebind one audio
+        device would stop the whole session, and clearing it would bring none
+        of those threads back.
+        """
+        event = getattr(self, "_wasapi_stop_event", None)
+        if event is None:
+            event = threading.Event()
+            self._wasapi_stop_event = event
+        return event
+
+    def _wasapi_stop_requested(self) -> bool:
+        """True when EITHER the session or the capture has been asked to stop."""
+        try:
+            if self._stop_event.is_set():
+                return True
+        except Exception:
+            pass
+        event = getattr(self, "_wasapi_stop_event", None)
+        return bool(event is not None and event.is_set())
 
     def _show_wasapi_error(self, title: str, message: str) -> None:
         if threading.current_thread() is threading.main_thread():
@@ -96,6 +123,76 @@ class WasapiCaptureMixin:
         # until the device is restored instead of flickering past.
         self._audio_device_changed = True
         self._refresh_connection_indicator()
+
+        # Follow the device. Scheduled, never run inline: this method runs on
+        # the watcher thread, and `_close_wasapi_stream` skips its watcher join
+        # when called from that thread (`watch is not
+        # threading.current_thread()`) and then nulls the handle -- so an
+        # inline rebind would leave the old watcher alive and
+        # `_start_wasapi_loopback` would spawn a second one.
+        try:
+            self._run_on_ui_thread(self._rebind_wasapi_to_default_device)
+        except Exception:
+            pass
+
+    def _rebind_wasapi_to_default_device(self) -> bool:
+        """Reopen capture on whatever is now the default output. UI thread only.
+
+        `Pa_Initialize()` snapshots the device list, so the only way to see the
+        new default is to terminate PyAudio and create a fresh one --
+        `_close_wasapi_stream` already terminates it, and
+        `_start_wasapi_loopback` creates the next.
+
+        Single-flight and rate-limited: a device that flaps (a headset
+        reconnecting, a conferencing app grabbing and releasing the endpoint)
+        would otherwise queue a rebind per poll, and each one tears down
+        capture.
+        """
+        if getattr(self, "_wasapi_rebind_in_progress", False):
+            return False
+        now = time.monotonic()
+        last = float(getattr(self, "_wasapi_last_rebind_mono", 0.0) or 0.0)
+        if last and (now - last) < WASAPI_REBIND_COOLDOWN_S:
+            return False
+        self._wasapi_rebind_in_progress = True
+        self._wasapi_last_rebind_mono = now
+        try:
+            from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+        except Exception:
+            jp_accuracy_log = None
+
+        def _log(event, **fields):
+            if jp_accuracy_log is not None:
+                try:
+                    jp_accuracy_log(event, **fields)
+                except Exception:
+                    pass
+
+        try:
+            _log("AUDIO_DEVICE_REBIND_STARTED")
+            self._close_wasapi_stream()
+            self._start_wasapi_loopback()
+        except Exception as exc:  # noqa: BLE001
+            # Leave the warning up. Before this existed a device change left
+            # capture bound to the old endpoint, yielding zero frames in
+            # silence; a failed rebind leaves no capture at all, which is not
+            # worse -- but the operator must still be told.
+            print(f"[WASAPI] Device rebind failed: {exc}")
+            _log("AUDIO_DEVICE_REBIND_FAILED", error=f"{type(exc).__name__}: {exc}")
+            return False
+        else:
+            self._audio_device_changed = False
+            self._wasapi_device_change_reported = False
+            self._refresh_connection_indicator()
+            _log(
+                "AUDIO_DEVICE_REBIND_COMPLETED",
+                captured_device_name=str(
+                    getattr(self, "_diag_wasapi_device_name", "") or ""
+                ),
+            )
+            return True
+        finally:
+            self._wasapi_rebind_in_progress = False
 
     def _report_default_device_restored(self) -> None:
         """The default came back to the device we capture from."""
@@ -181,7 +278,20 @@ class WasapiCaptureMixin:
             if not com_ready:
                 return
             pending = ""
-            while not self._stop_event.wait(poll_seconds):
+            # Waits on the CAPTURE event, not the session one. A rebind is not
+            # a session stop, so `_stop_event` stays clear through it; a
+            # watcher parked in `_stop_event.wait(2.0)` would not wake inside
+            # the 1 s join in `_close_wasapi_stream`, that join would time out,
+            # the handle would be nulled, and `_start_wasapi_loopback` would
+            # spawn a SECOND watcher next to the still-sleeping first one.
+            # Every stop path -- session or rebind -- goes through
+            # `_close_wasapi_stream`, which sets this event, so waiting on it
+            # wakes promptly in both cases; the session event is still checked
+            # each pass so a stop that somehow skips the close still ends this.
+            capture_stop = self._wasapi_capture_stop_event()
+            while not capture_stop.wait(poll_seconds):
+                if self._wasapi_stop_requested():
+                    return
                 # The baseline is the endpoint the STREAM IS BOUND TO, and it
                 # never moves for the life of the session. PortAudio opened a
                 # specific device index and has no follow-the-default
@@ -245,7 +355,7 @@ class WasapiCaptureMixin:
         idle_polls = 0
         consecutive_errors = 0
         while (
-            not self._stop_event.is_set()
+            not self._wasapi_stop_requested()
             and consecutive_errors < WASAPI_READER_MAX_CONSECUTIVE_ERRORS
         ):
             try:
@@ -276,7 +386,7 @@ class WasapiCaptureMixin:
                     time.sleep(0.01)
             except Exception as exc:
                 consecutive_errors += 1
-                if self._stop_event.is_set():
+                if self._wasapi_stop_requested():
                     # Teardown closed the stream out from under the read. The
                     # loop condition ends it; do not sleep out the backoff.
                     continue
@@ -318,6 +428,10 @@ class WasapiCaptureMixin:
             self._wasapi_channels = int(loopback["maxInputChannels"])
             self._wasapi_rate = int(loopback["defaultSampleRate"])
             self._wasapi_frames_per_buffer = WASAPI_FRAMES_PER_BUFFER
+
+            # Cleared before anything spawns, so a previous rebind's stop does
+            # not immediately end the new threads.
+            self._wasapi_capture_stop_event().clear()
 
             print("Starting WASAPI loopback audio capture...")
             print(
@@ -381,6 +495,14 @@ class WasapiCaptureMixin:
 
     def _close_wasapi_stream(self):
         """Stop and release WASAPI loopback resources."""
+        # Ask the capture's own threads to stop. Previously the joins below
+        # worked only because every caller was a session stop that had already
+        # set `_stop_event`; a device rebind is not a session stop, so without
+        # this the reader join would simply time out.
+        try:
+            self._wasapi_capture_stop_event().set()
+        except Exception:
+            pass
         if self._wasapi_stream is not None:
             try:
                 if self._wasapi_stream.is_active():

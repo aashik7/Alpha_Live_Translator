@@ -50,6 +50,11 @@ WASAPI_FRAMES_PER_BUFFER = 2048
 # which a transient never reaches and a removed device always does.
 WASAPI_READER_ERROR_BACKOFF_S = 0.05
 WASAPI_READER_MAX_CONSECUTIVE_ERRORS = 50
+# Minimum gap between two device rebinds. A headset reconnecting, or a
+# conferencing app grabbing and releasing the endpoint, can flap the default
+# several times in a few seconds, and each rebind tears capture down and back
+# up. Longer than the watcher's 2 s poll so a flap cannot queue one per poll.
+WASAPI_REBIND_COOLDOWN_S = 10.0
 MIC_BLOCKSIZE = 1024  # microphone capture block size at 16 kHz
 MIC_NOISE_GATE_INITIAL_RMS = 200.0  # CHANGED: adaptive gate seed for first 2s (fix 7)
 MIC_RMS_ROLLING_WINDOW_S = 2.0  # CHANGED: rolling mic RMS window (fix 7)

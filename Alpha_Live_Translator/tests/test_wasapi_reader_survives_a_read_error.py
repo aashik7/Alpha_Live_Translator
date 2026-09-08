@@ -96,6 +96,11 @@ class FakeStream:
 
 class Host:
     _wasapi_reader_worker = WasapiCaptureMixin._wasapi_reader_worker
+    # The loop consults the capture's own stop event as well as the session
+    # one, so a host that borrows only the loop would die on an AttributeError
+    # in the `while` condition -- outside the try, so nothing catches it.
+    _wasapi_stop_requested = WasapiCaptureMixin._wasapi_stop_requested
+    _wasapi_capture_stop_event = WasapiCaptureMixin._wasapi_capture_stop_event
 
     def __init__(self, stream):
         self._stop_event = threading.Event()

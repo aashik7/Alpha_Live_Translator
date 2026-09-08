@@ -193,7 +193,14 @@ class TestSurfacingChoices(unittest.TestCase):
         with patch("tkinter.messagebox.showerror") as modal:
             Host()._report_default_device_changed("BASE", "NEW")
         modal.assert_not_called()
-        self.assertEqual(len(marshalled), 1, "the UI update must be marshalled")
+        # Named, not counted. The invariant is "the indicator repaint is handed
+        # to the UI thread rather than performed on the watcher's" -- a count
+        # also fails when something else legitimately joins the queue, which is
+        # what happened when the report began scheduling the device rebind.
+        names = [getattr(callback, "__name__", "") for callback in marshalled]
+        self.assertIn(
+            "_paint", names, "the UI update must be marshalled; queued %r" % (names,)
+        )
 
     def test_the_change_is_logged_with_both_endpoint_ids(self):
         logged = []
