@@ -787,6 +787,9 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
         # `_drain_quarantine_recovery`.
         self._quarantine_recovery_pending: list[dict[str, Any]] = []
         self._quarantine_recovered_count = 0
+        # Item 17: buffered sentences the continuity-hold tick threw away after
+        # an exception. Counted so a discard is measurable, not just nameable.
+        self._continuity_hold_discard_count = 0
         self._quarantine_recovery_draining = False
         self._last_reliable_speaker: Optional[int] = None
         self._last_buffer_speaker: Optional[int] = None
@@ -983,6 +986,7 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
             self._assembler_exception_count = 0
             self._quarantine_drop_count = 0
             self._quarantine_recovered_count = 0
+            self._continuity_hold_discard_count = 0
             self._quarantine_recovery_pending = []
             self._business_phrase_protected_count = 0
             self._raw_mutation_count = 0
@@ -3190,8 +3194,49 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
             except Exception:
                 pass
             if JAPANESE_CONTINUITY_ASSEMBLER_SAFE_MODE:
+                # Item 17. Dropping the buffer here is the policy and stays;
+                # doing it SILENTLY was the defect. Before this, the only event
+                # a run showed for a lost Japanese sentence was the crash
+                # logger's own `ASYNC_LOG_EMERGENCY_WRITE`, so a live report of
+                # "a sentence I said never appeared" had nothing to point at.
+                #
+                # The sibling `_handle_assembler_exception` (:1193) already does
+                # this correctly, so this mirrors it rather than inventing a
+                # second mechanism: name the loss, then hand the text to
+                # `_quarantine_recovery_pending`, which item 43's drain
+                # (:1127-1128) replays on the next ingest -- the first point
+                # after the worker's timer where this lock is NOT held.
+                buf = self._buffer if isinstance(self._buffer, dict) else None
+                lost_text = str((buf or {}).get("text") or "").strip()
+                lost_speaker = (buf or {}).get("speaker", 1)
                 self._buffer = None
                 self._cancel_timer()
+                if lost_text:
+                    self._continuity_hold_discard_count += 1
+                    # Appending under the held lock is safe and matches :1251 --
+                    # `self._lock` is a MonitoredRLock (reentrant), and the
+                    # drain deliberately runs later, off this lock.
+                    self._quarantine_recovery_pending.append(
+                        {
+                            "speaker": lost_speaker,
+                            "text": lost_text,
+                            "raw": lost_text,
+                        }
+                    )
+                try:
+                    jp_accuracy_log(
+                        "CONTINUITY_HOLD_TICK_DISCARDED_BUFFER",
+                        exception_type=type(exc).__name__,
+                        exception_message=str(exc),
+                        reason=reason,
+                        speaker=lost_speaker,
+                        text_preview=lost_text[:80],
+                        char_count=len(lost_text),
+                        queued_for_recovery=bool(lost_text),
+                        discard_count=self._continuity_hold_discard_count,
+                    )
+                except Exception:
+                    pass
             return True
         finally:
             self._lock.release()

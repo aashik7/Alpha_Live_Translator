@@ -242,7 +242,9 @@ def _ensure_writer_thread() -> None:
 
 def _enqueue_flush(item: dict[str, Any]) -> None:
     """Non-blocking enqueue. On overflow drop the oldest retention item only."""
-    global _retention_drop_count, _retention_error_count
+    # `_retention_error_count` was in this declaration for the synchronous
+    # fallback item 6 removed; nothing here writes it any more.
+    global _retention_drop_count
     _ensure_writer_thread()
     try:
         _retention_queue.put_nowait(item)
@@ -268,11 +270,26 @@ def _enqueue_flush(item: dict[str, Any]) -> None:
             )
         except Exception:
             pass
-    try:
-        _flush_chunk_locked_from_item(item)
-    except Exception:
-        with _lock:
-            _retention_error_count += 1
+    # Item 6. A synchronous `_flush_chunk_locked_from_item(item)` used to sit
+    # here. It was the ONLY edge from inside the `_lock` block in
+    # `_ingest_audio_chunk_impl` (the sole caller of this function) back into
+    # `_lock`, which `_flush_chunk_locked_from_item` takes again -- and `_lock`
+    # is a plain, non-reentrant `threading.Lock`.
+    #
+    # It was never reached in production: getting here needs the retry above to
+    # fail too, which needs a competing producer, and this function has exactly
+    # one call site. Two stress runs -- 43 real overflows single-threaded, 1901
+    # across three concurrent callback threads -- reached it zero times.
+    #
+    # Removing it costs nothing: by this point the item is already counted in
+    # `_retention_drop_count` and logged, so returning is exactly what this
+    # function's docstring promises. What it buys is that wiring
+    # `reset_audio_temp_session()` into a Start/Stop path later -- which is what
+    # that function exists for -- can no longer introduce a hard freeze.
+    #
+    # Do NOT make `_lock` an RLock instead: that legitimises re-entry at all 16
+    # `with _lock` sites and masks this class of bug rather than removing it.
+    return
 
 
 def ingest_audio_chunk(

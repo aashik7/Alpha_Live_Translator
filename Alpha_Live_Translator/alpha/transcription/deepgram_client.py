@@ -1740,6 +1740,30 @@ class DeepgramClientMixin:
                     return True
             except Exception as exc:
                 print(f"[UTTERANCE] lifecycle ingest error: {exc}")
+                # Item 7. The print was the ONLY trace, and under `pythonw.exe`
+                # it reaches nothing but `console-*.log`. Both Japanese siblings
+                # in this same function (:1601-1611, :1652-1662) write a
+                # structured event naming their fallback; this one wrote none,
+                # so the `IDENTITY_REJECTION` that follows downstream had no
+                # attributable cause in the evidence stream.
+                #
+                # The event is the whole fix. Deliberately NOT minting a
+                # synthetic `canonical_utterance_id` so the fall-through can
+                # commit: the identity gate refusing this line is the gate
+                # working, and measurement confirmed it does. Preserving the
+                # spoken text via the publish below is the correct fallback.
+                try:
+                    from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+                    jp_accuracy_log(
+                        "ENGLISH_LIFECYCLE_INGEST_FAILED",
+                        reason=f"{type(exc).__name__}:{exc}",
+                        text_preview=str(segment_text or "")[:120],
+                        speaker=speaker_num,
+                        fallback="published_directly_without_lifecycle",
+                    )
+                except Exception:
+                    pass
 
             return self._publish_final_transcript_segment(
                 speaker_num, segment_text, metadata=metadata

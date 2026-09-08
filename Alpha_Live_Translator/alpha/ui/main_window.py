@@ -240,7 +240,11 @@ from alpha.ui.theme import (
     WAVEFORM_CANVAS_WIDTH,
     WAVEFORM_CANVAS_WIDTH_WIDE,
 )
-from alpha.ui.follow_tail import FOLLOW_TAIL_BOTTOM_EPS, scroll_to_tail
+from alpha.ui.follow_tail import (
+    FOLLOW_TAIL_BOTTOM_EPS,
+    capture_reader_position,
+    scroll_to_tail,
+)
 from alpha.ui.strings import (
     LANGUAGE_NAMES,
     available_languages,
@@ -303,6 +307,16 @@ CONTENT_REFERENCE_WEIGHT = 30
 # (`@media (max-width: 700px)` -> `grid-template-columns: 1fr`). The app
 # already had a 700 breakpoint for the same reason.
 CONTENT_STACK_BREAKPOINT = LAYOUT_MEDIUM_BREAKPOINT
+
+# Item 16. The four self-rescheduling `after` loops whose job ids were stored
+# and never cancelled. Module-level so a test host can borrow
+# `_cancel_recurring_ui_jobs` on its own.
+RECURRING_UI_JOB_ATTRS = (
+    "_jp_pipeline_hb_after_id",
+    "_transcript_ui_batch_after_id",
+    "_ui_event_bus_after_id",
+    "_ui_queue_defer_after_id",
+)
 
 # The microphone control used to be gated here, on a width threshold, because
 # it lived in the header. Item 88c moved it into the status strip, which is
@@ -1297,6 +1311,41 @@ class AlphaApp(
             except Exception:
                 pass
             self._waveform_layout_job = None
+
+    # Item 16. Four self-rescheduling `after` loops stored a job id that was
+    # never passed to `after_cancel` anywhere in this module, and `_on_close`
+    # cancelled nothing at all. Each kept re-arming until the interpreter went
+    # away; the visible form is the `invalid command name "..." while executing
+    # ("after" script)` noise this project's own test runs produce on teardown.
+    #
+    # Deliberately NOT folded into `_stop_ui_loops`, which runs at every session
+    # stop: `_ui_event_bus_after_id` is app-lifetime -- armed by
+    # `_start_ui_event_bus_drain_loop` from `_deferred_post_show_init`, not from
+    # Start -- so cancelling it there would kill the UI event bus drain for the
+    # rest of the run. This belongs on the close path only.
+    def _cancel_recurring_ui_jobs(self):
+        """Cancel the app-lifetime `after` loops. Close path only.
+
+        The attribute list is a MODULE constant, not `self._…`. A dozen tests in
+        this repo borrow real unbound methods onto bare host classes, so a
+        `self.`-qualified constant would raise `AttributeError` on every one of
+        them -- the same reason `alpha/ui/follow_tail.py` is a plain function.
+        """
+        for attr in RECURRING_UI_JOB_ATTRS:
+            job = getattr(self, attr, None)
+            if job is None:
+                continue
+            try:
+                self.after_cancel(job)
+            except Exception:
+                # A job Tk has already fired raises here. Clearing the
+                # attribute anyway is the point: a stale id left behind is a
+                # cancellation that can never be repeated.
+                pass
+            try:
+                setattr(self, attr, None)
+            except Exception:
+                pass
 
     def _emit_deferred_startup_logs(self):
         """Emit session/config logs off the UI thread after the window is visible."""
@@ -6588,12 +6637,19 @@ class AlphaApp(
             if len(segments) > limit and len(window) > limit:
                 print("UI_FULL_REWRITE_BLOCKED reason=unbounded_window")
                 return
+            # `_insert_formatted_text` opens with `delete("1.0", "end")`, so a
+            # reader who had scrolled up loses their place and lands at the top.
+            # `scroll_to_tail` correctly refuses to drag them to the bottom, but
+            # something has to put them back.
+            restore_reader = capture_reader_position(box)
             self._insert_formatted_text(box, content)
             box.configure(state="normal")
             if not content.endswith("\n"):
                 box.insert("end", "\n")
             box.configure(state="disabled")
             scroll_to_tail(box)
+            if restore_reader is not None:
+                restore_reader()
             self._displayed_segment_count = len(window)
             scrollbar = getattr(box, "_scrollbar", None)
             if scrollbar is not None and hasattr(self, "check_scrollbar_visibility"):
@@ -11130,6 +11186,9 @@ class AlphaApp(
         except Exception:
             pass
         if getattr(self, "_window_close_pending", False):
+            # Item 16: this path destroys directly, so it never reaches
+            # `_shutdown_and_destroy` and must cancel for itself.
+            self._cancel_recurring_ui_jobs()
             self.destroy()
             return
         listening = bool(self.is_listening) or bool(getattr(self, "_is_stopping", False))
@@ -11278,6 +11337,9 @@ class AlphaApp(
         except Exception:
             pass
         self._stop_ui_loops()
+        # Item 16. `_stop_ui_loops` handles the session loops; these four are
+        # app-lifetime and only the close path may cancel them.
+        self._cancel_recurring_ui_jobs()
         if self.is_listening:
             self._stop_listening(graceful=False)
         if self.translation_worker is not None:

@@ -18,6 +18,47 @@ import tkinter as tk
 FOLLOW_TAIL_BOTTOM_EPS = 0.999
 
 
+def capture_reader_position(box):
+    """Remember where a scrolled-up reader is, for restoring after a rebuild.
+
+    Returns a zero-argument restore callable, or `None` when there is nothing
+    worth restoring.
+
+    `_render_transcript_from_store_now` rebuilds the pane through
+    `_insert_formatted_text`, which begins with `delete("1.0", "end")`. That
+    wipe loses the reader's position: `scroll_to_tail` then correctly declines
+    to jump them to the bottom, but nothing puts them back where they were, so
+    they land at the TOP of a pane they had scrolled into the middle of.
+
+    Returns `None` when the reader is following the tail -- `scroll_to_tail`
+    already does the right thing for them, and restoring a remembered index
+    would fight it -- and when the widget cannot answer, which keeps a rebuild
+    working on a test fake or a half-torn-down window.
+
+    A plain function for the same reason as `scroll_to_tail`: its caller is a
+    method on `AlphaApp`, and tests borrow those onto bare hosts.
+    """
+    if box is None:
+        return None
+    try:
+        if getattr(box, "_follow_tail", True):
+            return None
+        # The line currently at the top of the viewport, not a fraction: the
+        # rebuild can change the content length, and a fraction would then map
+        # to a different line.
+        top = box.index("@0,0")
+    except Exception:
+        return None
+
+    def _restore():
+        try:
+            box.see(top)
+        except Exception:
+            pass
+
+    return _restore
+
+
 def scroll_to_tail(box):
     """Scroll `box` to its last line unless the reader has scrolled up in it.
 
