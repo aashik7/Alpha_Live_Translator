@@ -354,7 +354,7 @@ assumption item 5 still rests on.
 
 ---
 
-## Phase 6 — Hygiene and attribution
+## Phase 6 — Hygiene and attribution — SHIPPED `42f0d29`, package 26.5.10
 
 Cheap, low risk, batch with whatever else is shipping.
 
@@ -412,7 +412,7 @@ design; answer them before scoping stages 2-4.
 | 3b | Items 11, 10, 13 + 15 — the Stop/Start window and the naming fix | ✅ shipped, package 26.5.7 |
 | 4 | Items 2, 8, 9, then 14 → 4 + 12 | ✅ shipped, package 26.5.8 |
 | **5** | **Item 5 — device re-bind** | **next code change**, alone |
-| 6 | Items 17, 16, 6, 7 + the follow-tail leftovers | batch |
+| 6 | Items 17, 16, 6, 7 + the follow-tail leftovers | shipped `42f0d29`, package 26.5.10 |
 | 7 | Speaker hot-swap | after the rest is green |
 
 Phase 3's four remaining audits are read-only and touch no code, so they can run
