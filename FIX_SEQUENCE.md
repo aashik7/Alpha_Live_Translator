@@ -49,7 +49,7 @@ regressing, and skipping them is how the last four wrong diagnoses happened.
 
 ---
 
-## Phase 1 — Stop the silent truncation (item 1)
+## Phase 1 — Stop the silent truncation (item 1) — ✅ SHIPPED `49a5178`
 
 **Ship this first, on its own.** It is the only CRITICAL, it needs no other
 change, and it is losing delivered transcript content today.
@@ -79,7 +79,7 @@ suite's failing-name set is unchanged.
 
 ---
 
-## Phase 2 — Stop system audio dying for the session (item 3, plus the scan)
+## Phase 2 — Stop system audio dying for the session (item 3, plus the scan) — ✅ SHIPPED `fd93e61`
 
 Two changes, one commit. The second is what makes this a class fix instead of a
 one-off.
@@ -117,7 +117,7 @@ a day of phase 1; otherwise ship phase 1 alone and phase 2 second.
 
 ---
 
-## Phase 3 — Close the audit gap (no code changes)
+## Phase 3 — Close the audit gap (no code changes) — 1 of 5 done
 
 Audit the five areas the review never reached, listed in its
 *What this review did NOT cover* section:
@@ -138,9 +138,49 @@ cheaper than planning it twice.
 **Practical note.** The fan-out for this died twice on the session token limit.
 Run it as **one subsystem per session**, not five in parallel.
 
+**Done so far — stop / finalize** (`3d9ff34`, review items 10-12). It produced
+two HIGH findings that are cheap to fix and share one failure, so they are
+promoted to their own phase below rather than waiting for the other four
+audits. Its third finding (item 12) folds into the log-rotation work, because
+the same change fixes both.
+
+Remaining, highest expected value first: **commit-authority internals**,
+**global concurrency sweep**, **UI threading**, **Japanese assembler**.
+
 ---
 
-## Phase 4 — The provable batch (items 2, 8, 9, 4)
+## Phase 3b — The Stop/Start window (items 10 and 11)
+
+These two are one failure wearing two hats, and both fixes are a few lines.
+They jump ahead of the old phase 4 because they are HIGH rather than MEDIUM,
+they risk the delivered transcript rather than a log, and neither depends on
+the four audits still outstanding — so nothing is gained by waiting.
+
+**Item 11 first**, because it is the one that turns item 10 from untidy into
+harmful, and because it is three lines. In `rebind_all_runtime_writers`
+(`troubleshooting_paths.py:700-712`), decide what the name should mean. If a
+second rebind is genuinely wrong, `return` from the guard. If it is legitimate,
+rename the event to describe what happened (`RUN_FOLDER_REBOUND_AGAIN`) and put
+the previous folder in the payload. What must not survive is an event called
+`SECOND_RUN_FOLDER_CREATION_BLOCKED` sitting above code that blocks nothing —
+that retires the question for anyone reading a client's logs.
+
+**Item 10 second.** Keep the 5 s UI restore; it exists for a good reason and its
+message is honest. Stop it clearing the guards that keep a second session out.
+Gate `toggle_listening` (`main_window.py:10116`) on the worker rather than on
+the UI flag — `stop_core_completed_event` is already set at
+`stop_finalize_worker.py:2060`, after the last artifact write, and is exactly
+the right signal. The button can read "Finishing previous session…" until then.
+
+**Test.** Drive a Start during a finalize that is deliberately slowed, and
+assert the second session cannot begin until the worker is done. That is also
+what would raise item 10 from PLAUSIBLE to CONFIRMED, and it should be written
+either way: the fix is correct regardless, but the file should stop carrying an
+unproven claim once it is cheap to prove.
+
+---
+
+## Phase 4 — The provable batch (items 2, 8, 9, 4 + 12)
 
 One update package. Ordered by severity within the phase.
 
@@ -166,7 +206,8 @@ One update package. Ordered by severity within the phase.
    `blocks_start=False`. Separately, make `build_installer.read_keys()` reject a
    placeholder, not only an empty value.
 
-3. **Item 4 — log rotation.** Lift `_rotate_if_needed` out of `_JsonlWriter`
+3. **Items 4 and 12 — log rotation, and what the unbounded pile costs at
+   Start.** Lift `_rotate_if_needed` out of `_JsonlWriter`
    (`evidence_jsonl.py:39-59`) into a module-level function and call it from
    `async_debug_log.py:213` and `:394` and `freeze_guard_log.py:69`. The two
    writers holding a long-lived handle (`japanese_accuracy_log`,
@@ -175,6 +216,12 @@ One update package. Ordered by severity within the phase.
    would not fix it. Separately, bound
    `troubleshooting/runs/_pending/logs/*` once at startup: that file is the
    only one unbounded *across* sessions.
+   That last part is item 12: `rebind_all_runtime_writers` migrates the whole
+   pile on every rebind — measured ~457 MB on the dev machine, and a bare
+   harness calling it twice did not finish in 120 s. Bounding the files fixes
+   most of it; also skip or chunk the migration above a size threshold, since
+   copying a 358 MB log into a run folder is an accident rather than evidence
+   collection.
 
 ---
 
@@ -244,12 +291,16 @@ design; answer them before scoping stages 2-4.
 
 ## Summary
 
-| Phase | What | Ship? |
+| Phase | What | State |
 |---|---|---|
-| 1 | Item 1 — translation queue hole | **Yes, immediately** |
-| 2 | Item 3 — WASAPI reader + the audit-tool blind spot | Yes, with or after phase 1 |
-| 3 | Audit the five unreviewed subsystems | No code change |
-| 4 | Items 2, 8, 9, 4 | Yes, one package |
-| 5 | Item 5 — device re-bind | Yes, alone |
-| 6 | Items 6, 7 + the follow-tail leftovers | Batch |
-| 7 | Speaker hot-swap | After the rest is green |
+| 1 | Item 1 — translation queue hole | ✅ shipped `49a5178`, package 26.5.5 |
+| 2 | Item 3 — WASAPI reader + the audit-tool blind spot | ✅ shipped `fd93e61`, package 26.5.6 |
+| 3 | Audit the five unreviewed subsystems | 1 of 5 done (stop/finalize → items 10-12) |
+| **3b** | **Items 11 then 10 — the Stop/Start window** | **next code change** |
+| 4 | Items 2, 8, 9, 4 + 12 | one package |
+| 5 | Item 5 — device re-bind | alone |
+| 6 | Items 6, 7 + the follow-tail leftovers | batch |
+| 7 | Speaker hot-swap | after the rest is green |
+
+Phase 3's four remaining audits are read-only and touch no code, so they can run
+between the code phases rather than blocking them.
