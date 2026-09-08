@@ -213,8 +213,19 @@ def scan_tk_call_sites(project_root: Optional[Any] = None) -> dict[str, int]:
     try:
         from alpha.utils.japanese_accuracy_log import jp_accuracy_log
 
-        jp_accuracy_log("TK_CALL_SITE_SCAN_COMPLETED", safe_count=safe)
-        jp_accuracy_log("TK_CALL_SITE_SAFE", count=safe)
+        # These used to be TK_CALL_SITE_SCAN_COMPLETED(safe_count=) and
+        # TK_CALL_SITE_SAFE(count=). Nothing here establishes safety: `safe`
+        # is `str.count(".after(")` over two files, comments and docstrings
+        # included, with no check of any kind. A reader of a client's log saw
+        # TK_CALL_SITE_SAFE and concluded the call sites had been audited and
+        # cleared; they had been counted.
+        #
+        # The number is worth keeping, so only the claim attached to it is
+        # gone. The real check -- walking from each thread target to widget
+        # mutations reachable without a marshal hop -- lives in the review's
+        # UI-threading section, not here.
+        jp_accuracy_log("TK_AFTER_CALL_SITE_SCAN_COMPLETED", after_call_count=safe)
+        jp_accuracy_log("TK_AFTER_CALL_SITE_COUNT", count=safe)
     except Exception:
         pass
     return {"safe": safe, "refactored": _tk_call_sites_refactored}

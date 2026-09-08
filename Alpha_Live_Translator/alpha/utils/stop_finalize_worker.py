@@ -932,6 +932,29 @@ def _write_minimal_runtime_artifacts(host: Any, *, dg_result: Optional[dict[str,
     # final authoritative status (see evidence_pointer_finalize.py).
     _mark_required_step("run_manifest", manifest_write_ok, reason="manifest_write_exception")
 
+def finalize_in_progress() -> bool:
+    """True while the Stop worker is still running.
+
+    The UI force-restores five seconds after Stop and clears `_is_finalizing`,
+    but `_run_finalize_worker` has up to 66 s of step budget left before
+    `write_final_alpha` writes the deliverable. Start has to be gated on THIS,
+    not on the UI flag.
+
+    Deliberately keyed on the thread being alive rather than on
+    `stop_core_completed_event`: if the worker hangs or dies without setting
+    that event, an event-only gate would lock the operator out for the rest of
+    the day. A dead worker can no longer corrupt anything, so it releases Start.
+    """
+    with _state_lock:
+        thread = _stop_state.get("finalize_thread")
+    if thread is None:
+        return False
+    try:
+        return bool(thread.is_alive())
+    except Exception:
+        return False
+
+
 def get_stop_finalize_snapshot() -> dict[str, Any]:
     with _state_lock:
         failed = list(_stop_state["failed_steps"])

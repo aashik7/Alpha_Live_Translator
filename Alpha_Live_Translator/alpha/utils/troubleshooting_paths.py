@@ -701,11 +701,24 @@ def rebind_all_runtime_writers(run_folder: Path, *, startup_phase: bool = False)
         try:
             from alpha.utils.japanese_accuracy_log import jp_accuracy_log
 
+            # The event used to be called SECOND_RUN_FOLDER_CREATION_BLOCKED,
+            # and nothing here blocks anything: this branch only logs, and
+            # `set_active_run_folder` below runs either way. A name asserting a
+            # guard that does not exist is worse than no line at all, because a
+            # reader of a client's log concludes the rebind was prevented and
+            # stops asking.
+            #
+            # Renamed rather than turned into a `return`: every session after
+            # the first legitimately binds its own run folder, so blocking the
+            # second rebind would break ordinary use. What protects the window
+            # where an OLD session is still writing is the Start gate in
+            # `main_window.toggle_listening`, not this.
             jp_accuracy_log(
-                "SECOND_RUN_FOLDER_CREATION_BLOCKED",
+                "RUN_FOLDER_REBOUND_AGAIN",
                 reason="extra_rebind",
                 run_rebind_count=_run_rebind_count,
                 run_folder=str(run_folder),
+                previous_run_folder=str(get_active_run_folder() or ""),
             )
         except Exception:
             pass

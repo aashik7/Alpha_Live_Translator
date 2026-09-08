@@ -10119,8 +10119,55 @@ class AlphaApp(
             return
         if self.is_listening:
             self._begin_graceful_stop()
-        else:
-            self._start_listening()
+            return
+        # A new session must not begin while the previous one is still
+        # finalizing. `_is_finalizing` above is not enough: the stop watchdog
+        # force-restores the UI after five seconds and clears it, while
+        # `_run_finalize_worker` still has up to 66 s of step budget before
+        # `write_final_alpha` writes the transcript -- and a second Start in
+        # that window repoints every runtime writer at the new run's folder
+        # while the old worker is still writing into it.
+        #
+        # Stop is deliberately NOT gated: refusing it would strand a live
+        # session.
+        blocked = False
+        try:
+            from alpha.utils.stop_finalize_worker import finalize_in_progress
+
+            blocked = bool(finalize_in_progress())
+        except Exception:
+            blocked = False
+        if blocked:
+            # The refusal must not depend on the notification succeeding. An
+            # earlier draft had both inside one try/except, so a failure to
+            # paint the status text let Start through -- the gate defeated by
+            # its own courtesy message.
+            notify = getattr(self, "_note_start_blocked_by_finalize", None)
+            if callable(notify):
+                try:
+                    notify()
+                except Exception:
+                    pass
+            return
+        self._start_listening()
+
+    def _note_start_blocked_by_finalize(self) -> None:
+        """Say why Start did nothing, rather than looking broken."""
+        try:
+            from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+            jp_accuracy_log("START_BLOCKED_PREVIOUS_SESSION_FINALIZING")
+        except Exception:
+            pass
+        try:
+            if self.status_text_label is not None:
+                self._set_dynamic_text(
+                    self.status_text_label,
+                    "Finishing previous session — one moment…",
+                    text_color=COLORS["text_secondary"],
+                )
+        except Exception:
+            pass
 
     def _log_startup_diagnostics(self):
         """Print safe startup diagnostics without exposing full API keys."""

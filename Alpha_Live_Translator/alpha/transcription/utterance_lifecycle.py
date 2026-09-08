@@ -1500,10 +1500,14 @@ class UtteranceLifecycleOwner:
             sf = bool(sf)
 
         with self._lock:
-            session_id = self._session_id or str(
-                getattr(self._host, "_live_session_id", "") or ""
-            )
-            if session_id and self._session_id and session_id != self._session_id:
+            # Compare against the HOST, which is the only value that can
+            # disagree. The previous form assigned `session_id` from
+            # `self._session_id` first and then compared the two, so it was
+            # comparing a value with itself and the `session_mismatch` branch
+            # was unreachable in every input shape.
+            host_session_id = str(getattr(self._host, "_live_session_id", "") or "")
+            session_id = self._session_id or host_session_id
+            if host_session_id and self._session_id and host_session_id != self._session_id:
                 d = LifecycleDecision(
                     decision=IGNORE_DUPLICATE,
                     reason="session_mismatch",
