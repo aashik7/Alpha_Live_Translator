@@ -5,7 +5,11 @@ requires stopping Alpha and starting a new session. The transcript, the run
 folder and the evidence all restart with it. The ask is to change the speaker
 **while a session is running**, with the transcript continuous across the change.
 
-**Status:** design only. No production code has been changed for this.
+**Status: IMPLEMENTED**, up to and excluding a UI picker. This began as a
+design document and the analysis below is still the reasoning of record, but
+the feature shipped across packages 26.5.9-26.5.16 by the automatic-follow
+route rather than as an operator-driven swap. Read section 7's table for what
+landed where, and section 8 for the decisions.
 
 **Revision 2 — after driving the code instead of reading it.** Revision 1 was
 written from reading. Executing it found **four defects in the plan itself**,
@@ -61,9 +65,12 @@ exists to avoid.
 
 Two more facts that narrow the blast radius:
 
-* **The microphone is not involved.** It runs on `sounddevice`, a different
-  library, already at `DEEPGRAM_SAMPLE_RATE` — `alpha/audio/microphone.py:50-65`.
-  Changing the speaker does not touch it.
+* **The microphone is not involved** *(true when written; NO LONGER TRUE)*. It
+  runs on `sounddevice`, a different library, already at
+  `DEEPGRAM_SAMPLE_RATE` — so changing the SPEAKER does not touch it, and that
+  part still holds. But plugging in a headset moves the default **input** as
+  well, and as of package 26.5.14 the microphone follows its own default device
+  by the same mechanism. Do not read this line as "the mic needs no handling".
 * **Deepgram will not drop the socket during a short gap.** The sender loop emits
   a JSON `KeepAlive` every `DG_KEEPALIVE_INTERVAL_S` independently of whether
   audio is flowing — `deepgram_client.py:2269-2272`.
