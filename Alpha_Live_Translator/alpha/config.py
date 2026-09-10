@@ -61,6 +61,18 @@ WASAPI_REBIND_COOLDOWN_S = 10.0
 # re-init, measured at 22.2 ms. Same value today, but tuning one must not
 # silently retune the other.
 MIC_REBIND_COOLDOWN_S = 10.0
+# How long a rebind waits for the reopened device to actually deliver a chunk
+# before it will call itself a success. Opening a stream proves nothing: the
+# item 73 condition is a stream that reports `is_active()` True and delivers
+# zero bytes, raising nothing. Only affordable off the Tk mainloop, which is
+# why the rebind moved to a worker thread first.
+REBIND_AUDIO_CONFIRM_S = 3.0
+# A source is "live" if it delivered within this window. NOT a silence
+# detector: a quiet room still delivers chunks of zeros, so nothing arriving
+# means the device stopped producing. Separate from the `*_source_available`
+# flags, which latch True for the session and are consumed by the source gate
+# and the evidence writers.
+SOURCE_LIVENESS_WINDOW_S = 2.0
 MIC_BLOCKSIZE = 1024  # microphone capture block size at 16 kHz
 MIC_NOISE_GATE_INITIAL_RMS = 200.0  # CHANGED: adaptive gate seed for first 2s (fix 7)
 MIC_RMS_ROLLING_WINDOW_S = 2.0  # CHANGED: rolling mic RMS window (fix 7)

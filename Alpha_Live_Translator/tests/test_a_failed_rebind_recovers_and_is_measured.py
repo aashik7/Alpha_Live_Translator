@@ -159,6 +159,9 @@ class _RebindHost:
     )
     _refresh_connection_indicator = WasapiCaptureMixin._refresh_connection_indicator
     _wasapi_capture_stop_event = WasapiCaptureMixin._wasapi_capture_stop_event
+    _wasapi_stop_requested = WasapiCaptureMixin._wasapi_stop_requested
+    _rebind_single_flight_lock = WasapiCaptureMixin._rebind_single_flight_lock
+    _await_capture_confirmation = WasapiCaptureMixin._await_capture_confirmation
 
     def __init__(self, *, start_fails=False, current_endpoint="NEW-ENDPOINT"):
         self._stop_event = threading.Event()
@@ -169,6 +172,7 @@ class _RebindHost:
         self._diag_wasapi_device_name = "Speakers"
         self._start_fails = start_fails
         self._current_endpoint = current_endpoint
+        self._wasapi_chunks_captured = 0
         self.calls = []
 
     # Looked up at call time rather than bound at class-definition time, so the
@@ -199,6 +203,9 @@ class _RebindHost:
         if self._start_fails:
             raise OSError("no device")
         self._wasapi_default_endpoint_baseline = self._current_endpoint
+        # See the note in test_device_change_rebinds_capture: the rebind now
+        # requires proof that audio resumed, not just that open() returned.
+        self._wasapi_chunks_captured += 1
 
 
 class _LogCapture:

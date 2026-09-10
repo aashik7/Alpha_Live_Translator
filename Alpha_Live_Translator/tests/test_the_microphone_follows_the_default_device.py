@@ -280,6 +280,12 @@ class _MicHost:
     def _run_on_ui_thread(self, fn):
         self.marshalled.append(fn)
 
+    def _schedule_audio_rebind(self, fn):
+        # Mirrors the real shared scheduler, which spawns a worker thread.
+        # Captured instead of run so the test drives it deterministically.
+        self.marshalled.append(fn)
+        return True
+
     def _read_default_capture_endpoint_id(self):
         # The real object has this on the same mixin; the rebind re-baselines
         # through it after a successful reopen.
@@ -319,8 +325,8 @@ class TheMicrophoneRebindTest(unittest.TestCase):
         self.addCleanup(patcher.stop)
 
     def test_the_change_is_scheduled_not_run_inline(self):
-        """It runs from the device-watch thread, which must not touch
-        PortAudio while the mixer and the WASAPI rebind may also be doing so."""
+        """The device-watch thread must not do the work itself: a headset plug
+        fires this and the WASAPI rebind together, and that one is expensive."""
         host = _MicHost()
         host._report_default_input_device_changed(MIC_OLD, MIC_NEW)
         self.assertEqual(host.calls, [], "the rebind ran on the watcher thread")

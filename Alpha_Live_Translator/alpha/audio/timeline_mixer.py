@@ -6,7 +6,7 @@ import numpy as np
 
 from alpha.audio.processing import pcm_to_mono_16k_np
 from alpha.audio.source_gate import TeamsSourceGate
-from alpha.config import DEEPGRAM_SAMPLE_RATE
+from alpha.config import DEEPGRAM_SAMPLE_RATE, SOURCE_LIVENESS_WINDOW_S
 
 # 20 ms frames at 16 kHz → 320 samples → 640 bytes (256 kbps when paced to real time)
 FRAME_SAMPLES = int(DEEPGRAM_SAMPLE_RATE * 0.02)
@@ -28,6 +28,13 @@ class DeepgramTimelineMixer:
         self._next_frame_time = None
         self._sys_source_available = False
         self._mic_source_available = False
+        # WHEN each source last delivered. The `_available` flags above latch
+        # True for the life of the session -- they are consumed by the source
+        # gate and the evidence writers, so their meaning must not change --
+        # and that makes them useless for telling a live source from one that
+        # stopped minutes ago. These carry that second, different fact.
+        self._sys_last_chunk_mono = 0.0
+        self._mic_last_chunk_mono = 0.0
         self._source_gate = TeamsSourceGate()
 
     def reset(self):
@@ -36,6 +43,8 @@ class DeepgramTimelineMixer:
         self._next_frame_time = None
         self._sys_source_available = False
         self._mic_source_available = False
+        self._sys_last_chunk_mono = 0.0
+        self._mic_last_chunk_mono = 0.0
         self._source_gate.reset()
 
     def get_source_gate_summary(self):
@@ -81,6 +90,7 @@ class DeepgramTimelineMixer:
         if mono.size == 0:
             return
         self._sys_source_available = True
+        self._sys_last_chunk_mono = time.monotonic()
         self._sys_buffer = np.concatenate((self._sys_buffer, mono))
         self._trim_buffer("_sys_buffer")
 
@@ -91,8 +101,15 @@ class DeepgramTimelineMixer:
         if mic.size == 0:
             return
         self._mic_source_available = True
+        self._mic_last_chunk_mono = time.monotonic()
         self._mic_buffer = np.concatenate((self._mic_buffer, mic))
         self._trim_buffer("_mic_buffer")
+
+    @staticmethod
+    def _source_is_live(last_chunk_mono):
+        if not last_chunk_mono:
+            return False
+        return (time.monotonic() - last_chunk_mono) <= SOURCE_LIVENESS_WINDOW_S
 
     def _trim_buffer(self, attr):
         buf = getattr(self, attr)
@@ -130,6 +147,13 @@ class DeepgramTimelineMixer:
         meta = {
             "system_source_available": bool(self._sys_source_available),
             "mic_source_available": bool(self._mic_source_available),
+            # Availability LATCHES; liveness does not. A source that stopped
+            # delivering still reads available, which is how a dead microphone
+            # or a rebind gap looks identical to a working one in the evidence.
+            # Not a silence detector: a quiet room still delivers chunks of
+            # zeros, so nothing arriving means the DEVICE stopped.
+            "system_source_live": self._source_is_live(self._sys_last_chunk_mono),
+            "mic_source_live": self._source_is_live(self._mic_last_chunk_mono),
             "speaker_detection_method": decision.get("speaker_detection_method"),
             "speaker_label": decision.get("speaker_label"),
             "chosen_source": decision.get("chosen_source"),

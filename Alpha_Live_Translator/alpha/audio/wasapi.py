@@ -6,6 +6,7 @@ import time
 from tkinter import messagebox
 
 from alpha.config import (
+    REBIND_AUDIO_CONFIRM_S,
     WASAPI_FRAMES_PER_BUFFER,
     WASAPI_READER_ERROR_BACKOFF_S,
     WASAPI_READER_MAX_CONSECUTIVE_ERRORS,
@@ -75,6 +76,57 @@ class WasapiCaptureMixin:
             event = threading.Event()
             self._wasapi_stop_event = event
         return event
+
+    def _schedule_audio_rebind(self, fn):
+        """Run a device rebind on its OWN short-lived thread.
+
+        Not the Tk main thread, and not the device-watch thread -- both are
+        wrong for different reasons, which is why this exists rather than a
+        plain call or a `_run_on_ui_thread`.
+
+        * The **mainloop** is where `_run_on_ui_thread` puts work, and an
+          `after` callback occupies it until it returns. A rebind is up to 1 s
+          of reader join, up to 1 s of watcher join, `PyAudio.terminate()`, a
+          fresh `PyAudio()` that re-enumerates every host API on Windows, and
+          `open()` -- so every device change froze the UI for that whole window.
+        * The **watcher** is worse: `_close_wasapi_stream` skips its watcher
+          join when called from that thread and then nulls the handle, leaving
+          the old watcher alive while the restart spawns a second one.
+
+        A daemon thread per confirmed change is enough because the rebinds are
+        already single-flight and rate-limited -- an extra thread that finds the
+        flag taken simply returns.
+        """
+        try:
+            threading.Thread(
+                target=fn, name="AudioDeviceRebind", daemon=True
+            ).start()
+            return True
+        except Exception as exc:  # noqa: BLE001
+            print(f"[WASAPI] Could not start the rebind worker: {exc}")
+            return False
+
+    def _rebind_single_flight_lock(self):
+        """Created on first use; these mixins have no shared `__init__`."""
+        lock = getattr(self, "_wasapi_rebind_lock", None)
+        if lock is None:
+            lock = threading.Lock()
+            self._wasapi_rebind_lock = lock
+        return lock
+
+    def _await_capture_confirmation(self, counter_attr, before):
+        """True once `counter_attr` moves past `before`, else False on timeout.
+
+        This is what separates "the device opened" from "audio is flowing".
+        """
+        deadline = time.monotonic() + REBIND_AUDIO_CONFIRM_S
+        while time.monotonic() < deadline:
+            if int(getattr(self, counter_attr, 0) or 0) > before:
+                return True
+            if self._stop_event.is_set():
+                return False
+            time.sleep(0.05)
+        return int(getattr(self, counter_attr, 0) or 0) > before
 
     def _wasapi_stop_requested(self) -> bool:
         """True when EITHER the session or the capture has been asked to stop."""
@@ -160,19 +212,25 @@ class WasapiCaptureMixin:
         self._audio_device_changed = True
         self._refresh_connection_indicator()
 
-        # Follow the device. Scheduled, never run inline: this method runs on
+        # Follow the device, on a worker. Never inline: this method runs on
         # the watcher thread, and `_close_wasapi_stream` skips its watcher join
         # when called from that thread (`watch is not
         # threading.current_thread()`) and then nulls the handle -- so an
         # inline rebind would leave the old watcher alive and
-        # `_start_wasapi_loopback` would spawn a second one.
+        # `_start_wasapi_loopback` would spawn a second one. And never on the
+        # mainloop, which an `after` callback occupies until it returns.
         try:
-            self._run_on_ui_thread(self._rebind_wasapi_to_default_device)
+            self._schedule_audio_rebind(self._rebind_wasapi_to_default_device)
         except Exception:
             pass
 
     def _rebind_wasapi_to_default_device(self) -> bool:
-        """Reopen capture on whatever is now the default output. UI thread only.
+        """Reopen capture on whatever is now the default output.
+
+        Runs on its own short-lived worker thread. NOT the mainloop, which it
+        would occupy for the whole teardown and re-enumeration, and NOT the
+        device-watch thread, where `_close_wasapi_stream` skips its own watcher
+        join and the restart would spawn a second watcher.
 
         `Pa_Initialize()` snapshots the device list, so the only way to see the
         new default is to terminate PyAudio and create a fresh one --
@@ -184,14 +242,25 @@ class WasapiCaptureMixin:
         would otherwise queue a rebind per poll, and each one tears down
         capture.
         """
-        if getattr(self, "_wasapi_rebind_in_progress", False):
+        # A rebind that started before Stop must not reopen capture after it.
+        # This runs on its own thread now, so it can outlive the decision to
+        # stop; reopening here would leave a live stream and a reader behind a
+        # session everything else believes has ended.
+        if self._stop_event.is_set() or self._wasapi_stop_requested():
             return False
         now = time.monotonic()
-        last = float(getattr(self, "_wasapi_last_rebind_mono", 0.0) or 0.0)
-        if last and (now - last) < WASAPI_REBIND_COOLDOWN_S:
-            return False
-        self._wasapi_rebind_in_progress = True
-        self._wasapi_last_rebind_mono = now
+        # Claim taken atomically. The flag used to be read and set as two
+        # separate statements, which was harmless only while the caller was the
+        # single-threaded mainloop; from a worker thread two rebinds could both
+        # pass the check and interleave two teardowns of the same stream.
+        with self._rebind_single_flight_lock():
+            if getattr(self, "_wasapi_rebind_in_progress", False):
+                return False
+            last = float(getattr(self, "_wasapi_last_rebind_mono", 0.0) or 0.0)
+            if last and (now - last) < WASAPI_REBIND_COOLDOWN_S:
+                return False
+            self._wasapi_rebind_in_progress = True
+            self._wasapi_last_rebind_mono = now
         try:
             from alpha.utils.japanese_accuracy_log import jp_accuracy_log
         except Exception:
@@ -212,6 +281,7 @@ class WasapiCaptureMixin:
         # audio-loss class, which this project has already had to diagnose the
         # hard way from retained WAVs.
         gap_started = time.monotonic()
+        captured_before = int(getattr(self, "_wasapi_chunks_captured", 0) or 0)
         try:
             _log("AUDIO_DEVICE_REBIND_STARTED")
             self._close_wasapi_stream()
@@ -250,6 +320,28 @@ class WasapiCaptureMixin:
             )
             return False
         else:
+            # Opening proves nothing. The whole item 73 failure is a stream
+            # that reports `is_active()` True and delivers zero bytes while
+            # raising nothing, so clearing the warning here on the strength of
+            # `open()` alone would put a healthy indicator over a capture path
+            # producing silence -- the exact shape this rebind exists to end.
+            confirmed = self._await_capture_confirmation(
+                "_wasapi_chunks_captured", captured_before
+            )
+            if not confirmed:
+                print(
+                    "[WASAPI] Rebind opened the device but no audio arrived "
+                    f"within {REBIND_AUDIO_CONFIRM_S:.0f}s; leaving the warning up."
+                )
+                _log(
+                    "AUDIO_DEVICE_REBIND_NO_AUDIO",
+                    captured_device_name=str(
+                        getattr(self, "_diag_wasapi_device_name", "") or ""
+                    ),
+                    waited_seconds=REBIND_AUDIO_CONFIRM_S,
+                )
+                self._refresh_connection_indicator()
+                return False
             self._audio_device_changed = False
             self._wasapi_device_change_reported = False
             self._refresh_connection_indicator()
@@ -478,6 +570,13 @@ class WasapiCaptureMixin:
                         put_bounded(
                             self.sys_audio_queue,
                             (data, stamp_channels, stamp_rate),
+                        )
+                        # Counted HERE, at the capture site, not where the
+                        # mixer drains: a rebind needs to know the DEVICE is
+                        # producing, and a drain counter cannot tell that from
+                        # the mixer simply running.
+                        self._wasapi_chunks_captured = (
+                            int(getattr(self, "_wasapi_chunks_captured", 0) or 0) + 1
                         )
                     idle_polls = 0
                 else:

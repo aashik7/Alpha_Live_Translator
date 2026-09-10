@@ -36,8 +36,9 @@ Two more, both already visible in the existing code:
 * `_close_wasapi_stream` skips its watcher join when called FROM the watcher
   thread (`watch is not threading.current_thread()`), then nulls the handle --
   so a rebind driven from the watcher would leave the old watcher alive and
-  `_start_wasapi_loopback` would spawn a second one. The rebind is marshalled
-  to the UI thread.
+  `_start_wasapi_loopback` would spawn a second one. The rebind is handed to
+  a worker thread -- originally the UI thread, which fixed the watcher hazard
+  but froze the mainloop for the whole teardown and re-enumeration.
 * A flapping device must not start a rebind storm.
 
 WHAT THESE TESTS PIN
@@ -71,6 +72,12 @@ class Host:
         WasapiCaptureMixin._rebind_wasapi_to_default_device
     )
     _refresh_connection_indicator = WasapiCaptureMixin._refresh_connection_indicator
+    # The rebind moved off the Tk mainloop onto a worker, which brought a stop
+    # check, an atomic single-flight claim and a wait for real audio with it.
+    # Borrowed, not stubbed: the real object is a WasapiCaptureMixin subclass.
+    _wasapi_stop_requested = WasapiCaptureMixin._wasapi_stop_requested
+    _rebind_single_flight_lock = WasapiCaptureMixin._rebind_single_flight_lock
+    _await_capture_confirmation = WasapiCaptureMixin._await_capture_confirmation
 
     def __init__(self, *, start_fails=False):
         self._stop_event = threading.Event()
@@ -81,11 +88,19 @@ class Host:
         self._diag_wasapi_device_name = "Speakers"
         self.calls = []
         self.marshalled = []
+        self._wasapi_chunks_captured = 0
         self._start_fails = start_fails
 
     # -- what the mixin calls into ---------------------------------------
     def _run_on_ui_thread(self, fn):
         self.marshalled.append(fn)
+
+    def _schedule_audio_rebind(self, fn):
+        # Stands in for the real worker thread so `run_marshalled` can drive it
+        # deterministically. What matters to these tests is that the rebind is
+        # HANDED OFF rather than run on the caller's thread.
+        self.marshalled.append(fn)
+        return True
 
     def _read_default_endpoint_id(self):
         # The failure path re-baselines from this so device detection survives
@@ -108,6 +123,10 @@ class Host:
         self.show_error_dialog_seen = show_error_dialog
         if self._start_fails:
             raise RuntimeError("no device")
+        # A reopened device that actually produces. The rebind now waits for
+        # this before calling itself a success, because opening a stream that
+        # delivers nothing is the item 73 failure it exists to end.
+        self._wasapi_chunks_captured += 1
 
     def run_marshalled(self):
         for fn in list(self.marshalled):
@@ -124,15 +143,15 @@ class ADeviceChangeSchedulesARebindTest(unittest.TestCase):
         self.assertEqual(
             host.calls, [], "the rebind ran on the caller's thread"
         )
-        # `_refresh_connection_indicator` marshals too, so count the rebind
-        # specifically rather than the queue length.
+        # `_refresh_connection_indicator` marshals to the UI thread too, so
+        # name the rebind specifically rather than counting the queue.
         scheduled = [
             getattr(fn, "__name__", "") for fn in host.marshalled
         ]
         self.assertIn(
             "_rebind_wasapi_to_default_device",
             scheduled,
-            "no rebind was scheduled for the UI thread; queued %r" % (scheduled,),
+            "no rebind was handed off; queued %r" % (scheduled,),
         )
 
     def test_the_scheduled_rebind_closes_then_starts(self):

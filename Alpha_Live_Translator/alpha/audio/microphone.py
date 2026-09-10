@@ -23,6 +23,16 @@ if os.environ.get("ALPHA_STARTUP_EAGER_SOUNDDEVICE", "").strip().lower() in (
     _import_sounddevice()
 
 
+class _NullLock:
+    """Used only by a host that lacks the shared single-flight lock."""
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
 class MicrophoneCaptureMixin:
     """Mixin providing default microphone capture methods."""
 
@@ -39,6 +49,13 @@ class MicrophoneCaptureMixin:
             if self._stop_event.is_set() or self.mic_audio_queue is None:
                 return
             raw = indata.tobytes()
+            if raw:
+                # Counted where the DEVICE delivers, not where the mixer
+                # drains: a rebind has to distinguish "the microphone is
+                # producing" from "the mixer is still running".
+                self._mic_chunks_captured = (
+                    int(getattr(self, "_mic_chunks_captured", 0) or 0) + 1
+                )
             if raw and not put_bounded(self.mic_audio_queue, raw):
                 print("Microphone audio queue full — dropped oldest chunk")
                 try:
@@ -97,11 +114,15 @@ class MicrophoneCaptureMixin:
     def _report_default_input_device_changed(self, baseline, current):
         """The default microphone moved. Schedule a rebind; never run it here.
 
-        This is called from the device-watch thread. The rebind re-initialises
-        PortAudio process-wide, so it is marshalled to the UI thread -- the same
-        thread the WASAPI rebind runs on -- so two PortAudio inits can never run
-        concurrently from different threads. A headset plug moves BOTH defaults,
-        so both rebinds are routinely in flight at once.
+        Called from the device-watch thread, which must not do the work
+        itself: a headset plug moves BOTH defaults, so this and the WASAPI
+        rebind fire together, and that one is expensive.
+
+        Note it is NOT a correctness requirement that the two serialise.
+        pyaudiowpatch and sounddevice are separate libraries with separate
+        PortAudio instances, so their re-inits do not contend. They share a
+        dispatch path because one path is easier to reason about, not because
+        an earlier comment here claimed they must.
         """
         try:
             from alpha.utils.japanese_accuracy_log import jp_accuracy_log
@@ -113,11 +134,21 @@ class MicrophoneCaptureMixin:
             )
         except Exception:
             pass
-        runner = getattr(self, "_run_on_ui_thread", None)
-        if not callable(runner):
-            return
+        # A worker thread, never the Tk mainloop. The mic rebind is cheap
+        # (22.2 ms measured) so the mainloop would survive it, but a headset
+        # plug fires this and the WASAPI rebind together and that one is not
+        # cheap -- routing both the same way leaves one path to reason about.
+        schedule = getattr(self, "_schedule_audio_rebind", None)
+        if callable(schedule):
+            try:
+                schedule(self._rebind_microphone_to_default_device)
+                return
+            except Exception:
+                pass
+        # A host without the WASAPI mixin still gets a correct rebind; inline
+        # is acceptable here precisely because this one is cheap.
         try:
-            runner(self._rebind_microphone_to_default_device)
+            self._rebind_microphone_to_default_device()
         except Exception:
             pass
 
@@ -131,7 +162,10 @@ class MicrophoneCaptureMixin:
             pass
 
     def _rebind_microphone_to_default_device(self):
-        """Reopen the mic on whatever is now the default input. UI thread only.
+        """Reopen the mic on whatever is now the default input.
+
+        Runs on the shared rebind worker -- never the mainloop, and never the
+        device-watch thread.
 
         `sd.default.device[0]` is read at open time, but PortAudio snapshots the
         device list at initialisation -- the same reason the WASAPI side has to
@@ -145,8 +179,14 @@ class MicrophoneCaptureMixin:
         second PyAudio while the first was alive was measured returning in
         0.048 ms with an identical index.
         """
-        if getattr(self, "_mic_rebind_in_progress", False):
-            return False
+        # Runs on its own thread now, so it can outlive the decision to stop.
+        # Reopening the microphone after Stop would leave a live stream behind
+        # a session everything else believes has ended.
+        try:
+            if self._stop_event.is_set():
+                return False
+        except Exception:
+            pass
         # A microphone that is not running is not a microphone to follow. Both
         # cases are supported and deliberate: the operator turned it off with
         # the UI switch, or the system-audio-only benchmark is active. A device
@@ -156,11 +196,18 @@ class MicrophoneCaptureMixin:
         if getattr(self, "_mic_stream", None) is None:
             return False
         now = time.monotonic()
-        last = float(getattr(self, "_mic_last_rebind_mono", 0.0) or 0.0)
-        if last and (now - last) < MIC_REBIND_COOLDOWN_S:
-            return False
-        self._mic_rebind_in_progress = True
-        self._mic_last_rebind_mono = now
+        # Claimed under a lock: read-then-set was safe only while the caller was
+        # the single-threaded mainloop.
+        lock = getattr(self, "_rebind_single_flight_lock", None)
+        guard = lock() if callable(lock) else _NullLock()
+        with guard:
+            if getattr(self, "_mic_rebind_in_progress", False):
+                return False
+            last = float(getattr(self, "_mic_last_rebind_mono", 0.0) or 0.0)
+            if last and (now - last) < MIC_REBIND_COOLDOWN_S:
+                return False
+            self._mic_rebind_in_progress = True
+            self._mic_last_rebind_mono = now
 
         def _log(event, **fields):
             try:
@@ -171,6 +218,7 @@ class MicrophoneCaptureMixin:
                 pass
 
         started = time.monotonic()
+        captured_before = int(getattr(self, "_mic_chunks_captured", 0) or 0)
         try:
             _log("AUDIO_INPUT_REBIND_STARTED")
             self._close_microphone_stream()
@@ -190,6 +238,17 @@ class MicrophoneCaptureMixin:
             )
             return False
         else:
+            # Opening a stream is not the same as a microphone that works.
+            confirm = getattr(self, "_await_capture_confirmation", None)
+            if callable(confirm) and not confirm(
+                "_mic_chunks_captured", captured_before
+            ):
+                print(
+                    "[MIC] Rebind opened an input device but no audio arrived; "
+                    "the microphone may be silent."
+                )
+                _log("AUDIO_INPUT_REBIND_NO_AUDIO")
+                return False
             # Re-baseline onto the device now captured from, or the watcher
             # would compare against the old microphone and report a change on
             # every poll from here.
