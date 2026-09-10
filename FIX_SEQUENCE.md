@@ -438,6 +438,69 @@ install.
 > **834 s** and both passed. If the suite is suddenly 20× slow, check
 > `~/.cache/graphify-rebuild.log` before believing the failures.
 
+### Stage 1 follow-up — the hole the stamp could not see — ✅ SHIPPED `1a83c25`, package 26.5.12
+
+Auditing what phase 5 and stage 1 actually deliver against the owner's own
+requirement — *headphones plugged or unplugged mid-meeting, no stop, no break,
+no Stop/Start, same quality and quantity* — found the stamp had a hole through
+it, and it was **proved by driving the real reader, not by reading it**.
+
+`_close_wasapi_stream` joins the reader with `timeout=1.0`, never checks the
+result, and nulls the handle either way. `_start_wasapi_loopback` then CLEARS
+the capture stop event before spawning the next reader. A reader still wedged in
+a blocking `read()` therefore woke to `_wasapi_stop_requested()` False and
+carried on — and since the loop re-read `stream = self._wasapi_stream` every
+pass while its stamp was captured once at its own start, it picked up the **new**
+device's stream and stamped it with the **old** device's format. Measured:
+
+    join timed out after 1.01s: True
+    old reader still alive after the rebind: True
+    NEW-stream-bytes   stamped 48000 Hz 2 ch   x999
+
+Two readers draining one stream, so the corrupted chunks interleaved with good
+ones. Fixed by capturing **identity, stream and format together, once**, at the
+top of the worker: `_start_wasapi_loopback` bumps `_wasapi_reader_generation`
+before spawning, a reader whose generation is stale exits, and binding the
+stream is what makes the stamp describe the bytes — correct by construction
+rather than by timing, which was the point of stage 1. The generation is
+deliberately **not** `stream.is_active()`: what a closed PortAudio stream does
+on that call is not worth betting correctness on.
+
+Also fixed: the rebind cooldown was process-scoped and cleared nowhere, so it
+survived Stop/Start and silently refused the first device change of a session
+begun within 10 s of the previous session's rebind. `_close_wasapi_stream` now
+clears it — **guarded by `_wasapi_rebind_in_progress`**, because that function is
+called BY the rebind between stamping the cooldown and reopening, and clearing
+unconditionally would have reset the cooldown on every rebind and disabled the
+anti-storm guard entirely. That near-miss has its own test.
+
+Four new tests fail against the pre-fix tree. A fifth was written and **deleted**
+for passing on both sides; the deletion and its reason are recorded in the file.
+
+> **STILL OPEN, and deliberately not fixed here.** `_sys_source_available` and
+> `_mic_source_available` (`timeline_mixer.py:83, :93`) are **latches, not
+> liveness** — set True on the first chunk, cleared only in `__init__`/`reset()`.
+> Every frame's meta reports them as availability, so a source that has
+> contributed nothing for minutes (a rebind gap, a dead mic) still reads
+> available in the evidence. Confirmed by reading both assignment sites. Not
+> changed in this pass because the source gate and the evidence writers both
+> consume those fields, so altering their meaning is its own review — the same
+> reasoning `SPEAKER_HOTSWAP_GUIDELINE.md` applies to adding a mixer lock.
+> Whoever takes it: add a liveness signal, do not silently flip these two.
+
+Six more findings from that audit are open and unfixed — a failed rebind opens a
+modal on the Tk main thread; the whole rebind runs inside the mainloop; the
+warning is cleared on `open()` rather than on frames arriving; the microphone
+never follows the device at all; a failed rebind leaves no detector for the rest
+of the session; the capture gap is never measured.
+
+> ⚠️ The multi-agent audit that surfaced these **died on the session limit — 53
+> of 61 agents errored**, so its "refuted" bucket is *unverified*, not refuted.
+> These claims from it were never checked and must not be repeated as fact:
+> the Deepgram `_dg_replay_buffer` overwrite on reconnect, `pcm_to_mono_16k_np`
+> `int()` truncation (~58.6 ms/min claimed), and the transcript seam across the
+> gap.
+
 ### Stages 2-4 — still blocked
 
 Four design questions in §8 of that guideline are open and change the design;
@@ -460,6 +523,8 @@ taking.
 | 5 | Item 5 — device re-bind | ✅ shipped `c2bdab2`, package 26.5.9 |
 | 6 | Items 17, 16, 6, 7 + the follow-tail leftovers | shipped `42f0d29`, package 26.5.10 |
 | 7 stage 1 | Per-chunk format stamp — R1, R2, R16, R17 | ✅ shipped `c33f5f6`, package 26.5.11 |
+| 7 stage 1 follow-up | Superseded reader stops; cooldown is session-scoped | ✅ shipped `1a83c25`, package 26.5.12 |
+| — | **7 findings still open** from the continuity audit (modal on the UI thread, rebind inside the mainloop, warning cleared on open, mic never follows, no detector after a failed rebind, gap never measured, availability latches) | open |
 | **7 stages 2-4** | **Speaker hot-swap proper** | **blocked on the four §8 design answers** |
 
 Phase 3's four remaining audits are read-only and touch no code, so they can run
