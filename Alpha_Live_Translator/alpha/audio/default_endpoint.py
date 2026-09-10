@@ -1,4 +1,4 @@
-"""Read the Windows default audio *render* endpoint ID. Item 73.
+"""Read the Windows default audio endpoint ID -- render or capture. Item 73.
 
 Why this exists at all: **PortAudio cannot answer the question.**
 `Pa_Initialize()` snapshots the whole device list -- including which device
@@ -45,6 +45,7 @@ _IID_IMMDeviceEnumerator = "{A95664D2-9614-4F35-A746-DE8DB63617E6}"
 
 # EDataFlow / ERole, from mmdeviceapi.h.
 _E_RENDER = 0
+_E_CAPTURE = 1
 _ROLE_MULTIMEDIA = 1
 
 _COINIT_MULTITHREADED = 0x0
@@ -107,8 +108,13 @@ def com_uninitialize() -> None:
         pass
 
 
-def read_default_render_endpoint_id() -> str:
-    """Current default render endpoint ID, or "" if it cannot be read.
+def _read_default_endpoint_id(dataflow: int) -> str:
+    """Current default endpoint ID for one dataflow, or "" if unreadable.
+
+    `dataflow` is `_E_RENDER` (what the machine plays through) or `_E_CAPTURE`
+    (what it listens through). Everything else about the COM call is identical,
+    which is why this is one function with two thin wrappers rather than two
+    copies of fifty lines of ctypes plumbing that could drift apart.
 
     The caller MUST treat "" as "unknown", never as "changed" -- an
     unreadable endpoint is not evidence that the device moved.
@@ -133,11 +139,11 @@ def read_default_render_endpoint_id() -> str:
             enumerator,
             _SLOT_GET_DEFAULT_AUDIO_ENDPOINT,
             (ctypes.c_int, ctypes.c_int, POINTER(c_void_p)),
-            ctypes.c_int(_E_RENDER),
+            ctypes.c_int(dataflow),
             ctypes.c_int(_ROLE_MULTIMEDIA),
             byref(device),
         )
-        # A machine with no active render endpoint returns
+        # A machine with no active endpoint for this dataflow returns
         # E_NOTFOUND rather than raising; that is "unknown", not an error.
         if hr < 0 or not device:
             return ""
@@ -163,8 +169,24 @@ def read_default_render_endpoint_id() -> str:
                     pass
 
 
+def read_default_render_endpoint_id() -> str:
+    """Current default RENDER endpoint ID (speakers), or "" if unreadable."""
+    return _read_default_endpoint_id(_E_RENDER)
+
+
+def read_default_capture_endpoint_id() -> str:
+    """Current default CAPTURE endpoint ID (microphone), or "" if unreadable.
+
+    Plugging in or unplugging a headset moves BOTH defaults, so following only
+    the render one left the microphone bound to a device that may no longer
+    exist while system audio correctly followed the headset.
+    """
+    return _read_default_endpoint_id(_E_CAPTURE)
+
+
 __all__ = [
     "com_initialize_mta",
     "com_uninitialize",
     "read_default_render_endpoint_id",
+    "read_default_capture_endpoint_id",
 ]

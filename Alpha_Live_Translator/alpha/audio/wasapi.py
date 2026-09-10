@@ -21,6 +21,42 @@ def _import_pyaudio():
     return pyaudio
 
 
+def evaluate_endpoint_change(*, baseline, current, pending, reported):
+    """One poll of the default-endpoint watch. Returns `(pending, action)`.
+
+    `action` is None, "changed", or "restored". Pure, so the three decisions
+    below can be tested directly rather than inferred from thread timing -- and
+    so RENDER and CAPTURE share one implementation. Two hand-copied state
+    machines is exactly how the debounce holds on one device flavour and
+    silently rots on the other.
+
+    The three decisions, each reached by measurement and each of which looks
+    arbitrary without its reason:
+
+    * **Two consecutive disagreeing reads before reporting.** A sleep/resume or
+      a driver re-enumeration can momentarily report a different endpoint.
+    * **"" is UNKNOWN, never "changed".** A COM hiccup is not evidence the
+      device moved, and warning on it teaches the operator to ignore warnings.
+    * **The baseline never moves, and going back is a RECOVERY.** The baseline
+      is the endpoint the stream is BOUND to. Re-baselining onto each new
+      default was the first draft and was wrong: it reported the user switching
+      back -- a recovery -- as a second fault.
+    """
+    if not baseline:
+        return "", None
+    if not current:
+        return "", None
+    if current == baseline:
+        if reported:
+            return "", "restored"
+        return "", None
+    if pending != current:
+        return current, None
+    if not reported:
+        return "", "changed"
+    return "", None
+
+
 class WasapiCaptureMixin:
     """Mixin providing WASAPI loopback capture methods."""
 
@@ -322,44 +358,49 @@ class WasapiCaptureMixin:
             # `_close_wasapi_stream`, which sets this event, so waiting on it
             # wakes promptly in both cases; the session event is still checked
             # each pass so a stop that somehow skips the close still ends this.
+            # One poll covers BOTH defaults. Plugging in a headset moves the
+            # render endpoint and the capture endpoint together, and this thread
+            # already owns a COM apartment and the debounce -- a second watcher
+            # would duplicate both for no gain. Safe to couple: session start
+            # re-raises if `_start_wasapi_loopback` fails (main_window.py:10616)
+            # and the microphone is only started afterwards, so this thread
+            # exists whenever a mic stream does.
+            mic_pending = ""
             capture_stop = self._wasapi_capture_stop_event()
             while not capture_stop.wait(poll_seconds):
                 if self._wasapi_stop_requested():
                     return
-                # The baseline is the endpoint the STREAM IS BOUND TO, and it
-                # never moves for the life of the session. PortAudio opened a
-                # specific device index and has no follow-the-default
-                # behaviour, so "is the default still the device we capture?"
-                # is the whole question. Re-baselining onto each new default
-                # was the first draft and was wrong: switching BACK to the
-                # capture device is a recovery, and it reported that as a
-                # second fault.
+
+                # Read ONCE and decide on that value. Re-reading to build the
+                # report would be a second COM call that can legitimately
+                # disagree with the one the decision was made on, and would
+                # report an endpoint the debounce never saw twice.
                 baseline = getattr(self, "_wasapi_default_endpoint_baseline", "")
-                if not baseline:
-                    continue
                 current = self._read_default_endpoint_id()
-                # "" is UNKNOWN, never "changed". A COM hiccup is not evidence
-                # that the device moved, and warning on it would teach the
-                # operator to ignore the warning.
-                if not current:
-                    pending = ""
-                    continue
-                if current == baseline:
-                    # Back on the capture device. Clear the latch so a later
-                    # switch is reported again, and take the warning down --
-                    # a sticky warning that outlives the problem is noise.
-                    if getattr(self, "_wasapi_device_change_reported", False):
-                        self._wasapi_device_change_reported = False
-                        self._report_default_device_restored()
-                    pending = ""
-                    continue
-                if pending != current:
-                    pending = current
-                    continue
-                if not getattr(self, "_wasapi_device_change_reported", False):
+                pending, action = evaluate_endpoint_change(
+                    baseline=baseline,
+                    current=current,
+                    pending=pending,
+                    reported=getattr(
+                        self, "_wasapi_device_change_reported", False
+                    ),
+                )
+                if action == "restored":
+                    # Take the warning down: a sticky warning that outlives the
+                    # problem is noise.
+                    self._wasapi_device_change_reported = False
+                    self._report_default_device_restored()
+                elif action == "changed":
                     self._wasapi_device_change_reported = True
                     self._report_default_device_changed(baseline, current)
-                pending = ""
+
+                # Looked up, not called directly: the microphone half is
+                # optional, and this thread's whole job is to notice problems.
+                # Letting a missing mic side raise here would kill RENDER
+                # detection too -- trading the bug it watches for a worse one.
+                poll_input = getattr(self, "_poll_default_input_device", None)
+                if callable(poll_input):
+                    mic_pending = poll_input(mic_pending)
         finally:
             if com_ready:
                 com_uninitialize()
@@ -475,6 +516,45 @@ class WasapiCaptureMixin:
                 f"{consecutive_errors} consecutive read errors. System audio "
                 "will not resume until the session is restarted."
             )
+
+    def _poll_default_input_device(self, pending: str) -> str:
+        """One capture-endpoint poll, on the same thread and the same debounce.
+
+        Separate from the render half only so the loop stays readable; it uses
+        the identical state machine. Everything is reached through `getattr`
+        because a host may have the WASAPI mixin without the microphone one --
+        several test hosts borrow just this worker -- and device detection must
+        never become the thing that breaks capture.
+        """
+        read = getattr(self, "_read_default_capture_endpoint_id", None)
+        if not callable(read):
+            return ""
+        try:
+            baseline = getattr(self, "_mic_default_endpoint_baseline", "")
+            current = read()
+            pending, action = evaluate_endpoint_change(
+                baseline=baseline,
+                current=current,
+                pending=pending,
+                reported=getattr(self, "_mic_device_change_reported", False),
+            )
+            if action == "restored":
+                self._mic_device_change_reported = False
+                notify = getattr(
+                    self, "_report_default_input_device_restored", None
+                )
+                if callable(notify):
+                    notify()
+            elif action == "changed":
+                self._mic_device_change_reported = True
+                notify = getattr(
+                    self, "_report_default_input_device_changed", None
+                )
+                if callable(notify):
+                    notify(baseline, current)
+        except Exception:
+            return ""
+        return pending
 
     def _start_device_watch(self) -> bool:
         """Start the item 73 default-endpoint watcher, if there is a baseline.
