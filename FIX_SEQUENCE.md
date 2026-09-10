@@ -518,10 +518,57 @@ whose signature had drifted, where the rebind's broad `except` logged a
 `TypeError` as an ordinary device-rebind failure: **a signature bug wearing a
 plausible teardown message.**
 
-Four findings from that audit remain open — the whole rebind still runs inside
+### Continuity audit, third pass — the microphone follows the device — ✅ SHIPPED `a4de0c0`, package 26.5.14
+
+The largest remaining gap against the owner's requirement, and the one a user
+notices first: phase 5 taught SYSTEM audio to follow the default output, and the
+microphone was never taught anything. `_start_microphone_capture` read
+`sd.default.device[0]` once at session start and nothing rebound it, and
+`default_endpoint.py` only read the RENDER endpoint — so an input change was not
+even detected. A headset plug moves BOTH defaults, so system audio followed the
+headset while the mic stayed bound to a device that may no longer exist, with
+`mic_available` still True and the operator's own voice gone for the session.
+
+Three things worth keeping from how it was built:
+
+* **`default_endpoint.py` was render-only by exactly one constant.** The body is
+  now parameterised on dataflow with two thin wrappers — not a second copy of
+  fifty lines of ctypes COM plumbing.
+* **The debounce/latch rules now serve two device flavours**, so they were
+  extracted into the pure `evaluate_endpoint_change()` rather than hand-copied.
+  Two copies is how the rules hold on one device and silently rot on the other.
+* **One watcher thread polls both endpoints.** Safe to couple because session
+  start re-raises if WASAPI capture fails (`main_window.py:10616`) and the mic
+  is started only afterwards, so that thread exists whenever a mic stream does.
+
+The rebind is close → `sd._terminate()` → `sd._initialize()` → reopen. The
+re-init is the load-bearing step: PortAudio snapshots the device list at
+initialisation, so close-and-reopen alone would rebind the OLD device and look
+like a success. Measured 22.2 ms — cheap enough for the UI thread, where it is
+marshalled so two PortAudio inits cannot run concurrently. A mic that is not
+running is never started by a device change: the UI switch and the
+system-audio-only benchmark are both supported, deliberate absences.
+
+**Measured on this machine, with the COM apartment the watcher thread holds:**
+render `{0.0.0.00000000}.{57b9f110-…}`, capture `{0.0.1.00000000}.{53b96938-…}`
+— distinct, and the `0.0.0` / `0.0.1` prefix is the dataflow distinction itself.
+Without `com_initialize_mta()` **both** readers return `""`; a probe that skips
+it proves nothing about either.
+
+Still not proven without hardware, and said so in the code: that PortAudio
+reports the new default only after a re-init. Same inference item 73 rests on.
+
+21 of 22 new tests fail pre-fix. Two bugs caught during implementation, both
+recorded because both were nearly shipped: the watch loop first **re-read the
+endpoint to build the report payload** — a second COM call that can disagree
+with the one the decision was made on — and calling the mic poll directly
+**killed the whole watcher** on hosts without the microphone mixin, trading the
+bug the thread exists to notice for a worse one.
+
+Three findings from that audit remain open — the whole rebind still runs inside
 the mainloop (needs a worker, R14); the warning is still cleared on `open()`
-rather than on frames arriving (R12, stage 3); **the microphone never follows
-the device at all**; and the availability flags are latches (above).
+rather than on frames arriving (R12, stage 3); and the availability flags are
+latches (above).
 
 > ⚠️ The multi-agent audit that surfaced these **died on the session limit — 53
 > of 61 agents errored**, so its "refuted" bucket is *unverified*, not refuted.
@@ -554,7 +601,8 @@ taking.
 | 7 stage 1 | Per-chunk format stamp — R1, R2, R16, R17 | ✅ shipped `c33f5f6`, package 26.5.11 |
 | 7 stage 1 follow-up | Superseded reader stops; cooldown is session-scoped | ✅ shipped `1a83c25`, package 26.5.12 |
 | 7 stage 1 follow-up | Continuity audit findings 2, 5, 6 — modal, lost detector, unmeasured gap | ✅ shipped `0604b21`, package 26.5.13 |
-| — | **4 findings still open** from the continuity audit: **mic never follows the device**, rebind runs inside the mainloop, warning cleared on open rather than on frames, availability flags are latches | open |
+| 7 stage 1 follow-up | The microphone follows the default input device | ✅ shipped `a4de0c0`, package 26.5.14 |
+| — | **3 findings still open** from the continuity audit: rebind runs inside the mainloop (R14), warning cleared on open rather than on frames (R12), availability flags are latches | open |
 | **7 stages 2-4** | **Speaker hot-swap proper** | **blocked on the four §8 design answers** |
 
 Phase 3's four remaining audits are read-only and touch no code, so they can run
