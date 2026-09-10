@@ -1,224 +1,303 @@
-# Alpha Live Translator — Architecture
+# Alpha Live Translator V1 — High-Level Architecture
 
-**Active project:** `Alpha_Live_Translator`  
-**Current version:** `3.3.5.5.8.5.26.4.1`  
-**Entry point:** `main.py`  
-**Frozen infrastructure baseline:** `3.3.5.5.8.5.25.3.3.2.8`
+| Item | Value |
+|---|---|
+| Architecture | As-built V1 desktop architecture |
+| Internal app build | `3.3.5.5.8.5.26.5.3` |
+| Verified source baseline | Git commit `57890c3b` |
+| Entry point | `main.py` |
+| Runtime | Windows 10/11 x64, Python desktop process |
+| Last verified | 2026-08-24 |
 
-This document describes what each major part of the **current** Japanese TEST codebase does. Older folders under the monorepo root (`AlphaLiveTranslator_V*`, `Alpha_Live_Translator_v3.2`, etc.) are historical snapshots and are not the active product line.
+> ⚠️ **Verified at `57890c3b` / build `…26.5.3`, which is now well behind the
+> code.** Packages 26.5.4 → 26.5.15 shipped after this was written, and the
+> audio-capture sections below predate all of it. Not yet reflected here: the
+> per-chunk audio format stamp; the WASAPI **and microphone** rebinds that
+> follow a default-device change, on their own worker thread; the shared
+> default-endpoint watcher covering both render and capture; and the
+> `system_source_live` / `mic_source_live` frame metadata. See `FIX_SEQUENCE.md`
+> phase 5 onward. Everything else in this document was accurate at its stamp.
 
----
+This document is the high-level source of truth for the current V1 product. It describes the live runtime, external boundaries, state ownership, concurrency model, finalization path, and deployment shape. Benchmark, repair, and historical scripts are engineering tools and are not part of the normal user runtime.
 
-## 1. Product overview
+## 1. Architecture summary
 
-Alpha Live Translator is a Windows desktop app for **live Japanese speech-to-text** and optional translation:
+Alpha Live Translator V1 is a **single-process, event-driven Windows desktop application**. It captures Windows playback audio through WASAPI and, when enabled, microphone audio; converts both sources to a paced mono 16 kHz PCM stream; and sends that stream to Deepgram Nova-3 over WebSocket. Interim text is shown as a live preview. Final text follows a language-specific boundary strategy, but both English and Japanese converge on one canonical identity and ledger-commit authority.
 
-1. Capture microphone + system (WASAPI) audio  
-2. Mix to mono 16 kHz PCM  
-3. Stream to **Deepgram Nova-3** (`language=ja`)  
-4. Run a Japanese continuity / accuracy pipeline  
-5. Show results in the UI and optionally translate via DeepL  
-6. On Stop, finalize canonical transcripts and run artifacts  
+Accepted transcript segments are rendered by the CustomTkinter UI and held in an in-memory `TranscriptStore`. Stable segments are translated asynchronously through DeepL without blocking transcription. When the operator stops a session, a background finalizer drains all pipelines, freezes the canonical ledger, writes final transcript and diagnostic artifacts to the local run folder, and then restores the UI.
 
-Secrets stay in `.env` (never committed). Local runs and evidence live under `troubleshooting/` (also never committed).
+There is **no application server, database, inbound network listener, or microservice layer** in V1.
 
----
+## 2. System context
 
-## 2. Runtime data flow
+```mermaid
+flowchart LR
+    subgraph Device["Windows client machine"]
+        Operator["Operator"]
+        Playback["Windows playback audio<br/>WASAPI loopback"]
+        Microphone["Microphone<br/>optional; default OFF"]
+        App["Alpha Live Translator V1<br/>single desktop process"]
+        LocalFiles[("Local configuration,<br/>settings, run artifacts, logs")]
 
-```
-Microphone (sounddevice) ──┐
-                           ├──► DeepgramTimelineMixer ──► Deepgram WebSocket (Nova-3)
-WASAPI loopback ───────────┘         (16 kHz mono)              │
-                                                                ▼
-                                         Japanese continuity / accuracy pipeline
-                                                                │
-                         ┌───────────────────┬──────────────────┼──────────────────┐
-                         ▼                   ▼                  ▼                  ▼
-                    UI (AlphaApp)     Final artifacts    Stop finalize     Benchmark evidence
-                   + DeepL worker      (run folder)     (stop worker)     (gate harness only)
-```
+        Operator --> App
+        Playback --> App
+        Microphone --> App
+        App --> LocalFiles
+    end
 
-| Stage | Responsibility | Primary files |
-|-------|----------------|---------------|
-| Startup | Crash hooks, troubleshooting paths, recover incomplete runs, launch UI | `main.py` |
-| Capture | Mic PCM and WASAPI system audio into queues | `alpha/audio/microphone.py`, `alpha/audio/wasapi.py` |
-| Mix | Align sources onto one 16 kHz mono stream | `alpha/audio/timeline_mixer.py`, `processing.py`, `source_gate.py` |
-| STT | Send PCM to Deepgram; receive interim/finals | `alpha/transcription/deepgram_client.py`, `alpha/ui/main_window.py` |
-| Japanese pipeline | Continuity, boundaries, cleanup, ledger commit | `alpha/transcription/japanese_*.py`, `canonical_transcript_ledger.py` |
-| UI / translation | Display text; DeepL off the UI thread | `alpha/ui/main_window.py`, `alpha/translation/*`, `alpha/core/*` |
-| Stop | Non-blocking finalize → canonical export | `alpha/utils/stop_finalize_worker.py`, `run_artifacts.py` |
+    Deepgram["Deepgram Nova-3<br/>streaming speech-to-text"]
+    DeepL["DeepL API<br/>text translation"]
 
----
-
-## 3. Top-level layout
-
-| Path | Role |
-|------|------|
-| `main.py` | Application entry: logging hooks, troubleshooting bootstrap, `AlphaApp().mainloop()` |
-| `requirements.txt` | Runtime Python dependencies |
-| `requirements-lock.txt` | Pinned dependency set for reproducible installs |
-| `.env.example` | Template for API keys (copy to `.env` locally) |
-| `runtime_environment_contract.json` | Declared runtime expectations |
-| `validate_runtime_environment.py` | Checks the machine against the contract |
-| `README_CURRENT.md` | Short operational guide (version stamp may lag `constants.py`) |
-| `ARCHITECTURE.md` | This file |
-| `alpha/` | Application package (audio, STT, UI, utils, …) |
-| `tests/` | Automated tests |
-| `tools/` | Offline check runners and tool registry |
-| `docs/` | Extra documentation / archives |
-| `assets/` | Static assets |
-
-**Not uploaded (local only):** `troubleshooting/`, `logs/`, `graphify-out/`, `.env`, `__pycache__/`, audio/PCM, ZIP evidence packages, smoke-test outputs.
-
----
-
-## 4. Package map — `alpha/`
-
-### 4.1 `alpha/audio/` — capture and mix
-
-| File | What it does |
-|------|----------------|
-| `microphone.py` | Captures default microphone via sounddevice into a bounded queue |
-| `wasapi.py` | Captures system/loopback audio via WASAPI (`pyaudiowpatch`) |
-| `timeline_mixer.py` | Real-time timeline mix to mono 16 kHz for Deepgram (`DeepgramTimelineMixer`) |
-| `processing.py` | PCM conversion helpers (channels / rate) |
-| `source_gate.py` | Echo / overlap gate for meeting-source audio |
-
-### 4.2 `alpha/transcription/` — STT and Japanese pipeline
-
-**Core STT / commit path**
-
-| File / group | What it does |
-|--------------|----------------|
-| `deepgram_client.py` | Deepgram Nova-3 WebSocket client, reconnect, health |
-| `speaker_detection.py` | Speaker / diarization helpers |
-| `duplicate_protection.py` | Conservative duplicate transcript filtering |
-| `language_pipeline_base.py` | Tk-free language pipeline contract |
-| `pipeline_commit_transaction.py` | Atomic commit of ledger + evidence |
-| `canonical_transcript_ledger.py` | Authoritative active transcript ledger |
-| `transcript_lineage.py` | Lineage tracking and final-export lock |
-| `revision_metadata.py`, `stable_line_revision.py`, `stable_revision_decision.py` | Stable-line revision authority |
-
-**Japanese modules**
-
-| Group | Files (pattern) | What they do |
-|-------|-----------------|--------------|
-| Continuity / boundaries | `japanese_sentence_assembler.py`, `japanese_boundary_stabilizer.py`, `japanese_final_chunk_stabilizer.py`, `japanese_translation_unit_builder.py` | Build stable sentence units from streaming finals |
-| Accuracy / cleanup | `japanese_stable_accuracy.py`, `japanese_business_accuracy.py`, `japanese_accuracy_cleaner.py`, `japanese_visible_error_audit.py`, `final_output_cleanup.py` | Business-Japanese cleanup without changing STT wire behavior |
-| Domain / IR | `corporate_ir_glossary.py`, `corporate_ir_stable_corrector.py`, `financial_number_safety.py` | Glossary and number-safety helpers |
-
-### 4.3 `alpha/ui/` — desktop UI
-
-| File | What it does |
-|------|----------------|
-| `main_window.py` | `AlphaApp`: Start/Stop, mixer + Deepgram workers, pipeline hooks, panels |
-| `theme.py` | UI theme / design tokens |
-
-### 4.4 `alpha/translation/`, `summary/`, `core/`, config
-
-| Area | Files | What they do |
-|------|-------|----------------|
-| Translation | `deepl_client.py`, `translation_worker.py`, `language_map.py` | DeepL client, background worker, language codes |
-| Summary | `transcript_store.py`, `summary_service.py` | In-memory finalized segments; optional summary |
-| Core | `event_bus.py`, `events.py`, `models.py` | Event bus and shared models |
-| Resources | `resources/keyterms/default_ja_business.json` | Default Japanese business keyterms resource |
-| Config | `config.py` | Loads runtime config and `.env` keys |
-| Constants | `constants.py` | `APP_VERSION`, feature flags, modes |
-| STT settings | `stt_settings.py` | Canonical Nova-3 timing settings for Japanese |
-
-### 4.5 `alpha/utils/` — infrastructure (grouped)
-
-There are many utility modules. Use this grouping when navigating:
-
-| Group | Representative files | What they do |
-|-------|----------------------|----------------|
-| Run identity / artifacts | `run_identity.py`, `run_artifacts.py`, `troubleshooting_paths.py`, `path_types.py`, `latest_completed_live_run.py` | Create/resolve run folders and write canonical outputs |
-| Stop finalize | `stop_finalize_worker.py`, `canonical_finalize.py`, `final_artifact_authority.py`, `strict_stop_evidence.py` | Non-blocking Stop worker and finalize evidence |
-| Accuracy / stage capture | `accuracy_stage_capture.py`, `accuracy_evidence_export.py`, `japanese_accuracy_log.py` | Three-stage (raw/stable/final) capture and logs |
-| Multidomain gate evidence | `multidomain_gate_evidence.py` | Benchmark-only evidence helpers (audio delivery JSONL, request capture, pre-score gate) — inactive in normal runs |
-| Logging / health | `logging_utils.py`, `crash_guard_log.py`, `flight_recorder.py`, `session_watchdog.py`, `live_runtime_metrics.py` | Diagnostics and health telemetry |
-| UI thread safety | `ui_event_bus.py`, `tk_thread_guard.py`, `ui_thread_guard.py`, `queues.py` | Safe cross-thread UI updates |
-| Text helpers | `cjk_text.py` | CJK-aware text utilities |
-
----
-
-## 5. Root harness scripts (benchmark / offline)
-
-These are **program files** for gates and regressions. They are not required to launch the live app, but they are part of the engineering toolchain.
-
-| Prefix | Purpose |
-|--------|---------|
-| `prepare_*` | Build fixtures / prep benchmark inputs |
-| `run_*` | Orchestrate a gate or offline pipeline |
-| `score_*` | Score transcripts (CER / accuracy) vs reference |
-| `verify_*` | Independently verify artifacts and seals |
-| `regression_*` | Deterministic offline regression suites |
-
-**Current multidomain gate family (85262 / 85264):**
-
-| Script | Role |
-|--------|------|
-| `prepare_multidomain_gate_85262.py` | Prepare multidomain gate fixtures |
-| `run_multidomain_gate_85262.py` | Live/offline multidomain gate orchestrator (child-run binding) |
-| `score_multidomain_gate_85262.py` | Fail-closed scorer (pre-score evidence gate) |
-| `verify_multidomain_gate_85262.py` | Gate verifier |
-| `regression_multidomain_gate_85262.py` / `*_852622.py` / `*_85263.py` | Gate regressions / hard-fix |
-| `run_multidomain_evidence_repair_85264.py` | Offline evidence-repair / pre-live orchestrator |
-| `regression_multidomain_evidence_repair_85264.py` | Physical fixture regressions for evidence repair |
-| `verify_multidomain_evidence_repair_85264.py` | Stdlib-only independent verifier |
-
-Other numbered `852533*` / `85261*` scripts belong to earlier accuracy, packaging, and Phase-1 closure work.
-
----
-
-## 6. How to run
-
-```powershell
-cd "Alpha_Live_Translator"
-pip install -r requirements.txt
-copy .env.example .env
-# Edit .env: set DEEPGRAM_API_KEY and (optional) DEEPL_API_KEY
-python main.py
+    App -- "mono 16 kHz PCM / WebSocket" --> Deepgram
+    Deepgram -- "interim + final transcript events" --> App
+    App -- "stable source segments / HTTPS SDK" --> DeepL
+    DeepL -- "ordered translations or errors" --> App
 ```
 
-Optional offline checks:
+### Trust and network boundaries
 
-```powershell
-python tools/run_all_current_checks.py
-python validate_runtime_environment.py
+| Boundary | Responsibility |
+|---|---|
+| Local desktop process | UI, session orchestration, audio capture/mixing, text pipelines, state, finalization |
+| Deepgram | External streaming STT provider; requires `DEEPGRAM_API_KEY` |
+| DeepL | Optional external translation provider; requires `DEEPL_AUTH_KEY` |
+| Local filesystem | `.env`, UI preferences, logs, run evidence, partial autosaves, canonical final exports |
+| Network | Outbound connections only; no listening port or public API |
+
+## 3. Runtime component architecture
+
+```mermaid
+flowchart TB
+    UI["CustomTkinter UI"]
+    App["AlphaApp<br/>session and orchestration hub"]
+    Bus["EventBus + UIEventBus<br/>transcript queue and Tk scheduling"]
+
+    subgraph Audio["Audio subsystem"]
+        WASAPI["WASAPI loopback capture"]
+        Mic["sounddevice microphone capture"]
+        CaptureQueues["Bounded capture queues"]
+        Mixer["DeepgramTimelineMixer<br/>TeamsSourceGate"]
+        OutQueue["Bounded outgoing audio queue"]
+    end
+
+    subgraph STT["Streaming transcription and canonical commit"]
+        DGClient["DeepgramClientMixin<br/>WebSocket, health, reconnect"]
+        Route{"Selected source language"}
+        JP["JapaneseFinalChunkStabilizer<br/>JapaneseContinuityAssembler"]
+        EN["English utterance<br/>boundary lifecycle"]
+        Owner["UtteranceLifecycleOwner<br/>canonical identity authority"]
+        Commit["PipelineCommitTransaction"]
+        Ledger[("CanonicalTranscriptLedger")]
+    end
+
+    subgraph Presentation["Presentation and enrichment"]
+        Store[("TranscriptStore<br/>in-memory live view")]
+        Translation["TranslationWorker<br/>ordered queue, retry, circuit breaker"]
+        Summary["SummaryService<br/>implemented locally; UI feature gated"]
+    end
+
+    subgraph Finalization["Stop and persistence"]
+        StopWorker["StopFinalizeWorker"]
+        Artifacts["RunArtifacts<br/>final transcript, status, evidence"]
+    end
+
+    Deepgram["Deepgram Nova-3"]
+    DeepL["DeepL"]
+
+    UI --> App
+    App --> WASAPI
+    App --> Mic
+    WASAPI --> CaptureQueues
+    Mic --> CaptureQueues
+    CaptureQueues --> Mixer
+    Mixer --> OutQueue
+    OutQueue --> DGClient
+    DGClient <--> Deepgram
+
+    DGClient -- "interim" --> Bus
+    DGClient -- "final" --> Route
+    Route -- "Japanese" --> JP
+    Route -- "English" --> EN
+    JP --> Owner
+    EN --> Owner
+    Owner --> Commit
+    Commit --> Ledger
+    Owner -- "accepted final event" --> Bus
+
+    Bus --> Store
+    Store --> UI
+    Store --> Translation
+    Translation <--> DeepL
+    Translation --> Bus
+    Store -. "available service; V1 action is Coming soon" .-> Summary
+
+    App -- "Stop" --> StopWorker
+    StopWorker -. "stop capture" .-> WASAPI
+    StopWorker -. "drain queued audio" .-> OutQueue
+    StopWorker -. "finalize and flush" .-> DGClient
+    StopWorker -. "flush pending commits" .-> Owner
+    StopWorker -. "reconcile and shut down" .-> Translation
+    StopWorker --> Ledger
+    Ledger --> Artifacts
+    StopWorker --> Artifacts
 ```
 
----
+`AlphaApp` is intentionally the V1 application/controller hub. The worker, queue, event, and ledger boundaries isolate latency-sensitive work, but V1 does not introduce a second controller or service layer merely for abstraction.
 
-## 7. GitHub upload policy (what belongs in the repo)
+Final transcript rendering remains driven by `transcript_queue`; the typed `EventBus` is supplementary for structured status, error, and lifecycle notifications. `UIEventBus` is the worker-to-Tk scheduling boundary.
 
-**Include**
+## 4. End-to-end runtime flow
 
-- `main.py`, `alpha/**/*.py`, harness `*.py` scripts  
-- `requirements*.txt`, `.env.example`, `.gitignore`  
-- `tests/`, `tools/`, `docs/` (non-secret), `assets/`  
-- This `ARCHITECTURE.md` and short READMEs  
+### 4.1 Startup
 
-**Exclude**
+1. `main.py` installs console capture, crash hooks, diagnostic logging, and troubleshooting paths.
+2. Runtime configuration is loaded from environment variables and the project-local `.env` file.
+3. `AlphaApp` creates the window and its session state.
+4. After the first real UI paint, the `UIEventBus`, language pipeline worker, deferred recovery, and nonessential diagnostics start in the background.
 
-| Pattern | Reason |
-|---------|--------|
-| `.env` | API secrets |
-| `troubleshooting/` | Run logs, evidence ZIPs, smoke fixtures |
-| `*.log`, `logs/` | Runtime logs |
-| `graphify-out/` | Regenerable knowledge graph |
-| `*.wav`, `*.pcm`, other audio | Capture blobs |
-| `*.zip`, large dumps | Evidence packages |
-| `__pycache__/`, `.venv/` | Build/cache |
+### 4.2 Start listening
 
----
+1. The UI validates the selected English/Japanese source-target pair and preflights credentials.
+2. A new session/run identity is created; queues, canonical identity state, ledger state, transcript state, and worker counters are reset.
+3. The Deepgram sender starts and becomes ready **before** capture begins, avoiding startup audio loss.
+4. WASAPI loopback capture starts and is required for the normal meeting-audio path. Microphone capture starts only when the operator enabled it before the session; microphone failure degrades to system-audio-only operation.
+5. The mixer thread drains both capture queues, normalizes them, applies source/echo gating, and emits 20 ms mono 16 kHz PCM frames to the Deepgram queue.
 
-## 8. Related monorepo folders (historical)
+### 4.3 Streaming transcription and commit
 
-| Folder | Status |
-|--------|--------|
-| `Alpha_Live_Translator` | **Active** — use this |
-| `Alpha_Live_Translator_v3.3`, `v3.2`, `AlphaLiveTranslator_V3_*`, `V0`–`V2` | Historical / reference only |
+1. `DeepgramClientMixin` sends PCM, handles keepalive/health/reconnect, and receives interim and final provider events.
+2. Interim text is routed to the UI as a replaceable preview; it is not a canonical final record.
+3. Final text is routed by the selected source language:
+   - **Japanese:** final-chunk stabilization, continuity buffering, safe sentence boundaries, accuracy cleanup, and a canonical boundary proposal.
+   - **English:** the utterance lifecycle buffers cumulative/incomplete finals and commits on a final boundary, utterance end, or bounded timeout.
+4. Both paths converge on `UtteranceLifecycleOwner`, which owns canonical identity registration and calls `PipelineCommitTransaction`.
+5. The transaction applies append/revise/suppress decisions to `CanonicalTranscriptLedger` and fails closed when identity or commit invariants are not met.
+6. A successfully accepted final is published to the transcript queue. The Tk main thread drains the queue, updates `TranscriptStore`, and renders the live transcript.
 
-When contributing, change the **Japanese TEST** tree unless you are intentionally maintaining an archive snapshot.
+### 4.4 Translation and summary capability
+
+1. Stable transcript segments are submitted to a bounded `TranslationWorker` queue.
+2. The worker translates Japanese to English or English to Japanese through `DeepLClient`, preserving accepted order with a dense translation sequence.
+3. Transient provider failures use bounded retry/backoff; repeated failures open a circuit breaker. Translation degradation never blocks transcript commits.
+4. Translation results are matched to transcript segments by canonical utterance identity and then marshalled to the UI thread.
+5. A local, rule-based `SummaryService` is implemented, but the production V1 meeting-summary action is deliberately shown as **Coming soon**. It is not part of the normal live-session output path.
+
+### 4.5 Stop and finalization
+
+The Stop button returns control to Tk quickly and starts `StopFinalizeWorker` in the background. The normal high-level order is:
+
+1. Reject new translation submissions and block new capture.
+2. Stop audio producers and drain already-captured/outgoing audio.
+3. Request Deepgram finalize/close and wait a bounded time for late finals.
+4. Flush Japanese/English boundary state, scheduled language tasks, transcript queue, and UI batches.
+5. Confirm transcript commits, flush pending translation jobs, reconcile translation gaps, and shut down the translation worker.
+6. Freeze/finalize canonical state and write the authoritative final transcript from the ledger.
+7. Write run status, metrics, logs, and evidence artifacts; heavier packaging/validation remains outside the latency-critical core stop path.
+8. Restore the UI. A watchdog restores it even if diagnostic saving exceeds the UI budget.
+
+## 5. State ownership and persistence
+
+| State | Owner | Lifetime | Persistence |
+|---|---|---|---|
+| Window, controls, session orchestration | `AlphaApp` | Process/session | UI language preference only |
+| Capture buffers and PCM queues | Audio capture + mixer + Deepgram client | Session | No; optional short-lived diagnostic audio may be retained locally |
+| Canonical utterance identity | `UtteranceLifecycleOwner` + identity registry | Session/run | Reflected in run evidence and canonical record metadata |
+| Authoritative transcript records | `CanonicalTranscriptLedger` | Session/run; frozen at Stop | Canonical final export and ledger evidence |
+| Live display/copy/translation view | `TranscriptStore` | Process/session | Not a database; final authority remains the frozen ledger |
+| Translation ordering/retry state | `TranslationWorker` | Session | Sanitized translation events and metrics in the run folder |
+| Credentials and runtime options | `alpha/config.py`, environment, `.env` | Installation/process | Local `.env`; secrets are not committed or logged |
+| UI language preference | `alpha/ui/strings.py` | Installation | `user_settings.json` |
+| Logs and run artifacts | `run_artifacts.py` and diagnostic utilities | Run | `troubleshooting/runs/<run-id>/...` |
+
+No SQL/NoSQL database is used. The filesystem is the persistence layer for V1 operational evidence and exports.
+
+## 6. Concurrency and communication model
+
+| Execution context | Main responsibility | Communication boundary |
+|---|---|---|
+| Tk main thread | Widgets, queue drain, UI rendering, user actions | `after(...)`, `UIEventBus`, transcript batches |
+| `StartListening` worker | Credential/session bootstrap, device open, worker startup | Posts completion to UI thread |
+| WASAPI reader + device watcher | System audio capture and output-device change detection | Bounded system-audio queue |
+| sounddevice callback | Optional microphone capture | Bounded microphone queue |
+| Audio mixer thread | Normalize, align, gate, and pace PCM | Bounded Deepgram outgoing queue |
+| Deepgram WebSocket/health workers | Send audio, receive results, reconnect, provider health | Transcript/event queues and pipeline callbacks |
+| `LanguagePipelineWorker` | Scheduled continuity/hold/quarantine tasks | Pipeline locks and UI event bus |
+| `TranslationWorker` | Ordered DeepL requests, retries, circuit breaker | Result callbacks marshalled to UI |
+| `StopFinalizeWorker` | Non-blocking drain, flush, freeze, export | Events, bounded waits, final UI callback |
+| Diagnostic/autosave workers | Logs, metrics, partial recovery artifacts | Local filesystem |
+
+Tk widgets are main-thread-only. Worker threads do not update widgets directly; they use `UIEventBus`/Tk scheduling. Shared transcript, lifecycle, and ledger state is protected with locks and bounded operations.
+
+## 7. V1 architecture contracts
+
+1. **One canonical commit authority:** language-specific boundary logic may propose actions, but canonical identity assignment and ledger mutation converge through `UtteranceLifecycleOwner` and `PipelineCommitTransaction`.
+2. **Frozen-ledger final export:** the final transcript is produced from canonical state, not scraped from a UI text box.
+3. **UI thread isolation:** all widget mutation happens on the Tk main thread.
+4. **Transcription outranks translation:** missing/quota-limited/offline DeepL degrades translation only; it must not stop transcript capture or commit.
+5. **Bounded real-time work:** capture and translation queues, reconnect retry, finalization waits, and UI batches are bounded to protect responsiveness and memory.
+6. **Fail-loud/fail-closed identity handling:** ambiguous revisions do not silently overwrite an unrelated canonical utterance.
+7. **Secrets remain outside source:** API keys come from the environment or `.env` and are excluded from logs and Git.
+
+## 8. Deployment architecture
+
+```mermaid
+flowchart LR
+    Source["Application source"] --> Bundle["tools/build_bundle.py<br/>embedded CPython + dependencies + app"]
+    Bundle --> Builder{"Delivery build"}
+    Builder -->|"Installer"| Inno["Inno Setup<br/>per-user installation"]
+    Builder -->|"Portable"| Zip["Portable ZIP"]
+
+    subgraph Windows["Client Windows machine"]
+        Runtime["pythonw.exe app/main.py"]
+        Env["app/.env"]
+        Settings["app/user_settings.json"]
+        Runs[("app/troubleshooting/runs")]
+        Runtime --> Env
+        Runtime --> Settings
+        Runtime --> Runs
+    end
+
+    Inno --> Runtime
+    Zip --> Runtime
+    Runtime -- "outbound WSS" --> DG["Deepgram"]
+    Runtime -- "outbound HTTPS" --> DL["DeepL"]
+```
+
+- The installer targets `%LOCALAPPDATA%\Programs\Alpha Live Translator` and does not require administrator privileges.
+- The portable build and installer both ship an embedded Python runtime and pinned application dependencies; the client machine does not need a separate Python installation.
+- The delivery bundle contains the live app, assets, diagnostics collector, and dependency metadata. Root tests, benchmark harnesses, repair scripts, and development documents are not production services and are excluded from the shipped payload.
+- The app runs through `pythonw.exe`, so startup/crash output is redirected to durable local diagnostics.
+- Delivery API keys are local installation secrets. Like all credentials embedded in a distributed client, they can be extracted; use separately scoped, revocable keys.
+
+## 9. Primary source map
+
+| Area | Primary source |
+|---|---|
+| Process startup | `main.py` |
+| UI and session orchestration | `alpha/ui/main_window.py` (`AlphaApp`) |
+| Typed application events | `alpha/core/event_bus.py`, `alpha/core/events.py`, `alpha/core/models.py` |
+| UI-thread marshaling | `alpha/utils/ui_event_bus.py`, `alpha/utils/ui_thread_guard.py` |
+| System/microphone capture | `alpha/audio/wasapi.py`, `alpha/audio/microphone.py` |
+| Normalize, gate, mix | `alpha/audio/processing.py`, `alpha/audio/source_gate.py`, `alpha/audio/timeline_mixer.py` |
+| Deepgram streaming | `alpha/transcription/deepgram_client.py` |
+| Japanese boundary strategy | `alpha/transcription/japanese_final_chunk_stabilizer.py`, `alpha/transcription/japanese_sentence_assembler.py` |
+| English/shared utterance lifecycle | `alpha/transcription/utterance_lifecycle.py` |
+| Canonical commit and ledger | `alpha/transcription/pipeline_commit_transaction.py`, `alpha/transcription/canonical_transcript_ledger.py` |
+| Live transcript view | `alpha/summary/transcript_store.py` |
+| Translation | `alpha/translation/translation_worker.py`, `alpha/translation/deepl_client.py` |
+| Local summary capability | `alpha/summary/summary_service.py` |
+| Stop/final export | `alpha/utils/stop_finalize_worker.py`, `alpha/utils/run_artifacts.py` |
+| Configuration and STT settings | `alpha/config.py`, `alpha/constants.py`, `alpha/stt_settings.py` |
+| Packaging | `tools/build_bundle.py`, `installer/build_installer.py`, `installer/alpha.iss` |
+
+## 10. Deliberate V1 boundaries
+
+- One Alpha session recognizes **one selected source language** (`English` or `Japanese`) through one Deepgram connection.
+- System and enabled microphone audio are combined before STT. The microphone is OFF by default because a bilingual speaker using the other language would otherwise enter the same selected-language recognizer.
+- A truly simultaneous bilingual meeting requires separate per-source recognizers and is not part of V1.
+- Deepgram is the only STT provider. Reconnect/backoff/replay protect transient failures, but there is no alternate recognition service.
+- WASAPI binds to the Windows default output device at session start. A later default-device change is detected and surfaced, but capture does not automatically migrate; Stop/Start is required.
+- Translation depends on network access and DeepL credentials; transcription can operate in translation-degraded mode.
+- The meeting-summary implementation is local and rule-based, but its user-facing V1 action remains gated as **Coming soon**.
+- `AlphaApp` remains a large orchestration hub in V1. The architecture isolates slow work with workers and queues instead of introducing a risky controller rewrite for delivery.
+- The system is designed for one desktop operator and one active session, not horizontal scaling, multi-tenancy, or server-side collaboration.

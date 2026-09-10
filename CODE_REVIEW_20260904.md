@@ -33,10 +33,23 @@ this as a complete picture — four subsystems were never reached.
 | Phase 3b | 10, 11, 13, 15 | 26.5.7 |
 | Phase 4 | 2, 8, 9, 14, 4, 12 | 26.5.8 |
 | Phase 5 | 5 | 26.5.9 |
+| Phase 6 | 6, 7, 16, 17 + follow-tail leftovers | 26.5.10 |
+| Phase 7 stage 1 | Per-chunk format stamp (R1, R2, R16, R17) | 26.5.11 |
+| ↳ follow-up | Superseded reader; session-scoped cooldown | 26.5.12 |
+| ↳ follow-up | Rebind modal, lost detector, unmeasured gap | 26.5.13 |
+| ↳ follow-up | The microphone follows the default input device | 26.5.14 |
+| ↳ follow-up | Rebind worker (R14), audio confirmation (R12), source liveness | 26.5.15 |
 
-Still open: **6, 7, 16, 17** — see `FIX_SEQUENCE.md` for the order and why. (6
-and 7 are the two REFUTED items; what remains in each is the latent hazard or
-the missing event, not the reported defect.)
+**All 17 items in this review are closed.** Items 6 and 7 were the two REFUTED
+ones; what phase 6 shipped for each is the latent hazard and the missing event
+respectively, not the reported defect — see their sections below.
+
+> This table was stale for several packages: it stopped at phase 5 and still
+> read "Still open: 6, 7, 16, 17" after phase 6 had shipped exactly those four
+> (`42f0d29`, package 26.5.10, which adds a test file per item). Recorded
+> because this repo's own rule is that **a ledger row saying OPEN is not
+> evidence that work is outstanding — grep the git history first.** A session
+> trusting that line would have redone four finished items.
 
 ## The whole review in one table
 
@@ -327,7 +340,7 @@ reopened stream binds to the new endpoint.
 
 ---
 
-## 6. The audio-retention self-deadlock — REFUTED
+## 6. The audio-retention self-deadlock — REFUTED — ✅ latent edge removed (phase 6)
 
 | | |
 |---|---|
@@ -387,7 +400,7 @@ rather than remove it.
 
 ---
 
-## 7. "The English lifecycle bypasses the commit authority" — REFUTED, but it loses the utterance
+## 7. "The English lifecycle bypasses the commit authority" — REFUTED — ✅ the loss is now named (phase 6)
 
 | | |
 |---|---|
@@ -894,7 +907,7 @@ hop — which is a check, and which returns a defensible answer.
 
 ---
 
-## 16. Four recurring `after` jobs are never cancelled, and `_on_close` cancels nothing
+## 16. Four recurring `after` jobs are never cancelled, and `_on_close` cancels nothing — ✅ FIXED (phase 6)
 
 **Verdict: CONFIRMED** · Severity **LOW** · Importance **BACKLOG**
 `alpha/ui/main_window.py`, `_on_close` at `:11031-11172`
@@ -961,7 +974,7 @@ would not be seen.
 
 ---
 
-## 17. A raise inside the continuity-hold tick discards the buffered sentence silently
+## 17. A raise inside the continuity-hold tick discards the buffered sentence silently — ✅ FIXED (phase 6)
 
 **Verdict: CONFIRMED** (mechanism driven; trigger abnormal) · Severity **MEDIUM**
 · Importance **FIX-SOON**
@@ -1081,7 +1094,7 @@ real finding inside it.
 
 ## Test baseline
 
-1313 tests at 26.5.9 (1239 when this review was written; the phases added the
+1415 tests at 26.5.15 (1239 when this review was written; the phases added the
 rest). Eight fail, and the **set of eight names** — never the count — is the
 baseline. All eight are stale tests, listed in the previous audit.
 Runner (there is no `tests/__init__.py`, so `-t .` fails):

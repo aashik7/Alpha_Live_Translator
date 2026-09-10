@@ -100,3 +100,7 @@ Alpha_Live_Translator/build/
 # Item 49 phase 2: the delivered build's API keys. NEVER commit these --
 # a key in git history cannot be recalled from clones that already exist.
 Alpha_Live_Translator/installer/keys.local.ini
+
+# Item 49 bundle side-output. `tools/build_bundle.py` and the PDF export write
+# here; both are regenerable build products, not sources.
+output/

@@ -640,5 +640,6 @@ taking.
 | — | Continuity audit — **all 10 findings closed** | ✅ done |
 | **7 stages 2-4** | **Speaker hot-swap proper** | **blocked on the four §8 design answers** |
 
-Phase 3's four remaining audits are read-only and touch no code, so they can run
-between the code phases rather than blocking them.
+Phase 3's audits are complete — 5 of 5, as the table above says. (This line used
+to read "Phase 3's four remaining audits", contradicting the table two rows
+up.)
