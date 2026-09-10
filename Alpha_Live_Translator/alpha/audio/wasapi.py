@@ -354,23 +354,39 @@ class WasapiCaptureMixin:
         """
         idle_polls = 0
         consecutive_errors = 0
-        # The format this stream was OPENED with, read once here rather than
-        # per chunk. Reading it per iteration would put it back where it was --
-        # shared mutable state read on this thread and written on another. Once
-        # here is correct because a device change tears this reader down and
-        # `_start_wasapi_loopback` sets the attributes before starting the next
-        # one, so each reader stamps its own device's format for its whole life.
+        # Identity, stream and format captured TOGETHER, once, at the top.
+        #
+        # The stamp used to be read here while `stream` was re-read from
+        # `self._wasapi_stream` on every pass, and that combination was a hole
+        # straight through the stage 1 guarantee. `_close_wasapi_stream` joins
+        # this thread for 1.0 s, does not check whether the join succeeded, and
+        # nulls the handle either way; `_start_wasapi_loopback` then CLEARS the
+        # capture stop event before spawning the next reader. So a reader still
+        # wedged in a blocking `read()` woke up to `_wasapi_stop_requested()`
+        # False, picked up the NEW device's stream from the attribute, and
+        # stamped it with the OLD device's format. Driven on the real reader:
+        # 999 chunks of new-device audio wearing the old device's stamp, with
+        # two readers draining one stream so the corrupted chunks interleaved
+        # with good ones.
+        #
+        # The generation is what stops an orphan, and it is deliberately not
+        # `stream.is_active()`: what a closed PortAudio stream does on that call
+        # is not something to bet correctness on. Binding `stream` is what makes
+        # the stamp describe the bytes -- correct by construction rather than by
+        # timing, which was the entire point of stage 1.
+        my_generation = int(getattr(self, "_wasapi_reader_generation", 0))
+        stream = self._wasapi_stream
         stamp_channels = int(getattr(self, "_wasapi_channels", 2) or 2)
         stamp_rate = int(getattr(self, "_wasapi_rate", 48000) or 48000)
         while (
             not self._wasapi_stop_requested()
             and consecutive_errors < WASAPI_READER_MAX_CONSECUTIVE_ERRORS
+            and int(getattr(self, "_wasapi_reader_generation", 0)) == my_generation
         ):
             try:
-                stream = self._wasapi_stream
                 if stream is None or not stream.is_active():
-                    # The clean shutdown exit. `_close_wasapi_stream` nulls
-                    # `_wasapi_stream`, and this is how the loop learns.
+                    # The clean shutdown exit. `_close_wasapi_stream` closes the
+                    # stream, and this is how the loop learns.
                     break
 
                 frames = self._wasapi_frames_per_buffer
@@ -462,6 +478,14 @@ class WasapiCaptureMixin:
                 input_device_index=loopback["index"],
             )
             self._wasapi_stream.start_stream()
+            # Bumped BEFORE the new reader starts, so it reads the current
+            # value and any reader from a previous device sees a generation
+            # that is no longer its own and exits. `_close_wasapi_stream`'s
+            # 1 s join is best-effort -- it does not check its own result --
+            # so this is what actually guarantees one reader at a time.
+            self._wasapi_reader_generation = (
+                int(getattr(self, "_wasapi_reader_generation", 0)) + 1
+            )
             self._wasapi_reader_thread = threading.Thread(
                 target=self._wasapi_reader_worker,
                 name="WasapiReader",
@@ -529,7 +553,33 @@ class WasapiCaptureMixin:
         reader = getattr(self, "_wasapi_reader_thread", None)
         if reader is not None and reader.is_alive():
             reader.join(timeout=1.0)
+            if reader.is_alive():
+                # Not fatal: the generation bump in `_start_wasapi_loopback`
+                # ends this thread as soon as it wakes, and it is bound to the
+                # stream just closed, so it cannot touch the next device. Said
+                # out loud because a silent timeout here is what let an orphan
+                # run unnoticed.
+                print(
+                    "[WASAPI] Reader did not stop within 1s; it is superseded "
+                    "and will exit when its blocking read returns."
+                )
         self._wasapi_reader_thread = None
+
+        # The rebind cooldown belongs to a capture session, not to the process.
+        # Left set, it survived Stop/Start: a session begun within
+        # WASAPI_REBIND_COOLDOWN_S of the previous session's rebind had its
+        # FIRST device change silently refused, with no log line and no
+        # indicator change, and the `_wasapi_device_change_reported` latch meant
+        # the same device was never re-reported.
+        #
+        # Guarded, because a rebind calls this function BETWEEN stamping the
+        # cooldown and reopening. Clearing unconditionally here would reset the
+        # timestamp on every rebind and disable the anti-storm guard entirely --
+        # a flapping device would then queue one teardown per poll, which is the
+        # failure the cooldown exists to prevent. Only a close that is NOT part
+        # of a rebind ends the session's cooldown.
+        if not getattr(self, "_wasapi_rebind_in_progress", False):
+            self._wasapi_last_rebind_mono = 0.0
 
         # Item 73. Cleared HERE, where the session ends, not only in
         # __init__ -- this function is the one place every stop path passes
