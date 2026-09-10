@@ -629,7 +629,7 @@ shipped a green test over a dead code path twice.
 | Stage | Content | Why this order | Shippable alone? |
 |---|---|---|---|
 | 0 | **R5** — supervised, restartable reader; plus the scan-2 blind-spot fix in the audit tool | The feature's most likely failure lands on a thread that currently dies for good | **Yes** — a real reliability fix with no swap feature at all |
-| 1 | **Per-chunk format stamp** (R1, R2, R16, R17) — ✅ **SHIPPED** `c33f5f6`, package 26.5.11 | Makes the swap correct *by construction*. Also fixes a live latent hazard: the mixer's format is shared mutable state read on one thread and written on another, safe today only because nothing writes it after startup | **Yes** — behaviour-neutral today, verifiable by the tone test |
+| 1 | **Per-chunk format stamp** (R1, R2, R16, R17) — ✅ **SHIPPED** `c33f5f6`, package 26.5.11; stages 2-3 ✅ **SHIPPED** by 26.5.16, stage 4 ⛔ deliberately not built | Makes the swap correct *by construction*. Also fixes a live latent hazard: the mixer's format is shared mutable state read on one thread and written on another, safe today only because nothing writes it after startup | **Yes** — behaviour-neutral today, verifiable by the tone test |
 | 2 | `swap_system_audio_device()` on a worker thread, evidence event, no UI | Testable end to end without touching the UI | Yes |
 | 3 | Positive confirmation (R12), debounce and cap (R13) | Turns "it swapped" into "it is working" | Yes |
 | 4 | UI control | Last, and see the note below | — |
@@ -646,7 +646,22 @@ taken separately.
 
 ---
 
-## 8. Open questions — these change the design, so answer before stage 2
+## 8. Open questions — ✅ ALL ANSWERED
+
+> **Answered, and shipped. Kept below as the record of what was decided.**
+>
+> | Q | Answer | Where |
+> |---|---|---|
+> | 1 — auto-follow or picker | **Auto-follow**, for the speakers AND the microphone | packages 26.5.9 / 26.5.14 |
+> | 2 — play out or discard the 3 s buffer | **Play it out.** Shortening the cap is NOT free — it is also the `emit_due_frames` catch-up burst, sized to fix a permanent-lag regression. Reasoning recorded at the constant; needs a measurement | package 26.5.16 |
+> | 3 — force an utterance boundary | **Yes**, via a one-shot boundary, never by latching `_stop_boundary_active` | package 26.5.16 |
+> | 4 — is the mic in scope | **Yes now.** This document was written speaker-only; the microphone follows the default input device as of 26.5.14 | package 26.5.14 |
+>
+> Stage 4 (a UI device picker) was deliberately **not** built: automatic follow
+> already meets the requirement, and a picker is a new capability (choosing a
+> NON-default device) rather than a completion of this one. See `FIX_SEQUENCE.md`.
+
+## 8a. The questions as originally written
 
 1. **Follow the OS default automatically, or an explicit picker in Alpha?**
    Automatic is what the item 73 watcher already detects and needs no UI, but it

@@ -611,7 +611,61 @@ equally exposed to since an `after(0, ...)` can fire after Stop.
 > `int()` truncation (~58.6 ms/min claimed), and the transcript seam across the
 > gap.
 
-### Stages 2-4 — still blocked
+### Stage 2 + 3 — ✅ CLOSED, mostly by a different route than planned
+
+The sequencing table planned stage 2 as an explicit `swap_system_audio_device()`
+and stage 3 as positive confirmation plus debounce. Almost all of that shipped
+already, driven by the device-continuity audit rather than by the swap feature:
+the rebind runs on its own worker (R14), it is single-flight with a cooldown
+(R13), it proves audio resumed before reporting success (R12), and it writes
+`AUDIO_DEVICE_REBIND_STARTED / _COMPLETED / _FAILED / _NO_AUDIO` with the gap.
+Said plainly because the stage numbering would otherwise imply work that is
+done.
+
+What the owner's §8 answers added — ✅ SHIPPED `e288c9f`, package 26.5.16:
+
+* **Q3 = yes, a swap forces an utterance boundary (R11).** The obvious
+  `flush("device_swap")` was rejected: `flush()` sets `_stop_boundary_active`
+  for any reason and that flag is cleared only by `reset()`, so a swap would
+  latch it mid-meeting and silently disable punctuation merging for the rest of
+  the session — and falsify the allowlist entry that records the flag as safe
+  *because* only stop paths reach it. Clearing `_last_stable_commit` was
+  rejected too: it feeds the revision lineage record and the item 41
+  non-destructive revise check, so using it to win a merge decision would
+  disarm a correctness gate. Shipped instead: a one-shot
+  `_merge_boundary_pending`, read through a helper that mutates nothing and
+  consumed at the single stable-commit point.
+* **Q2 = play the buffer out (R3).** Already the behaviour, so the work was the
+  evidence: `buffered_system_seconds` on the completion event, read *before* the
+  teardown. **On shortening the 3 s cap: it is not a free knob.**
+  `MAX_BUFFER_SAMPLES` is also the maximum catch-up burst for `emit_due_frames`,
+  and it was sized to fix a permanent-lag regression (a slow caller emitting 10
+  frames/s against 50 due). Shortening it trades swap latency for recovery
+  headroom. The reasoning is recorded at the constant; it needs a measurement,
+  not a hunch.
+* **R13** — swaps per session counted and reported (`swap_index`).
+
+Also fixed on the way: the seam measurement read the mixer off the host, but the
+mixer was a **local** in `audio_mixer_worker` and never published — the number
+would have been `0.0` for the life of the app. Evidence that looks like an
+answer and is not.
+
+### Stage 4 (a UI device picker) — deliberately NOT built
+
+Recorded as a decision rather than left as an open row. Q1 asked whether to
+follow the OS default automatically or offer a picker; automatic follow is now
+shipped for **both** the speakers and the microphone, which is what the owner's
+requirement actually asked for. The guideline itself says the UI is a separate
+decision, and warns that the responsive header is the area items 71, 92 and 93
+churned most. A picker would be a *new capability* — choosing a non-default
+device — not a completion of this one. Revisit only if someone asks for that.
+
+> **§8 status:** Q1 and Q4 were answered by shipping (automatic follow; the
+> microphone is in scope and follows the device as of 26.5.14). Q2 and Q3 were
+> answered by the owner and are implemented above. No open design questions
+> remain.
+
+### Stages 2-4 — original text, superseded
 
 Four design questions in §8 of that guideline are open and change the design;
 answer them before scoping stages 2-4. Question 1 (follow the OS default
@@ -638,7 +692,9 @@ taking.
 | 7 stage 1 follow-up | The microphone follows the default input device | ✅ shipped `a4de0c0`, package 26.5.14 |
 | 7 stage 1 follow-up | R14 worker, R12 confirmation, source liveness | ✅ shipped `5e45e00`, package 26.5.15 |
 | — | Continuity audit — **all 10 findings closed** | ✅ done |
-| **7 stages 2-4** | **Speaker hot-swap proper** | **blocked on the four §8 design answers** |
+| 7 stages 2-3 | Swap boundary (R11), seam measured (R3), swap counter (R13) | ✅ shipped `e288c9f`, package 26.5.16 |
+| 7 stage 4 | UI device picker | ⛔ deliberately not built — see the section above |
+| — | **Phase 7 complete. No open §8 design questions.** | ✅ done |
 
 Phase 3's audits are complete — 5 of 5, as the table above says. (This line used
 to read "Phase 3's four remaining audits", contradicting the table two rows
