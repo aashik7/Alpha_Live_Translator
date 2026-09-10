@@ -87,11 +87,25 @@ class Host:
     def _run_on_ui_thread(self, fn):
         self.marshalled.append(fn)
 
+    def _read_default_endpoint_id(self):
+        # The failure path re-baselines from this so device detection survives
+        # a failed rebind. "" is UNKNOWN, which correctly starts no watcher --
+        # that behaviour has its own tests in
+        # `test_a_failed_rebind_recovers_and_is_measured.py`; these tests are
+        # about the rebind itself.
+        return ""
+
     def _close_wasapi_stream(self):
         self.calls.append("close")
 
-    def _start_wasapi_loopback(self):
+    def _start_wasapi_loopback(self, show_error_dialog=True):
+        # Signature mirrors the real one. The rebind passes
+        # `show_error_dialog=False` so a failure cannot open a modal on the Tk
+        # main thread it runs on; a stub without the keyword makes the rebind
+        # raise TypeError, which its broad `except` then reports as an ordinary
+        # device-rebind failure -- green-looking teardown over a signature bug.
         self.calls.append("start")
+        self.show_error_dialog_seen = show_error_dialog
         if self._start_fails:
             raise RuntimeError("no device")
 

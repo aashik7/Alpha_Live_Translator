@@ -168,17 +168,50 @@ class WasapiCaptureMixin:
                 except Exception:
                     pass
 
+        # Capture stops the moment the old stream closes and resumes when the
+        # new one starts, so timing the pair measures the window in which no
+        # system audio was captured at all. Without it the loss is invisible:
+        # the mixer zero-fills the missing frames, so the gap reaches Deepgram
+        # as silence and reads afterwards as a quiet room -- the item 80
+        # audio-loss class, which this project has already had to diagnose the
+        # hard way from retained WAVs.
+        gap_started = time.monotonic()
         try:
             _log("AUDIO_DEVICE_REBIND_STARTED")
             self._close_wasapi_stream()
-            self._start_wasapi_loopback()
+            # Never a dialog: this runs on the Tk main thread, where
+            # `_show_wasapi_error` calls `messagebox.showerror` synchronously
+            # and would block the mainloop mid-meeting until someone clicked OK.
+            self._start_wasapi_loopback(show_error_dialog=False)
         except Exception as exc:  # noqa: BLE001
             # Leave the warning up. Before this existed a device change left
             # capture bound to the old endpoint, yielding zero frames in
             # silence; a failed rebind leaves no capture at all, which is not
             # worse -- but the operator must still be told.
             print(f"[WASAPI] Device rebind failed: {exc}")
-            _log("AUDIO_DEVICE_REBIND_FAILED", error=f"{type(exc).__name__}: {exc}")
+            # Keep DETECTING even though capturing failed. `_start_wasapi_loopback`
+            # failed after `_close_wasapi_stream` had already cleared the
+            # baseline and dropped the watcher, so without this the session ends
+            # up with no capture AND no detector -- and plugging the original
+            # device back in, the recovery a user would actually try, would go
+            # unnoticed until Stop/Start. The baseline is the endpoint we just
+            # failed to bind to, so any move away from it is worth another
+            # attempt.
+            watch_restarted = False
+            try:
+                current = self._read_default_endpoint_id()
+                if current:
+                    self._wasapi_default_endpoint_baseline = current
+                    self._wasapi_device_change_reported = False
+                    watch_restarted = bool(self._start_device_watch())
+            except Exception:
+                watch_restarted = False
+            _log(
+                "AUDIO_DEVICE_REBIND_FAILED",
+                error=f"{type(exc).__name__}: {exc}",
+                seconds_until_failure=round(time.monotonic() - gap_started, 3),
+                detection_restarted=watch_restarted,
+            )
             return False
         else:
             self._audio_device_changed = False
@@ -189,6 +222,7 @@ class WasapiCaptureMixin:
                 captured_device_name=str(
                     getattr(self, "_diag_wasapi_device_name", "") or ""
                 ),
+                capture_gap_seconds=round(time.monotonic() - gap_started, 3),
             )
             return True
         finally:
@@ -442,8 +476,50 @@ class WasapiCaptureMixin:
                 "will not resume until the session is restarted."
             )
 
-    def _start_wasapi_loopback(self):
-        """Start capturing all system audio via WASAPI loopback (zero user setup)."""
+    def _start_device_watch(self) -> bool:
+        """Start the item 73 default-endpoint watcher, if there is a baseline.
+
+        Extracted so the rebind's FAILURE path can restart detection too. It
+        used to exist only inside `_start_wasapi_loopback`, which meant a failed
+        rebind ended device detection for the whole session: the failure path
+        calls `_close_wasapi_stream` (clearing the baseline and nulling this
+        thread) and then re-raises, so plugging the original device back in --
+        the obvious recovery -- was never noticed and only Stop/Start recovered.
+
+        Gated on a non-empty baseline: with nothing to compare against the
+        thread would only burn COM calls, and "" means UNKNOWN, never "changed".
+        """
+        if getattr(self, "_wasapi_device_watch_thread", None) is not None:
+            return False
+        if not getattr(self, "_wasapi_default_endpoint_baseline", ""):
+            return False
+        # Supervised so one COM hiccup cannot end device-change detection for
+        # the session (mitigation.md A3). The supervisor gets its OWN stop event
+        # rather than sharing `self._stop_event`: `SupervisedThread.start()`
+        # clears whatever event it is given, and clearing the shared audio stop
+        # event would un-stop the reader and mixer too. The loop still exits on
+        # `self._stop_event`, so `_close_wasapi_stream` ends it normally -- a
+        # clean return, which the supervisor does not restart.
+        from alpha.utils.supervised_thread import SupervisedThread
+
+        self._wasapi_device_watch_thread = SupervisedThread(
+            self._wasapi_device_watch_worker,
+            name="WasapiDeviceWatch",
+        )
+        self._wasapi_device_watch_thread.start()
+        return True
+
+    def _start_wasapi_loopback(self, show_error_dialog: bool = True):
+        """Start capturing all system audio via WASAPI loopback (zero user setup).
+
+        `show_error_dialog` exists for the one caller that must never raise a
+        dialog: the device rebind. At Start the user just pressed a button and
+        is waiting for an answer, so a modal is the right way to report that
+        capture could not open. A device change is unattended and recoverable,
+        and item 73 pinned the rule in its own test -- a device change must
+        never open a modal, because a modal blocks the Tk mainloop and the
+        rebind now runs ON that thread.
+        """
         pyaudio = _import_pyaudio()
         try:
             self._pyaudio, loopback = self._get_wasapi_loopback_device()
@@ -492,26 +568,8 @@ class WasapiCaptureMixin:
                 daemon=True,
             )
             self._wasapi_reader_thread.start()
-            # Item 73. Started only after the reader is up, and only when a
-            # baseline was actually obtained -- with no baseline there is
-            # nothing to compare against and the thread would just burn COM
-            # calls.
-            if self._wasapi_default_endpoint_baseline:
-                # Supervised so one COM hiccup cannot end device-change
-                # detection for the session (mitigation.md A3). The supervisor
-                # gets its OWN stop event rather than sharing `self._stop_event`:
-                # `SupervisedThread.start()` clears whatever event it is given,
-                # and clearing the shared audio stop event would un-stop the
-                # reader and mixer too. The loop still exits on
-                # `self._stop_event`, so `_close_wasapi_stream` ends it normally
-                # -- a clean return, which the supervisor does not restart.
-                from alpha.utils.supervised_thread import SupervisedThread
-
-                self._wasapi_device_watch_thread = SupervisedThread(
-                    self._wasapi_device_watch_worker,
-                    name="WasapiDeviceWatch",
-                )
-                self._wasapi_device_watch_thread.start()
+            # Item 73. Started only after the reader is up.
+            self._start_device_watch()
             print("WASAPI loopback stream started successfully")
         except Exception as exc:
             print(f"WASAPI loopback error: {exc}")
@@ -522,13 +580,14 @@ class WasapiCaptureMixin:
             except Exception:
                 pass
             self._close_wasapi_stream()
-            self._show_wasapi_error(
-                "WASAPI Loopback Error",
-                "Could not capture system audio automatically.\n\n"
-                "Please check Windows Sound settings and ensure your default "
-                "playback/speaker device is working.\n\n"
-                f"Details: {exc}",
-            )
+            if show_error_dialog:
+                self._show_wasapi_error(
+                    "WASAPI Loopback Error",
+                    "Could not capture system audio automatically.\n\n"
+                    "Please check Windows Sound settings and ensure your default "
+                    "playback/speaker device is working.\n\n"
+                    f"Details: {exc}",
+                )
             raise
 
     def _close_wasapi_stream(self):
