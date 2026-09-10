@@ -488,11 +488,40 @@ for passing on both sides; the deletion and its reason are recorded in the file.
 > reasoning `SPEAKER_HOTSWAP_GUIDELINE.md` applies to adding a mixer lock.
 > Whoever takes it: add a liveness signal, do not silently flip these two.
 
-Six more findings from that audit are open and unfixed — a failed rebind opens a
-modal on the Tk main thread; the whole rebind runs inside the mainloop; the
-warning is cleared on `open()` rather than on frames arriving; the microphone
-never follows the device at all; a failed rebind leaves no detector for the rest
-of the session; the capture gap is never measured.
+### Continuity audit, second pass — findings 2, 5 and 6 — ✅ SHIPPED `0604b21`, package 26.5.13
+
+* **The modal.** `_show_wasapi_error` calls `messagebox.showerror` synchronously
+  when already on the main thread, and phase 5 put the rebind ON that thread —
+  so a failed rebind froze the whole mainloop mid-meeting until someone clicked
+  OK, re-opening the exact hole item 73's own test forbids. Fixed with
+  `_start_wasapi_loopback(show_error_dialog=True)`: the rebind passes `False`,
+  **Start keeps its dialog**, because there the user pressed a button and is
+  waiting for an answer. Both branches of `_show_wasapi_error` are suppressed,
+  not just the synchronous one.
+* **No detector left.** The failure path calls `_close_wasapi_stream` (clearing
+  the baseline, nulling the watch thread) and re-raises, and the watcher was
+  only ever started inside `_start_wasapi_loopback` — so one failed rebind ended
+  detection for the session and plugging the original device back in went
+  unnoticed. The spawn is now `_start_device_watch()`, shared by both paths; the
+  failure path re-baselines to the endpoint it just failed to bind and restarts
+  it. An unreadable `""` endpoint still starts nothing — `""` is UNKNOWN, and
+  baselining on it would make every later poll read as a change.
+* **The gap.** `capture_gap_seconds` on `AUDIO_DEVICE_REBIND_COMPLETED`, and
+  `seconds_until_failure` + `detection_restarted` on `_FAILED`.
+
+Eight of eleven new tests fail pre-fix. The three that pass are deliberate
+guards on behaviour the fix had to preserve. Worth remembering from this pass:
+the test module first bound `_start_device_watch` at class-definition time,
+which made the whole file error at **collection** so no per-test pre-fix signal
+existed at all — a call-time lookup fixed it. And the neighbours caught a stub
+whose signature had drifted, where the rebind's broad `except` logged a
+`TypeError` as an ordinary device-rebind failure: **a signature bug wearing a
+plausible teardown message.**
+
+Four findings from that audit remain open — the whole rebind still runs inside
+the mainloop (needs a worker, R14); the warning is still cleared on `open()`
+rather than on frames arriving (R12, stage 3); **the microphone never follows
+the device at all**; and the availability flags are latches (above).
 
 > ⚠️ The multi-agent audit that surfaced these **died on the session limit — 53
 > of 61 agents errored**, so its "refuted" bucket is *unverified*, not refuted.
@@ -524,7 +553,8 @@ taking.
 | 6 | Items 17, 16, 6, 7 + the follow-tail leftovers | shipped `42f0d29`, package 26.5.10 |
 | 7 stage 1 | Per-chunk format stamp — R1, R2, R16, R17 | ✅ shipped `c33f5f6`, package 26.5.11 |
 | 7 stage 1 follow-up | Superseded reader stops; cooldown is session-scoped | ✅ shipped `1a83c25`, package 26.5.12 |
-| — | **7 findings still open** from the continuity audit (modal on the UI thread, rebind inside the mainloop, warning cleared on open, mic never follows, no detector after a failed rebind, gap never measured, availability latches) | open |
+| 7 stage 1 follow-up | Continuity audit findings 2, 5, 6 — modal, lost detector, unmeasured gap | ✅ shipped `0604b21`, package 26.5.13 |
+| — | **4 findings still open** from the continuity audit: **mic never follows the device**, rebind runs inside the mainloop, warning cleared on open rather than on frames, availability flags are latches | open |
 | **7 stages 2-4** | **Speaker hot-swap proper** | **blocked on the four §8 design answers** |
 
 Phase 3's four remaining audits are read-only and touch no code, so they can run
