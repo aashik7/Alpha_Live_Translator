@@ -565,10 +565,44 @@ with the one the decision was made on — and calling the mic poll directly
 **killed the whole watcher** on hosts without the microphone mixin, trading the
 bug the thread exists to notice for a worse one.
 
-Three findings from that audit remain open — the whole rebind still runs inside
-the mainloop (needs a worker, R14); the warning is still cleared on `open()`
-rather than on frames arriving (R12, stage 3); and the availability flags are
-latches (above).
+### Continuity audit, fourth pass — the last three — ✅ SHIPPED `5e45e00`, package 26.5.15
+
+* **R14 — the rebind left the mainloop.** Phase 5 put it there for a real
+  reason (the watcher-thread join hazard), but `_run_on_ui_thread` is
+  `after(0, ...)`, and an `after` callback owns the mainloop until it returns —
+  so the whole teardown and re-enumeration ran on the thread that paints the
+  transcript. `_schedule_audio_rebind()` spawns a short-lived worker: not the
+  watcher, so the join runs; not the mainloop, so nothing freezes.
+* **R12 — "opened" is not "working".** The warning used to come down as soon as
+  `_start_wasapi_loopback()` returned, but opening a WASAPI loopback stream
+  succeeds whether or not the endpoint delivers — that IS the item 73
+  condition. The capture threads now count chunks **where the device delivers
+  them**, not where the mixer drains (a drain counter cannot tell a producing
+  device from a running mixer), and the rebind waits for that count to move.
+  No movement leaves the warning up and logs `..._NO_AUDIO`. Only affordable
+  because R14 landed first.
+* **The availability latches** — fixed additively. `system_source_live` /
+  `mic_source_live` are new keys; `*_available` keeps its meaning because the
+  source gate and the evidence writers consume it. A device-stopped signal, not
+  a silence detector: a quiet room still delivers chunks of zeros.
+
+Moving the rebind off the mainloop exposed two latent hazards, both fixed
+rather than left: the single-flight claim was **read-then-set as two
+statements** — safe only while the caller was the single-threaded mainloop, and
+from a worker two rebinds could interleave two teardowns — and a rebind in
+flight **at Stop would resurrect capture**, which the UI-marshalled version was
+equally exposed to since an `after(0, ...)` can fire after Stop.
+
+10 of 13 new tests fail pre-fix.
+
+> **A claim of mine, withdrawn.** The microphone rebind's docstring said the two
+> rebinds must be serialised so "two PortAudio inits can never run concurrently".
+> That is not true: pyaudiowpatch and sounddevice are separate libraries with
+> separate PortAudio instances and do not contend. They share a dispatch path
+> because one path is easier to reason about. The comment now says that instead
+> of asserting a constraint that does not exist.
+
+**Every finding from the device-change continuity audit is now closed.**
 
 > ⚠️ The multi-agent audit that surfaced these **died on the session limit — 53
 > of 61 agents errored**, so its "refuted" bucket is *unverified*, not refuted.
@@ -602,7 +636,8 @@ taking.
 | 7 stage 1 follow-up | Superseded reader stops; cooldown is session-scoped | ✅ shipped `1a83c25`, package 26.5.12 |
 | 7 stage 1 follow-up | Continuity audit findings 2, 5, 6 — modal, lost detector, unmeasured gap | ✅ shipped `0604b21`, package 26.5.13 |
 | 7 stage 1 follow-up | The microphone follows the default input device | ✅ shipped `a4de0c0`, package 26.5.14 |
-| — | **3 findings still open** from the continuity audit: rebind runs inside the mainloop (R14), warning cleared on open rather than on frames (R12), availability flags are latches | open |
+| 7 stage 1 follow-up | R14 worker, R12 confirmation, source liveness | ✅ shipped `5e45e00`, package 26.5.15 |
+| — | Continuity audit — **all 10 findings closed** | ✅ done |
 | **7 stages 2-4** | **Speaker hot-swap proper** | **blocked on the four §8 design answers** |
 
 Phase 3's four remaining audits are read-only and touch no code, so they can run
