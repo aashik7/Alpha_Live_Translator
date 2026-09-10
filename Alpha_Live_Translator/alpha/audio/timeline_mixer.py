@@ -10,7 +10,14 @@ from alpha.config import DEEPGRAM_SAMPLE_RATE, SOURCE_LIVENESS_WINDOW_S
 
 # 20 ms frames at 16 kHz → 320 samples → 640 bytes (256 kbps when paced to real time)
 FRAME_SAMPLES = int(DEEPGRAM_SAMPLE_RATE * 0.02)
-MAX_BUFFER_SAMPLES = DEEPGRAM_SAMPLE_RATE * 3  # cap at 3 s to avoid runaway backlog
+# Cap at 3 s to avoid runaway backlog. This is ALSO the most old-device audio
+# that can straddle a device swap, and the decision there is to play it out
+# rather than discard it (see `buffered_system_seconds`). Shortening it would
+# cut the worst-case swap latency, but it is not a free knob: `emit_due_frames`
+# uses the same depth as its maximum catch-up burst, so a smaller value also
+# reduces how much backlog one slow mixer tick can repay -- which is the
+# regression this constant was raised to fix. Measure before changing it.
+MAX_BUFFER_SAMPLES = DEEPGRAM_SAMPLE_RATE * 3
 # One call may repay at most this much backlog. 3 s matches the buffer depth, so
 # a single call can always drain everything the buffers still hold, while a
 # stalled caller cannot burst without bound.
@@ -46,6 +53,20 @@ class DeepgramTimelineMixer:
         self._sys_last_chunk_mono = 0.0
         self._mic_last_chunk_mono = 0.0
         self._source_gate.reset()
+
+    def buffered_system_seconds(self):
+        """How much old-device audio is still queued to be played out.
+
+        R3: at a device swap `_sys_buffer` holds up to MAX_BUFFER_SAMPLES of
+        audio captured on the PREVIOUS device. Since the per-chunk format stamp
+        shipped those samples are format-safe, so this is a latency-versus-
+        content choice rather than a correctness one, and the decision is to
+        PLAY IT OUT -- keep draining normally and lose nothing. This method
+        exists so that choice is visible in the evidence instead of implicit:
+        an unrecorded choice here is either silent content loss or a silent
+        multi-second lag, and neither is diagnosable after the fact.
+        """
+        return round(float(self._sys_buffer.size) / float(DEEPGRAM_SAMPLE_RATE), 3)
 
     def get_source_gate_summary(self):
         return self._source_gate.get_summary()

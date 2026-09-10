@@ -162,6 +162,11 @@ class _RebindHost:
     _wasapi_stop_requested = WasapiCaptureMixin._wasapi_stop_requested
     _rebind_single_flight_lock = WasapiCaptureMixin._rebind_single_flight_lock
     _await_capture_confirmation = WasapiCaptureMixin._await_capture_confirmation
+    # Core to the rebind's contract, not optional like the mic poll --
+    # borrowed rather than guarded at the call site, so deleting or
+    # renaming it fails loudly instead of silently skipping the
+    # utterance boundary.
+    _mark_device_swap_boundary = WasapiCaptureMixin._mark_device_swap_boundary
 
     def __init__(self, *, start_fails=False, current_endpoint="NEW-ENDPOINT"):
         self._stop_event = threading.Event()

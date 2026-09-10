@@ -762,6 +762,12 @@ def _prepare_assembler_ingress_metadata(
     return meta
 
 
+# The one reason `flush()` treats as a mid-session boundary rather than a stop.
+# Anything else keeps the old stop semantics, so a caller this code has never
+# seen cannot accidentally opt into the new branch.
+DEVICE_SWAP_BOUNDARY_REASON = "device_swap"
+
+
 class JapaneseContinuityAssembler(LanguagePipelineBase):
     """Single Japanese continuity buffer — owns commit decisions (Tk-safe pipeline)."""
 
@@ -843,6 +849,10 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
         self._stable_hold_pending: Optional[dict[str, Any]] = None
         self._stable_hold_generation: int = 0
         self._stop_boundary_active: bool = False
+        # One-shot sibling of the flag above, for a boundary that happens
+        # MID-session: an audio device swap. Set by `flush(DEVICE_SWAP...)`
+        # and consumed by the next stable commit, so it cannot latch.
+        self._merge_boundary_pending: bool = False
         self._assembler_exception_recovery_buffer: Optional[dict[str, Any]] = None
         # item 60: which utterance the commit gate tripped on, so the gate
         # scopes to that utterance instead of latching for the whole session.
@@ -976,6 +986,7 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
             self._stable_hold_pending = None
             self._stable_hold_generation = 0
             self._stop_boundary_active = False
+            self._merge_boundary_pending = False
             self._assembler_exception_recovery_buffer = None
             self._commit_gate_failed_utterance_id = ""
             self._commit_gate_consecutive_rejects = 0
@@ -1019,9 +1030,31 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
             self._exact_duplicate_continuation_count = 0
             self._recent_stable_lines = []
 
+    def _merge_boundary_blocked(self) -> bool:
+        """True when a merge into the previous stable line must be refused.
+
+        Either because the session is stopping, or because an audio device
+        swap put an acoustic discontinuity between that line and this
+        fragment. Read-only on purpose -- see the consumption point.
+        """
+        return bool(self._stop_boundary_active or self._merge_boundary_pending)
+
     def flush(self, reason: str) -> None:
+        """Close the current utterance at a boundary.
+
+        `_stop_boundary_active` is set for EVERY reason except a device swap,
+        which keeps all existing callers -- every one of them a stop path --
+        behaving exactly as before, including reasons this code has never seen.
+        That flag is cleared only by `reset()`, i.e. once per session, which is
+        correct when the session is ending and catastrophic when it is not: a
+        mid-session swap latching it would silently disable punctuation merging
+        for the rest of the meeting. So the swap takes a one-shot instead.
+        """
         with self._lock:
-            self._stop_boundary_active = True
+            if reason == DEVICE_SWAP_BOUNDARY_REASON:
+                self._merge_boundary_pending = True
+            else:
+                self._stop_boundary_active = True
             pending = self._stable_hold_pending
             if pending and reason == "stop_listening":
                 self._release_stable_hold_locked(
@@ -2403,7 +2436,7 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
                 segment,
                 self._last_stable_commit,
                 current_speaker=speaker,
-                stop_boundary_active=self._stop_boundary_active,
+                stop_boundary_active=self._merge_boundary_blocked(),
             )
             if can_merge and self._last_stable_commit:
                 previous_text = str(self._last_stable_commit.get("text") or "")
@@ -3918,7 +3951,7 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
                 cleaned,
                 previous_stable=self._last_stable_commit,
                 current_speaker=speaker,
-                stop_boundary_active=self._stop_boundary_active,
+                stop_boundary_active=self._merge_boundary_blocked(),
             )
             post_action = post_result.get("action", "unchanged")
             if post_action == "merged_previous":
@@ -4797,6 +4830,11 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
             self._recent_stable_lines = self._recent_stable_lines[-5:]
         _commit_md = metadata if isinstance(metadata, dict) else {}
         _nested_md = _commit_md.get("metadata") if isinstance(_commit_md.get("metadata"), dict) else {}
+        # The swap boundary is CONSUMED here, at the one place a new stable
+        # line is established -- not inside the merge predicate, because a
+        # predicate that mutates state is its own bug class and would fire on
+        # whichever call site happened to run first.
+        self._merge_boundary_pending = False
         self._last_stable_commit = {
             "text": cleaned,
             "speaker": speaker,

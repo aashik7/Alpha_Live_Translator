@@ -106,6 +106,38 @@ class WasapiCaptureMixin:
             print(f"[WASAPI] Could not start the rebind worker: {exc}")
             return False
 
+    def _mark_device_swap_boundary(self) -> bool:
+        """Make the swap a deliberate utterance boundary. R11.
+
+        Deepgram may be mid-utterance when the audio stops, so the utterance
+        completes with a truncated tail and the next one starts from a
+        different device. Without this the continuity assembler would merge
+        across a seam that is acoustically discontinuous -- gluing the end of
+        one room's audio to the start of another's. The guideline is explicit
+        that the seam must NOT be hidden from the assembler; that is the "hold
+        and hope" shape that produced item 94.
+
+        Uses its own reason so `flush()` takes the one-shot branch. Passing a
+        stop reason here would latch `_stop_boundary_active`, which is cleared
+        only once per session, and silently disable punctuation merging for the
+        rest of the meeting.
+
+        Never raises: this runs on the rebind worker AFTER capture has already
+        been restored, and a boundary that threw would turn a successful rebind
+        into a failed one.
+        """
+        try:
+            from alpha.transcription.japanese_sentence_assembler import (
+                DEVICE_SWAP_BOUNDARY_REASON,
+                flush_japanese_sentence_assembler,
+            )
+
+            flush_japanese_sentence_assembler(self, DEVICE_SWAP_BOUNDARY_REASON)
+            return True
+        except Exception as exc:  # noqa: BLE001
+            print(f"[WASAPI] Could not mark the swap boundary: {exc}")
+            return False
+
     def _rebind_single_flight_lock(self):
         """Created on first use; these mixins have no shared `__init__`."""
         lock = getattr(self, "_wasapi_rebind_lock", None)
@@ -282,6 +314,18 @@ class WasapiCaptureMixin:
         # hard way from retained WAVs.
         gap_started = time.monotonic()
         captured_before = int(getattr(self, "_wasapi_chunks_captured", 0) or 0)
+        # Read BEFORE the teardown, while the buffer still holds what the old
+        # device produced -- afterwards the mixer has drained some of it and the
+        # number would understate the seam.
+        buffered_before = 0.0
+        try:
+            mixer = getattr(self, "_timeline_mixer", None) or getattr(
+                self, "mixer", None
+            )
+            if mixer is not None:
+                buffered_before = float(mixer.buffered_system_seconds())
+        except Exception:
+            buffered_before = 0.0
         try:
             _log("AUDIO_DEVICE_REBIND_STARTED")
             self._close_wasapi_stream()
@@ -345,12 +389,25 @@ class WasapiCaptureMixin:
             self._audio_device_changed = False
             self._wasapi_device_change_reported = False
             self._refresh_connection_indicator()
+            # Only now, with the new device confirmed producing: the next
+            # stable line must not be merged into one captured on the old one.
+            self._mark_device_swap_boundary()
+            self._wasapi_swap_count = (
+                int(getattr(self, "_wasapi_swap_count", 0) or 0) + 1
+            )
             _log(
                 "AUDIO_DEVICE_REBIND_COMPLETED",
                 captured_device_name=str(
                     getattr(self, "_diag_wasapi_device_name", "") or ""
                 ),
                 capture_gap_seconds=round(time.monotonic() - gap_started, 3),
+                # R3: how much OLD-device audio was still queued and will now be
+                # played out rather than discarded. Recorded so the choice is
+                # visible instead of implicit.
+                buffered_system_seconds=buffered_before,
+                # R13: swaps per session, bounded and reported rather than
+                # silent.
+                swap_index=int(getattr(self, "_wasapi_swap_count", 0) or 0),
             )
             return True
         finally:

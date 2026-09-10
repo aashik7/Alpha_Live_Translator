@@ -256,8 +256,17 @@ class MicrophoneCaptureMixin:
                 self._read_default_capture_endpoint_id()
             )
             self._mic_device_change_reported = False
+            # A microphone swap is the same acoustic discontinuity as a speaker
+            # swap -- it is the OPERATOR's own voice that changes device -- so
+            # the next stable line must not be merged into one captured on the
+            # old microphone. Shared helper; a host without it simply skips.
+            mark = getattr(self, "_mark_device_swap_boundary", None)
+            if callable(mark):
+                mark()
+            self._mic_swap_count = int(getattr(self, "_mic_swap_count", 0) or 0) + 1
             _log(
                 "AUDIO_INPUT_REBIND_COMPLETED",
+                swap_index=int(getattr(self, "_mic_swap_count", 0) or 0),
                 capture_gap_seconds=round(time.monotonic() - started, 3),
             )
             return True

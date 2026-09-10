@@ -8777,6 +8777,14 @@ class AlphaApp(
 
         mic_rms_history = []
         mixer = DeepgramTimelineMixer()
+        # Published for READ-ONLY observation from the rebind worker, which
+        # records how much old-device audio is still queued when a device swap
+        # begins (R3). Ownership is unchanged: this worker remains the only
+        # thing that may call push_system / ingest_queues / configure_sources,
+        # and `tests/test_audio_chunks_carry_their_format.py` enforces that.
+        # Without this the rebind's measurement had nowhere to read from and
+        # would have reported 0.0 for the life of the app.
+        self._timeline_mixer = mixer
         speaker_log_interval = 10.0
         last_speaker_log = mix_start
         speaker_logged_once = False
