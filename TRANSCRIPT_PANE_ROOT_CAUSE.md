@@ -1,7 +1,8 @@
 # The transcript pane bug: root cause, fix, and why it took five attempts
 
 **Status: CLOSED.** Fixed in `61aa5cb` and `c0bda58`. Verified on the repo build
-and on the installed build, at widths from 400 to 1920 design px.
+and on the installed build, at widths from 400 to 1920 design px. **A third cause,
+reachable only through a monitor move, was found and fixed on 2026-09-15 — see §7.**
 
 This replaces `TRANSCRIPT_PANE_HANDOVER.md`, which was written while the cause
 was still unknown.
@@ -227,3 +228,66 @@ Two traps that already cost time:
 - **A higher version number is not a newer build.** `Setup-1.0.4.exe` sat in
   `build/installer/` dated two days before `Setup-1.0.3.exe`. Check timestamps,
   not filenames.
+
+---
+
+## 7. Addendum, 2026-09-15 — Cause C: hidden widgets came back after a monitor move
+
+### What it is
+
+CustomTkinter remembers each widget's last geometry call and replays it when the
+monitor's DPI changes (`CTkBaseClass._set_scaling`), so paddings are re-scaled. In
+CustomTkinter 5.2.2 it forgets that call on `grid_forget`, `pack_forget` and
+`place_forget` — **but not on `grid_remove`**, which it inherits from tkinter. So a
+widget the app hid with `grid_remove()` kept its old `grid(...)` call, and moving the
+window to a monitor at another scale replayed it: the widget came back on screen while
+the app still believed it hidden. No layout pass re-hides it, because every owner
+already thinks its widget is hidden.
+
+### How it was reached without the monitor
+
+§4 judged the 100 % state unreachable on a 150 % laptop because
+`ctk.set_widget_scaling()` compounds with the display factor. That is true of that
+API, not of the path a monitor move takes. CustomTkinter polls
+`ScalingTracker.get_window_dpi_scaling(window)` and, on a change, runs every widget's
+rescale. Making that return 1.0 drives the real code on the real `AlphaApp`.
+
+### What it did, measured on the real window
+
+After one Hide/Show and, in compact layout, one open-and-close of the hamburger menu,
+a monitor move changed the mapped state of **22 widgets across 8 layouts**:
+
+- **compact:** `menu_dropdown_frame` opened by itself, with all nine menu controls —
+  the "compact / mobile layout completely broken" half of the report;
+- **every width, transcript shown:** `show_initial_button` appeared beside Hide — the
+  live report item 81 recorded of both buttons on screen at once. Clicking that
+  phantom "Show Transcript" *hides* the transcript.
+
+The responsive pass a resize runs repaired neither.
+
+### Fix (26.5.24)
+
+`alpha/ui/ctk_grid_remove_fix.py` gives `grid_remove` the treatment CustomTkinter
+already gives `grid_forget` — forget the replay record — installed once when
+`main_window` is imported, before any widget exists. Tk still remembers a removed
+widget's grid options, so `grid()` with no arguments (91d, 91e) restores it as before.
+
+- Mapped-state changes after a monitor move: **22 → 0**.
+- A widget hidden *during* a move and shown afterwards gets the same geometry as one
+  that never moved (5 of 6 cases identical; the sixth differs by 1 px of column width
+  at 1121 px, 1.0 → 1.5 — identical with the fix removed, so pre-existing rounding).
+- Visible widgets are still re-scaled (padding 8 → 12 at 1.5).
+
+Tests: `tests/test_hidden_widgets_stay_hidden_across_a_monitor_move.py`, 8 tests, 5
+failing before the fix: the mechanism on plain CTk frames, buttons and scrollable
+frames, and both reported symptoms on the real `AlphaApp`.
+
+### What this does NOT show
+
+The same simulation does **not** reproduce Cause A on the code before 91d
+(`463c941`): the reading grid stayed mapped there too. Whatever unmapped
+`content_wrapper` on the reporter's machine involves more than CustomTkinter's rescale
+— most likely the Windows side of a real move (`WM_DPICHANGED` resizing the window).
+Cause A's closure still rests on the injected end-state tests of 91d, and no fix here
+has been confirmed on a physical 100 % monitor. The log line that would confirm it is
+still `TRANSCRIPT_TOGGLE ... mapped:1` from that machine.

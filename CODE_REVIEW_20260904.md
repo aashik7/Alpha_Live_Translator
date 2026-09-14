@@ -47,8 +47,9 @@ this as a complete picture — four subsystems were never reached.
 | Review of 26.5.19 | 22 (a close killed the Stop worker mid-finalize) | 26.5.21 |
 | Gap audit 2026-09-14 | 23 (keyterm latch, "400" substring, NameError), 24 (lifecycle rows pile up) | 26.5.22 |
 | Follow-up to 22 | 25 (the waiting close looked finished) | 26.5.23 |
+| External-monitor report | 26 (hidden widgets came back after a monitor move) | 26.5.24 |
 
-**All 25 items in this review are closed.** Items 6 and 7 were the two REFUTED
+**All 26 items in this review are closed.** Items 6 and 7 were the two REFUTED
 ones; what phase 6 shipped for each is the latent hazard and the missing event
 respectively, not the reported defect — see their sections below.
 
@@ -1419,6 +1420,43 @@ shown to report an oversized planted text). Tests:
 
 ---
 
+## 26. After a monitor move, widgets hidden with `grid_remove()` came back on screen — ✅ FIXED
+
+| | |
+|---|---|
+| **Verdict** | **CONFIRMED** — reproduced on the real `AlphaApp` through CustomTkinter's own DPI-change path, before and after |
+| **Severity** | MEDIUM (the compact layout broken by an open menu; a phantom "Show Transcript" that hides the transcript) |
+| **Importance** | FIX-SOON — the unexplained half of the external-monitor report |
+| **Where** | CustomTkinter 5.2.2 `CTkBaseClass`; fixed in `alpha/ui/ctk_grid_remove_fix.py` |
+| **Record** | `TRANSCRIPT_PANE_ROOT_CAUSE.md` §7 |
+
+**Issue.** CustomTkinter replays each widget's last geometry call on a DPI change, to
+re-scale padding, and forgets it on `grid_forget`/`pack_forget`/`place_forget` — but
+not on `grid_remove`. A widget hidden with `grid_remove()` came back when the window
+moved to a monitor at another scale, and no layout pass re-hid it. Measured across 8
+layouts: 22 widgets changed mapped state — in compact layout the closed hamburger menu
+opened by itself with its nine controls, and at every width "Show Transcript" appeared
+beside "Hide" (item 81's field report of both buttons at once).
+
+**Correction on the way in.** This was first listed as pending because
+`TRANSCRIPT_PANE_HANDOVER.md` said OPEN. That file was stale: the original bug was closed
+on 2026-08-25 by 91d/91e and `TRANSCRIPT_PANE_ROOT_CAUSE.md` replaced it the same day;
+`0e72529` later committed the untracked hand-over as "still-OPEN". The hand-over is now
+marked superseded, its old status struck rather than deleted.
+
+**Fix (26.5.24).** `grid_remove` forgets the replay record, exactly as `grid_forget` does,
+installed once at `main_window` import. After: 0 widgets change state across a move;
+a widget hidden during a move comes back with the same geometry as one that never moved
+(5 of 6 identical; the sixth's 1 px is identical without the fix); visible widgets still
+re-scale; `grid()` with no arguments still restores. Tests:
+`test_hidden_widgets_stay_hidden_across_a_monitor_move.py`, 8 tests, 5 failing before.
+
+**Limit.** The same simulation does not reproduce the original `content_wrapper` cause on
+pre-91d code, so that closure still rests on 91d's injected tests; nothing here is
+confirmed on a physical 100 % monitor.
+
+---
+
 ## Japanese assembler: three hunts that came back empty
 
 | Hunt | Result |
@@ -1487,7 +1525,7 @@ real finding inside it.
 
 ## Test baseline
 
-1489 tests at 26.5.23 (1239 when this review was written; the phases added the
+1497 tests at 26.5.24 (1239 when this review was written; the phases added the
 rest). Eight fail, and the **set of eight names** — never the count — is the
 baseline. All eight are stale tests, listed in the previous audit.
 Runner (there is no `tests/__init__.py`, so `-t .` fails):

@@ -1,8 +1,18 @@
 # Hand-over: the reading panes break after the window moves to an external monitor
 
-**Status: OPEN.** Three fixes have been shipped and none of them fixed it. Read
+> **SUPERSEDED — do not work from this file.** The bug it describes was closed on
+> 2026-08-25 by items 91d (`61aa5cb`) and 91e (`c0bda58`), and
+> [`TRANSCRIPT_PANE_ROOT_CAUSE.md`](TRANSCRIPT_PANE_ROOT_CAUSE.md) replaced this
+> hand-over the same day (`904d15d`). This copy had been left untracked; `0e72529`
+> (2026-09-10) committed it and described the bug as "still-OPEN" without seeing the
+> root-cause file, and on 2026-09-15 a session listed it as pending on that basis.
+> Both were wrong. A **third** cause, found on 2026-09-15, is recorded in the
+> root-cause file's §7. The text below is kept as it was written, as the record of
+> what was known before the cause was found.
+
+~~**Status: OPEN.** Three fixes have been shipped and none of them fixed it. Read
 "What has already been tried" before writing any code, and read "Why you
-probably cannot reproduce it" before trusting a green test.
+probably cannot reproduce it" before trusting a green test.~~
 
 Repo: `Alpha_Live_Translator/`. All line numbers below are
 `alpha/ui/main_window.py` unless stated.
