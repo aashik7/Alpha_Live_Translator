@@ -33,6 +33,16 @@ What is implemented instead is a ONE-SHOT boundary. `flush()` keeps setting
 consumed where the next stable line is committed, not inside the merge
 predicate, because a predicate with a side effect is its own bug class.
 
+WHAT THESE TESTS MISSED, AND WHERE THAT IS NOW COVERED
+-----------------------------------------------------
+Every test in this file flushes an EMPTY buffer. They pin the flag and the merge
+gate correctly, and never ask what happens to a sentence that is in flight at the
+moment of the swap -- the one case that matters. The 2026-09-14 audit found that
+further down `flush()` an incomplete buffered fragment went to the stop-tail path
+on `incomplete` alone and was suppressed: a headset plugged in mid-sentence
+deleted the words already spoken. That case is pinned in
+`test_a_swap_never_takes_the_stop_tail_path.py`, driven on the real assembler.
+
 R3 -- THE BUFFER THAT STRADDLES THE SWAP
 ----------------------------------------
 `_sys_buffer` holds up to 3 s of already-resampled 16 kHz audio. Since the

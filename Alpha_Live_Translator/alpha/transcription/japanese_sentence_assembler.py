@@ -1108,6 +1108,19 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
             if not text:
                 self._buffer = None
                 return
+            # A device swap commits what has ALREADY arrived as an ordinary line.
+            # It must never reach the incomplete-tail branch below: that branch
+            # used to trigger on `incomplete` alone, whatever the reason, and it
+            # ends in stop-tail suppression -- so a headset plugged in
+            # mid-sentence deleted the words already spoken. Driven on the real
+            # assembler, a swap and a Stop were indistinguishable
+            # (STOP_TAIL_CANDIDATE_SUPPRESSED, nothing written) while the session
+            # was still listening. Stop-tail suppression is right at the edge of
+            # a finished session and wrong mid-meeting, where the fragment is
+            # real speech a device change interrupted.
+            if reason == DEVICE_SWAP_BOUNDARY_REASON:
+                self._flush_locked(reason, force=True)
+                return
             incomplete, inc_reason = looks_incomplete_japanese_fragment(text)
             if incomplete or reason == "stop_listening":
                 self._flush_locked(

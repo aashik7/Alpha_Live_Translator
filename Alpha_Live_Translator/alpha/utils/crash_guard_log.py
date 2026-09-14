@@ -77,7 +77,11 @@ def _host_context(host: Any = None) -> dict[str, Any]:
     try:
         ctx["audio_queue_size"] = _safe_qsize(getattr(host, "_audio_q", None))
         ctx["ui_queue_size"] = _safe_qsize(getattr(host, "transcript_queue", None))
-        ctx["listening"] = bool(getattr(host, "listening", False))
+        # `is_listening` is the attribute the app maintains. This used to read
+        # `listening`, which nothing assigns, so every crash context ever written
+        # reported the session as NOT listening -- including crashes mid-meeting,
+        # which is exactly when a reader needs this field to be right.
+        ctx["listening"] = bool(getattr(host, "is_listening", False))
     except Exception:
         pass
     try:
