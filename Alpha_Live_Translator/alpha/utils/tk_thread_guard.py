@@ -181,6 +181,23 @@ def install_tk_thread_guard(app_cls: type) -> None:
                 )
             except Exception:
                 pass
+            # Reroute to the UI thread, exactly as `guarded_after` does. This used
+            # to return here without cancelling anything, so a cancel issued off
+            # the UI thread was silently lost and the job fired anyway -- the
+            # close-while-listening path lost all of item 16's cancellation that
+            # way. The asymmetry with `guarded_after` was the defect.
+            #
+            # An empty id is skipped rather than rerouted: `guarded_after` returns
+            # "" for a job it rerouted, and tkinter's `after_cancel("")` raises
+            # ValueError -- which would surface on the UI thread when the bus
+            # drains it. A job that was rerouted has no Tk id to cancel anyway.
+            # Cancelling an id that has already fired is harmless: Tcl's
+            # `after cancel` ignores an unknown id.
+            if after_id:
+                from alpha.utils.ui_event_bus import get_ui_event_bus
+
+                get_ui_event_bus().post_schedule_after(0, _orig_cancel, (self, after_id), {})
+                _increment_refactored()
             return
         return _orig_cancel(self, after_id)
 

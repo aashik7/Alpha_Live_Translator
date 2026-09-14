@@ -316,7 +316,16 @@ RECURRING_UI_JOB_ATTRS = (
     "_transcript_ui_batch_after_id",
     "_ui_event_bus_after_id",
     "_ui_queue_defer_after_id",
+    # The close-while-listening poll. Listed here so a second close click, which
+    # force-closes through `_cancel_recurring_ui_jobs`, does not leave it
+    # scheduled into a destroyed window.
+    "_window_close_poll_after_id",
 )
+
+# How long a close during a session waits for the graceful stop, and how often it
+# checks. The 12 s is unchanged from the thread this poll replaced.
+WINDOW_CLOSE_WAIT_S = 12.0
+WINDOW_CLOSE_POLL_MS = 250
 
 # The microphone control used to be gated here, on a width threshold, because
 # it lived in the header. Item 88c moved it into the status strip, which is
@@ -11268,54 +11277,13 @@ class AlphaApp(
                 except Exception:
                     pass
                 self._begin_graceful_stop()
-
-                def _wait_then_close():
-                    import time as _time
-
-                    deadline = _time.monotonic() + 12.0
-                    while _time.monotonic() < deadline:
-                        if not bool(getattr(self, "_is_stopping", False)) and not bool(
-                            getattr(self, "_is_finalizing", False)
-                        ):
-                            try:
-                                from alpha.utils.freeze_guard_log import freeze_guard_log_sync
-                                from alpha.utils.japanese_accuracy_log import jp_accuracy_log
-                                from alpha.utils.run_artifacts import (
-                                    autosave_partial_artifacts,
-                                    write_crash_safe_index,
-                                )
-
-                                jp_accuracy_log("WINDOW_CLOSE_SAFE_STOP_COMPLETED")
-                                freeze_guard_log_sync("WINDOW_CLOSE_SAFE_STOP_COMPLETED")
-                            except Exception:
-                                pass
-                            self._shutdown_and_destroy()
-                            return
-                        _time.sleep(0.25)
-                    try:
-                        from alpha.utils.freeze_guard_log import freeze_guard_log_sync
-                        from alpha.utils.japanese_accuracy_log import jp_accuracy_log
-                        from alpha.utils.run_artifacts import (
-                            autosave_partial_artifacts_background,
-                            write_crash_safe_index,
-                        )
-
-                        autosave_partial_artifacts_background(
-                            reason="window_close", host=self
-                        )
-                        write_crash_safe_index(
-                            status="incomplete_hang_suspected",
-                            reason="window_close_timeout",
-                        )
-                        jp_accuracy_log("WINDOW_CLOSE_FORCED_AFTER_TIMEOUT")
-                        freeze_guard_log_sync("WINDOW_CLOSE_FORCED_AFTER_TIMEOUT")
-                    except Exception:
-                        pass
-                    self._shutdown_and_destroy()
-
-                threading.Thread(
-                    target=_wait_then_close, name="WindowCloseWait", daemon=True
-                ).start()
+                # Wait for the stop on the UI thread, by polling with `after`.
+                # This used to be a background thread, `WindowCloseWait`, that
+                # called `_shutdown_and_destroy()` itself -- so every cancel in
+                # the shutdown, including item 16's, went through the thread
+                # guard's `guarded_cancel` and was dropped, and the thread was
+                # left stuck inside the marshalled `destroy()`.
+                self._poll_window_close_ready(time.monotonic() + WINDOW_CLOSE_WAIT_S)
                 return
         try:
             from alpha.utils.crash_guard_log import handle_crash_event
@@ -11330,6 +11298,58 @@ class AlphaApp(
         except Exception:
             pass
         self._shutdown_and_destroy()
+
+    def _poll_window_close_ready(self, deadline_mono):
+        """Close once the graceful stop has finished -- on the UI thread.
+
+        One step of a poll that reschedules itself with `after`, so the UI
+        thread is never blocked. It must not sleep here: the Stop worker's
+        `request_stop_ui_drain` posts drain work to this thread and waits for
+        an acknowledgement, and a blocked UI thread would stall that stop.
+
+        Why not keep a worker thread and marshal the shutdown back instead:
+        from a worker, `_run_on_ui_thread` posts to the UI event bus, and if
+        graceful stop has already stopped the bus pump the close is never
+        delivered -- a real hang. Polling from the UI thread has no such
+        dependency.
+        """
+        stopping = bool(getattr(self, "_is_stopping", False)) or bool(
+            getattr(self, "_is_finalizing", False)
+        )
+        if not stopping:
+            try:
+                from alpha.utils.freeze_guard_log import freeze_guard_log_sync
+                from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+                jp_accuracy_log("WINDOW_CLOSE_SAFE_STOP_COMPLETED")
+                freeze_guard_log_sync("WINDOW_CLOSE_SAFE_STOP_COMPLETED")
+            except Exception:
+                pass
+            self._shutdown_and_destroy()
+            return
+        if time.monotonic() >= deadline_mono:
+            try:
+                from alpha.utils.freeze_guard_log import freeze_guard_log_sync
+                from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+                from alpha.utils.run_artifacts import (
+                    autosave_partial_artifacts_background,
+                    write_crash_safe_index,
+                )
+
+                autosave_partial_artifacts_background(reason="window_close", host=self)
+                write_crash_safe_index(
+                    status="incomplete_hang_suspected",
+                    reason="window_close_timeout",
+                )
+                jp_accuracy_log("WINDOW_CLOSE_FORCED_AFTER_TIMEOUT")
+                freeze_guard_log_sync("WINDOW_CLOSE_FORCED_AFTER_TIMEOUT")
+            except Exception:
+                pass
+            self._shutdown_and_destroy()
+            return
+        self._window_close_poll_after_id = self.after(
+            WINDOW_CLOSE_POLL_MS, self._poll_window_close_ready, deadline_mono
+        )
 
     def _shutdown_and_destroy(self):
         """Final shutdown after safe stop or when idle."""
