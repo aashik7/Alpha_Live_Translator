@@ -48,8 +48,9 @@ this as a complete picture — four subsystems were never reached.
 | Gap audit 2026-09-14 | 23 (keyterm latch, "400" substring, NameError), 24 (lifecycle rows pile up) | 26.5.22 |
 | Follow-up to 22 | 25 (the waiting close looked finished) | 26.5.23 |
 | External-monitor report | 26 (hidden widgets came back after a monitor move) | 26.5.24 |
+| External monitor, live on 26.5.24 | 27 (Hide/Show did not re-flow at 100 % scaling) | 26.5.25 |
 
-**All 26 items in this review are closed.** Items 6 and 7 were the two REFUTED
+**All 27 items in this review are closed.** Items 6 and 7 were the two REFUTED
 ones; what phase 6 shipped for each is the latent hazard and the missing event
 respectively, not the reported defect — see their sections below.
 
@@ -1457,6 +1458,36 @@ confirmed on a physical 100 % monitor.
 
 ---
 
+## 27. At 100 % scaling, hiding a reading pane did not re-flow the grid until a resize — ✅ FIXED
+
+| | |
+|---|---|
+| **Verdict** | **CONFIRMED** — reproduced on the physical 100 % monitor and in plain tkinter, before and after |
+| **Severity** | MEDIUM (on the client's monitor every Hide/Show left the panes wrong until the window was dragged) |
+| **Importance** | FIX-NOW — reported live on 26.5.24 |
+| **Where** | `alpha/ui/main_window.py` `_build_content_column`, `CONTENT_COLUMN_SEED` |
+| **Record** | `TRANSCRIPT_PANE_ROOT_CAUSE.md` §8 |
+
+**Issue.** Tk 8.6's grid re-arranges a master after a slave is added or removed only if
+the master's new requested size is more than 1 px in both directions. The reading panes
+were 1×1 frames with `grid_propagate(False)`; at 150 % CustomTkinter made them 2 px, at
+100 % they stayed 1 px, `content_wrapper` requested (9, 1), and Hide/Show waited for a
+resize. From the app's own snapshot on the external monitor: Hide left the translation
+pane at 583 px of ~850 until a drag.
+
+**Proof.** On the physical 100 % monitor (attached to the dev machine), after a real
+window move: after Hide and a second of idle, column 0's bbox was 9 px and the pane 583;
+a 1 px resize made it 851/843. Plain tkinter reproduced the 1 px condition with no
+CustomTkinter at all. Identical on 26.5.23.
+
+**Fix (26.5.25).** `CONTENT_COLUMN_SEED = 4` — at least 2 device px down to CTk's 0.4
+scaling floor, still small enough that the weights decide the split. On the physical
+monitor: Hide 583 → 842 px, Show 582/253 (70/30), the pane reassert guard 1 → 0 per Show.
+Tests: `test_reading_grid_reflows_at_100_percent_scaling.py`, 6 tests (Hide in columns
+and stacked, and the seed check fail before; 70/30 and the laptop are guarded).
+
+---
+
 ## Japanese assembler: three hunts that came back empty
 
 | Hunt | Result |
@@ -1525,7 +1556,7 @@ real finding inside it.
 
 ## Test baseline
 
-1497 tests at 26.5.24 (1239 when this review was written; the phases added the
+1503 tests at 26.5.25 (1239 when this review was written; the phases added the
 rest). Eight fail, and the **set of eight names** — never the count — is the
 baseline. All eight are stale tests, listed in the previous audit.
 Runner (there is no `tests/__init__.py`, so `-t .` fails):

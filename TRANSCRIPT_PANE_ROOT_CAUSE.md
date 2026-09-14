@@ -2,7 +2,9 @@
 
 **Status: CLOSED.** Fixed in `61aa5cb` and `c0bda58`. Verified on the repo build
 and on the installed build, at widths from 400 to 1920 design px. **A third cause,
-reachable only through a monitor move, was found and fixed on 2026-09-15 — see §7.**
+reachable only through a monitor move, was found and fixed on 2026-09-15 — see §7.
+A fourth, and the one underneath the original report, was reproduced on the physical
+100 % monitor and fixed the same day — see §8.**
 
 This replaces `TRANSCRIPT_PANE_HANDOVER.md`, which was written while the cause
 was still unknown.
@@ -193,14 +195,20 @@ toggle correct, including crossing the 700 px column-to-row boundary.
 
 ## 5. What is still open
 
-`TRANSCRIPT_PANE_REASSERTED` still appears on every Show in a live run, meaning
+> **Resolved 2026-09-15 — see §8.** The reassert fired because Tk's grid skipped the
+> re-arrange at 100 % scaling. On the physical monitor it fired once per Show before
+> the fix and zero times after.
+
+~~`TRANSCRIPT_PANE_REASSERTED` still appears on every Show in a live run, meaning
 `_apply_content_layout` does not leave the column mapped on the first attempt
 and the guard is carrying it. The result is correct and lands in the same frame,
 so this is not user-visible — but the normal path relying on its safety net is a
-loose thread worth pulling when there is time.
+loose thread worth pulling when there is time.~~
 
-It was not reproducible in isolation: calling `_apply_content_layout` followed
-by `update_idletasks()` maps the column every time outside the live app.
+~~It was not reproducible in isolation: calling `_apply_content_layout` followed
+by `update_idletasks()` maps the column every time outside the live app.~~
+
+(The isolation attempt ran on the 150 % laptop, where the re-flow is never skipped.)
 
 ---
 
@@ -291,3 +299,73 @@ The same simulation does **not** reproduce Cause A on the code before 91d
 Cause A's closure still rests on the injected end-state tests of 91d, and no fix here
 has been confirmed on a physical 100 % monitor. The log line that would confirm it is
 still `TRANSCRIPT_TOGGLE ... mapped:1` from that machine.
+
+---
+
+## 8. Addendum, 2026-09-15 — Cause D: Tk's grid skipped the re-flow at 100 % scaling
+
+### The report, on 26.5.24
+
+With the window on the external monitor: *hide the transcript and the translation
+pane does not resize; drag the window by hand and it does.* The app's own
+`LAYOUT_SNAPSHOT.jsonl`, window at x=2391 on the 100 % monitor:
+
+| Action | Translation pane |
+|---|---|
+| Hide at 890 design px | **583 px** — should be ~845 |
+| user drags by 3 px | 845 px |
+| Hide again | **585 px** |
+| drag | 863 px |
+
+### Reproduced on the physical monitor
+
+This machine has the 100 % monitor attached beside the 150 % laptop, so for the first
+time the reporter's real state was reachable: the real `AlphaApp`, moved onto that
+monitor by a real window move (Windows sends the DPI change). After Hide, even after a
+full second of idle, grid column 0's bbox was **9 px** while the translation pane stayed
+at **583**; a 1 px resize made it 851/843. On the laptop the same steps re-flowed at once.
+The same result on 26.5.23, so it predates §7's fix.
+
+### The cause, isolated in plain tkinter
+
+No CustomTkinter, same result on either monitor. When a slave is added or removed, Tk
+8.6's grid asks the master for its new requested size and re-arranges on the next idle
+pass — **but only if that requested size is more than 1 px in both directions**. At 1 px
+it returns and waits for a `<Configure>` that only a resize sends:
+
+| Pane request | Master request after Hide | Result |
+|---|---|---|
+| w=1 h=1 padx=8 | (9, 1) | **stale** |
+| w=1 h=2 padx=8 | (9, 2) | re-flows |
+| w=1 h=5 padx=0 | (1, 5) | **stale** |
+| w=2 h=5 padx=0 | (2, 5) | re-flows |
+
+`_build_content_column` builds each reading pane as a 1×1 `CTkFrame` with
+`grid_propagate(False)`, so the weights alone decide the 70/30 split. At 150 %
+CustomTkinter scales 1 px to 2 and the grid re-flows — which is why the laptop never
+failed. At 100 % it stays 1 px, `content_wrapper` requests (9, 1), and every Hide and
+Show is left un-arranged until a resize.
+
+That is very likely the reporter's original symptom too — every pane widget `mapped:0`
+right after Show, and a resize fixing it — and it is why the reassert guard of §5 fired
+on every Show there. Cause A's fix (91d) re-grids an unmapped wrapper, which does not
+touch this.
+
+### Fix (26.5.25)
+
+`CONTENT_COLUMN_SEED = 4`: each pane requests 4 design px instead of 1, which stays at
+least 2 device px down to CustomTkinter's 0.4 scaling floor. Still tiny, so the weights
+still decide the split.
+
+On the physical 100 % monitor, after a real move and with no resize anywhere:
+
+| | Before | After |
+|---|---|---|
+| Hide | translation 583 of 850 px | **842** |
+| Show | reassert guard fired | 582 / 253 (70/30), guard silent |
+| Hide again | 584 | **843** |
+
+Started directly on that monitor: the same. Tests:
+`tests/test_reading_grid_reflows_at_100_percent_scaling.py` — Hide in columns and in the
+stacked layout fail before the fix (583 of 850; 315 of 565 px); guards hold the 70/30
+split at 900/1200/1400 px and the laptop's behaviour.

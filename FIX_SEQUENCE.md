@@ -718,6 +718,7 @@ taking.
 | gap audit 2026-09-14 | **Item 24** — the lifecycle owner kept every decision row of every meeting in memory | ✅ fixed `49b3eb0`, package 26.5.22 |
 | follow-up to 22 | **Item 25** — a close waiting for the transcript looked finished, inviting the second click that kills it | ✅ fixed `741c9ef`, package 26.5.23 |
 | external-monitor report | **Item 26** — after a monitor move, widgets hidden with grid_remove() came back (compact menu opened itself; phantom Show Transcript). Corrects the stale hand-over that still said OPEN | ✅ fixed `14b10a1`, package 26.5.24 |
+| external monitor, live on 26.5.24 | **Item 27** — at 100 % scaling Hide/Show did not re-flow the reading grid until a resize (Tk skips re-arranging a 1 px master) | ✅ fixed `160f94a`, package 26.5.25 |
 
 Phase 3's audits are complete — 5 of 5, as the table above says. (This line used
 to read "Phase 3's four remaining audits", contradicting the table two rows
