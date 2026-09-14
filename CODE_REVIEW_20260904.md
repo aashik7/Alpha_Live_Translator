@@ -43,8 +43,9 @@ this as a complete picture — four subsystems were never reached.
 | Item 18 | Stable reconstruction paired two streams by index | 26.5.17 |
 | Audit 2026-09-14 | 19 (swap deleted the in-flight sentence), 20 (crash logs never listening) | 26.5.18 |
 | Gap audit 2026-09-14 | 21 (a close during a meeting dropped item 16's cancels) | 26.5.19 |
+| Review of 26.5.19 | 21's regression (the close timeout's autosave wrote nothing) | 26.5.20 |
 
-**All 21 items in this review are closed.** Items 6 and 7 were the two REFUTED
+**Items 1-21 are closed. Item 22 is OPEN** (plausible, found reviewing 26.5.19, pre-existing, awaiting approval). Items 6 and 7 were the two REFUTED
 ones; what phase 6 shipped for each is the latent hazard and the missing event
 respectively, not the reported defect — see their sections below.
 
@@ -1225,6 +1226,71 @@ like `guarded_after`, skipping an empty id (tkinter raises on `after_cancel("")`
 Tests: `test_closing_during_a_meeting_shuts_down_on_the_ui_thread.py`, 7 of 9
 failing pre-fix.
 
+**The fix shipped a regression, fixed in 26.5.20.** Reviewing 26.5.19 after it
+shipped: moving the wait onto the UI thread also moved the timeout branch's
+`autosave_partial_artifacts_background` there, and both writers inside it begin
+with `guard_ui_thread_blocking_call`, which **refuses on the UI thread**. So in
+26.5.19 a close whose stop never finished saved no partial transcript and no
+partial index — only the crash-safe index, which has no guard. The old
+`WindowCloseWait` thread passed that guard. The 26.5.19 tests never looked at the
+timeout branch's writes, only at which thread shut down.
+
+Driven in production shape (real Tk mainloop, real guard, UI thread registered,
+real autosave wrappers, file writers recorded):
+
+| | 26.5.19 | 26.5.20 |
+|---|---|---|
+| Partial transcript written | **no** | yes, on `WindowCloseTimeoutAutosave` |
+| Partial index written | **no** | yes |
+| Writes finished before shutdown | — | yes (0.41 s, shutdown 0.50 s) |
+| Shutdown ran on | `MainThread` | `MainThread` |
+
+Fix: only the writing moves off the UI thread. The timeout branch starts
+`_write_window_close_timeout_artifacts` on its own thread and the same UI-thread
+poll waits for it, bounded by `WINDOW_CLOSE_AUTOSAVE_WAIT_S` (5 s) so a hung writer
+cannot hold the window, then shuts down on the UI thread. Waiting matters as much as
+the thread: shutting down first ends the process, and the daemon writer with it.
+Five tests in `TheCloseTimeoutAutosaveReallyWritesTest`, three failing against
+26.5.19; the other two guard that the shutdown stays on the UI thread and that the
+wait never blocks it.
+
+---
+
+## 22. A close during a meeting can end the process while finalize is still running — OPEN (PLAUSIBLE)
+
+| | |
+|---|---|
+| **Verdict** | **PLAUSIBLE** — every link read in code, timing seen in field evidence, the chain not yet driven end to end |
+| **Severity** | MEDIUM-HIGH if the seal can land after 5 s (delivered transcript); MEDIUM otherwise (export lock, latest index, alias sync) |
+| **Importance** | FIX-SOON, pending approval |
+| **Where** | `main_window.py` `_stop_ui_watchdog_tick` / `_restore_ui_after_stop_watchdog`; `stop_finalize_worker.py` flag clear before the tail of finalize |
+| **Pre-existing** | yes — the `WindowCloseWait` thread read the same flags; items 21 and its regression fix did not change this |
+
+**Issue.** The close wait decides "the stop has finished" from `_is_stopping` /
+`_is_finalizing`. Those are UI-state flags, not a finalize-done signal, and two
+things clear them while the daemon `StopFinalizeWorker` is still working:
+
+1. `_begin_graceful_stop` starts the stop UI watchdog, which after **5 s** calls
+   `_restore_ui_after_stop_watchdog(timed_out=True)` and clears both flags
+   regardless of the worker. The close poll then logs
+   `WINDOW_CLOSE_SAFE_STOP_COMPLETED`, shuts down, `mainloop()` returns, and
+   `main.py` exits with nothing joining the worker. In practice this also makes the
+   12 s timeout branch unreachable unless the watchdog itself stalls.
+2. On the normal path the worker clears both flags *before* its alias sync and seal
+   verification, and before `stop_core_completed_event` is set.
+
+**Evidence.** 26.5.3 run `20260902-112941` (a Stop, not a close — same watchdog):
+`STOP_UI_FORCE_RESTORE_AFTER_TIMEOUT` at 11:31:42.224; the worker then carried on
+through `FINAL_EXPORT_LOCK_STARTED/COMPLETED`, `LATEST_INDEX_FINAL_EXPORT_LOCK_FIELDS_UPDATED`
+and two alias syncs to `STOP_FINALIZE_COMPLETED` at 11:31:43.458 — 1.23 s after the
+flags said done. The seal itself landed before the restore in that run. Across the
+evidence tree, `STOP_UI_FORCE_RESTORE_AFTER_TIMEOUT` appears in 42 log files and
+`STOP_UI_WATCHDOG_CORE_COMPLETED_DETECTED` in 3.
+
+**Not yet shown:** a run where the seal lands after 5 s, and the chain driven end to
+end. Do that first. The likely fix is for the close to wait on the finalize thread
+itself (bounded), not on flags the UI watchdog owns.
+
 ---
 
 ## Japanese assembler: three hunts that came back empty
@@ -1295,7 +1361,7 @@ real finding inside it.
 
 ## Test baseline
 
-1454 tests at 26.5.19 (1239 when this review was written; the phases added the
+1459 tests at 26.5.20 (1239 when this review was written; the phases added the
 rest). Eight fail, and the **set of eight names** — never the count — is the
 baseline. All eight are stale tests, listed in the previous audit.
 Runner (there is no `tests/__init__.py`, so `-t .` fails):
