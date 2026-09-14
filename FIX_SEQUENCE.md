@@ -714,6 +714,8 @@ taking.
 | gap audit 2026-09-14 | **Item 21** — a close during a meeting dropped item 16's cancels (and corrects the audit's retracted "window stays open" claim) | ✅ shipped `4bd5714`, package 26.5.19 |
 | review of 26.5.19 | **Item 21's regression** — the close timeout's autosave ran on the UI thread, where its guard refuses, and wrote nothing | ✅ fixed, package 26.5.20 |
 | review of 26.5.19 | **Item 22** — a close ended the process while the Stop worker was still finalizing (mid-meeting close, and Stop-then-close) | ✅ fixed `949aab9`, package 26.5.21 |
+| gap audit 2026-09-14 | **Item 23** — one keyterm rejection turned keyterms off until restart; "400"/"401"/"403" matched as substrings (a transient error could end the meeting); a NameError in the fallback | ✅ fixed `006b299`, package 26.5.22 |
+| gap audit 2026-09-14 | **Item 24** — the lifecycle owner kept every decision row of every meeting in memory | ✅ fixed `49b3eb0`, package 26.5.22 |
 
 Phase 3's audits are complete — 5 of 5, as the table above says. (This line used
 to read "Phase 3's four remaining audits", contradicting the table two rows

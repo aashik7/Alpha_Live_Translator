@@ -45,8 +45,9 @@ this as a complete picture — four subsystems were never reached.
 | Gap audit 2026-09-14 | 21 (a close during a meeting dropped item 16's cancels) | 26.5.19 |
 | Review of 26.5.19 | 21's regression (the close timeout's autosave wrote nothing) | 26.5.20 |
 | Review of 26.5.19 | 22 (a close killed the Stop worker mid-finalize) | 26.5.21 |
+| Gap audit 2026-09-14 | 23 (keyterm latch, "400" substring, NameError), 24 (lifecycle rows pile up) | 26.5.22 |
 
-**All 22 items in this review are closed.** Items 6 and 7 were the two REFUTED
+**All 24 items in this review are closed.** Items 6 and 7 were the two REFUTED
 ones; what phase 6 shipped for each is the latent hazard and the missing event
 respectively, not the reported defect — see their sections below.
 
@@ -1317,6 +1318,80 @@ Tests: `test_closing_waits_for_the_finalize_worker_not_the_ui_flags.py`, 11 test
 
 ---
 
+## 23. One keyterm rejection turned keyterms off until restart, and "400" was a substring — ✅ FIXED
+
+| | |
+|---|---|
+| **Verdict** | **CONFIRMED** — driven through the real `_deepgram_on_error`, `_start_listening` and `_build_deepgram_url` |
+| **Severity** | MEDIUM (keyterm accuracy lost silently for every later meeting; a transient error could end the meeting) |
+| **Importance** | FIX-SOON |
+| **Where** | `alpha/transcription/deepgram_client.py` `_deepgram_on_error`; `alpha/ui/main_window.py` `_start_listening` session reset |
+| **Found** | gap audit 2026-09-14 (bug #2); two more defects in the same branch found while writing its tests |
+
+**Issue — four defects in one error handler.**
+
+1. **The latch.** A keyterm rejection set `_jp_keyterms_fallback_used = True` so the
+   reconnect could succeed without keyterms. Nothing ever set it back — not Start,
+   not a successful connect — so every later meeting ran without the business-term
+   keyterms until the app was restarted. The log line says "retrying *once*".
+2. **"400" was a substring.** The fallback, the recoverable flag and the decision to
+   **stop listening** all tested `"400" in str(err)`. websocket-client formats a failed
+   handshake as `Handshake status <code> <reason> -+-+- <headers> -+-+- <body>`, so a
+   503's text carries Deepgram's `dg-request-id`, whose hex can contain "400", and
+   other error text can carry such a number. That turned keyterms off, and once they
+   were off the next such error **ended the meeting** ("Listening has been stopped")
+   instead of reconnecting — against the continuity requirement.
+3. **The same substring test for the auth flag** (item 47): a 503 whose request id
+   contains "401" or "403" showed the operator "Key rejected" for a working key until
+   the socket next opened.
+4. **A NameError since the first commit.** The fallback branch logged
+   `len(JAPANESE_KEYTERMS)`, a name defined nowhere. It raised right after setting
+   the flag and before the print and the reconnect; websocket-client logged it and
+   moved on. Found because the new tests errored on it before reaching their own
+   assertions — so the NameError was fixed first and the tests re-run, to prove each
+   remaining failure was its own defect and not that one.
+
+**Fix (26.5.22).** `_deepgram_handshake_status()` reads the real status — the
+exception's `status_code`, or the `Handshake status NNN` text for an error that arrived
+as text only — and drives all three decisions. Start clears
+`_jp_keyterms_fallback_used` in the per-session reset that already clears
+`_dg_auth_failed`, so a rejection lasts one meeting. The log reports the keyterms
+actually being sent. Tests: `test_keyterm_fallback_is_per_meeting_and_400_means_status_400.py`,
+8 tests: against the pre-fix tree 6 errored on the NameError and 2 failed; with only
+the NameError fixed, 5 failed on their own defects; 3 are guards (a genuine 400 still
+falls back once, then stops; a text-only 400 is still recognised).
+
+**Not changed:** `alpha/translation/deepl_client.py` classifies DeepL errors with the
+same kind of substring test (`"400" in msg`, `"403" in msg`). Different subsystem and
+retry semantics, and it checks exception types first; recorded, not fixed.
+
+---
+
+## 24. The lifecycle owner kept every decision row of every meeting in memory — ✅ FIXED
+
+| | |
+|---|---|
+| **Verdict** | **CONFIRMED** — measured through the real `on_interim` and `reset_for_session` |
+| **Severity** | LOW-MEDIUM (unbounded memory growth for the life of the process) |
+| **Importance** | BACKLOG, fixed with 23 |
+| **Where** | `alpha/transcription/utterance_lifecycle.py` `UtteranceLifecycleOwner` |
+| **Found** | gap audit 2026-09-14 (bug #3) |
+
+**Issue.** `_record_decision` appends one dict per decision to `_events`. Nothing ever
+removed one: the owner is a process singleton, and `reset_for_session` — run at every
+Start — zeroed the stats but not the list. Nothing in the app reads it (`events()` has
+no caller); the record that matters is the event log file. Before: 300 decisions gave
+300 rows, and after the session reset all 300 rows of the previous meeting were still
+there; tracemalloc measured 627 bytes a row.
+
+**Fix (26.5.22).** `_events` is a `deque(maxlen=LIFECYCLE_EVENTS_KEPT)` (1000, newest
+last), cleared in `reset_for_session`. Re-measured on the real singleton: 5000 decisions
+keep 1000, the reset clears to 0, the next meeting caps at 1000. Tests:
+`test_lifecycle_decision_rows_do_not_pile_up.py`, 3 tests, 2 failing pre-fix; the guard
+checks the bound drops the oldest rows, not the newest.
+
+---
+
 ## Japanese assembler: three hunts that came back empty
 
 | Hunt | Result |
@@ -1385,7 +1460,7 @@ real finding inside it.
 
 ## Test baseline
 
-1470 tests at 26.5.21 (1239 when this review was written; the phases added the
+1481 tests at 26.5.22 (1239 when this review was written; the phases added the
 rest). Eight fail, and the **set of eight names** — never the count — is the
 baseline. All eight are stale tests, listed in the previous audit.
 Runner (there is no `tests/__init__.py`, so `-t .` fails):
