@@ -46,8 +46,9 @@ this as a complete picture — four subsystems were never reached.
 | Review of 26.5.19 | 21's regression (the close timeout's autosave wrote nothing) | 26.5.20 |
 | Review of 26.5.19 | 22 (a close killed the Stop worker mid-finalize) | 26.5.21 |
 | Gap audit 2026-09-14 | 23 (keyterm latch, "400" substring, NameError), 24 (lifecycle rows pile up) | 26.5.22 |
+| Follow-up to 22 | 25 (the waiting close looked finished) | 26.5.23 |
 
-**All 24 items in this review are closed.** Items 6 and 7 were the two REFUTED
+**All 25 items in this review are closed.** Items 6 and 7 were the two REFUTED
 ones; what phase 6 shipped for each is the latent hazard and the missing event
 respectively, not the reported defect — see their sections below.
 
@@ -1392,6 +1393,32 @@ checks the bound drops the oldest rows, not the newest.
 
 ---
 
+## 25. A close that waits for the transcript looked finished, inviting the click that kills it — ✅ FIXED
+
+| | |
+|---|---|
+| **Verdict** | **CONFIRMED** — driven through the real close, watchdog restore and listen-button code |
+| **Severity** | MEDIUM (a second close click force-closes and kills the Stop worker mid-write) |
+| **Importance** | FIX-SOON — it protects item 22's fix |
+| **Where** | `alpha/ui/main_window.py` close poll, `toggle_listening`; `alpha/ui/strings.py` |
+
+**Issue.** Item 22 made the close wait for the Stop worker, up to 30 s. A second click
+still force-closes at once. But closing mid-meeting showed "Finalising…", and five
+seconds later the stop UI watchdog showed "Stopped. Diagnostics may still be saving."
+and re-enabled Start — a window that looks done and has not closed. Closing after Stop
+changed nothing on screen.
+
+**Fix (26.5.23).** While a close waits, the status line reads "Saving transcript —
+closes automatically" (Japanese: 文字起こしを保存中 — 自動で閉じます) and the listen buttons
+stay disabled, re-applied on every close-poll tick because the watchdog restore, status
+events and resizes overwrite them. `toggle_listening` ignores Start while a close is
+pending. Measured on the real status strip: the text fits in both languages at
+800–1280 design px, like the longest status text already shown (the probe was first
+shown to report an oversized planted text). Tests:
+`test_closing_tells_the_user_the_transcript_is_saving.py`, 8 tests, 6 failing before.
+
+---
+
 ## Japanese assembler: three hunts that came back empty
 
 | Hunt | Result |
@@ -1460,7 +1487,7 @@ real finding inside it.
 
 ## Test baseline
 
-1481 tests at 26.5.22 (1239 when this review was written; the phases added the
+1489 tests at 26.5.23 (1239 when this review was written; the phases added the
 rest). Eight fail, and the **set of eight names** — never the count — is the
 baseline. All eight are stale tests, listed in the previous audit.
 Runner (there is no `tests/__init__.py`, so `-t .` fails):
