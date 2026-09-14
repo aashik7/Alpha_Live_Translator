@@ -188,6 +188,7 @@ _JA: dict[str, str] = {
     "Stopped. Diagnostics may still be saving.": (
         "停止しました。診断データを保存している場合があります。"
     ),
+    "Saving transcript — closes automatically": "文字起こしを保存中 — 自動で閉じます",
     # -- Connection indicator (_CONNECTION_INDICATOR_TEXT in main_window.py) -
     "● Signal OK": "● 信号良好",
     "● Reconnecting": "● 再接続中",

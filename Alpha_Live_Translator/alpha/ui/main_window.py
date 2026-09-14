@@ -363,6 +363,41 @@ def _write_window_close_timeout_artifacts(host):
         pass
 
 
+# What the status line says while a close waits for the transcript. Item 22 made
+# the close wait for the Stop worker; without this the window looked finished --
+# five seconds after Stop the watchdog shows "Stopped" and re-enables Start -- and
+# a second click on the close button force-closes, killing the worker mid-write.
+# Kept no longer than the longest status text the strip already shows.
+WINDOW_CLOSING_STATUS_TEXT = "Saving transcript — closes automatically"
+
+
+def _show_window_closing_status(host):
+    """Say the transcript is saving, and keep Start unusable, while a close waits.
+
+    Called when the wait begins and again on every close-poll tick, because the
+    5 s stop watchdog restore and status events overwrite both. Idempotent. A
+    module function for the reason `_cancel_recurring_ui_jobs` gives.
+    """
+    try:
+        label = getattr(host, "status_text_label", None)
+        set_text = getattr(host, "_set_dynamic_text", None)
+        if (
+            label is not None
+            and callable(set_text)
+            and getattr(label, "_alpha_text_source", None) != WINDOW_CLOSING_STATUS_TEXT
+        ):
+            set_text(label, WINDOW_CLOSING_STATUS_TEXT, text_color=COLORS["text_primary"])
+    except Exception:
+        pass
+    for name in ("listen_button", "listen_button_menu"):
+        try:
+            button = getattr(host, name, None)
+            if button is not None and button.cget("state") != "disabled":
+                button.configure(state="disabled")
+        except Exception:
+            pass
+
+
 def _stop_worker_still_finalizing():
     """True while a Stop's finalize worker is still running. Item 22.
 
@@ -10284,6 +10319,11 @@ class AlphaApp(
 
     def toggle_listening(self):
         """Start or stop live transcription."""
+        if getattr(self, "_window_close_pending", False):
+            # The window is closing and waiting for the transcript to save. A
+            # new meeting here would start only to be shut down when the wait
+            # ends. The buttons are disabled too; this covers every other entry.
+            return
         if getattr(self, "_is_finalizing", False):
             return
         if getattr(self, "_starting_listening", False):
@@ -11391,6 +11431,7 @@ class AlphaApp(
         if autosave is not None:
             thread, autosave_deadline = autosave
             if thread.is_alive() and time.monotonic() < autosave_deadline:
+                _show_window_closing_status(self)
                 self._window_close_poll_after_id = self.after(
                     WINDOW_CLOSE_POLL_MS, self._poll_window_close_ready, deadline_mono, autosave
                 )
@@ -11434,6 +11475,9 @@ class AlphaApp(
                 deadline_mono, (thread, time.monotonic() + WINDOW_CLOSE_AUTOSAVE_WAIT_S)
             )
             return
+        # Still waiting. Say so, every tick: the 5 s stop watchdog restore and
+        # status events overwrite the line and re-enable Start.
+        _show_window_closing_status(self)
         self._window_close_poll_after_id = self.after(
             WINDOW_CLOSE_POLL_MS, self._poll_window_close_ready, deadline_mono
         )
