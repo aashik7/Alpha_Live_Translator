@@ -44,8 +44,9 @@ this as a complete picture — four subsystems were never reached.
 | Audit 2026-09-14 | 19 (swap deleted the in-flight sentence), 20 (crash logs never listening) | 26.5.18 |
 | Gap audit 2026-09-14 | 21 (a close during a meeting dropped item 16's cancels) | 26.5.19 |
 | Review of 26.5.19 | 21's regression (the close timeout's autosave wrote nothing) | 26.5.20 |
+| Review of 26.5.19 | 22 (a close killed the Stop worker mid-finalize) | 26.5.21 |
 
-**Items 1-21 are closed. Item 22 is OPEN** (plausible, found reviewing 26.5.19, pre-existing, awaiting approval). Items 6 and 7 were the two REFUTED
+**All 22 items in this review are closed.** Items 6 and 7 were the two REFUTED
 ones; what phase 6 shipped for each is the latent hazard and the missing event
 respectively, not the reported defect — see their sections below.
 
@@ -1256,13 +1257,13 @@ wait never blocks it.
 
 ---
 
-## 22. A close during a meeting can end the process while finalize is still running — OPEN (PLAUSIBLE)
+## 22. A close ended the process while the Stop worker was still finalizing — ✅ FIXED
 
 | | |
 |---|---|
-| **Verdict** | **PLAUSIBLE** — every link read in code, timing seen in field evidence, the chain not yet driven end to end |
-| **Severity** | MEDIUM-HIGH if the seal can land after 5 s (delivered transcript); MEDIUM otherwise (export lock, latest index, alias sync) |
-| **Importance** | FIX-SOON, pending approval |
+| **Verdict** | **CONFIRMED** — driven end to end before and after the fix (first recorded as PLAUSIBLE, before it was driven) |
+| **Severity** | HIGH — the deliverable itself can be lost: the worker has up to 66 s of step budget before `write_final_alpha` |
+| **Importance** | FIX-NOW |
 | **Where** | `main_window.py` `_stop_ui_watchdog_tick` / `_restore_ui_after_stop_watchdog`; `stop_finalize_worker.py` flag clear before the tail of finalize |
 | **Pre-existing** | yes — the `WindowCloseWait` thread read the same flags; items 21 and its regression fix did not change this |
 
@@ -1287,9 +1288,32 @@ flags said done. The seal itself landed before the restore in that run. Across t
 evidence tree, `STOP_UI_FORCE_RESTORE_AFTER_TIMEOUT` appears in 42 log files and
 `STOP_UI_WATCHDOG_CORE_COMPLETED_DETECTED` in 3.
 
-**Not yet shown:** a run where the seal lands after 5 s, and the chain driven end to
-end. Do that first. The likely fix is for the close to wait on the finalize thread
-itself (bounded), not on flags the UI watchdog owns.
+**Wider than first recorded.** The commonest close there is — click Stop, then close
+the window — never waited at all. `_on_close` only waited for an `is_listening`
+session, so after Stop it fell through to the idle close; before the 5 s restore
+too, because with `_is_stopping` still True it set `_window_close_pending`, wrote the
+partial snapshot, found `is_listening` False and fell through anyway.
+
+**Proof, end to end** (real `_on_close`, `_begin_graceful_stop`, `begin_stop_from_ui`,
+stop UI watchdog and close poll; real Tk mainloop and thread guard; only the worker
+body faked, writing its deliverable at 7 s — inside the real budget):
+
+| Scenario | Before | After |
+|---|---|---|
+| Close mid-meeting | shutdown 5.29 s, worker alive, **deliverable lost** | shutdown 7.84 s, after the worker, deliverable written |
+| Stop, then close at 2 s | shutdown 2.05 s, **deliverable lost** | shutdown 7.72 s, deliverable written |
+| Stop, then close at 6 s | shutdown 6.06 s, **deliverable lost** | shutdown 7.83 s, deliverable written |
+
+Field: of 2058 recorded stops, 208 took longer than 5 s; the slowest took 11.8 s.
+
+**Fix (26.5.21).** The close waits on `finalize_in_progress()` — the same gate Start
+already used for this reason — as well as on the flags, through
+`_stop_worker_still_finalizing()`. `_on_close` waits that way when Stop was clicked
+first, without starting a second stop. `WINDOW_CLOSE_WAIT_S` rises from 12 s to 30 s,
+since a cap a slow stop reaches kills its worker just the same; the poll still ends
+the moment the worker finishes, and a second close click still force-closes.
+Tests: `test_closing_waits_for_the_finalize_worker_not_the_ui_flags.py`, 11 tests,
+7 failing pre-fix.
 
 ---
 
@@ -1361,7 +1385,7 @@ real finding inside it.
 
 ## Test baseline
 
-1459 tests at 26.5.20 (1239 when this review was written; the phases added the
+1470 tests at 26.5.21 (1239 when this review was written; the phases added the
 rest). Eight fail, and the **set of eight names** — never the count — is the
 baseline. All eight are stale tests, listed in the previous audit.
 Runner (there is no `tests/__init__.py`, so `-t .` fails):

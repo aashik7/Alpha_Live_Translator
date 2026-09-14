@@ -713,7 +713,7 @@ taking.
 | audit 2026-09-14 | **Items 19 + 20** — a swap deleted the sentence in flight (a phase 7 bug); crash logs never listening | ✅ shipped `59a483b`, package 26.5.18 |
 | gap audit 2026-09-14 | **Item 21** — a close during a meeting dropped item 16's cancels (and corrects the audit's retracted "window stays open" claim) | ✅ shipped `4bd5714`, package 26.5.19 |
 | review of 26.5.19 | **Item 21's regression** — the close timeout's autosave ran on the UI thread, where its guard refuses, and wrote nothing | ✅ fixed, package 26.5.20 |
-| review of 26.5.19 | **Item 22** — the close can end the process while finalize still runs (the 5 s stop UI watchdog clears the flags it waits on) | OPEN — plausible, pre-existing, awaiting approval |
+| review of 26.5.19 | **Item 22** — a close ended the process while the Stop worker was still finalizing (mid-meeting close, and Stop-then-close) | ✅ fixed `949aab9`, package 26.5.21 |
 
 Phase 3's audits are complete — 5 of 5, as the table above says. (This line used
 to read "Phase 3's four remaining audits", contradicting the table two rows
