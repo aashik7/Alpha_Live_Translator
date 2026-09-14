@@ -1026,6 +1026,78 @@ loss is the thing that makes a live report undiagnosable.
 
 ---
 
+## 18. The Stable reconstruction paired two differently-sized streams by index — ✅ FIXED
+
+| | |
+|---|---|
+| **Verdict** | **CONFIRMED** — found by a live run, root-caused, fixed, and the failing run re-reconstructed |
+| **Severity** | **MEDIUM** (diagnostics; the transcript is unaffected) |
+| **Importance** | **FIX-SOON** |
+| **Where** | `alpha/utils/persisted_run_evidence.py:275` (pairing), `:394` (the raise) |
+
+**How it surfaced.** The 2026-09-14 test video ended at
+`completed_pending_evidence_package`:
+
+```
+THREE_STAGE_FINALIZER_EXCEPTION  step=assembler_stage
+PersistedEvidenceReconstructionError: Unresolved revision targets:
+    ['missing_record_id_event_index_27', 'missing_record_id_event_index_28']
+```
+
+**Mechanism.** `reconstruct_active_stable_records` paired assembler events to
+stable commits positionally:
+
+```python
+commit = commit_by_index[i] if i < len(commit_by_index) else {}
+meta   = commit.get("assembler_metadata") ...
+commit_rid = meta.get("revision_target_id") or meta.get("canonical_record_id")
+```
+
+`i` indexes the *events*; the list is the *commits*. They are different lengths
+and different memberships — `no_op` and `suppress_candidate` events never become
+commits, and they are skipped at `:281-290`, **after** this pairing is computed.
+
+Measured on that run: **30 events (4 `suppress_candidate`) against 26 usable
+commits.** Two distinct effects, and the quieter one is worse:
+
+* **Silent:** every event after the first suppressed one paired with the **wrong**
+  commit. A synthetic reproduction of the same shape loses a record entirely —
+  `canon-000003` came back `None`.
+* **Visible:** the trailing two events indexed past the end, resolved to `{}`,
+  and were reported as having no record id.
+
+**They all had one.** Every committed event carries its record id in its own
+`commit_reason` (`"|canonical_record_id=canon-000022|transaction_id=…"`), and
+**0 of 26 carried it as a top-level field** — which is why reading across to the
+commit looked necessary. It is not; the event is self-describing.
+
+**Risk.** Diagnostics, not content. That run's `Alpha_output_FINAL.txt` was
+written and its 23 canonical records are intact. But when the finalizer raised,
+validation, the health timeline, the memory trend, the artifacts index and the
+upload package were all skipped — so a client sending a support bundle sends an
+incomplete one, and the run reports a status that understates its own success.
+
+**Pre-existing, not a phase regression.** The same exception appears in 26.5.3
+runs from 2026-09-02, before phases 4-7.
+
+**Fix.** The event is now the source of truth for its own id
+(`_event_record_id`, which splits `commit_reason` on `|` and matches the exact
+key — a looser `split("canonical_record_id=")[1]` would return
+`transaction_id=…` for a suppressed tail and invent an id that never existed).
+The commit is looked up **by that id** purely as a lineage fallback. No index
+survives. Also removed the dead `if events and not events: pass` at `:259`.
+
+**Proof.** `tests/test_item18_reconstruction_pairing.py` — 6 of 10 failed
+pre-fix, including the silent-mispairing case. Fixtures rebuild the shape
+synthetically rather than pointing at the run folder, because
+`troubleshooting/runs/` is gitignored and retention-pruned and a test whose
+guarantee disappears with its evidence is a pattern this project has already
+been bitten by. The failing run folder itself was then re-reconstructed:
+`unresolved_revision_targets: []`, `reconstruction_completed: True`,
+**23 active records against 23 canonical ledger records**, `records_without_lineage: 0`.
+
+---
+
 ## Japanese assembler: three hunts that came back empty
 
 | Hunt | Result |

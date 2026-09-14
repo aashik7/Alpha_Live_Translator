@@ -68,6 +68,33 @@ def _normalize_action(action: str) -> str:
     return act or "append"
 
 
+def _event_record_id(event: dict[str, Any]) -> str:
+    """The canonical record id an assembler event carries for ITSELF.
+
+    Production writes it into `commit_reason`, not as a field:
+
+        "|canonical_record_id=canon-000022|transaction_id=txn-6bb3a9d64d15"
+
+    Measured across run `...26.5.16-20260914-095713`: 26 of 26 committed events
+    carried it there and 0 carried it top level. The leading `|` is normal --
+    `reason` is often empty, so the string simply starts with the separator.
+
+    A suppressed stop tail writes the key with an EMPTY value
+    (`stop_flush_incomplete_tail|canonical_record_id=|transaction_id=…`), so
+    splitting on `|` and matching the exact key is deliberate: a looser
+    `split("canonical_record_id=")[1]` would return `transaction_id=…` for
+    those and invent a record id that never existed.
+    """
+    direct = str(event.get("canonical_record_id") or "").strip()
+    if direct:
+        return direct
+    for part in str(event.get("commit_reason") or "").split("|"):
+        key, sep, value = part.partition("=")
+        if sep and key.strip() == "canonical_record_id":
+            return value.strip()
+    return ""
+
+
 def _extract_lineage(row: dict[str, Any]) -> list[str]:
     top = row.get("source_raw_event_ids")
     if isinstance(top, list) and top:
@@ -256,25 +283,51 @@ def reconstruct_active_stable_records(run_folder: Path | str) -> dict[str, Any]:
     assert folder is not None
     events = load_persisted_assembler_events(folder)
     commits = load_persisted_stable_commits(folder)
-    if events and not events:
-        pass
 
     active: dict[str, dict[str, Any]] = {}
     order: list[str] = []
     unresolved: list[str] = []
     append_count = revise_count = no_op_count = suppress_candidate_count = 0
 
-    # Pair by chronological index when lengths match; else map by ascending order.
-    commit_by_index = commits
+    # Item 18. This used to pair by POSITIONAL INDEX -- `commit_by_index[i]`,
+    # where `i` indexes the assembler events and the list is the stable commits.
+    # Those are different lengths and different memberships: `no_op` and
+    # `suppress_candidate` events never become commits, and they are skipped
+    # below, AFTER the pairing was computed. Measured on run
+    # `...26.5.16-20260914-095713`: 30 events, 4 of them suppress_candidate,
+    # against 26 usable commits. Every event after the first suppressed one
+    # paired with the wrong commit -- silently -- and the trailing two indexed
+    # past the end, resolved to `{}`, and were reported as having no record id.
+    #
+    # They all had one. Every committed event carries its own record id in its
+    # own `commit_reason` ("|canonical_record_id=canon-000022|transaction_id=…"),
+    # and NONE carries it as a top-level field, which is why reading across to
+    # the commit looked necessary. It is not: the event is self-describing.
+    #
+    # So the event is now the source of truth for its own id, and the commit is
+    # looked up BY that id purely as a lineage fallback. No index survives.
+    commit_by_rid: dict[str, dict[str, Any]] = {}
+    for commit_row in commits:
+        row_meta = (
+            commit_row.get("assembler_metadata")
+            if isinstance(commit_row.get("assembler_metadata"), dict)
+            else {}
+        )
+        row_rid = str(row_meta.get("canonical_record_id") or "").strip()
+        if row_rid and row_rid not in commit_by_rid:
+            commit_by_rid[row_rid] = commit_row
 
     for i, ev in enumerate(events):
         act = _normalize_action(ev.get("applied_action") or ev.get("action"))
         text = str(ev.get("assembler_text") or "").strip()
         lineage = _extract_lineage(ev)
         speaker = int(ev.get("speaker") or 2)
-        commit = commit_by_index[i] if i < len(commit_by_index) else {}
+        event_rid = _event_record_id(ev)
+        commit = commit_by_rid.get(event_rid, {}) if event_rid else {}
         meta = commit.get("assembler_metadata") if isinstance(commit.get("assembler_metadata"), dict) else {}
-        commit_rid = str(meta.get("revision_target_id") or meta.get("canonical_record_id") or "")
+        commit_rid = event_rid or str(
+            meta.get("revision_target_id") or meta.get("canonical_record_id") or ""
+        )
         if not lineage:
             lineage = _extract_lineage(commit)
 
