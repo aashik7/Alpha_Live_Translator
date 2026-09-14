@@ -130,7 +130,24 @@ def _live_close_threads():
     return [t for t in threading.enumerate() if t.name == "WindowCloseWait" and t.is_alive()]
 
 
-class ClosingDuringAMeetingTest(unittest.TestCase):
+class _NoInheritedStopWorker(unittest.TestCase):
+    """The close poll also waits on a live Stop worker (item 22), and other test
+    modules run the real one. Never inherit their thread."""
+
+    def setUp(self):
+        from alpha.utils import stop_finalize_worker as sfw
+
+        self._sfw = sfw
+        with sfw._state_lock:
+            self._saved_finalize_thread = sfw._stop_state.get("finalize_thread")
+            sfw._stop_state["finalize_thread"] = None
+
+    def tearDown(self):
+        with self._sfw._state_lock:
+            self._sfw._stop_state["finalize_thread"] = self._saved_finalize_thread
+
+
+class ClosingDuringAMeetingTest(_NoInheritedStopWorker):
     def test_the_shutdown_runs_on_the_ui_thread(self):
         """The whole point: every cancel in the shutdown must be a real one."""
         host = _CloseHost()
@@ -264,7 +281,7 @@ class GuardedCancelReallyCancelsTest(unittest.TestCase):
         self._drain_and_run(0.2)
 
 
-class TheCloseTimeoutAutosaveReallyWritesTest(unittest.TestCase):
+class TheCloseTimeoutAutosaveReallyWritesTest(_NoInheritedStopWorker):
     """The timeout branch's autosave must survive the move to the UI thread.
 
     26.5.19 moved the whole close wait onto the UI thread, and with it the
@@ -281,6 +298,7 @@ class TheCloseTimeoutAutosaveReallyWritesTest(unittest.TestCase):
     """
 
     def setUp(self):
+        super().setUp()
         from alpha.ui import main_window
         from alpha.utils import run_artifacts, ui_thread_guard
 
@@ -321,6 +339,7 @@ class TheCloseTimeoutAutosaveReallyWritesTest(unittest.TestCase):
         self.ug.UI_MAIN_THREAD_ID = self._saved_ui_thread
         if self._saved_budget is not None:
             self.mw.WINDOW_CLOSE_AUTOSAVE_WAIT_S = self._saved_budget
+        super().tearDown()
 
     def _host_past_its_deadline(self):
         events = self.events

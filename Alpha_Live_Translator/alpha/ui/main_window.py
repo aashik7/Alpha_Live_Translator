@@ -323,8 +323,11 @@ RECURRING_UI_JOB_ATTRS = (
 )
 
 # How long a close during a session waits for the graceful stop, and how often it
-# checks. The 12 s is unchanged from the thread this poll replaced.
-WINDOW_CLOSE_WAIT_S = 12.0
+# checks. The poll ends the moment the Stop worker finishes, so the cap only
+# matters for a slow or hung stop -- and a cap a slow stop reaches kills its
+# worker just as surely. It was 12 s; the slowest `stop_finalize_duration_ms` in
+# the evidence tree is 11.8 s. A second close click still force-closes at once.
+WINDOW_CLOSE_WAIT_S = 30.0
 WINDOW_CLOSE_POLL_MS = 250
 
 # When that wait times out, the partial autosave runs on its own thread and the
@@ -358,6 +361,23 @@ def _write_window_close_timeout_artifacts(host):
         freeze_guard_log_sync("WINDOW_CLOSE_FORCED_AFTER_TIMEOUT")
     except Exception:
         pass
+
+
+def _stop_worker_still_finalizing():
+    """True while a Stop's finalize worker is still running. Item 22.
+
+    The close has to wait on this, not on `_is_stopping` / `_is_finalizing`:
+    those are UI state. The stop UI watchdog clears both five seconds after
+    Stop, and the worker clears them itself before its alias sync and seal
+    check, while nothing joins the daemon worker once `mainloop()` returns.
+    Start is gated on the same function for the same reason.
+    """
+    try:
+        from alpha.utils.stop_finalize_worker import finalize_in_progress
+
+        return bool(finalize_in_progress())
+    except Exception:
+        return False
 
 # The microphone control used to be gated here, on a width threshold, because
 # it lived in the header. Item 88c moved it into the status strip, which is
@@ -11317,6 +11337,21 @@ class AlphaApp(
                 # left stuck inside the marshalled `destroy()`.
                 self._poll_window_close_ready(time.monotonic() + WINDOW_CLOSE_WAIT_S)
                 return
+        if listening or _stop_worker_still_finalizing():
+            # Item 22: Stop was clicked before the close and its worker is still
+            # writing. This used to fall through to the idle close below and
+            # kill it -- after the five-second restore because `listening` was
+            # False, and before it because only an `is_listening` session
+            # waited. Wait the same way, without starting a second stop.
+            self._window_close_pending = True
+            try:
+                from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+                jp_accuracy_log("WINDOW_CLOSE_WAITING_FOR_STOP_FINALIZE")
+            except Exception:
+                pass
+            self._poll_window_close_ready(time.monotonic() + WINDOW_CLOSE_WAIT_S)
+            return
         try:
             from alpha.utils.crash_guard_log import handle_crash_event
             from alpha.utils.japanese_accuracy_log import jp_accuracy_log
@@ -11367,6 +11402,8 @@ class AlphaApp(
         stopping = bool(getattr(self, "_is_stopping", False)) or bool(
             getattr(self, "_is_finalizing", False)
         )
+        if not stopping:
+            stopping = _stop_worker_still_finalizing()
         if not stopping:
             try:
                 from alpha.utils.freeze_guard_log import freeze_guard_log_sync
