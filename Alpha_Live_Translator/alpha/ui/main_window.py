@@ -10483,6 +10483,11 @@ class AlphaApp(
         # with no record to attach to.
         self._dg_disconnected_at = 0.0
         self._dg_auth_failed = False
+        # Audit bug #2. A keyterm rejection turns keyterms off so the reconnect
+        # can succeed -- for that meeting. Nothing ever turned them back on, so
+        # one rejection silently cost every later meeting its business-term
+        # accuracy until the app was restarted.
+        self._jp_keyterms_fallback_used = False
         self._audio_device_changed = False
         self._connection_indicator_state = None
         dropdown_lang = self._strip_language_flag(self.source_language.get())

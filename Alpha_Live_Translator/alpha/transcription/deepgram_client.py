@@ -7,7 +7,7 @@ import re
 import threading
 import time
 import traceback
-from typing import Any
+from typing import Any, Optional
 from urllib.parse import quote
 
 from tkinter import messagebox
@@ -201,6 +201,34 @@ def _split_keyterms_for_deepgram(keyterms: list[str]) -> tuple[list[str], list[s
         else:
             suppressed_terms.append(term)
     return sent_terms, suppressed_terms, classified, counts
+
+
+_HANDSHAKE_STATUS = re.compile(r"\bHandshake status (\d{3})\b")
+
+
+def _deepgram_handshake_status(err: Any, err_text: str) -> Optional[int]:
+    """The HTTP status Deepgram answered the handshake with, or None.
+
+    `_deepgram_on_error` used to test `"400" in str(err)` (and `"401"` / `"403"`).
+    A substring is not a status: websocket-client formats a failed handshake as
+    ``Handshake status <code> <reason> -+-+- <headers> -+-+- <body>``, so a 503's
+    text carries Deepgram's `dg-request-id`, whose hex can contain "400" or
+    "401", and any other error text can carry such a number. That turned
+    keyterms off, ended the meeting on a transient error, and reported a
+    working key as rejected. Audit bug #2.
+    """
+    status = getattr(err, "status_code", None)
+    if status is not None:
+        try:
+            return int(status)
+        except (TypeError, ValueError):
+            return None
+    match = _HANDSHAKE_STATUS.search(err_text or "")
+    return int(match.group(1)) if match else None
+
+
+def _is_deepgram_status_400(err: Any, err_text: str) -> bool:
+    return _deepgram_handshake_status(err, err_text) == 400
 
 
 def _resolve_active_japanese_keyterms() -> dict[str, Any]:
@@ -2687,8 +2715,7 @@ class DeepgramClientMixin:
             # operator saw "Signal OK" the whole time.
             _low_err = err_text.lower()
             if (
-                "401" in err_text
-                or "403" in err_text
+                _deepgram_handshake_status(err, err_text) in (401, 403)
                 or "unauthorized" in _low_err
                 or "forbidden" in _low_err
                 or "invalid credentials" in _low_err
@@ -2703,23 +2730,34 @@ class DeepgramClientMixin:
                     )
                 except Exception:
                     pass
+            # Deepgram refused the query itself. Audit bug #2: this was
+            # `"400" in err_text`, which also matched a request id or any
+            # number containing 400. Decides the keyterm fallback, whether the
+            # error is recoverable, and whether the meeting is stopped.
+            query_rejected = _is_deepgram_status_400(err, err_text) or (
+                "INVALID_QUERY_PARAMETER" in err_text
+            )
             if (
                 bool(JAPANESE_MODE_ENABLED)
                 and bool(JAPANESE_KEYTERMS_ENABLED)
                 and not bool(getattr(self, "_jp_keyterms_fallback_used", False))
-                and (
-                    "INVALID_QUERY_PARAMETER" in err_text
-                    or "keyterm" in err_text.lower()
-                    or "400" in err_text
-                )
+                and (query_rejected or "keyterm" in err_text.lower())
             ):
                 self._jp_keyterms_fallback_used = True
+                # This read `JAPANESE_KEYTERMS`, a name defined nowhere, so the
+                # NameError fired right after the flag was set and before the
+                # print and the reconnect below; websocket-client logged it and
+                # moved on. Report what was actually being sent instead.
+                try:
+                    sent = list(_resolve_active_japanese_keyterms().get("sent_keyterms") or [])
+                except Exception:
+                    sent = []
                 _language_ndjson_log(
                     location="deepgram_client.py:_deepgram_on_error",
                     message="[JAPANESE] keyterms enabled",
                     data={
-                        "keyterm_count": int(len(JAPANESE_KEYTERMS or [])),
-                        "keyterms_preview": list((JAPANESE_KEYTERMS or [])[:5]),
+                        "keyterm_count": len(sent),
+                        "keyterms_preview": sent[:5],
                         "fallback_used": True,
                     },
                 )
@@ -2757,10 +2795,9 @@ class DeepgramClientMixin:
                 self.publish_error_event(
                     err_text,
                     source="deepgram",
-                    recoverable="400" not in err_text
-                    and "INVALID_QUERY_PARAMETER" not in err_text,
+                    recoverable=not query_rejected,
                 )
-            if "400" in err_text or "INVALID_QUERY_PARAMETER" in err_text:
+            if query_rejected:
                 try:
                     from alpha.utils.ui_event_bus import get_ui_event_bus
 
