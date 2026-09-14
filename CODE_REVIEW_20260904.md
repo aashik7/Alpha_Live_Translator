@@ -39,8 +39,11 @@ this as a complete picture — four subsystems were never reached.
 | ↳ follow-up | Rebind modal, lost detector, unmeasured gap | 26.5.13 |
 | ↳ follow-up | The microphone follows the default input device | 26.5.14 |
 | ↳ follow-up | Rebind worker (R14), audio confirmation (R12), source liveness | 26.5.15 |
+| Phase 7 stages 2-3 | Swap boundary (R11), seam measured (R3), swap counter (R13) | 26.5.16 |
+| Item 18 | Stable reconstruction paired two streams by index | 26.5.17 |
+| Audit 2026-09-14 | 19 (swap deleted the in-flight sentence), 20 (crash logs never listening) | 26.5.18 |
 
-**All 17 items in this review are closed.** Items 6 and 7 were the two REFUTED
+**All 20 items in this review are closed.** Items 6 and 7 were the two REFUTED
 ones; what phase 6 shipped for each is the latent hazard and the missing event
 respectively, not the reported defect — see their sections below.
 
@@ -50,6 +53,10 @@ respectively, not the reported defect — see their sections below.
 > because this repo's own rule is that **a ledger row saying OPEN is not
 > evidence that work is outstanding — grep the git history first.** A session
 > trusting that line would have redone four finished items.
+>
+> **It went stale a second time within a week.** It stopped at 26.5.15 and read
+> "All 17 items" while item 18 already had a full section below it. Corrected
+> at 26.5.18. Whoever adds an item: add its row here in the same commit.
 
 ## The whole review in one table
 
@@ -1098,6 +1105,80 @@ been bitten by. The failing run folder itself was then re-reconstructed:
 
 ---
 
+## 19. A device swap mid-sentence deleted the words already spoken — ✅ FIXED
+
+| | |
+|---|---|
+| **Verdict** | **CONFIRMED** — found by the 2026-09-14 full-code audit, driven on the real assembler before and after |
+| **Severity** | **HIGH** (silent content loss, in exactly the scenario phase 7 exists for) |
+| **Importance** | **FIX-NOW** |
+| **Where** | `alpha/transcription/japanese_sentence_assembler.py`, `flush()` — the incomplete-tail branch |
+| **Introduced by** | phase 7, `e288c9f`, package 26.5.16 — **my own change** |
+
+**Issue.** Phase 7 made a device swap a deliberate utterance boundary by calling
+`flush(DEVICE_SWAP_BOUNDARY_REASON)`, and correctly kept it away from the latched
+`_stop_boundary_active` flag. The rest of `flush()` was not read. Further down:
+
+```python
+incomplete, inc_reason = looks_incomplete_japanese_fragment(text)
+if incomplete or reason == "stop_listening":
+    self._flush_locked("stop_flush_incomplete_tail", stop_incomplete=incomplete, ...)
+```
+
+`incomplete` **alone** routed the buffered fragment to the stop-tail path,
+whatever the reason. Stop-tail suppression then fired (`STOP_TAIL_CLEANUP_ENABLED`
+and `SUPPRESS_INCOMPLETE_STOP_TAIL_FROM_ALPHA` both True), so the fragment was
+classified `intentionally_suppressed` and never written — and marked synthetic,
+since `_is_synthetic_stop_only_ingress` treats that reason as stop-only ingress.
+
+**Proof.** Driven before the fix, with `is_listening` True, a swap and a Stop were
+indistinguishable: both emitted `STOP_TAIL_CANDIDATE_SUPPRESSED`,
+`CANONICAL_LEDGER_SUPPRESS_CANDIDATE` and
+`SUPPRESSED_STOP_TAIL_CANDIDATE_WRITE_SKIPPED`. After the fix the swap's event
+stream is identical to a complete fragment's and a normal commit's, and Stop
+still suppresses its tail.
+
+**Why phase 7's tests missed it.** Every one of them flushed an **empty buffer**.
+They pinned the flag and the merge gate — both right — and never asked what
+happens to a sentence in flight at the moment of the swap, which is the only case
+that matters. A test looser than the claim, the recurring failure in this repo.
+
+**Harness limit, stated rather than glossed.** With the minimal host the suite
+uses, a normal commit reaches the commit authority and fails closed with
+`IDENTITY_REJECTION` (no utterance identity on that host). So the tests pin the
+**routing** — never the stop-tail path, never suppressed — and do not claim an
+end-to-end write to the transcript.
+
+**Fix.** A swap commits what arrived as an ordinary line and returns before the
+incomplete-tail branch. Tests: `test_a_swap_never_takes_the_stop_tail_path.py`,
+4 of 7 failing pre-fix; the other 3 are guards (Stop still suppresses; an empty
+swap stays a no-op; an idle crash still records not-listening).
+
+---
+
+## 20. Crash forensics recorded every session as not listening — ✅ FIXED
+
+| | |
+|---|---|
+| **Verdict** | **CONFIRMED** — scan, then code read |
+| **Severity** | LOW (diagnostics) |
+| **Importance** | BACKLOG |
+| **Where** | `alpha/utils/crash_guard_log.py:80`, `_host_context` |
+
+**Issue.** `ctx["listening"] = bool(getattr(host, "listening", False))`. Nothing
+in the app assigns `listening`; the attribute it maintains is `is_listening`. So
+every crash context ever written said the session was idle — including crashes
+mid-meeting, which is exactly when a reader relies on that field.
+
+**How it was found.** A scan for `getattr` reads of names nothing in the app ever
+defines — the same bug class as the phase 7 seam measurement that briefly read a
+mixer the worker never published. 13 candidates: 5 library attributes, the rest
+dead fallbacks that still yield correct values, and this one.
+
+**Fix.** Read `is_listening`. Fixed in 26.5.18 alongside item 19.
+
+---
+
 ## Japanese assembler: three hunts that came back empty
 
 | Hunt | Result |
@@ -1166,7 +1247,7 @@ real finding inside it.
 
 ## Test baseline
 
-1415 tests at 26.5.15 (1239 when this review was written; the phases added the
+1445 tests at 26.5.18 (1239 when this review was written; the phases added the
 rest). Eight fail, and the **set of eight names** — never the count — is the
 baseline. All eight are stale tests, listed in the previous audit.
 Runner (there is no `tests/__init__.py`, so `-t .` fails):

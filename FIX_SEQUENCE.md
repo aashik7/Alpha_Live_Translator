@@ -650,6 +650,21 @@ mixer was a **local** in `audio_mixer_worker` and never published — the number
 would have been `0.0` for the life of the app. Evidence that looks like an
 answer and is not.
 
+### ⚠️ A bug phase 7 shipped, found and fixed afterwards — package 26.5.18
+
+The R11 boundary above was **incomplete**. It kept the swap away from the latched
+`_stop_boundary_active` flag, but further down `flush()` an incomplete buffered
+fragment went to the stop-tail path on `incomplete` alone and was suppressed — so
+a headset plugged in mid-sentence **deleted the words already spoken**. Driven on
+the real assembler, a swap and a Stop were indistinguishable. Found by the
+2026-09-14 audit, fixed in `59a483b`; full write-up is item 19 in
+`CODE_REVIEW_20260904.md`.
+
+Recorded here, beside the section that claimed R11 was done, because every phase
+7 test flushed an **empty buffer** and so never tested the one case that matters.
+The lesson for this repo is the same one again: **a test looser than the claim
+hides the finding inside it.**
+
 ### Stage 4 (a UI device picker) — deliberately NOT built
 
 Recorded as a decision rather than left as an open row. Q1 asked whether to
@@ -695,6 +710,7 @@ taking.
 | 7 stages 2-3 | Swap boundary (R11), seam measured (R3), swap counter (R13) | ✅ shipped `e288c9f`, package 26.5.16 |
 | 7 stage 4 | UI device picker | ⛔ deliberately not built — see the section above |
 | — | **Phase 7 complete. No open §8 design questions.** | ✅ done |
+| audit 2026-09-14 | **Items 19 + 20** — a swap deleted the sentence in flight (a phase 7 bug); crash logs never listening | ✅ shipped `59a483b`, package 26.5.18 |
 
 Phase 3's audits are complete — 5 of 5, as the table above says. (This line used
 to read "Phase 3's four remaining audits", contradicting the table two rows
