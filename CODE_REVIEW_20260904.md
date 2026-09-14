@@ -42,8 +42,9 @@ this as a complete picture — four subsystems were never reached.
 | Phase 7 stages 2-3 | Swap boundary (R11), seam measured (R3), swap counter (R13) | 26.5.16 |
 | Item 18 | Stable reconstruction paired two streams by index | 26.5.17 |
 | Audit 2026-09-14 | 19 (swap deleted the in-flight sentence), 20 (crash logs never listening) | 26.5.18 |
+| Gap audit 2026-09-14 | 21 (a close during a meeting dropped item 16's cancels) | 26.5.19 |
 
-**All 20 items in this review are closed.** Items 6 and 7 were the two REFUTED
+**All 21 items in this review are closed.** Items 6 and 7 were the two REFUTED
 ones; what phase 6 shipped for each is the latent hazard and the missing event
 respectively, not the reported defect — see their sections below.
 
@@ -914,7 +915,7 @@ hop — which is a check, and which returns a defensible answer.
 
 ---
 
-## 16. Four recurring `after` jobs are never cancelled, and `_on_close` cancels nothing — ✅ FIXED (phase 6)
+## 16. Four recurring `after` jobs are never cancelled, and `_on_close` cancels nothing — ✅ FIXED (phase 6; only fully since 26.5.19 — see item 21)
 
 **Verdict: CONFIRMED** · Severity **LOW** · Importance **BACKLOG**
 `alpha/ui/main_window.py`, `_on_close` at `:11031-11172`
@@ -1179,6 +1180,53 @@ dead fallbacks that still yield correct values, and this one.
 
 ---
 
+## 21. A close during a meeting silently dropped item 16's cancellation — ✅ FIXED
+
+| | |
+|---|---|
+| **Verdict** | **CONFIRMED** — driven in production shape, before and after |
+| **Severity** | MEDIUM (a shipped fix was a no-op on the most common close path) |
+| **Importance** | FIX-SOON |
+| **Where** | `alpha/ui/main_window.py` `_on_close`; `alpha/utils/tk_thread_guard.py` `guarded_cancel` |
+| **Corrects** | item 16's "FIXED", which only ever held for a close with no session running |
+
+**Issue.** `_on_close` during a session called `_begin_graceful_stop()` and then
+started a background thread, `WindowCloseWait`, which called
+`_shutdown_and_destroy()` **on that thread** — on the normal success path, not only
+the timeout. That shutdown cancels the session loops and item 16's four
+app-lifetime jobs. Off the UI thread every cancel went through `guarded_cancel`,
+which counted, logged and **returned without cancelling**, while its sibling
+`guarded_after` rerouted. The thread was also left stuck inside the marshalled
+`destroy()`.
+
+> **Retraction.** The gap audit first reported that this path **left the window
+> open**. That was **wrong**. The probe behind it blocked the main thread in
+> `join()` instead of running `mainloop()`; in production the main thread is in
+> its loop, tkinter's threaded Tcl marshals the cross-thread `destroy()`, and the
+> window closes. Kept here, struck, rather than deleted, because the wrong claim
+> was published and a probe that doesn't run the event loop will reproduce it.
+
+**Proof, production shape** (real guard, UI thread registered, main thread in
+`mainloop()`):
+
+| | Before | After |
+|---|---|---|
+| Shutdown ran on | `WindowCloseWait` | `MainThread` |
+| Recurring ticks after item 16's cancel | **8** | **0** |
+| Threads left behind | stuck `WindowCloseWait` | none |
+
+**Fix.** The thread only existed to wait without blocking the UI, so it is replaced
+by `_poll_window_close_ready`, a main-thread `after` poll that never sleeps and
+runs the shutdown on the UI thread. Rejected: marshalling the shutdown back with
+`_run_on_ui_thread` — from a worker that posts to the UI event bus, and if graceful
+stop has already stopped the bus pump the close is never delivered, which would
+create the very hang the retracted claim described. `guarded_cancel` now reroutes
+like `guarded_after`, skipping an empty id (tkinter raises on `after_cancel("")`).
+Tests: `test_closing_during_a_meeting_shuts_down_on_the_ui_thread.py`, 7 of 9
+failing pre-fix.
+
+---
+
 ## Japanese assembler: three hunts that came back empty
 
 | Hunt | Result |
@@ -1247,7 +1295,7 @@ real finding inside it.
 
 ## Test baseline
 
-1445 tests at 26.5.18 (1239 when this review was written; the phases added the
+1454 tests at 26.5.19 (1239 when this review was written; the phases added the
 rest). Eight fail, and the **set of eight names** — never the count — is the
 baseline. All eight are stale tests, listed in the previous audit.
 Runner (there is no `tests/__init__.py`, so `-t .` fails):

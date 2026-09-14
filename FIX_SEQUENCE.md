@@ -711,6 +711,7 @@ taking.
 | 7 stage 4 | UI device picker | ⛔ deliberately not built — see the section above |
 | — | **Phase 7 complete. No open §8 design questions.** | ✅ done |
 | audit 2026-09-14 | **Items 19 + 20** — a swap deleted the sentence in flight (a phase 7 bug); crash logs never listening | ✅ shipped `59a483b`, package 26.5.18 |
+| gap audit 2026-09-14 | **Item 21** — a close during a meeting dropped item 16's cancels (and corrects the audit's retracted "window stays open" claim) | ✅ shipped `4bd5714`, package 26.5.19 |
 
 Phase 3's audits are complete — 5 of 5, as the table above says. (This line used
 to read "Phase 3's four remaining audits", contradicting the table two rows
