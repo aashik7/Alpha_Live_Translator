@@ -25,6 +25,7 @@ import string
 import threading
 import time
 import uuid
+from collections import deque
 from dataclasses import dataclass, field
 from difflib import SequenceMatcher
 
@@ -56,6 +57,12 @@ REPLACE_PROVISIONAL = "REPLACE_PROVISIONAL"
 SUPERSEDE = "SUPERSEDE"
 TERMINAL_COMMIT = "TERMINAL_COMMIT"
 CREATE_NEW = "CREATE_NEW"
+
+# How many decision rows `events()` keeps in memory, newest last. Audit bug #3:
+# the list had no bound and was never cleared, on a process-wide singleton, so
+# every decision of every meeting since the app opened stayed in memory. Nothing
+# in the app reads it; the full record is the event log file.
+LIFECYCLE_EVENTS_KEPT = 1000
 
 # Timing proximity for same-utterance merge (seconds). Short — not a minute wait.
 _TIMING_GAP_MAX_S = 2.5
@@ -763,7 +770,7 @@ class UtteranceLifecycleOwner:
         self._split_committed_prefix = ""
         self._timeout_token = 0
         self._timeout_after_id: Any = None
-        self._events: list[dict[str, Any]] = []
+        self._events: deque[dict[str, Any]] = deque(maxlen=LIFECYCLE_EVENTS_KEPT)
         # fixes BUG-F: commit/interim decisions get queued here while
         # self._lock is held, and are only actually published (which can
         # call into host/Tkinter code) after the lock is released -- see
@@ -798,6 +805,7 @@ class UtteranceLifecycleOwner:
             self._committed_utterance_ids.clear()
             self._timeout_token = 0
             self._stats = {k: 0 for k in self._stats}
+            self._events.clear()  # audit bug #3: the previous meeting's rows
             self._log_event(
                 {
                     "decision": CANCEL_ACTIVE,
