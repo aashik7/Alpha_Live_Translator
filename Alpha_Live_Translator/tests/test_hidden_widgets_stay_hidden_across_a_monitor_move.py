@@ -66,6 +66,26 @@ def _close(root):
         pass
 
 
+def _own_the_default_root(test, root):
+    """Point tkinter's default root at the window under test, for this test only.
+
+    CustomTkinter builds a CTkImage's scaled photo with `ImageTk.PhotoImage(...)`
+    and no `master`, so it lands on `tkinter._default_root`. Earlier test modules
+    leave that pointing at another root; rescaling this window's logo to a new
+    scale then fails with "image ... doesn't exist". One root in production, so
+    only tests can hit it.
+    """
+    import tkinter
+
+    previous = getattr(tkinter, "_default_root", None)
+    tkinter._default_root = root
+
+    def restore():
+        tkinter._default_root = previous
+
+    test.addCleanup(restore)
+
+
 try:
     import customtkinter as ctk
     from customtkinter.windows.widgets.scaling.scaling_tracker import ScalingTracker
@@ -179,6 +199,7 @@ class TheReportedSymptomsTest(_MonitorMoveTestCase):
 
         self.app = AlphaApp()
         self.addCleanup(_close, self.app)
+        _own_the_default_root(self, self.app)
         self.app.deiconify()
         self.settle(self.app)
 

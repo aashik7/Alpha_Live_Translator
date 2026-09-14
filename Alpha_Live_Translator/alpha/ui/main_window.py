@@ -313,6 +313,17 @@ CONTENT_REFERENCE_WEIGHT = 30
 # (`@media (max-width: 700px)` -> `grid-template-columns: 1fr`). The app
 # already had a 700 breakpoint for the same reason.
 CONTENT_STACK_BREAKPOINT = LAYOUT_MEDIUM_BREAKPOINT
+# The size each reading pane requests (CustomTkinter design px) -- tiny, so the
+# weights alone decide the split, but never 1. When a slave is added or removed,
+# Tk 8.6's grid re-arranges its master only if the master's new requested size
+# is more than 1 px in both directions; at 1 px it returns and waits for a
+# <Configure> that only a resize sends. With 1 px panes and no vertical padding
+# the reading grid requested exactly 1 px of height at 100 % scaling, so on the
+# external monitor Hide left the translation pane at 583 of 850 px until the
+# window was dragged (measured on that monitor, and in plain tkinter). At 150 %
+# CustomTkinter made the same 1 px into 2, which is why the laptop never showed
+# it. 4 stays at least 2 device px down to CustomTkinter's 0.4 scaling floor.
+CONTENT_COLUMN_SEED = 4
 
 # Item 16. The four self-rescheduling `after` loops whose job ids were stored
 # and never cancelled. Module-level so a test host can borrow
@@ -4352,17 +4363,24 @@ class AlphaApp(
         transcript as wide as the translation -- and **31/69** at 700 px, where
         the reference pane came out more than twice the primary one.
 
-        `grid_propagate(False)` plus a 1 px request is what fixes it: the frame
+        `grid_propagate(False)` plus a tiny request is what fixes it: the frame
         stops asking for its children's size and takes exactly what the grid
         assigns, so the weights alone decide. Measured after the change:
         **70.0/30.0 at 700, 900, 1200 and 1400 px.** The `tk.Text` default stops
         mattering entirely, which is why it is left alone.
 
+        The request is `CONTENT_COLUMN_SEED`, not 1. See that constant: at 1 px
+        Tk's grid skips re-arranging after a pane is hidden or shown, which is
+        the external-monitor report.
+
         The children inside still resize normally -- every one of them is
         gridded `sticky="nsew"` under a weighted row and column.
         """
         frame = ctk.CTkFrame(
-            self.content_wrapper, fg_color="transparent", width=1, height=1
+            self.content_wrapper,
+            fg_color="transparent",
+            width=CONTENT_COLUMN_SEED,
+            height=CONTENT_COLUMN_SEED,
         )
         frame.grid(row=0, column=column, sticky="nsew", padx=padx)
         frame.grid_rowconfigure(0, weight=1)
