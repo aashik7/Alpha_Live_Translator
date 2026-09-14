@@ -20,6 +20,12 @@ import tkinter as tk
 from PIL import Image
 from tkinter import Menu, messagebox
 
+from alpha.ui.ctk_grid_remove_fix import install as _install_ctk_grid_remove_fix
+
+# Before any widget exists. A widget this app hides with `grid_remove()` must
+# stay hidden when the window moves to a monitor at another DPI; see the module.
+_install_ctk_grid_remove_fix()
+
 from alpha.audio.microphone import MicrophoneCaptureMixin
 from alpha.audio.wasapi import WasapiCaptureMixin
 from alpha.config import (
