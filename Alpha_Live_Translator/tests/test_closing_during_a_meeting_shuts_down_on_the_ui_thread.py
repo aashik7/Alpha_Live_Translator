@@ -52,6 +52,7 @@ import sys
 import threading
 import time
 import tkinter as tk
+import types
 import unittest
 from pathlib import Path
 
@@ -90,8 +91,8 @@ class _CloseHost:
     def _on_close(self):
         return _borrow("_on_close")(self)
 
-    def _poll_window_close_ready(self, deadline_mono):
-        return _borrow("_poll_window_close_ready")(self, deadline_mono)
+    def _poll_window_close_ready(self, *args):
+        return _borrow("_poll_window_close_ready")(self, *args)
 
     def _cancel_recurring_ui_jobs(self):
         return _borrow("_cancel_recurring_ui_jobs")(self)
@@ -167,6 +168,12 @@ class ClosingDuringAMeetingTest(unittest.TestCase):
         host = _CloseHost(stop_finishes=False)
         host._is_stopping = True
         host._poll_window_close_ready(time.monotonic() - 1.0)
+        # Not synchronous: the timeout's autosave runs first, on its own thread
+        # (see TheCloseTimeoutAutosaveReallyWritesTest).
+        deadline = time.monotonic() + 8.0
+        while time.monotonic() < deadline and not host.shutdown_threads:
+            host.pump(rounds=1)
+            time.sleep(0.02)
         self.assertEqual(host.shutdown_threads, [threading.main_thread()])
 
     def test_the_poll_never_sleeps_on_the_ui_thread(self):
@@ -255,6 +262,132 @@ class GuardedCancelReallyCancelsTest(unittest.TestCase):
         t.start()
         t.join()
         self._drain_and_run(0.2)
+
+
+class TheCloseTimeoutAutosaveReallyWritesTest(unittest.TestCase):
+    """The timeout branch's autosave must survive the move to the UI thread.
+
+    26.5.19 moved the whole close wait onto the UI thread, and with it the
+    timeout branch's `autosave_partial_artifacts_background`. Both writers inside
+    it start with `guard_ui_thread_blocking_call`, which REFUSES on the UI thread,
+    so from 26.5.19 a close whose stop never finished saved no partial transcript
+    and no partial index -- only a `UI_THREAD_BLOCKING_CALL_BLOCKED` log line. The
+    WindowCloseWait thread it replaced passed that guard. Found by reviewing the
+    fix after it shipped.
+
+    Drives the REAL `_poll_window_close_ready`, the REAL autosave wrappers and the
+    REAL guard, with the UI thread registered as it is in production; only the
+    file writers at the bottom are replaced with recorders.
+    """
+
+    def setUp(self):
+        from alpha.ui import main_window
+        from alpha.utils import run_artifacts, ui_thread_guard
+
+        self.mw, self.ra, self.ug = main_window, run_artifacts, ui_thread_guard
+        self._saved_ui_thread = ui_thread_guard.UI_MAIN_THREAD_ID
+        ui_thread_guard.register_ui_main_thread()
+        self._saved_budget = getattr(main_window, "WINDOW_CLOSE_AUTOSAVE_WAIT_S", None)
+
+        self.events = []
+        self.slow_alpha_s = 0.0
+        self.alpha_entered = threading.Event()
+        self.release_alpha = threading.Event()
+        self.hang_alpha = False
+        live = types.SimpleNamespace(run_type=run_artifacts.RUN_TYPE_LIVE, run_id="t", run_folder=None)
+
+        def alpha_writer(**_kw):
+            self.alpha_entered.set()
+            if self.hang_alpha:
+                self.release_alpha.wait(10.0)
+            time.sleep(self.slow_alpha_s)
+            self.events.append("alpha")
+
+        patches = {
+            "get_current_run_identity": lambda: live,
+            "write_partial_alpha_output_from_snapshot": alpha_writer,
+            "_write_partial_index": lambda _host, **_kw: self.events.append("index"),
+            "write_live_run_status": lambda _host, **_kw: self.events.append("status"),
+            "write_crash_safe_index": lambda **_kw: self.events.append("crash_safe_index"),
+        }
+        self._originals = {name: getattr(run_artifacts, name) for name in patches}
+        for name, fn in patches.items():
+            setattr(run_artifacts, name, fn)
+
+    def tearDown(self):
+        self.release_alpha.set()
+        for name, fn in self._originals.items():
+            setattr(self.ra, name, fn)
+        self.ug.UI_MAIN_THREAD_ID = self._saved_ui_thread
+        if self._saved_budget is not None:
+            self.mw.WINDOW_CLOSE_AUTOSAVE_WAIT_S = self._saved_budget
+
+    def _host_past_its_deadline(self):
+        events = self.events
+
+        class _RecordingHost(_CloseHost):
+            def _shutdown_and_destroy(self):
+                super()._shutdown_and_destroy()
+                events.append("shutdown")
+
+        host = _RecordingHost(stop_finishes=False)
+        host._is_stopping = True  # the stop never finished
+        return host
+
+    def _close_and_pump(self, host, seconds=5.0):
+        host._poll_window_close_ready(time.monotonic() - 1.0)
+        deadline = time.monotonic() + seconds
+        while time.monotonic() < deadline and not host.shutdown_threads:
+            host.pump(rounds=1)
+            time.sleep(0.02)
+
+    def test_the_timeout_autosave_is_not_refused_by_the_ui_thread_guard(self):
+        host = self._host_past_its_deadline()
+        self._close_and_pump(host)
+        self.assertIn(
+            "alpha",
+            self.events,
+            "the partial transcript was never written -- the autosave ran on the UI "
+            "thread and guard_ui_thread_blocking_call refused it",
+        )
+        self.assertIn("index", self.events, "the partial index was never written")
+        self.assertIn("crash_safe_index", self.events)
+
+    def test_the_close_waits_for_the_autosave_before_shutting_down(self):
+        """Shutting down first ends the process, and the writer thread with it."""
+        self.slow_alpha_s = 0.3
+        host = self._host_past_its_deadline()
+        self._close_and_pump(host)
+        self.assertIn("shutdown", self.events)
+        self.assertIn("alpha", self.events, "the autosave never wrote")
+        self.assertLess(
+            self.events.index("alpha"),
+            self.events.index("shutdown"),
+            "the window shut down before the autosave finished: %r" % self.events,
+        )
+
+    def test_the_shutdown_still_runs_on_the_ui_thread(self):
+        host = self._host_past_its_deadline()
+        self._close_and_pump(host)
+        self.assertEqual(host.shutdown_threads, [threading.main_thread()])
+
+    def test_a_hung_autosave_does_not_hold_the_window_open(self):
+        self.mw.WINDOW_CLOSE_AUTOSAVE_WAIT_S = 0.3
+        self.hang_alpha = True
+        host = self._host_past_its_deadline()
+        started = time.monotonic()
+        self._close_and_pump(host, seconds=5.0)
+        self.assertTrue(self.alpha_entered.is_set(), "fixture: the autosave never started")
+        self.assertEqual(host.shutdown_threads, [threading.main_thread()], "the window never closed")
+        self.assertLess(time.monotonic() - started, 3.0, "a hung autosave held the close")
+
+    def test_the_wait_for_the_autosave_never_blocks_the_ui_thread(self):
+        self.slow_alpha_s = 0.5
+        host = self._host_past_its_deadline()
+        started = time.monotonic()
+        host._poll_window_close_ready(time.monotonic() - 1.0)
+        self.assertLess(time.monotonic() - started, 0.1, "the UI thread waited on the autosave")
+        self._close_and_pump(host)
 
 
 if __name__ == "__main__":

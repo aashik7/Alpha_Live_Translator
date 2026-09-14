@@ -327,6 +327,38 @@ RECURRING_UI_JOB_ATTRS = (
 WINDOW_CLOSE_WAIT_S = 12.0
 WINDOW_CLOSE_POLL_MS = 250
 
+# When that wait times out, the partial autosave runs on its own thread and the
+# close waits up to this long for it. It cannot run on the UI thread: both of its
+# writers start with `guard_ui_thread_blocking_call`, which refuses there -- 26.5.19
+# ran it on the UI thread and saved nothing. And the close must not shut down
+# first, because ending the process ends the writer thread with it.
+WINDOW_CLOSE_AUTOSAVE_WAIT_S = 5.0
+
+
+def _write_window_close_timeout_artifacts(host):
+    """The close timeout's partial autosave and crash-safe index. Off the UI thread.
+
+    A module function, not a method, for the reason `_cancel_recurring_ui_jobs`
+    gives: tests borrow the close methods onto bare hosts.
+    """
+    try:
+        from alpha.utils.freeze_guard_log import freeze_guard_log_sync
+        from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+        from alpha.utils.run_artifacts import (
+            autosave_partial_artifacts_background,
+            write_crash_safe_index,
+        )
+
+        autosave_partial_artifacts_background(reason="window_close", host=host)
+        write_crash_safe_index(
+            status="incomplete_hang_suspected",
+            reason="window_close_timeout",
+        )
+        jp_accuracy_log("WINDOW_CLOSE_FORCED_AFTER_TIMEOUT")
+        freeze_guard_log_sync("WINDOW_CLOSE_FORCED_AFTER_TIMEOUT")
+    except Exception:
+        pass
+
 # The microphone control used to be gated here, on a width threshold, because
 # it lived in the header. Item 88c moved it into the status strip, which is
 # shown at every width, so it needs no threshold and the constant that carried
@@ -11299,7 +11331,7 @@ class AlphaApp(
             pass
         self._shutdown_and_destroy()
 
-    def _poll_window_close_ready(self, deadline_mono):
+    def _poll_window_close_ready(self, deadline_mono, autosave=None):
         """Close once the graceful stop has finished -- on the UI thread.
 
         One step of a poll that reschedules itself with `after`, so the UI
@@ -11312,7 +11344,26 @@ class AlphaApp(
         graceful stop has already stopped the bus pump the close is never
         delivered -- a real hang. Polling from the UI thread has no such
         dependency.
+
+        `autosave` is `(thread, deadline)` once the stop wait has timed out and
+        the partial autosave is running; the poll then waits for that instead.
         """
+        if autosave is not None:
+            thread, autosave_deadline = autosave
+            if thread.is_alive() and time.monotonic() < autosave_deadline:
+                self._window_close_poll_after_id = self.after(
+                    WINDOW_CLOSE_POLL_MS, self._poll_window_close_ready, deadline_mono, autosave
+                )
+                return
+            if thread.is_alive():
+                try:
+                    from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+                    jp_accuracy_log("WINDOW_CLOSE_TIMEOUT_AUTOSAVE_UNFINISHED")
+                except Exception:
+                    pass
+            self._shutdown_and_destroy()
+            return
         stopping = bool(getattr(self, "_is_stopping", False)) or bool(
             getattr(self, "_is_finalizing", False)
         )
@@ -11328,24 +11379,18 @@ class AlphaApp(
             self._shutdown_and_destroy()
             return
         if time.monotonic() >= deadline_mono:
-            try:
-                from alpha.utils.freeze_guard_log import freeze_guard_log_sync
-                from alpha.utils.japanese_accuracy_log import jp_accuracy_log
-                from alpha.utils.run_artifacts import (
-                    autosave_partial_artifacts_background,
-                    write_crash_safe_index,
-                )
-
-                autosave_partial_artifacts_background(reason="window_close", host=self)
-                write_crash_safe_index(
-                    status="incomplete_hang_suspected",
-                    reason="window_close_timeout",
-                )
-                jp_accuracy_log("WINDOW_CLOSE_FORCED_AFTER_TIMEOUT")
-                freeze_guard_log_sync("WINDOW_CLOSE_FORCED_AFTER_TIMEOUT")
-            except Exception:
-                pass
-            self._shutdown_and_destroy()
+            # Only the writing happens off the UI thread; the shutdown still
+            # happens here, once it is done. See WINDOW_CLOSE_AUTOSAVE_WAIT_S.
+            thread = threading.Thread(
+                target=_write_window_close_timeout_artifacts,
+                args=(self,),
+                name="WindowCloseTimeoutAutosave",
+                daemon=True,
+            )
+            thread.start()
+            self._poll_window_close_ready(
+                deadline_mono, (thread, time.monotonic() + WINDOW_CLOSE_AUTOSAVE_WAIT_S)
+            )
             return
         self._window_close_poll_after_id = self.after(
             WINDOW_CLOSE_POLL_MS, self._poll_window_close_ready, deadline_mono
