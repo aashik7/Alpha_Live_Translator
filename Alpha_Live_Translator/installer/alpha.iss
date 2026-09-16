@@ -176,6 +176,12 @@ var
   Lines: TArrayOfString;
   EnvPath: String;
 begin
+  // A --no-keys build defines both keys as empty. It ships no .env at all, and
+  // the app asks whoever runs it for their own keys on first start, writing the
+  // same file itself -- see alpha/ui/key_setup.py. Writing an .env full of empty
+  // values here instead would look identical to a broken delivery.
+  if '{#DeepgramKey}' = '' then
+    exit;
   EnvPath := ExpandConstant('{app}\app\.env');
   SetArrayLength(Lines, 6);
   Lines[0] := '# Written by the Alpha Live Translator installer.';

@@ -37,6 +37,8 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 INSTALLER_DIR = REPO_ROOT / "installer"
 ISS = INSTALLER_DIR / "alpha.iss"
 KEYS_FILE = INSTALLER_DIR / "keys.local.ini"
+# Dropped into the bundle by --no-keys; alpha/config.py prompts only when it is there.
+KEY_SETUP_MARKER = ".needs-api-keys"
 DEFAULT_BUNDLE = REPO_ROOT / "build" / "AlphaLiveTranslator"
 DEFAULT_OUTPUT = REPO_ROOT / "build" / "installer"
 
@@ -63,7 +65,7 @@ def find_iscc() -> Path:
     )
 
 
-def read_keys() -> tuple[str, str]:
+def read_keys(no_keys: bool = False) -> tuple[str, str]:
     """Keys from `keys.local.ini`, or from the environment as a fallback.
 
     Fails loudly and specifically. A build that silently produced an installer
@@ -71,6 +73,11 @@ def read_keys() -> tuple[str, str]:
     cannot transcribe — the failure would surface on the target machine, which
     is the worst possible place for it.
     """
+    if no_keys:
+        # --no-keys: a build for sharing. It carries no keys at all, and the app
+        # asks the person who runs it for their own -- see alpha/ui/key_setup.py.
+        log("no keys: this build will ask the operator for their own")
+        return "", ""
     deepgram = os.environ.get("ALPHA_DEEPGRAM_KEY", "").strip()
     deepl = os.environ.get("ALPHA_DEEPL_KEY", "").strip()
 
@@ -196,7 +203,7 @@ def ensure_bundle(bundle: Path, rebuild: bool) -> None:
         raise SystemExit("tools/build_bundle.py failed; the installer was not built")
 
 
-def verify_bundle(bundle: Path) -> None:
+def verify_bundle(bundle: Path, no_keys: bool = False) -> None:
     """Check the bundle before wrapping 96 MB of it into an installer."""
     required = (
         bundle / "python" / "pythonw.exe",
@@ -208,6 +215,17 @@ def verify_bundle(bundle: Path) -> None:
     missing = [str(p.relative_to(bundle)) for p in required if not p.exists()]
     if missing:
         raise SystemExit(f"bundle is incomplete, missing: {', '.join(missing)}")
+    marker = bundle / "app" / KEY_SETUP_MARKER
+    if no_keys:
+        marker.write_text(
+            "This build ships without API keys; the app asks for them on first start.\n",
+            encoding="utf-8",
+        )
+        log("keyless build: wrote the first-run key-setup marker")
+    elif marker.is_file():
+        # A keyed build must never carry it, or it would prompt for keys it has.
+        marker.unlink()
+        log("removed a first-run key-setup marker left by a --no-keys build")
     stray = bundle / "app" / ".env"
     if stray.is_file():
         # A developer .env left in the bundle would be shipped and would beat
@@ -343,6 +361,23 @@ It writes one zip to your Desktop. Send that. It carries no API keys.
 """
 
 
+KEYLESS_NOTE = (
+    "This copy ships WITHOUT API keys. The first time it starts it asks for a"
+    " Deepgram key and a DeepL key, saves them beside the app, and reuses them"
+    " from then on. Get them from console.deepgram.com and deepl.com/pro-api."
+)
+
+
+def _finish_portable(zip_path: Path, output: Path, version: str, keyless: bool = False) -> Path:
+    """Write the note that ships beside the zip, and hand back the archive."""
+    note = output / "README-PORTABLE.txt"
+    text = PORTABLE_NOTE.format(version=version, zipname=zip_path.name)
+    if keyless:
+        text = text.rstrip() + "\n\n" + KEYLESS_NOTE + "\n"
+    note.write_text(text, encoding="utf-8", newline="\r\n")
+    return zip_path
+
+
 def write_portable_zip(
     bundle: Path, output: Path, version: str, deepgram: str, deepl: str
 ) -> Path:
@@ -388,6 +423,10 @@ def write_portable_zip(
             if path.name == ".env":
                 continue
             archive.write(path, f"{root}/{path.relative_to(bundle).as_posix()}")
+        if not (deepgram or deepl):
+            # Keyless build: ship no .env at all. The app writes one itself once
+            # the operator has pasted their keys into the first-run dialog.
+            return _finish_portable(zip_path, output, version, keyless=True)
         archive.writestr(
             f"{root}/app/.env",
             "\n".join(
@@ -403,13 +442,7 @@ def write_portable_zip(
             ),
         )
 
-    note = output / "README-PORTABLE.txt"
-    note.write_text(
-        PORTABLE_NOTE.format(version=version, zipname=zip_path.name),
-        encoding="utf-8",
-        newline="\r\n",
-    )
-    return zip_path
+    return _finish_portable(zip_path, output, version)
 
 
 def write_delivery_note(output: Path, version: str) -> Path:
@@ -425,6 +458,11 @@ def main() -> None:
     parser.add_argument("--version", default="1.0.0")
     parser.add_argument("--rebuild", action="store_true", help="rebuild the bundle even if present")
     parser.add_argument(
+        "--no-keys",
+        action="store_true",
+        help="ship without API keys; the app asks whoever runs it for their own",
+    )
+    parser.add_argument(
         "--portable",
         action="store_true",
         help="build the no-install zip INSTEAD of the installer (no Inno Setup needed)",
@@ -436,12 +474,12 @@ def main() -> None:
     # Only the installer needs Inno Setup. Looking for it in the portable path
     # would refuse to build on a machine that has no reason to have it.
     iscc = None if args.portable else find_iscc()
-    deepgram, deepl = read_keys()
+    deepgram, deepl = read_keys(args.no_keys)
     sign_command = read_sign_command()
     quad = version_quad(args.version)
 
     ensure_bundle(bundle, args.rebuild)
-    verify_bundle(bundle)
+    verify_bundle(bundle, args.no_keys)
 
     if args.portable:
         zip_path = write_portable_zip(bundle, output, args.version, deepgram, deepl)

@@ -130,6 +130,26 @@ PLACEHOLDER_API_KEYS = {
     "paste_your_key_here",
 }
 
+# A build made with `build_installer.py --no-keys` ships a `.needs-api-keys`
+# marker instead of the delivery keys, so it can be handed to anyone. Ask for
+# them HERE, and nowhere else: every consumer reads a key with
+# `from alpha.config import DEEPGRAM_API_KEY`, which copies the value at import
+# time, so this is the last moment a key can still arrive and have the rest of
+# the app behave exactly as it does on a keyed build. No marker (a developer
+# tree, the test suite) means no prompt, ever.
+try:
+    from alpha.ui.key_setup import ask_for_keys, should_prompt
+
+    if should_prompt(PROJECT_ROOT, DEEPGRAM_API_KEY, DEEPL_AUTH_KEY):
+        if ask_for_keys(PROJECT_ROOT / ".env"):
+            DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY") or None
+            DEEPL_AUTH_KEY = (os.getenv("DEEPL_AUTH_KEY") or "").strip() or None
+            DEEPL_API_KEY = DEEPL_AUTH_KEY
+except Exception:
+    # A failure here must never be the reason the app does not start; the
+    # existing missing-key path in service_status reports it at Start instead.
+    pass
+
 
 def get_deepgram_key_status() -> str:
     """Return Deepgram key state: missing, placeholder, or configured."""

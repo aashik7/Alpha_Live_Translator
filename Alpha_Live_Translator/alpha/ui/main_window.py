@@ -415,6 +415,34 @@ def _show_window_closing_status(host):
             pass
 
 
+def _offer_key_setup() -> bool:
+    """On a keyless build, let the operator paste their keys and say so.
+
+    Returns True when keys were saved, and the caller then skips its error
+    dialog. False on a normal keyed build (no marker) or if they cancel, so
+    the existing message is shown exactly as before.
+
+    The app cannot pick the new keys up in place: every consumer read them
+    with `from alpha.config import ...` at import, so the honest answer is a
+    restart rather than a session that half-works.
+    """
+    try:
+        from alpha.config import PROJECT_ROOT
+        from alpha.ui.key_setup import ask_for_keys, should_prompt
+
+        if not should_prompt(PROJECT_ROOT, None, None):
+            return False
+        if not ask_for_keys(PROJECT_ROOT / ".env"):
+            return False
+        messagebox.showinfo(
+            t("API keys saved"),
+            t("Close the app and start it again to use the new keys."),
+        )
+        return True
+    except Exception:
+        return False
+
+
 def _stop_worker_still_finalizing():
     """True while a Stop's finalize worker is still running. Item 22.
 
@@ -10495,6 +10523,12 @@ class AlphaApp(
         if blocking:
             problem = blocking[0]
             print(problem.message)
+            # On a shared, keyless build this is where someone who pasted a key
+            # wrongly -- or skipped the first-run dialog -- arrives. Offer the
+            # same dialog again rather than a dead end; a keyed build has no
+            # marker, so nothing here changes for it.
+            if _offer_key_setup():
+                return
             messagebox.showerror(f"{problem.service} API Key", problem.message)
             self.publish_error_event(
                 problem.message,

@@ -189,6 +189,10 @@ _JA: dict[str, str] = {
         "停止しました。診断データを保存している場合があります。"
     ),
     "Saving transcript — closes automatically": "文字起こしを保存中 — 自動で閉じます",
+    "API keys saved": "APIキーを保存しました",
+    "Close the app and start it again to use the new keys.": (
+        "新しいキーを使うには、アプリを終了してもう一度起動してください。"
+    ),
     # -- Connection indicator (_CONNECTION_INDICATOR_TEXT in main_window.py) -
     "● Signal OK": "● 信号良好",
     "● Reconnecting": "● 再接続中",
