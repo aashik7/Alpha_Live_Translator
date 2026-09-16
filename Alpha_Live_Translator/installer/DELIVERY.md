@@ -150,6 +150,35 @@ when the operator eventually removes the app. The signing command can contain a
 certificate password, so it is filtered out of Inno's output the same way the
 API keys are.
 
+## Route D — a copy for someone else, with their own keys (`--no-keys`)
+
+Routes A to C all ship **your** Deepgram and DeepL keys inside the build. To
+hand the app to someone outside the delivery — a colleague, another office, a
+trial user — build it without them instead:
+
+```bash
+python installer/build_installer.py --no-keys --rebuild --version 1.2 --output build/share
+python installer/build_installer.py --no-keys --rebuild --version 1.2 --output build/share --portable
+```
+
+`--no-keys` does not read `keys.local.ini` at all, so this builds on a machine
+that has no keys. The build carries a `.needs-api-keys` marker beside the app
+and no `.env`; the app asks for a Deepgram key and a DeepL key the first time it
+starts, writes them to `app\.env` itself, and behaves from then on exactly as a
+keyed build does. Recipients get their own keys from console.deepgram.com and
+deepl.com/pro-api.
+
+Notes:
+
+- **To change a key later**, press Start with the bad key in place: the
+  credential check stops there and offers the dialog again. Deleting
+  `app\.env` and restarting also brings it back.
+- **The keys are not encrypted**, exactly as with a keyed build: they sit in
+  `app\.env` as text, readable by anyone on that machine.
+- **A keyed build is unaffected.** Without `--no-keys` nothing changes, and a
+  bundle directory reused from a keyless build has the marker removed for it.
+- `ALPHA_NO_KEY_PROMPT=1` suppresses the dialog for anything headless.
+
 ## What changed in the build regardless
 
 The 1.0.1 installer shipped with an **empty `FileVersion` and copyright** —
