@@ -27,6 +27,7 @@ from __future__ import annotations
 import argparse
 import configparser
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -37,6 +38,10 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 INSTALLER_DIR = REPO_ROOT / "installer"
 ISS = INSTALLER_DIR / "alpha.iss"
 KEYS_FILE = INSTALLER_DIR / "keys.local.ini"
+# One click for "send me your logs": finds the app whether it was installed or
+# extracted, runs app/collect_logs.py over every session, and writes the bundle
+# into a "logs" folder beside itself.
+LOG_COLLECTOR = INSTALLER_DIR / "collect-logs.bat"
 # Dropped into the bundle by --no-keys; alpha/config.py prompts only when it is there.
 KEY_SETUP_MARKER = ".needs-api-keys"
 DEFAULT_BUNDLE = REPO_ROOT / "build" / "AlphaLiveTranslator"
@@ -368,6 +373,16 @@ KEYLESS_NOTE = (
 )
 
 
+def copy_log_collector(output: Path) -> None:
+    """Put the log collector beside whatever was just built."""
+    if not LOG_COLLECTOR.is_file():
+        log("no collect-logs.bat to ship (expected at installer/collect-logs.bat)")
+        return
+    output.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(LOG_COLLECTOR, output / "Collect-Logs.bat")
+    log("log collector  ->  Collect-Logs.bat")
+
+
 def _finish_portable(zip_path: Path, output: Path, version: str, keyless: bool = False) -> Path:
     """Write the note that ships beside the zip, and hand back the archive."""
     note = output / "README-PORTABLE.txt"
@@ -375,6 +390,7 @@ def _finish_portable(zip_path: Path, output: Path, version: str, keyless: bool =
     if keyless:
         text = text.rstrip() + "\n\n" + KEYLESS_NOTE + "\n"
     note.write_text(text, encoding="utf-8", newline="\r\n")
+    copy_log_collector(output)
     return zip_path
 
 
@@ -423,6 +439,9 @@ def write_portable_zip(
             if path.name == ".env":
                 continue
             archive.write(path, f"{root}/{path.relative_to(bundle).as_posix()}")
+        if LOG_COLLECTOR.is_file():
+            # Inside the app folder, beside app\ and python\ -- the bat finds either.
+            archive.write(LOG_COLLECTOR, f"{root}/Collect-Logs.bat")
         if not (deepgram or deepl):
             # Keyless build: ship no .env at all. The app writes one itself once
             # the operator has pasted their keys into the first-run dialog.
@@ -446,6 +465,7 @@ def write_portable_zip(
 
 
 def write_delivery_note(output: Path, version: str) -> Path:
+    copy_log_collector(output)
     note = output / "README-INSTALL.txt"
     note.write_text(DELIVERY_NOTE.format(version=version), encoding="utf-8", newline="\r\n")
     return note
