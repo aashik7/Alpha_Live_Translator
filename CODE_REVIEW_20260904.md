@@ -1564,3 +1564,104 @@ Runner (there is no `tests/__init__.py`, so `-t .` fails):
 ```bash
 cd Alpha_Live_Translator && py -m unittest discover -s tests -t tests -p "test_*.py"
 ```
+
+---
+
+## Item 28 — the microphone switch could not be used during a meeting
+
+**Reported live.** "session cholakali time a mic on kora jaina… stop kore abar
+start kora lage."
+
+`toggle_microphone_capture` set `_microphone_capture_enabled`, and
+`_start_listening_worker` read that flag exactly once, at Start.
+`_set_listen_button_state(listening)` therefore disabled both switches for the
+whole session — honest about the old contract, but it meant an operator who
+realised mid-meeting that their own voice was missing had to Stop and Start
+again, losing the running transcript's continuity to get it.
+
+### The audio graph never needed that restart
+
+Measured on the real `DeepgramTimelineMixer`, driven for real time, with the
+session configured at Start exactly as `main_window` configures it when the mic
+is off — `configure_sources(2, 48000, mic_available=False)`:
+
+| | frames | frames carrying mic | `mic_rms` | `chosen_source` |
+|---|---|---|---|---|
+| before the mic | 60 | 0 | 0.0 | `none` |
+| after one push | 61 | 50 | 6320.6 | `mixed` |
+
+Nothing was reconfigured between those rows. `mic_audio_queue` is created at
+Start and lives until Stop, the mixer drains it every tick, and `push_mic`
+latches `_mic_source_available` by itself — `configure_sources`'s `mic_available`
+only *seeds* that flag. Opening and closing the stream mid-session was already
+proven separately: that is what `_rebind_microphone_to_default_device` does on
+every default-input change.
+
+### The fix
+
+`MicrophoneCaptureMixin._apply_microphone_capture_live` compares wanted against
+actual and opens or closes one stream, on the shared `_schedule_audio_rebind`
+worker — never the mainloop, where `sd.InputStream` open would block the UI.
+The switches are no longer disabled, and `_set_mic_switch_enabled` is gone with
+the contract it enforced.
+
+Three things the first draft of that method got wrong, each now a test:
+
+1. **A flip that landed mid-apply was dropped.** `_await_capture_confirmation`
+   waits up to `REBIND_AUDIO_CONFIRM_S` (3.0 s), so ON-then-OFF inside that
+   window hit the single-flight guard and returned — leaving the stream live
+   while the switch read OFF, the worst direction for this control to fail. The
+   apply now records a pending flip and re-checks it under the *same* lock
+   acquisition that releases the claim.
+2. **Flipping it on the idle window spawned a worker that did nothing.** The
+   dispatcher refuses before dispatching; the apply still re-checks, because it
+   runs on another thread where the session can end underneath it.
+3. **A flip during "Starting…" was silently lost.** `is_listening` is False for
+   that whole window, so the apply correctly refused; `_finish_start_listening`
+   now runs it once after the session is live, which settles that window and
+   does nothing otherwise.
+
+Single-flight uses its own `_mic_capture_apply_in_progress` rather than
+`_mic_rebind_in_progress`, deliberately: `_close_microphone_stream` skips its
+baseline reset while that flag is set — right for a rebind that is about to
+replace the baseline, wrong here where the microphone is genuinely going away.
+No mutual exclusion with the device rebind is lost, because that rebind
+requires *both* the switch on and a stream already open, which is exactly the
+state in which the apply has nothing to do.
+
+The seam is marked with `_mark_device_swap_boundary` in both directions: the
+operator's voice appearing or disappearing mid-utterance is the same acoustic
+discontinuity as a device swap, and the assembler must not glue across it.
+
+### Verified on the real window
+
+`AlphaApp` driven directly, with only the two device calls stubbed:
+
+| Check | Result |
+|---|---|
+| switch state while listening | `normal` (both header and menu) |
+| flip on the idle window | 0 opens |
+| flip while listening | 1 open, on thread `AudioDeviceRebind` |
+| ran on the mainloop | `False` |
+| flip back off | 1 close, `_mic_stream` is `None` |
+
+20 new tests in
+`tests/test_the_microphone_switch_works_during_a_meeting.py`. The two tests that
+encoded the lock as the contract were removed from `test_microphone_toggle.py`
+with a pointer to their replacement. Suite: 1536 tests, the same **set of eight**
+failing names.
+
+### Not fixed here, and reported separately
+
+The language dropdown has a worse version of the same problem and is **not**
+touched by this change: it is not locked during a session, and
+`on_language_change` writes `_listen_language` immediately, so a mid-session
+change leaves the app on the new language while the open socket is still on the
+old one. Measured: `listen_language` `ja` → `en` while the connected URL stays
+`language=ja`. `should_use_japanese_final_stabilizer` re-reads that field on
+every call, and `stop_finalize_worker` stamps every leftover record with the
+host's *current* language — so the Japanese half of a switched session would be
+submitted for translation as English. The canonical ledger carries no language
+field at all (`grep` returns zero hits), so there is nothing to tell the two
+halves apart. Fixing that needs a ledger stamp first; it is a separate change
+set.

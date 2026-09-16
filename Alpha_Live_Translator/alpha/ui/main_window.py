@@ -9140,9 +9140,6 @@ class AlphaApp(
         for btn in (self.listen_button, self.listen_button_menu):
             if btn is not None:
                 self._set_dynamic_text(btn, label, state="normal", **cfg)
-        # The mic choice is read at Start, so it must not look changeable while
-        # a session is running.
-        self._set_mic_switch_enabled(not listening)
         self._update_status_bar(listening=listening)
 
     def _set_stopping_ui_state(self):
@@ -10909,6 +10906,11 @@ class AlphaApp(
         except Exception:
             pass
         self._set_listen_button_state(True)
+        # `is_listening` was False for the whole of "Starting...", so a switch
+        # flipped during it reached `_apply_microphone_capture_live` and was
+        # correctly refused. The apply compares wanted against actual, so
+        # running it once here settles that window and does nothing otherwise.
+        self._schedule_microphone_capture_apply()
         self._start_health_monitor()
         try:
             from alpha.utils.component_stall_classifier import reset_stall_classification
@@ -11732,10 +11734,13 @@ class AlphaApp(
         single-language session where the operator wants their own voice in the
         transcript too.
 
-        Read at Start, exactly like the language dropdown, so it never changes
-        the audio graph of a session already running. The switches are disabled
-        while listening so the UI cannot advertise a setting that will not take
-        effect until the next session.
+        Applied immediately, during a meeting as well as before one. The switch
+        used to be read once at Start and locked for the rest of the session, so
+        an operator who realised mid-meeting that their own voice was missing
+        had to Stop and Start again -- losing the running transcript's
+        continuity to get it. `_apply_microphone_capture_live` carries the
+        change into the audio layer on the shared rebind worker; the mainloop
+        never waits for a device to open.
         """
         try:
             if self._compact_mode and self._menu_visible:
@@ -11750,6 +11755,10 @@ class AlphaApp(
                 "Microphone capture: "
                 + ("ON" if self._microphone_capture_enabled else "OFF (meeting audio only)")
             )
+            # No-op unless a session is running, which is what keeps the
+            # pre-Start behaviour exactly as it was: the value is simply read
+            # by `_start_listening_worker` when the session begins.
+            self._schedule_microphone_capture_apply()
         except Exception as exc:
             print(f"Error toggling microphone capture: {exc}")
 
@@ -12094,19 +12103,6 @@ class AlphaApp(
                 else:
                     switch.deselect()
                 switch.configure(text=label)
-            except Exception:
-                pass
-
-    def _set_mic_switch_enabled(self, enabled: bool):
-        """Lock the switches while a session runs; the value is read at Start."""
-        for switch in (
-            getattr(self, "mic_switch", None),
-            getattr(self, "mic_switch_menu", None),
-        ):
-            if switch is None:
-                continue
-            try:
-                switch.configure(state="normal" if enabled else "disabled")
             except Exception:
                 pass
 

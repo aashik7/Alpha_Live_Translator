@@ -273,6 +273,185 @@ class MicrophoneCaptureMixin:
         finally:
             self._mic_rebind_in_progress = False
 
+    def _schedule_microphone_capture_apply(self):
+        """Send the switch's new value to the audio layer, off the mainloop.
+
+        Opening a sounddevice input stream is device work, which is the same
+        reason `_report_default_input_device_changed` refuses to do its rebind
+        inline. The shared rebind worker is reused rather than a second
+        dispatcher being added, so there stays exactly one place where device
+        work runs.
+
+        Refuses outside a session before dispatching anything. The apply checks
+        the same thing again -- it runs on another thread, where the session can
+        end underneath it -- but doing it here as well means flipping the switch
+        on the idle window costs no thread at all, which is the common case.
+        """
+        if not getattr(self, "is_listening", False):
+            return False
+        try:
+            if self._stop_event.is_set():
+                return False
+        except Exception:
+            pass
+        schedule = getattr(self, "_schedule_audio_rebind", None)
+        if callable(schedule):
+            try:
+                return bool(schedule(self._apply_microphone_capture_live))
+            except Exception:
+                pass
+        # A host without the WASAPI mixin still gets a correct apply. Inline is
+        # acceptable here for the same reason the rebind's fallback is: opening
+        # one input stream is cheap next to the render side's re-enumeration.
+        try:
+            return bool(self._apply_microphone_capture_live())
+        except Exception:
+            return False
+
+    def _apply_microphone_capture_live(self):
+        """Open or close the microphone so it matches the switch, mid-session.
+
+        The switch used to be read once, at Start, and locked for the rest of
+        the session, so an operator who noticed mid-meeting that their own
+        voice was missing had to Stop and Start again to get it.
+
+        The audio graph never needed that restart. `mic_audio_queue` is created
+        at Start and lives until Stop, the mixer drains it every tick, and
+        `push_mic` latches `_mic_source_available` by itself -- `configure_sources`
+        only seeds that flag. Measured on the real `DeepgramTimelineMixer`, with
+        a session configured at Start as `configure_sources(2, 48000, False)`:
+        60 frames with `mic_rms` 0.0 and `chosen_source` 'none', then, after one
+        push into the queue that was already there and no reconfiguration of any
+        kind, 50 of the next 61 frames carrying `mic_rms` 6320.6 at
+        `chosen_source` 'mixed'.
+
+        Runs on the shared rebind worker, never the mainloop.
+
+        Single-flight on its OWN flag rather than `_mic_rebind_in_progress`,
+        which is deliberate twice over. `_close_microphone_stream` skips its
+        baseline reset while that flag is set -- correct for a rebind, which is
+        about to replace the baseline, and wrong here, where the microphone is
+        genuinely going away. And no mutual exclusion with the device rebind is
+        lost by using a separate flag: that rebind requires BOTH the switch on
+        and a stream already open, which is exactly the state in which this
+        method has nothing to do.
+
+        A flip that arrives while a pass is running is REMEMBERED, not dropped.
+        `_await_capture_confirmation` waits up to REBIND_AUDIO_CONFIRM_S, so an
+        operator who turns the microphone on and straight back off again is
+        inside that window; returning early there left the stream live while the
+        switch read OFF, which is the worst direction for this control to fail.
+        The pending flag is therefore checked, and the claim released, under one
+        acquisition of the lock -- checking and releasing separately reopens the
+        same gap one instruction wide.
+        """
+        try:
+            if self._stop_event.is_set():
+                return False
+        except Exception:
+            pass
+        # Outside a session the value is still just read at Start. Flipping the
+        # switch on the idle window must not open a stream with no mixer, no
+        # queue and no socket to carry it.
+        if not getattr(self, "is_listening", False):
+            return False
+        lock = getattr(self, "_rebind_single_flight_lock", None)
+        guard = lock() if callable(lock) else _NullLock()
+        with guard:
+            if getattr(self, "_mic_capture_apply_in_progress", False):
+                self._mic_capture_apply_pending = True
+                return False
+            self._mic_capture_apply_in_progress = True
+            self._mic_capture_apply_pending = False
+
+        def _log(event, **fields):
+            try:
+                from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+                jp_accuracy_log(event, **fields)
+            except Exception:
+                pass
+
+        try:
+            applied = False
+            while True:
+                wanted = bool(getattr(self, "_microphone_capture_enabled", False))
+                already_open = getattr(self, "_mic_stream", None) is not None
+                if wanted != already_open:
+                    applied = self._carry_microphone_switch(wanted, _log) or applied
+                with guard:
+                    if not getattr(self, "_mic_capture_apply_pending", False):
+                        self._mic_capture_apply_in_progress = False
+                        return applied
+                    self._mic_capture_apply_pending = False
+                # The switch moved while the pass above was running. Go round
+                # again rather than leaving the device disagreeing with it.
+                try:
+                    if self._stop_event.is_set():
+                        return applied
+                except Exception:
+                    pass
+        finally:
+            # Belt and braces for the exception path; the success path has
+            # already cleared this under the lock.
+            with guard:
+                self._mic_capture_apply_in_progress = False
+
+    def _carry_microphone_switch(self, wanted, log):
+        """One open or one close, with the seam marked. Never raises.
+
+        Split out only so `_apply_microphone_capture_live` reads as claim, work,
+        re-check: with both branches inline, the re-check loop was buried under
+        forty lines of device handling and the early returns fought the loop.
+        """
+        mark = getattr(self, "_mark_device_swap_boundary", None)
+        if not wanted:
+            self._close_microphone_stream()
+            if callable(mark):
+                mark()
+            log(
+                "MICROPHONE_CAPTURE_DISABLED_MID_SESSION",
+                note="meeting audio only; the operator's own speech is no "
+                "longer captured",
+            )
+            return True
+        captured_before = int(getattr(self, "_mic_chunks_captured", 0) or 0)
+        try:
+            self._start_microphone_capture()
+        except Exception as exc:  # noqa: BLE001
+            # Never fatal, exactly as at Start and on a rebind: losing the
+            # operator's own voice is bad, killing the meeting is worse. The
+            # switch keeps its new value, so the next device change or the next
+            # session can still act on it.
+            print(f"[MIC] Could not turn the microphone on: {exc}")
+            log(
+                "MICROPHONE_CAPTURE_SWITCH_FAILED",
+                error=f"{type(exc).__name__}: {exc}",
+            )
+            return False
+        # The operator's voice appearing mid-utterance is the same acoustic
+        # discontinuity as a device swap, so the assembler must not glue across
+        # the seam. Marked before the confirmation wait below, which can take
+        # seconds; the seam belongs where the audio actually changed.
+        if callable(mark):
+            mark()
+        confirm = getattr(self, "_await_capture_confirmation", None)
+        if callable(confirm) and not confirm("_mic_chunks_captured", captured_before):
+            # Opening a device is not the same as a microphone that works. The
+            # stream is left open -- it may simply be a quiet room -- but this is
+            # not reported as applied.
+            print(
+                "[MIC] The microphone opened but no audio arrived; "
+                "it may be muted or silent."
+            )
+            log("MICROPHONE_CAPTURE_SWITCH_NO_AUDIO")
+            return False
+        log(
+            "MICROPHONE_CAPTURE_ENABLED_MID_SESSION",
+            note="the operator's own speech is now captured and transcribed",
+        )
+        return True
+
     def _close_microphone_stream(self):
             """Stop and release the sounddevice microphone stream."""
             if self._mic_stream is not None:

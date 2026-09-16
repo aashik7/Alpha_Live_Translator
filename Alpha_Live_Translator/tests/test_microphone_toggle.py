@@ -90,6 +90,7 @@ class TheToggleKeepsBothSwitchesInStep(unittest.TestCase):
     """Drives the real `toggle_microphone_capture` and its sync helper."""
 
     def setUp(self):
+        from alpha.audio.microphone import MicrophoneCaptureMixin
         from alpha.ui.main_window import AlphaApp
 
         class Host:
@@ -97,10 +98,18 @@ class TheToggleKeepsBothSwitchesInStep(unittest.TestCase):
             _sync_mic_switches = (
                 AlphaApp._sync_mic_switches
             )
-            _set_mic_switch_enabled = AlphaApp._set_mic_switch_enabled
             _set_listen_button_state = AlphaApp._set_listen_button_state
+            # AlphaApp really carries this, so the host must too -- without it
+            # the toggle's own `except Exception` swallowed an AttributeError
+            # and these tests passed while never reaching the dispatch.
+            _schedule_microphone_capture_apply = (
+                MicrophoneCaptureMixin._schedule_microphone_capture_apply
+            )
 
             def __init__(self):
+                # Nothing here is a live session, so the dispatch is a no-op;
+                # mid-session behaviour has its own file.
+                self.is_listening = False
                 self._microphone_capture_enabled = False
                 self.mic_switch = SwitchRecorder(0)
                 self.mic_switch_menu = SwitchRecorder(0)
@@ -151,17 +160,10 @@ class TheToggleKeepsBothSwitchesInStep(unittest.TestCase):
         self.host.mic_switch_menu = None
         self.host._sync_mic_switches()
 
-    def test_listening_locks_the_switches(self):
-        """The value is read at Start, so it must not look changeable mid-session."""
-        self.host._set_listen_button_state(True)
-        self.assertEqual(self.host.mic_switch.state, "disabled")
-        self.assertEqual(self.host.mic_switch_menu.state, "disabled")
-
-    def test_stopping_unlocks_the_switches(self):
-        self.host._set_listen_button_state(True)
-        self.host._set_listen_button_state(False)
-        self.assertEqual(self.host.mic_switch.state, "normal")
-        self.assertEqual(self.host.mic_switch_menu.state, "normal")
+    # The switch used to be locked while listening, because the value was
+    # read once at Start. It now applies immediately, so the lock would hide
+    # a control that works; see
+    # tests/test_the_microphone_switch_works_during_a_meeting.py.
 
 
 class TheWiringIsPresent(unittest.TestCase):
