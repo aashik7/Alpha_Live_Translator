@@ -159,6 +159,9 @@ class TranslationWorker:
         self._drain_complete = threading.Event()
         self._accepting = True
         self._quota_disabled = False
+        # Item 31: DeepL refused the key. Every later job fails the same way, so
+        # the indicator has to say so instead of staying green.
+        self._auth_rejected = False
         # Item 45 circuit breaker. `_quota_disabled` already handles the
         # permanent case; this handles a *transient* outage, where every job
         # would otherwise spend the full retry ladder (~7s) before failing.
@@ -274,7 +277,25 @@ class TranslationWorker:
             and (time.time() - self._last_queue_full_drop_at)
             < float(TRANSLATION_QUEUE_FULL_DEGRADED_S)
         )
-        return self.circuit_is_open() or self._quota_disabled or recent_drop
+        return (
+            self.circuit_is_open()
+            or self._quota_disabled
+            or self._auth_rejected
+            or recent_drop
+        )
+
+    @property
+    def degraded_reason(self) -> str:
+        """Why `degraded` is True -- "quota", "auth" or "provider" -- else "" (item 31).
+
+        The indicator used to say "Translation degraded" for all three, and for
+        a rejected key it said nothing: one refused job left `degraded` False.
+        """
+        if self._quota_disabled:
+            return "quota"
+        if self._auth_rejected:
+            return "auth"
+        return "provider" if self.degraded else ""
 
     def resume_after_quota(self) -> bool:
         """Lift a quota pause. Returns True only if there was one to lift.
@@ -312,6 +333,9 @@ class TranslationWorker:
         with self._lock:
             was_open = self._circuit_open_until > 0.0
             self._consecutive_failures = 0
+            # Item 31's way back: DeepL translating again means the key is not
+            # rejected, whatever answered 403 before.
+            self._auth_rejected = False
             self._circuit_open_until = 0.0
             self._circuit_cooldown_s = float(TRANSLATION_CIRCUIT_COOLDOWN_S)
             if was_open:
@@ -939,6 +963,9 @@ class TranslationWorker:
                 break
             except DeepLError as exc:
                 last_err = exc.code
+                if exc.code == "auth_failed":
+                    self._auth_rejected = True
+                    self._status_message = "Translation stopped (DeepL rejected the key)."
                 if exc.code == "quota_exceeded":
                     self._quota_disabled = True
                     self._accepting = False
@@ -1372,6 +1399,7 @@ class TranslationWorker:
     def reset_session(self, run_id: str, evidence_dir: Optional[Path] = None) -> None:
         with self._lock:
             self.run_id = str(run_id or "")
+            self._auth_rejected = False
             self._seen_request_ids.clear()
             self._seen_text_hash_by_utterance_version.clear()
             self._accepted_sequences.clear()

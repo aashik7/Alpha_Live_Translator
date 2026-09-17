@@ -127,6 +127,7 @@ from alpha.constants import (
     STOP_TAIL_MIN_CHARS_CJK,
     UI_SPEAKER_LABEL,
     TRANSLATION_ENABLED,
+    ANY_SOUND_RMS,
     DEFER_LOGO_MS,
     DEFER_WAVEFORM_DRAW_MS,
     CJK_CLEANUP_SLOW_MS,
@@ -446,6 +447,12 @@ def _offer_key_setup(deepl: str = "") -> bool:
         return False
 
 
+# Item 31: one mixed frame is 20 ms (timeline_mixer.FRAME_SAMPLES at 16 kHz).
+# Module scope, not a class attribute: `_note_audio_activity` swallows every
+# exception by design, so a name missing from `self` counted nothing, silently.
+_AUDIO_FRAME_SECONDS = 0.02
+
+
 def _explain_start_failure(error) -> None:
     """Tell the operator why a Start could not reach a working Deepgram. Never raises.
 
@@ -758,6 +765,16 @@ class AlphaApp(
         # a 402 seen mid-meeting (cleared when the socket opens again).
         self._dg_start_socket_error = None
         self._dg_credit_exhausted = False
+        # Item 31: what the running-meeting hints are computed from. Written by
+        # the mixer thread (sound, speech seconds) and the UI tick (baselines).
+        self._listening_started_mono = 0.0
+        self._last_any_sound_mono = 0.0
+        self._voiced_seconds_total = 0.0
+        self._voiced_total_at_last_words = 0.0
+        self._hint_ledger_sequence = None
+        self._mic_unavailable = False
+        self._translation_unavailable_reason = ""
+        self._last_connection_status = None
         # Item 73 sets this from the WASAPI device watcher's own thread; item
         # 47's indicator renders it. Windows moving the default output leaves
         # every connection signal healthy while the capture device records
@@ -4055,6 +4072,13 @@ class AlphaApp(
         )
         self.signal_label.pack(side="right", padx=(0, 8))
         self.signal_label._alpha_text_source = "● Standby"
+        # Item 31: the whole sentence behind the label, one click away. Looked
+        # up at click time, not here: `create_status_bar` is also borrowed by
+        # hosts that build the strip without it (item 88c's layout tests), and
+        # an attribute read at build time broke every one of them.
+        self.signal_label.bind(
+            "<Button-1>", lambda event: self._explain_connection_state(event)
+        )
 
         # The microphone choice lives here rather than in the header. It was in
         # the header until item 88c, where it cost that row more width than it
@@ -4174,6 +4198,9 @@ class AlphaApp(
         "reconnecting": ("● Reconnecting", "accent_red_glow"),
         "degraded": ("● Translation degraded", "accent_red_glow"),
         "failed": ("● Key rejected", "accent_red"),
+        # Item 31. The same colour as `degraded`: the meeting runs, something is wrong.
+        "no_sound": ("● No sound", "accent_red_glow"),
+        "no_speech": ("● No speech recognised", "accent_red_glow"),
     }
 
     def _sync_connection_indicator(self, *, force_idle: bool = False):
@@ -4210,6 +4237,17 @@ class AlphaApp(
                 gap_seconds = float(self.deepgram_gap_seconds())
             except Exception:
                 gap_seconds = 0.0
+            # Item 31's hints are an addition to this indicator, never a new way
+            # for it to fail: if they cannot be computed, every older state
+            # still paints. Measured when they were a plain call: every
+            # indicator test host without the method went blank.
+            no_sound, voiced_without_words = (0.0, 0.0)
+            inputs = getattr(self, "_audio_attention_inputs", None)
+            if listening and callable(inputs):
+                try:
+                    no_sound, voiced_without_words = inputs()
+                except Exception:
+                    no_sound, voiced_without_words = (0.0, 0.0)
             status = describe_connection(
                 listening=listening,
                 # `_dg_disconnected_at` is the authoritative outage clock: set
@@ -4229,6 +4267,16 @@ class AlphaApp(
                 translation_status_message=str(
                     getattr(worker, "status_message", "") or ""
                 ),
+                # Item 31: the reason behind a degraded translation, and a
+                # translation that never started for want of a key.
+                translation_degraded_reason=str(
+                    getattr(worker, "degraded_reason", "") or ""
+                ),
+                translation_unavailable_reason=str(
+                    getattr(self, "_translation_unavailable_reason", "") or ""
+                ),
+                seconds_without_sound=no_sound,
+                voiced_seconds_without_words=voiced_without_words,
                 gap_seconds=gap_seconds,
                 # Item 73's watcher sets this from its own 2s thread. It is
                 # a signal here, not a paint: the socket stays healthy when
@@ -4275,6 +4323,22 @@ class AlphaApp(
                 and not status.detail.get("deepgram_auth_failed")
             ):
                 text = "● Deepgram credit used up"
+            # Item 31: a degraded translation names its reason.
+            if status.state == "degraded":
+                reason = (
+                    status.detail.get("translation_degraded_reason")
+                    if status.detail.get("translation_degraded")
+                    else ""
+                )
+                if reason == "quota":
+                    text = "● DeepL quota used up"
+                elif reason == "auth":
+                    text = "● DeepL key rejected"
+                elif not status.detail.get("translation_degraded") and status.detail.get(
+                    "translation_unavailable_reason"
+                ):
+                    text = "● No translation"
+        self._last_connection_status = status
         try:
             self._set_dynamic_text(label, text, text_color=COLORS[color_key])
         except Exception:
@@ -4294,6 +4358,91 @@ class AlphaApp(
                     )
                 except Exception:
                     pass
+
+    def _explain_connection_state(self, _event=None):
+        """A click on the status indicator shows the whole sentence behind its label.
+
+        Item 31. The strip has room for "● No sound", not for what to do about
+        it, and the running-meeting states deliberately raise no modal -- a
+        dialog stealing focus from the meeting, over a window that is always on
+        top and may be screen-shared, is worse than the problem. So the sentence
+        is one click away instead, in the display language.
+        """
+        status = getattr(self, "_last_connection_status", None)
+        if status is None or status.state == "connected":
+            return
+        if not status.detail.get("listening"):
+            return
+        try:
+            from alpha.utils.service_status import CONNECTION_DETAILS_TITLE
+
+            messagebox.showinfo(t(CONNECTION_DETAILS_TITLE), t(status.message))
+        except Exception:
+            pass
+
+    def _note_audio_activity(self, speaker_meta, now_mono=None):
+        """Feed item 31's hints from one mixed frame. Mixer thread; never raises.
+
+        Two different facts. ANY signal at all (rms >= ANY_SOUND_RMS) says the
+        capture device is receiving something -- item 73 measured a device
+        nothing is routed to as exact digital silence. SPEECH-LEVEL sound is the
+        source gate's own activity decision, the same one that chooses what is
+        sent to Deepgram, so "no speech recognised" counts only what could have
+        produced words.
+        """
+        try:
+            now = time.monotonic() if now_mono is None else float(now_mono)
+            try:
+                loudest = max(
+                    float(speaker_meta.get("sys_rms") or 0.0),
+                    float(speaker_meta.get("mic_rms") or 0.0),
+                )
+            except (TypeError, ValueError):
+                loudest = 0.0
+            if loudest >= ANY_SOUND_RMS:
+                self._last_any_sound_mono = now
+            if speaker_meta.get("system_active") or speaker_meta.get("mic_active"):
+                self._voiced_seconds_total = (
+                    float(getattr(self, "_voiced_seconds_total", 0.0) or 0.0)
+                    + _AUDIO_FRAME_SECONDS
+                )
+        except Exception:
+            pass
+
+    def _audio_attention_inputs(self, now_mono=None):
+        """(seconds without any sound, speech seconds without new words). UI tick.
+
+        Words are "the canonical ledger changed" -- a commit, a revision or a
+        suppression -- not a Deepgram final arriving: in the runs of 2026-08-14
+        that stopped working, finals kept arriving (36) while commits stopped
+        (15), and the operator saw nothing new.
+
+        The speech baseline is reset from THIS thread only, by comparing ledger
+        readings, so the mixer thread never has to reset anything. It also
+        follows the total during a Deepgram outage: no words can arrive then,
+        and that silence is the reconnect's story, not this hint's.
+        """
+        now = time.monotonic() if now_mono is None else float(now_mono)
+        started = float(getattr(self, "_listening_started_mono", 0.0) or 0.0)
+        heard = float(getattr(self, "_last_any_sound_mono", 0.0) or 0.0)
+        since = max(heard, started)
+        no_sound = max(0.0, now - since) if since else 0.0
+        total = float(getattr(self, "_voiced_seconds_total", 0.0) or 0.0)
+        try:
+            from alpha.transcription import canonical_transcript_ledger as ledger
+
+            sequence = int(ledger.mutation_sequence())
+        except Exception:
+            sequence = None
+        if sequence is not None and sequence != getattr(self, "_hint_ledger_sequence", None):
+            self._hint_ledger_sequence = sequence
+            self._voiced_total_at_last_words = total
+        if float(getattr(self, "_dg_disconnected_at", 0.0) or 0.0):
+            self._voiced_total_at_last_words = total
+        voiced = max(
+            0.0, total - float(getattr(self, "_voiced_total_at_last_words", 0.0) or 0.0)
+        )
+        return no_sound, voiced
 
     def _update_status_bar(self, listening=False):
         """Refresh status bar visuals for idle vs listening."""
@@ -9071,6 +9220,7 @@ class AlphaApp(
                         "mic_rms": speaker_meta.get("mic_rms"),
                     }
                     self._teams_log_source_energy(speaker_meta)
+                    self._note_audio_activity(speaker_meta)
                     if not speaker_logged_once and speaker_meta.get("speaker_label") != "none":
                         _speaker_ndjson_log(
                             location="main_window.py:audio_mixer_worker",
@@ -9344,15 +9494,17 @@ class AlphaApp(
         self._translation_debounce_after_ids = {}
         if self.translated_verse_box is None:
             return
+        from alpha.utils.service_status import DEEPL_KEY_MISSING_TEXT
+
         if not TRANSLATION_ENABLED:
             msg = "Translation disabled."
         elif not has_deepl_api_key():
-            msg = "Translation unavailable (missing DEEPL_AUTH_KEY)."
+            msg = DEEPL_KEY_MISSING_TEXT
         else:
             msg = ""
         self._translation_status_message = msg
         if msg:
-            self.translated_verse_box._placeholder_text = msg
+            self.translated_verse_box._placeholder_text = t(msg)
             self._show_text_placeholder(self.translated_verse_box)
         else:
             self.translated_verse_box._placeholder_text = ""
@@ -9382,13 +9534,18 @@ class AlphaApp(
         self._translation_items_by_utterance = {}
         self._pending_translations_by_utterance = {}
         self._translation_debounce_after_ids = {}
+        self._translation_unavailable_reason = ""
         if not TRANSLATION_ENABLED:
             self.translation_enabled = False
             self._set_translation_status("Translation disabled.")
             return
         if not has_deepl_api_key():
+            from alpha.utils.service_status import DEEPL_KEY_MISSING_TEXT
+
             self.translation_enabled = False
-            self._set_translation_status("Translation unavailable (missing DEEPL_AUTH_KEY).")
+            # Item 31: named in the status strip too, not only in the pane.
+            self._translation_unavailable_reason = "missing_key"
+            self._set_translation_status(DEEPL_KEY_MISSING_TEXT)
             return
         worker = TranslationWorker(
             run_id=run_id,
@@ -9419,7 +9576,9 @@ class AlphaApp(
         box = self.translated_verse_box
         if box is None or not message:
             return
-        box._placeholder_text = message
+        # Shown in the display language; the English key stays in
+        # `_translation_status_message` for the logs (item 31).
+        box._placeholder_text = t(message)
         self._show_text_placeholder(box)
 
     def resume_translation_after_quota(self) -> bool:
@@ -10675,6 +10834,7 @@ class AlphaApp(
         self._dg_start_refusal = None
         self._dg_start_socket_error = None
         self._dg_credit_exhausted = False
+        self._mic_unavailable = False
         # Audit bug #2. A keyterm rejection turns keyterms off so the reconnect
         # can succeed -- for that meeting. Nothing ever turned them back on, so
         # one rejection silently cost every later meeting its business-term
@@ -10984,6 +11144,8 @@ class AlphaApp(
                 print(
                     f"Microphone capture unavailable, continuing with system audio only: {exc}"
                 )
+                # Item 31: the switch says so, not only this console line.
+                self._note_microphone_unavailable(True)
         self._mix_thread = threading.Thread(
             target=self.audio_mixer_worker, daemon=True
         )
@@ -11033,6 +11195,13 @@ class AlphaApp(
             return
 
         self.is_listening = True
+        # Item 31's hints count from here, not from whatever the mixer saw
+        # during "Starting...".
+        self._listening_started_mono = time.monotonic()
+        self._last_any_sound_mono = 0.0
+        self._voiced_seconds_total = 0.0
+        self._voiced_total_at_last_words = 0.0
+        self._hint_ledger_sequence = None
         try:
             from alpha.utils.japanese_accuracy_log import jp_accuracy_log
 
@@ -12231,6 +12400,14 @@ class AlphaApp(
         # alone left the operator reading the tick box to find out, and the
         # tick is 16 px.
         label = t("Mic on") if enabled else t("Mic off")
+        # Item 31: switched on but failing -- only while a session runs, since
+        # outside one the switch is a setting, not a device.
+        if (
+            enabled
+            and bool(getattr(self, "_mic_unavailable", False))
+            and bool(getattr(self, "is_listening", False))
+        ):
+            label = t("Mic unavailable")
         for switch in (
             getattr(self, "mic_switch", None),
             getattr(self, "mic_switch_menu", None),
@@ -12475,10 +12652,14 @@ class AlphaApp(
                 pass
             if self.translated_verse_box is not None:
                 if self._translation_status_message:
-                    self.translated_verse_box._placeholder_text = self._translation_status_message
+                    self.translated_verse_box._placeholder_text = t(
+                        self._translation_status_message
+                    )
                 elif not self.translation_enabled:
-                    self.translated_verse_box._placeholder_text = (
-                        "Translation unavailable (missing DEEPL_AUTH_KEY)."
+                    from alpha.utils.service_status import DEEPL_KEY_MISSING_TEXT
+
+                    self.translated_verse_box._placeholder_text = t(
+                        DEEPL_KEY_MISSING_TEXT
                         if TRANSLATION_ENABLED and not has_deepl_api_key()
                         else "Translation disabled."
                     )

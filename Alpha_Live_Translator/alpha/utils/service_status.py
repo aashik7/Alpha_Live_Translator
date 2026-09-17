@@ -25,6 +25,9 @@ CONNECTED = "connected"
 RECONNECTING = "reconnecting"
 DEGRADED = "degraded"
 FAILED = "failed"
+# Item 31: running, but nothing useful is coming out.
+NO_SOUND = "no_sound"
+NO_SPEECH = "no_speech"
 
 # Severity order matters: several signals are routinely true at once and the
 # worst must win.
@@ -35,7 +38,18 @@ FAILED = "failed"
 # has stopped and audio is being lost. Losing the words is worse than losing
 # the translation of them, so a reconnect must not be hidden behind a
 # translation warning.
-_SEVERITY = {CONNECTED: 0, DEGRADED: 1, RECONNECTING: 2, FAILED: 3}
+#
+# Item 31's two states sit between `degraded` and `reconnecting`: no words at
+# all is worse than words without a translation, and a reconnect or a device
+# change is the better explanation for the same silence when one is in flight.
+_SEVERITY = {
+    CONNECTED: 0,
+    DEGRADED: 1,
+    NO_SOUND: 1.5,
+    NO_SPEECH: 1.5,
+    RECONNECTING: 2,
+    FAILED: 3,
+}
 
 # --- Why a Start failed, in words (item 30) ------------------------------------
 #
@@ -136,6 +150,16 @@ NO_DEEPGRAM_RESPONSE_TEXT = "No response from Deepgram within 30 seconds."
 # expiring (Deepgram's forum), so these arrive on the next reconnect.
 MID_SESSION_KEY_REJECTED_TEXT = "Deepgram rejected the API key (it may have expired). Transcription has stopped — check the key, then restart the session."
 MID_SESSION_CREDIT_EXHAUSTED_TEXT = "Deepgram has no credit left (the free trial may have run out), so transcription has stopped. Add credit at console.deepgram.com, then restart the session."
+
+
+# Item 31: a meeting that runs but does not work. Shown in the status strip and,
+# on a click, in full -- never as an interrupting modal. One literal each.
+NO_SOUND_TEXT = "Alpha has not captured any sound for a minute. If people are speaking, make sure the meeting's audio plays through the Windows default speaker or headset, then stop and start the session."
+NO_SPEECH_TEXT = "Sound is coming in, but nothing has been transcribed for 30 seconds. If people are speaking, check the listening language; if it is right, stop and start the session."
+DEEPL_QUOTA_TEXT = "DeepL's translation quota for this key is used up, so translation has stopped. The transcript continues. Check the usage at deepl.com, then restart the session."
+DEEPL_KEY_REJECTED_TEXT = "DeepL rejected the translation key, so translation has stopped. The transcript continues. Check the DeepL key, then restart the session."
+DEEPL_KEY_MISSING_TEXT = "No translation: the DeepL key is missing. The transcript still works; add a DeepL key to translate."
+CONNECTION_DETAILS_TITLE = "Alpha status"
 
 
 def start_failure_text(reason: str) -> tuple[str, tuple[str, ...]]:
@@ -301,6 +325,10 @@ def describe_connection(
     deepgram_credit_exhausted: bool = False,
     translation_degraded: bool = False,
     translation_status_message: str = "",
+    translation_degraded_reason: str = "",
+    translation_unavailable_reason: str = "",
+    seconds_without_sound: float = 0.0,
+    voiced_seconds_without_words: float = 0.0,
     gap_seconds: float = 0.0,
     audio_device_changed: bool = False,
     audio_capture_device: str = "",
@@ -328,7 +356,29 @@ def describe_connection(
 
     if translation_degraded:
         state = _worst(state, DEGRADED)
-        message = translation_status_message or "Translation degraded."
+        # Item 31: the reason, where the worker knows it. "Translation degraded"
+        # read the same for a used-up quota, a rejected key and an outage.
+        if translation_degraded_reason == "quota":
+            message = DEEPL_QUOTA_TEXT
+        elif translation_degraded_reason == "auth":
+            message = DEEPL_KEY_REJECTED_TEXT
+        else:
+            message = translation_status_message or "Translation degraded."
+    elif translation_unavailable_reason == "missing_key":
+        state = _worst(state, DEGRADED)
+        message = DEEPL_KEY_MISSING_TEXT
+
+    # Item 31. Checked before the reconnect and device-change branches, which
+    # outrank these and so replace them when either is in flight.
+    from alpha.constants import NO_SOUND_HINT_AFTER_S, NO_SPEECH_HINT_AFTER_VOICED_S
+
+    candidate = None
+    if float(seconds_without_sound or 0.0) >= NO_SOUND_HINT_AFTER_S:
+        candidate, candidate_message = NO_SOUND, NO_SOUND_TEXT
+    elif float(voiced_seconds_without_words or 0.0) >= NO_SPEECH_HINT_AFTER_VOICED_S:
+        candidate, candidate_message = NO_SPEECH, NO_SPEECH_TEXT
+    if candidate is not None and _SEVERITY[candidate] >= _SEVERITY[state]:
+        state, message = candidate, candidate_message
 
     if deepgram_reconnecting or (listening and not deepgram_connected):
         candidate = RECONNECTING
@@ -405,6 +455,10 @@ def describe_connection(
             "deepgram_auth_failed": deepgram_auth_failed,
             "deepgram_credit_exhausted": deepgram_credit_exhausted,
             "translation_degraded": translation_degraded,
+            "translation_degraded_reason": translation_degraded_reason,
+            "translation_unavailable_reason": translation_unavailable_reason,
+            "seconds_without_sound": round(float(seconds_without_sound or 0.0), 1),
+            "voiced_seconds_without_words": round(float(voiced_seconds_without_words or 0.0), 1),
             "audio_device_changed": audio_device_changed,
             "audio_capture_device": audio_capture_device,
             "gap_seconds": round(float(gap_seconds), 1),
@@ -417,6 +471,14 @@ __all__ = [
     "RECONNECTING",
     "DEGRADED",
     "FAILED",
+    "NO_SOUND",
+    "NO_SPEECH",
+    "NO_SOUND_TEXT",
+    "NO_SPEECH_TEXT",
+    "DEEPL_QUOTA_TEXT",
+    "DEEPL_KEY_REJECTED_TEXT",
+    "DEEPL_KEY_MISSING_TEXT",
+    "CONNECTION_DETAILS_TITLE",
     "CredentialProblem",
     "ConnectionStatus",
     "preflight_credentials",

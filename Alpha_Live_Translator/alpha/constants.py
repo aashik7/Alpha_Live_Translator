@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-APP_VERSION = "3.3.5.5.8.5.26.5.28"
+APP_VERSION = "3.3.5.5.8.5.26.5.29"
 APP_CODENAME = "Preserve Real Silence Multi-Stream Retention"
 FROZEN_INFRASTRUCTURE_BASELINE = "3.3.5.5.8.5.25.3.3.2.8"
 
@@ -247,6 +247,18 @@ SYSTEM_NOISE_MULTIPLIER = 3.0
 MIC_TO_SYSTEM_RATIO_MIN = 0.08
 OVERLAP_CONFIRM_FRAMES = 3
 SOURCE_HOLD_MS = 500
+
+# Item 31: status-strip hints for a meeting that runs but does not work.
+# "No speech recognised" after this much SPEECH-LEVEL sound (the source gate's
+# own activity decision) with nothing reaching the transcript. Measured on the
+# retained runs, counting sound generously: healthy sessions reached at most
+# 12.6 s; the runs of 2026-08-14 that stopped committing reached 53-135 s.
+NO_SPEECH_HINT_AFTER_VOICED_S = 30.0
+# "No sound" after this long with no signal at all. Item 73 measured a capture
+# device nothing is routed to as EXACT digital silence (rms 0.0); the longest
+# silence inside a healthy retained run was 7.7 s.
+NO_SOUND_HINT_AFTER_S = 60.0
+ANY_SOUND_RMS = 1.0
 
 # Utterance lifecycle: bounded inactivity commit when speech_final / UtteranceEnd
 # never arrive. Does not change Deepgram endpointing configuration.

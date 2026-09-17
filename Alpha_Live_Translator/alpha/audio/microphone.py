@@ -236,6 +236,9 @@ class MicrophoneCaptureMixin:
                 error=f"{type(exc).__name__}: {exc}",
                 seconds_until_failure=round(time.monotonic() - started, 3),
             )
+            note = getattr(self, "_note_microphone_unavailable", None)
+            if callable(note):
+                note(True)
             return False
         else:
             # Opening a stream is not the same as a microphone that works.
@@ -248,6 +251,9 @@ class MicrophoneCaptureMixin:
                     "the microphone may be silent."
                 )
                 _log("AUDIO_INPUT_REBIND_NO_AUDIO")
+                note = getattr(self, "_note_microphone_unavailable", None)
+                if callable(note):
+                    note(True)
                 return False
             # Re-baseline onto the device now captured from, or the watcher
             # would compare against the old microphone and report a change on
@@ -264,6 +270,9 @@ class MicrophoneCaptureMixin:
             if callable(mark):
                 mark()
             self._mic_swap_count = int(getattr(self, "_mic_swap_count", 0) or 0) + 1
+            note = getattr(self, "_note_microphone_unavailable", None)
+            if callable(note):
+                note(False)
             _log(
                 "AUDIO_INPUT_REBIND_COMPLETED",
                 swap_index=int(getattr(self, "_mic_swap_count", 0) or 0),
@@ -397,6 +406,23 @@ class MicrophoneCaptureMixin:
             with guard:
                 self._mic_capture_apply_in_progress = False
 
+    def _note_microphone_unavailable(self, unavailable):
+        """Record whether the switched-on microphone is failing, and repaint the switch.
+
+        Item 31. A microphone that would not open, or opened and delivered
+        nothing, was a console line only -- the switch went on saying "Mic on".
+        Called from audio worker threads, so the repaint is marshalled; a host
+        without the window simply records the flag.
+        """
+        self._mic_unavailable = bool(unavailable)
+        sync = getattr(self, "_sync_mic_switches", None)
+        run = getattr(self, "_run_on_ui_thread", None)
+        if callable(sync) and callable(run):
+            try:
+                run(sync)
+            except Exception:
+                pass
+
     def _carry_microphone_switch(self, wanted, log):
         """One open or one close, with the seam marked. Never raises.
 
@@ -405,8 +431,13 @@ class MicrophoneCaptureMixin:
         forty lines of device handling and the early returns fought the loop.
         """
         mark = getattr(self, "_mark_device_swap_boundary", None)
+        # Looked up, not called directly: hosts built for item 28 predate it.
+        note = getattr(self, "_note_microphone_unavailable", None)
+        if not callable(note):
+            note = lambda _unavailable: None  # noqa: E731
         if not wanted:
             self._close_microphone_stream()
+            note(False)
             if callable(mark):
                 mark()
             log(
@@ -428,6 +459,7 @@ class MicrophoneCaptureMixin:
                 "MICROPHONE_CAPTURE_SWITCH_FAILED",
                 error=f"{type(exc).__name__}: {exc}",
             )
+            note(True)
             return False
         # The operator's voice appearing mid-utterance is the same acoustic
         # discontinuity as a device swap, so the assembler must not glue across
@@ -445,7 +477,9 @@ class MicrophoneCaptureMixin:
                 "it may be muted or silent."
             )
             log("MICROPHONE_CAPTURE_SWITCH_NO_AUDIO")
+            note(True)
             return False
+        note(False)
         log(
             "MICROPHONE_CAPTURE_ENABLED_MID_SESSION",
             note="the operator's own speech is now captured and transcribed",

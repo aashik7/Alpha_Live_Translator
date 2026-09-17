@@ -1837,3 +1837,92 @@ out-of-credit test now expects the key offer, and the 400 test expects the
 error event recoverable.
 
 Suite: 1602 tests, the same **set of eight** failing names.
+
+---
+
+## Item 31 — a running meeting that is not working says what is wrong
+
+The other half of the owner's request: warnings for everything that leaves a
+meeting running while "Alpha is not working". None of these raises a modal —
+a dialog stealing focus from the meeting, over a window that is always on top
+and may be screen-shared, is worse than the problem. Each names itself in the
+status strip, in the display language, and a click on the indicator shows the
+whole sentence.
+
+### Measured before
+
+| Case | Before |
+|---|---|
+| a DeepL error text containing the id `7f403a91-4560-4000` | classified **quota exceeded** — translation off for the session (`"456" in msg`) |
+| DeepL rejecting the key | `worker.degraded` stayed **False**: the indicator stayed green |
+| DeepL quota used up | `● Translation degraded`, no reason |
+| microphone switched on, failing to open | the switch went on saying **"Mic on"** |
+| no DeepL key, Japanese display | pane: `Translation unavailable (missing DEEPL_AUTH_KEY).` |
+| no sound / sound but no words | no signal existed at all |
+
+### Where the thresholds come from
+
+The retained runs keep a 20 ms packet manifest per stream and every
+`COMMIT_APPLIED` with its time. Counting sound generously (any sample above
+|50| — looser than the source gate's speech threshold, so an upper bound):
+
+| Runs | Longest sound with no commit | Longest silence |
+|---|---|---|
+| healthy (2026-08-19 … 08-21, 6 runs, 11–153 commits) | **12.6 s** | 0.1 s |
+| 2026-08-14 (4 runs) | **53–135 s** | 7.7 s |
+
+The 2026-08-14 runs are not false alarms: in `…112901` finals kept arriving
+(36) while commits stopped at 15 — the pipeline had stopped committing, exactly
+what the hint is for. **Thirty seconds** of speech-level sound separates the two
+with margin. Words are counted as the canonical ledger changing, not as finals
+arriving, for that reason. **Sixty seconds** of no signal at all (rms < 1; item
+73 measured an unrouted device as exact digital silence) is far above the 7.7 s
+longest silence inside any retained run.
+
+### The change
+
+* `_note_audio_activity` (mixer thread): any signal, and speech-level seconds by
+  the source gate's own activity decision. `_audio_attention_inputs` (UI tick):
+  seconds without sound, speech seconds since the ledger last moved — the
+  baseline reset only from the UI thread, and following the total during a
+  Deepgram outage so the reconnect keeps that story.
+* `describe_connection` gains `no_sound` / `no_speech` between `degraded` and
+  `reconnecting`, and names a degraded translation's reason (`quota`, `auth`) or
+  a translation that never started (`missing_key`).
+* `DeepLClient`: the SDK's exception types and `http_status_code` first, words
+  after, digits never. `TranslationWorker.degraded_reason`; a rejected key now
+  degrades.
+* The microphone switch reads **"Mic unavailable"** while a session runs and the
+  stream failed to open, delivered nothing, or a rebind failed.
+* The translation pane and every new sentence go through `t()`.
+
+### Verified on real code
+
+* **Real mixer, gate and indicator** (thresholds shortened to 4 s / 3 s for the
+  run; production values pinned by tests), fed stamped 48 kHz audio in real
+  time: `Signal OK` → 4.1 s `No sound` → sound starts, clears → 9.4 s `No speech
+  recognised` → a line reaches the ledger, `Signal OK` → 3 s more sound without
+  words, the hint again. Identical in Japanese (`● 音声なし`, `● 音声を認識できません`).
+* **Real DeepL SDK** against a local server: 456 → `quota_exceeded`, reason
+  `quota`, strip `● DeepL quota used up` / `● DeepL 上限到達`; 403 →
+  `auth_failed`, reason `auth`, `● DeepL key rejected` / `● DeepL キー拒否`; the
+  click shows the full sentence in each language.
+* Seven mutants — speech never counted, words never resetting it, an outage
+  counted against words, the digit substring back, a rejected DeepL key not
+  recorded, a mic failure not shown, the no-sound rule ignored — all caught.
+
+Found while wiring it, each fixed before shipping:
+
+* the indicator called the new input method directly, and every existing
+  indicator test host without it went **blank** (the indicator's own `except`
+  returns without painting). The hints are now an addition that can never stop
+  the older states from painting;
+* the click binding read `self._explain_connection_state` at build time, and
+  `create_status_bar` is also borrowed by item 88c's layout hosts — 37 of their
+  tests errored. It is looked up at click time now, and the grep test for the
+  binding was replaced by a real click on the real label (proven to fail when
+  the binding moves to another button);
+* the item 94 latch audit flagged `_auth_rejected` as a flag with no way back.
+  A successful translation and `reset_session` now clear it, with a test.
+
+Suite: 1647 tests, the same **set of eight** failing names, plus two known timing-sensitive tests that passed alone (item48's documented intermittent; item71's 5 ms/40 ms first-map snapshot, 3/3 in isolation and green in the previous full run of this change).

@@ -281,6 +281,36 @@ _JA: dict[str, str] = {
         "Deepgram API キーがサンプルのままです。実際のキーに置き換えてから、もう一度開始してください。"
     ),
     "Deepgram connection error": "Deepgram 接続エラー",
+    # -- Item 31: a running meeting that is not working (service_status.py) --
+    "● No sound": "● 音声なし",
+    "● No speech recognised": "● 音声を認識できません",
+    "● No translation": "● 翻訳なし",
+    "● DeepL quota used up": "● DeepL 上限到達",
+    "● DeepL key rejected": "● DeepL キー拒否",
+    "Mic unavailable": "マイク使用不可",
+    "Alpha status": "Alpha の状態",
+    "Alpha has not captured any sound for a minute. If people are speaking, make sure the meeting's audio plays through the Windows default speaker or headset, then stop and start the session.": (
+        "1 分間、Alpha は音声を取得していません。発言している場合は、"
+        "会議の音声が Windows の既定のスピーカーまたはヘッドセットから再生されていることを確認し、"
+        "セッションを停止してもう一度開始してください。"
+    ),
+    "Sound is coming in, but nothing has been transcribed for 30 seconds. If people are speaking, check the listening language; if it is right, stop and start the session.": (
+        "音声は届いていますが、30 秒間何も文字起こしされていません。"
+        "発言している場合は「認識する言語」を確認してください。"
+        "正しい場合は、セッションを停止してもう一度開始してください。"
+    ),
+    "DeepL's translation quota for this key is used up, so translation has stopped. The transcript continues. Check the usage at deepl.com, then restart the session.": (
+        "このキーの DeepL 翻訳上限に達したため、翻訳は停止しています。文字起こしは続きます。"
+        "deepl.com で使用量を確認してから、セッションを再開してください。"
+    ),
+    "DeepL rejected the translation key, so translation has stopped. The transcript continues. Check the DeepL key, then restart the session.": (
+        "DeepL が翻訳キーを拒否したため、翻訳は停止しています。文字起こしは続きます。"
+        "DeepL キーを確認してから、セッションを再開してください。"
+    ),
+    "No translation: the DeepL key is missing. The transcript still works; add a DeepL key to translate.": (
+        "翻訳なし: DeepL キーが設定されていません。文字起こしは使用できます。"
+        "翻訳するには DeepL キーを追加してください。"
+    ),
     "Deepgram rejected the connection settings, so listening has been stopped.": (
         "Deepgram が接続設定を拒否したため、認識を停止しました。"
     ),

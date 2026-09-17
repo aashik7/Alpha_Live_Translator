@@ -755,6 +755,16 @@ def suppress_record(
         )
 
 
+def mutation_sequence() -> int:
+    """How many times the ledger has changed this run: appends, revisions, suppressions.
+
+    Read without the lock on purpose -- one int, and a caller comparing two
+    readings only needs to know whether it moved. Item 31's "no speech
+    recognised" hint uses it as the sign that words still reach the transcript.
+    """
+    return int(_mutation_sequence)
+
+
 def get_active_records() -> list[dict[str, Any]]:
     with _lock:
         return [dict(r) for r in _active_records_unlocked()]

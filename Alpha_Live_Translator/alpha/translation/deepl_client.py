@@ -162,16 +162,36 @@ class DeepLClient:
                 "Timeout",
             ) or "connection" in low:
                 raise DeepLError(msg, code="connection_failed", retryable=True) from exc
-            # Map common DeepL SDK / HTTP failures
-            if "429" in msg or "too many requests" in low:
-                raise DeepLError(msg, code="http_429", retryable=True) from exc
-            if "456" in msg or "quota" in low:
+            # Item 31. The SDK's own exception types and its `http_status_code`
+            # first; words after; digits never. These rules were `"456" in msg`,
+            # `"403" in msg`, `"400" in msg` -- the substring test the Deepgram
+            # audit (bug #2) removed from the other client: measured, a message
+            # carrying the id `7f403a91-4560-4000` was classified as a used-up
+            # quota and switched translation off for the rest of the session.
+            # `"auth" in low` went too; it matched any text mentioning auth.
+            status_code = getattr(exc, "http_status_code", None)
+            quota_type = getattr(deepl, "QuotaExceededException", None)
+            auth_type = getattr(deepl, "AuthorizationException", None)
+            busy_type = getattr(deepl, "TooManyRequestsException", None)
+            if (quota_type is not None and isinstance(exc, quota_type)) or status_code == 456:
                 raise DeepLError(msg, code="quota_exceeded", retryable=False) from exc
-            if "403" in msg or "authorization" in low or "auth" in low:
+            if (auth_type is not None and isinstance(exc, auth_type)) or status_code in (401, 403):
                 raise DeepLError(msg, code="auth_failed", retryable=False) from exc
-            if "400" in msg or "unsupported" in low:
+            if (busy_type is not None and isinstance(exc, busy_type)) or status_code == 429:
+                raise DeepLError(msg, code="http_429", retryable=True) from exc
+            if status_code == 400:
                 raise DeepLError(msg, code="invalid_request", retryable=False) from exc
-            if "500" in msg or "503" in msg or "timeout" in low or "temporar" in low:
+            if isinstance(status_code, int) and 500 <= status_code < 600:
+                raise DeepLError(msg, code="temporary_server", retryable=True) from exc
+            if "too many requests" in low:
+                raise DeepLError(msg, code="http_429", retryable=True) from exc
+            if "quota" in low:
+                raise DeepLError(msg, code="quota_exceeded", retryable=False) from exc
+            if "authorization" in low:
+                raise DeepLError(msg, code="auth_failed", retryable=False) from exc
+            if "unsupported" in low:
+                raise DeepLError(msg, code="invalid_request", retryable=False) from exc
+            if "timeout" in low or "temporar" in low:
                 raise DeepLError(msg, code="temporary_server", retryable=True) from exc
             if isinstance(exc, getattr(deepl, "DeepLException", ())):
                 raise DeepLError(msg, code=name, retryable=False) from exc
