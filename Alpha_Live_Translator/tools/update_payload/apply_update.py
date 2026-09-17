@@ -21,7 +21,7 @@ anything is wrong, puts the previous tree back.
 
 WHAT IT NEVER TOUCHES
 ---------------------
-Four things live inside `app\\` but are NOT part of the app, and deleting any of
+Five things live inside `app\\` but are NOT part of the app, and deleting any of
 them is worse than not updating at all:
 
 * ``.env``               the delivery's DEEPGRAM_API_KEY / DEEPL_AUTH_KEY. Written
@@ -29,6 +29,12 @@ them is worse than not updating at all:
                          never present in the source tree. Losing it permanently
                          bricks the install -- no key, no transcription, and no
                          copy anywhere to restore from.
+* ``.needs-api-keys``    the marker that makes a shared build ask for the
+                         operator's own keys (alpha/ui/key_setup.py MARKER_NAME,
+                         written by installer/build_installer.py --no-keys). No
+                         payload contains it, so the removal sweep deleted it, and
+                         a keyless install silently stopped offering the key
+                         dialog -- for a missing key and for a rejected one.
 * ``user_settings.json`` the operator's UI language (alpha/ui/strings.py).
 * ``troubleshooting\\``   every run artifact, transcript and log
                          (alpha/utils/troubleshooting_paths.py anchors it here).
@@ -60,7 +66,9 @@ from pathlib import Path
 from typing import Optional
 
 # Runtime state that lives inside app\ but is not part of the app.
-PRESERVE_FILES = frozenset({".env", "user_settings.json"})
+# `.needs-api-keys` is spelled out rather than imported: this script runs from
+# the update folder without the app on its path. A test pins it to MARKER_NAME.
+PRESERVE_FILES = frozenset({".env", ".needs-api-keys", "user_settings.json"})
 PRESERVE_DIRS = frozenset({"troubleshooting", "logs", "debug"})
 # Never copied in, always removed: stale bytecode beside a replaced module.
 DROP_DIRS = frozenset({"__pycache__"})

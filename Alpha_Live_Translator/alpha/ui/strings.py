@@ -193,6 +193,25 @@ _JA: dict[str, str] = {
     "Close the app and start it again to use the new keys.": (
         "新しいキーを使うには、アプリを終了してもう一度起動してください。"
     ),
+    "Deepgram API key rejected": "Deepgram の API キーが拒否されました",
+    "Deepgram rejected the API key, so listening could not start.": (
+        "Deepgram が API キーを拒否したため、認識を開始できませんでした。"
+    ),
+    "The key may be mistyped, deleted, or from a different account.": (
+        "キーの入力ミス、削除済み、または別のアカウントのキーの可能性があります。"
+    ),
+    "Enter a valid Deepgram key in the next window.": (
+        "次のウィンドウで正しい Deepgram キーを入力してください。"
+    ),
+    "Put a valid Deepgram key on the DEEPGRAM_API_KEY line of this file, "
+    "then close Alpha and start it again:": (
+        "次のファイルの DEEPGRAM_API_KEY の行に正しい Deepgram キーを入れ、"
+        "Alpha を終了してもう一度起動してください:"
+    ),
+    "Deepgram refused the connection": "Deepgram が接続を拒否しました",
+    "Deepgram refused the connection, so listening could not start.": (
+        "Deepgram が接続を拒否したため、認識を開始できませんでした。"
+    ),
     # -- Connection indicator (_CONNECTION_INDICATOR_TEXT in main_window.py) -
     "● Signal OK": "● 信号良好",
     "● Reconnecting": "● 再接続中",

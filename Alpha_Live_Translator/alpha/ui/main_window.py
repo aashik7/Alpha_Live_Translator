@@ -146,6 +146,8 @@ from alpha.core.events import EventType
 from alpha.core.models import ErrorEvent, StatusEvent, TranscriptEvent, TranslationEvent
 from alpha.transcription.deepgram_client import (
     DeepgramClientMixin,
+    DeepgramKeyRejected,
+    DeepgramRefusedStart,
     _audio_format_ndjson_log,
     _diag_ndjson_log,
     _diag_text_preview,
@@ -415,7 +417,7 @@ def _show_window_closing_status(host):
             pass
 
 
-def _offer_key_setup() -> bool:
+def _offer_key_setup(deepl: str = "") -> bool:
     """On a keyless build, let the operator paste their keys and say so.
 
     Returns True when keys were saved, and the caller then skips its error
@@ -432,7 +434,7 @@ def _offer_key_setup() -> bool:
 
         if not should_prompt(PROJECT_ROOT, None, None):
             return False
-        if not ask_for_keys(PROJECT_ROOT / ".env"):
+        if not ask_for_keys(PROJECT_ROOT / ".env", deepl=deepl or ""):
             return False
         messagebox.showinfo(
             t("API keys saved"),
@@ -441,6 +443,53 @@ def _offer_key_setup() -> bool:
         return True
     except Exception:
         return False
+
+
+def _explain_start_failure(error) -> None:
+    """Tell the operator why Deepgram refused a Start. Never raises.
+
+    A refused Start used to print to a console nobody sees and set "Stopped",
+    so from the chair it looked like the button did nothing -- which is
+    exactly how the field report put it.
+
+    Only Deepgram's refusals are explained here, because only they have no
+    other voice. A system-audio failure already shows its own dialog
+    (`_show_wasapi_error`); a second, generic one after it contradicted it.
+
+    On a keyless build a rejected key also reopens the key dialog -- the
+    Start preflight offers it only for a MISSING key, and a well-formed key
+    Deepgram refuses passes the preflight. The reason comes first: the
+    first-run dialog alone, blank, read as if the app had lost the keys.
+    The DeepL key, which works, is carried over so only one is re-entered.
+    """
+    try:
+        if isinstance(error, DeepgramKeyRejected):
+            from alpha.config import DEEPL_AUTH_KEY, PROJECT_ROOT
+            from alpha.ui import key_setup
+
+            keyless = key_setup.should_prompt(PROJECT_ROOT, None, None)
+            # One literal per sentence: `t()` looks text up exactly, and item
+            # 88's test requires every key to exist verbatim in the source.
+            message = t("Deepgram rejected the API key, so listening could not start.")
+            message += "\n" + t("The key may be mistyped, deleted, or from a different account.")
+            message += f"\n\n{error}\n\n"
+            if keyless:
+                message += t("Enter a valid Deepgram key in the next window.")
+            else:
+                message += t("Put a valid Deepgram key on the DEEPGRAM_API_KEY line of this file, then close Alpha and start it again:")
+                message += f"\n{PROJECT_ROOT / '.env'}"
+            messagebox.showerror(t("Deepgram API key rejected"), message)
+            if keyless:
+                _offer_key_setup(deepl=DEEPL_AUTH_KEY or "")
+            return
+        if isinstance(error, DeepgramRefusedStart):
+            messagebox.showerror(
+                t("Deepgram refused the connection"),
+                t("Deepgram refused the connection, so listening could not start.")
+                + f"\n\n{error}",
+            )
+    except Exception:
+        pass
 
 
 def _stop_worker_still_finalizing():
@@ -672,6 +721,9 @@ class AlphaApp(
         # reconnect loop the operator cannot interpret. Set in
         # `_deepgram_on_error`, cleared whenever the socket opens.
         self._dg_auth_failed = False
+        # What Deepgram answered a refused Start with; read by
+        # `_wait_for_deepgram_sender`, reset at every Start.
+        self._dg_start_refusal = None
         # Item 73 sets this from the WASAPI device watcher's own thread; item
         # 47's indicator renders it. Windows moving the default output leaves
         # every connection signal healthy while the capture device records
@@ -10578,6 +10630,7 @@ class AlphaApp(
         # with no record to attach to.
         self._dg_disconnected_at = 0.0
         self._dg_auth_failed = False
+        self._dg_start_refusal = None
         # Audit bug #2. A keyterm rejection turns keyterms off so the reconnect
         # can succeed -- for that meeting. Nothing ever turned them back on, so
         # one rejection silently cost every later meeting its business-term
@@ -10665,6 +10718,31 @@ class AlphaApp(
             lpp.mark("start_background_task_started_at")
         except Exception:
             pass
+
+    def _wait_for_deepgram_sender(self, timeout_s=30.0):
+        """Block the Start worker until audio can flow to Deepgram.
+
+        Returns once the sender loop is alive. Raises when a Stop arrives, when
+        Deepgram refused the handshake (`_dg_start_refusal`), or at the timeout.
+
+        The refusal check is the new part. The loop used to watch only
+        `_stop_event`, so a key Deepgram refused in about one second was still
+        sat out for the full thirty -- the whole of every failed Start in the
+        26.5.25 field bundle.
+        """
+        deadline = time.perf_counter() + float(timeout_s)
+        while time.perf_counter() < deadline:
+            if bool(getattr(self, "_latency_sender_loop_alive", False)):
+                return
+            if self._stop_event.is_set():
+                raise RuntimeError("Deepgram connection aborted before sender ready")
+            refusal = getattr(self, "_dg_start_refusal", None)
+            if refusal is not None:
+                # Raised as recorded, so the status and Deepgram's own reason
+                # reach the dialog and the startup failure summary intact.
+                raise refusal
+            time.sleep(0.05)
+        raise RuntimeError(f"Deepgram sender not ready within {timeout_s:.0f}s")
 
     def _start_listening_worker(self, dropdown_lang: str, deepgram_lang: str):
         """Heavy audio device scan, WASAPI/mic open, and Deepgram worker startup."""
@@ -10760,15 +10838,7 @@ class AlphaApp(
         )
         self._dg_thread.start()
         print("Deepgram worker thread started")
-        sender_deadline = time.perf_counter() + 30.0
-        while time.perf_counter() < sender_deadline:
-            if bool(getattr(self, "_latency_sender_loop_alive", False)):
-                break
-            if self._stop_event.is_set():
-                raise RuntimeError("Deepgram connection aborted before sender ready")
-            time.sleep(0.05)
-        else:
-            raise RuntimeError("Deepgram sender not ready within 30s")
+        self._wait_for_deepgram_sender()
         try:
             from alpha.utils.japanese_accuracy_log import jp_accuracy_log
 
@@ -10890,6 +10960,12 @@ class AlphaApp(
                     "Stopped",
                     text_color=COLORS["text_secondary"],
                 )
+            # After the teardown, so the dialog never sits in front of a
+            # half-stopped session, and through `after` so it runs OUTSIDE the
+            # UI event bus drain that delivered this callback: a modal opened
+            # inside the drain holds every other worker-to-UI callback until
+            # it closes.
+            self.after(0, lambda: _explain_start_failure(error))
             return
 
         self.is_listening = True

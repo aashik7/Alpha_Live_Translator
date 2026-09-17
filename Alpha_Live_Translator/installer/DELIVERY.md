@@ -170,9 +170,20 @@ deepl.com/pro-api.
 
 Notes:
 
-- **To change a key later**, press Start with the bad key in place: the
-  credential check stops there and offers the dialog again. Deleting
-  `app\.env` and restarting also brings it back.
+- **To change a key later**, delete `app\.env` and restart: the dialog comes
+  back (both keys are asked for again). From 26.5.27 a key Deepgram *rejects*
+  also reopens it, with the DeepL key already filled in, right after the
+  "Deepgram API key rejected" message.
+
+  ~~Press Start with the bad key in place: the credential check stops there
+  and offers the dialog again.~~ **Retracted 2026-09-17 — wrong for the
+  case it was written for.** The Start preflight offers the dialog only for a
+  key that is *missing* or a placeholder. A well-formed key that Deepgram
+  refuses passes the preflight, and up to 26.5.26 the refusal was then taken
+  for a Stop: a 30 s wait, a silent "Stopped", no dialog. A field bundle from a
+  shared 26.5.25 build showed exactly that, six times. And where the preflight
+  *did* open the dialog, it never returned once the main window existed, so
+  "API keys saved" never appeared. See `CODE_REVIEW_20260904.md` item 29.
 - **The keys are not encrypted**, exactly as with a keyed build: they sit in
   `app\.env` as text, readable by anyone on that machine.
 - **A keyed build is unaffected.** Without `--no-keys` nothing changes, and a

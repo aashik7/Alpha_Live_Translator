@@ -231,6 +231,78 @@ def _is_deepgram_status_400(err: Any, err_text: str) -> bool:
     return _deepgram_handshake_status(err, err_text) == 400
 
 
+def _is_deepgram_auth_rejection(err: Any, err_text: str) -> bool:
+    """True when Deepgram refused the key itself (item 47).
+
+    Moved out of `_deepgram_on_error` unchanged, so it can run before that
+    handler's stop-request early return -- see the comment there.
+    """
+    low = (err_text or "").lower()
+    return bool(
+        _deepgram_handshake_status(err, err_text) in (401, 403)
+        or "unauthorized" in low
+        or "forbidden" in low
+        or "invalid credentials" in low
+        or "invalid_auth" in low
+    )
+
+
+class DeepgramRefusedStart(RuntimeError):
+    """Deepgram answered Start's handshake with an HTTP error.
+
+    A `RuntimeError`, so anything that caught the generic start failure keeps
+    catching it. Carries the status and Deepgram's own reason, which is what
+    the operator is shown: out of credits and rate limited are as common on a
+    shared build as a mistyped key, and "check your key" is wrong for both.
+    """
+
+    def __init__(self, status, detail=""):
+        self.status = int(status)
+        self.detail = str(detail or "")
+        message = f"Deepgram refused the connection: HTTP {self.status}"
+        if self.detail:
+            message += f" {self.detail}"
+        super().__init__(message)
+
+
+class DeepgramKeyRejected(DeepgramRefusedStart):
+    """The refusal is Deepgram rejecting the API key itself."""
+
+
+_HANDSHAKE_REASON = re.compile(r"\bHandshake status \d{3} ([^\r\n]*?) -\+-\+-")
+_DEEPGRAM_ERR_MSG = re.compile(r'"err_msg"\s*:\s*"([^"]*)"')
+
+
+def deepgram_start_refusal(err: Any, err_text: str):
+    """The exception a Start should fail with for this socket error, or None.
+
+    None for anything that is not a handshake status -- a reset, a timeout, a
+    DNS failure -- which the Start wait keeps treating exactly as before.
+
+    A 401/403 is blamed on the key only when the answer came from Deepgram
+    (its request id, error header or error body is present). A proxy or
+    firewall that blocks the socket answers 403 too, never having seen the
+    key, and telling that operator to re-enter a working key sends them the
+    wrong way.
+    """
+    status = _deepgram_handshake_status(err, err_text)
+    if status is None:
+        return None
+    text = err_text or ""
+    parts = []
+    reason = _HANDSHAKE_REASON.search(text)
+    if reason and reason.group(1).strip():
+        parts.append(reason.group(1).strip())
+    body = _DEEPGRAM_ERR_MSG.search(text)
+    if body and body.group(1).strip():
+        parts.append(body.group(1).strip())
+    detail = " - ".join(parts)
+    from_deepgram = any(mark in text for mark in ("dg-request-id", "dg-error", "err_code"))
+    if status in (401, 403) and from_deepgram:
+        return DeepgramKeyRejected(status, detail)
+    return DeepgramRefusedStart(status, detail)
+
+
 def _resolve_active_japanese_keyterms() -> dict[str, Any]:
     """Load keyterms for active profile and log business profile activation."""
     import os
@@ -2687,6 +2759,38 @@ class DeepgramClientMixin:
 
     def _deepgram_on_error(self, _ws, err):
             """Handle WebSocket errors; reconnect on transient failures."""
+            err_text = str(err)
+            # Item 47 runtime half, checked FIRST. `stop_requested` below counts
+            # `not is_listening` as a stop, and `is_listening` is False for the
+            # whole of Start -- so a key rejected at Start took that branch and
+            # returned before this ran. Field bundle, 26.5.25: six Start presses,
+            # six `Handshake status 401` answered within a second, six
+            # `DEEPGRAM_CLOSE_NORMAL reason=stop_requested`, zero
+            # `DEEPGRAM_AUTH_REJECTED`, and each Start then sat out 30 s and
+            # ended in a silent "Stopped". Still purely a flag: no control flow
+            # in this handler changes.
+            if _is_deepgram_auth_rejection(err, err_text):
+                self._dg_auth_failed = True
+                try:
+                    from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+                    jp_accuracy_log(
+                        "DEEPGRAM_AUTH_REJECTED",
+                        error=err_text[:200],
+                        during_start=bool(getattr(self, "_starting_listening", False)),
+                    )
+                except Exception:
+                    pass
+            # The same early return swallowed EVERY refusal at Start, not only
+            # a rejected key -- out of credits, rate limited -- and the Start
+            # worker then waited out its full timeout. Record it for that wait;
+            # a live session is left to the reconnect loop exactly as before.
+            if getattr(self, "_starting_listening", False) and not getattr(
+                self, "is_listening", False
+            ):
+                refusal = deepgram_start_refusal(err, err_text)
+                if refusal is not None:
+                    self._dg_start_refusal = refusal
             stop_requested = bool(
                 self._stop_event.is_set()
                 or getattr(self, "_is_stopping", False)
@@ -2706,30 +2810,10 @@ class DeepgramClientMixin:
                     pass
                 return
             print(f"Deepgram WebSocket error: {err}")
-            err_text = str(err)
-            # Item 47 runtime half. Purely a FLAG -- no control flow here
-            # changes, so the existing reconnect behaviour is untouched and
-            # only the status indicator reads it. Without this, a revoked or
-            # expired key looked exactly like a flaky network: the socket
-            # closed, the loop backed off and retried forever, and the
-            # operator saw "Signal OK" the whole time.
-            _low_err = err_text.lower()
-            if (
-                _deepgram_handshake_status(err, err_text) in (401, 403)
-                or "unauthorized" in _low_err
-                or "forbidden" in _low_err
-                or "invalid credentials" in _low_err
-                or "invalid_auth" in _low_err
-            ):
-                self._dg_auth_failed = True
-                try:
-                    from alpha.utils.japanese_accuracy_log import jp_accuracy_log
-
-                    jp_accuracy_log(
-                        "DEEPGRAM_AUTH_REJECTED", error=err_text[:200]
-                    )
-                except Exception:
-                    pass
+            # (The auth check that used to sit here now runs at the top of this
+            # handler. Without it, a revoked or expired key looked exactly like
+            # a flaky network: the socket closed, the loop backed off and
+            # retried forever, and the operator saw "Signal OK" the whole time.)
             # Deepgram refused the query itself. Audit bug #2: this was
             # `"400" in err_text`, which also matched a request id or any
             # number containing 400. Decides the keyterm fallback, whether the

@@ -1665,3 +1665,95 @@ submitted for translation as English. The canonical ledger carries no language
 field at all (`grep` returns zero hits), so there is nothing to tell the two
 halves apart. Fixing that needs a ledger stamp first; it is a separate change
 set.
+
+---
+
+## Item 29 — "Start does nothing": a refused key was taken for a Stop
+
+**Reported from the field**, with a log bundle from a shared build (26.5.25,
+installed per-user). Six Start presses in half an hour, all the same:
+
+```
+09:37:37.051  start_listening_clicked
+09:37:38.141  websocket: Handshake status 401 Unauthorized
+              {"err_code":"INVALID_AUTH","err_msg":"Invalid credentials."}
+09:38:07.642  Error starting listening: Deepgram sender not ready within 30s
+              -> status "Stopped", no dialog
+```
+
+The request reached Deepgram (`dg-request-id` present) and Deepgram refused the
+key. The key was the operator's own — its mask matches neither the delivery
+`.env` nor `installer/keys.local.ini` — so nothing on the owner's side was
+revoked. What made it look like a broken button was the app.
+
+### Three defects, each measured
+
+| # | Defect | Evidence |
+|---|---|---|
+| 1 | `_deepgram_on_error` counts `not is_listening` as a stop request, and `is_listening` is False for the whole of Start — so the 401 returned before item 47's auth check | operator's bundle: 6× `DEEPGRAM_CLOSE_NORMAL reason=stop_requested` carrying the 401 text, **0×** `DEEPGRAM_AUTH_REJECTED`. Real handler, Start state: `_dg_auth_failed = False`; listening state: `True` |
+| 2 | The Start worker's sender wait watched only `_stop_event` | a refusal known at ~1 s sat out the full 30 s |
+| 3 | `_finish_start_listening` printed and returned | no dialog; the keyless build's key dialog is offered by the preflight only for a MISSING key |
+
+### The fix
+
+* `deepgram_start_refusal(err, err_text)` turns a handshake status into
+  `DeepgramRefusedStart(status, detail)` — or `DeepgramKeyRejected` for a 401/403
+  that carries a Deepgram marker. `_deepgram_on_error` records it as
+  `_dg_start_refusal` **before** the stop-request early return, only while
+  starting; a live session is left to the reconnect loop exactly as before.
+* `AlphaApp._wait_for_deepgram_sender` raises the recorded refusal at once.
+* `_explain_start_failure` says what Deepgram said, and where to fix it — the
+  `.env` path on a keyed build; on a keyless build the reason first, then the key
+  dialog with the working DeepL key carried over.
+
+**Against the real endpoint** (an all-zero key; no real key used): the same 401
+as the field, `DeepgramKeyRejected` after **1.36 s** instead of ~30, one dialog
+reading *HTTP 401 Unauthorized - Invalid credentials.* with the `.env` path.
+
+### What the review of the first version found
+
+A three-lens adversarial review ran against the first draft. Everything below
+was reproduced here before being fixed, and each now has a test.
+
+| Finding | Severity | Reproduced | Now |
+|---|---|---|---|
+| The key dialog runs `mainloop()` on a second `tk.Tk()` and closed with `destroy()` alone, so the loop never returned while the main window existed. Opened from inside the UI event bus drain it stopped the bus for good: the next Start hung on "Starting…" | **high** | real `ask_for_keys` under a running root: Escape, Quit, close box and Save all hit a 3 s watchdog | `close()` = `quit()` then `destroy()`, close box wired; the dialog is also scheduled with `after(0)`, outside the drain. Replayed on the real app, bus and dialog: returned in 10 ms, the next worker callback delivered |
+| **Older than this item:** the same never-returning loop was already reached from the Start preflight since the keyless build shipped — `"API keys saved"` never appeared there | high | same test | fixed by the same change |
+| A generic "check the internet connection" dialog followed WASAPI's own dialog on an audio failure — two dialogs, the second wrong | medium | reviewer's harness | generic dialog removed; only Deepgram refusals, which have no other voice, are explained |
+| Every other refusal at Start (402 out of credits, 429, 400) still went through the stop branch and waited 30 s | medium | reviewer's harness, and a local 400 server | all handshake refusals recorded; reason and status shown |
+| A proxy's 403 was blamed on the key | low | synthetic Zscaler text | 401/403 is a key problem only with a Deepgram marker |
+| The exception always said "401", whatever the status | low | — | carries the real status and Deepgram's message |
+| On a keyless build the dialog reopened blank, with no reason | low | — | reason first; DeepL carried over |
+| Three new tests passed on mutants that broke the fix (a dialog on every Start; the dialog before teardown; the wait replaced by a comment) | low | mutants run | AST- and order-based tests; all three mutants now caught |
+
+### Found while packaging: the updater made a keyless install keyed
+
+Driving the 26.5.27 package against a synthetic keyless install printed
+`remove  .needs-api-keys`. The marker is written by `build_installer.py
+--no-keys` and exists in no payload, so `apply_update.py`'s "no longer part of
+the app" sweep deleted it. After any update a shared-build install would stop
+offering the key dialog — for a missing key and for a rejected one — with no
+way back but editing a hidden file. **Every update package up to and including
+26.5.26 has this defect; do not apply those to a keyless install.**
+
+`.needs-api-keys` is now in `PRESERVE_FILES` beside `.env`, spelled out (the
+updater runs without the app on its path) and pinned to `key_setup.MARKER_NAME`
+by a test. Both new tests failed first. Re-driven against a keyless 26.5.25
+install — the field operator's version — the package kept `.env`,
+`.needs-api-keys` and `logs\`, and brought in both 26.5.26's microphone fix and
+this item.
+
+### Not fixed here
+
+* A **400 keyterm rejection at Start** still does not take the keyterm fallback —
+  the fallback lives past the same early return, and has since before this item.
+  It now fails in about a second with Deepgram's reason instead of 30 s silence,
+  but a retry without keyterms would be the right behaviour.
+* A `DEEPGRAM_API_KEY` **Windows environment variable** overrides `.env`
+  (`load_dotenv` does not override), so editing `.env` cannot fix a key set with
+  `setx`. Pre-existing; not reproduced through the app itself.
+* The runtime debug log still labels a refused Start `DEEPGRAM_CLOSE_NORMAL
+  reason=stop_requested`. That label is what hid this bug in the bundle; it is
+  left as it is only to keep this change to the behaviour the operator sees.
+
+Suite: 1565 tests, the same **set of eight** failing names.

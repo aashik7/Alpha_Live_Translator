@@ -124,6 +124,20 @@ def ask_for_keys(env_path: Path, *, deepgram: str = "", deepl: str = "") -> bool
             entries[label] = entry
         entries[DEEPGRAM_LABEL].focus_set()
 
+        def close():
+            # `quit` first. `mainloop()` below keeps running for as long as ANY
+            # Tk main window exists, and `destroy` removes only this one. At
+            # first start that is the only window, so `destroy` alone looked
+            # fine; opened from the running app -- the Start preflight, or a key
+            # Deepgram rejected -- the main window keeps the loop alive, this
+            # function never returned, and "API keys saved" never appeared.
+            # Opened from inside the UI event bus drain it stopped the bus for
+            # the rest of the process.
+            try:
+                root.quit()
+            finally:
+                root.destroy()
+
         tk.Label(frame, text=HINT, fg="#555555").grid(
             row=5, column=0, columnspan=2, sticky="w", pady=(12, 0)
         )
@@ -141,14 +155,17 @@ def ask_for_keys(env_path: Path, *, deepgram: str = "", deepl: str = "") -> bool
                 messagebox.showerror(TITLE, f"Could not save the keys:\n{exc}", parent=root)
                 return
             saved["ok"] = True
-            root.destroy()
+            close()
 
         buttons = tk.Frame(frame)
         buttons.grid(row=6, column=0, columnspan=2, sticky="e", pady=(16, 0))
-        tk.Button(buttons, text="Quit", width=10, command=root.destroy).pack(side="right", padx=(8, 0))
+        tk.Button(buttons, text="Quit", width=10, command=close).pack(side="right", padx=(8, 0))
         tk.Button(buttons, text="Save and start", width=16, command=save, default="active").pack(side="right")
         root.bind("<Return>", save)
-        root.bind("<Escape>", lambda _e: root.destroy())
+        root.bind("<Escape>", lambda _e: close())
+        # The title-bar close box. Tk's default handler is a bare destroy, which
+        # has the same never-returning loop as the buttons had.
+        root.protocol("WM_DELETE_WINDOW", close)
 
         root.update_idletasks()
         width, height = root.winfo_width(), root.winfo_height()

@@ -151,6 +151,37 @@ class RuntimeStateSurvivesTest(UpdaterHarness):
         self.assertIn("secret-dg", self.read(".env"))
         self.assertIn("secret-dl", self.read(".env"))
 
+    def test_a_keyless_build_stays_keyless(self):
+        """`.needs-api-keys` is what makes a shared build ask for keys.
+
+        `installer/build_installer.py --no-keys` writes it beside the app, and
+        no payload ever contains it, so the "no longer part of the app" sweep
+        deleted it. A keyless install then silently stopped offering the key
+        dialog -- for a missing key, and for a key Deepgram rejects -- leaving
+        its operator with no way to fix a bad key but editing a hidden file.
+        Measured on the 26.5.27 package against a synthetic keyless install:
+        "remove  .needs-api-keys".
+        """
+        write(self.app / ".needs-api-keys", "")
+        self.run_updater()
+        self.assertTrue(
+            (self.app / ".needs-api-keys").is_file(),
+            "the update turned a keyless install into a keyed one with no keys",
+        )
+
+    def test_the_marker_name_matches_the_app(self):
+        """The updater runs without importing the app, so it spells the name out."""
+        import importlib.util
+
+        if str(PROJECT_ROOT) not in sys.path:
+            sys.path.insert(0, str(PROJECT_ROOT))
+        from alpha.ui.key_setup import MARKER_NAME
+
+        spec = importlib.util.spec_from_file_location("apply_update", UPDATER)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        self.assertIn(MARKER_NAME, module.PRESERVE_FILES)
+
     def test_the_operator_settings_survive(self):
         self.run_updater()
         self.assertEqual('{"ui_language": "ja"}\n', self.read("user_settings.json"))
