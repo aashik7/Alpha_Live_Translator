@@ -211,7 +211,10 @@ class FourHundredMeansStatus400Test(_Case):
 
         self.host._deepgram_on_error(None, QUERY_REJECTED)
         self.assertEqual(len(self.stop_notices()), 1, "a second genuine 400 no longer stops")
-        self.assertEqual(self.host.published[-1], ("deepgram", False))
+        # Item 30: the stop notice owns the dialog. This event used to be
+        # published unrecoverable too, which `_on_error_occurred` turns into a
+        # second modal for the same error.
+        self.assertEqual(self.host.published[-1], ("deepgram", True))
 
     def test_a_400_without_a_status_object_is_still_recognised(self):
         """Guard: an error that reached us as text only, in websocket-client's shape."""

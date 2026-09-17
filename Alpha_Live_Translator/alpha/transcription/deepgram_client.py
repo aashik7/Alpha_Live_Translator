@@ -206,6 +206,17 @@ def _split_keyterms_for_deepgram(keyterms: list[str]) -> tuple[list[str], list[s
 _HANDSHAKE_STATUS = re.compile(r"\bHandshake status (\d{3})\b")
 
 
+from alpha.utils.service_status import (  # noqa: E402  (pure module, no cycle)
+    REFUSAL_CREDIT_EXHAUSTED,
+    REFUSAL_KEY_INVALID,
+    REFUSAL_KEY_NO_PERMISSION,
+    REFUSAL_NO_MODEL_ACCESS,
+    REFUSAL_OTHER,
+    REFUSAL_RATE_LIMITED,
+    REFUSAL_SERVICE_UNAVAILABLE,
+)
+
+
 def _deepgram_handshake_status(err: Any, err_text: str) -> Optional[int]:
     """The HTTP status Deepgram answered the handshake with, or None.
 
@@ -251,14 +262,17 @@ class DeepgramRefusedStart(RuntimeError):
     """Deepgram answered Start's handshake with an HTTP error.
 
     A `RuntimeError`, so anything that caught the generic start failure keeps
-    catching it. Carries the status and Deepgram's own reason, which is what
-    the operator is shown: out of credits and rate limited are as common on a
-    shared build as a mistyped key, and "check your key" is wrong for both.
+    catching it. `reason` is one of `service_status.REFUSAL_*` and picks the
+    words the operator is shown; `status` and `err_code` are shown as they are,
+    because identifiers read the same in both languages; `detail` keeps
+    Deepgram's own sentence for the log.
     """
 
-    def __init__(self, status, detail=""):
+    def __init__(self, status, detail="", *, reason=REFUSAL_OTHER, err_code=""):
         self.status = int(status)
         self.detail = str(detail or "")
+        self.reason = reason
+        self.err_code = str(err_code or "")
         message = f"Deepgram refused the connection: HTTP {self.status}"
         if self.detail:
             message += f" {self.detail}"
@@ -269,38 +283,86 @@ class DeepgramKeyRejected(DeepgramRefusedStart):
     """The refusal is Deepgram rejecting the API key itself."""
 
 
+class DeepgramUnreachable(RuntimeError):
+    """Start never got an answer from Deepgram: no handshake status came back.
+
+    `detail` is the socket's own error when there was one -- a DNS failure, a
+    refused or reset connection, a certificate a company proxy substituted --
+    and "" when the connection simply never answered.
+    """
+
+    def __init__(self, detail="", *, message=None):
+        self.detail = str(detail or "")
+        if message is None:
+            message = "Could not reach Deepgram"
+            if self.detail:
+                message += f": {self.detail}"
+        super().__init__(message)
+
+
 _HANDSHAKE_REASON = re.compile(r"\bHandshake status \d{3} ([^\r\n]*?) -\+-\+-")
 _DEEPGRAM_ERR_MSG = re.compile(r'"err_msg"\s*:\s*"([^"]*)"')
+_DEEPGRAM_ERR_CODE = re.compile(r'"err_code"\s*:\s*"([^"]*)"')
 
 
 def deepgram_start_refusal(err: Any, err_text: str):
     """The exception a Start should fail with for this socket error, or None.
 
     None for anything that is not a handshake status -- a reset, a timeout, a
-    DNS failure -- which the Start wait keeps treating exactly as before.
+    DNS failure -- which the Start wait reports as `DeepgramUnreachable`.
 
-    A 401/403 is blamed on the key only when the answer came from Deepgram
-    (its request id, error header or error body is present). A proxy or
-    firewall that blocks the socket answers 403 too, never having seen the
-    key, and telling that operator to re-enter a working key sends them the
-    wrong way.
+    The reason follows Deepgram's documented answers
+    (developers.deepgram.com/docs/errors), recorded in `service_status`:
+    401 is the key (INSUFFICIENT_PERMISSIONS: the key may not transcribe;
+    anything else, INVALID_AUTH included: wrong, deleted or expired), 402 the
+    credit, 403 "Project does not have access to the requested model", 429
+    busy, 5xx down.
+
+    A 401/403 is blamed on the key only when the answer came from Deepgram (its
+    request id, error header or error body is present). A proxy or firewall
+    that blocks the socket answers 403 too, never having seen the key, and
+    telling that operator to re-enter a working key sends them the wrong way.
     """
     status = _deepgram_handshake_status(err, err_text)
     if status is None:
         return None
     text = err_text or ""
     parts = []
-    reason = _HANDSHAKE_REASON.search(text)
-    if reason and reason.group(1).strip():
-        parts.append(reason.group(1).strip())
+    status_reason = _HANDSHAKE_REASON.search(text)
+    if status_reason and status_reason.group(1).strip():
+        parts.append(status_reason.group(1).strip())
     body = _DEEPGRAM_ERR_MSG.search(text)
     if body and body.group(1).strip():
         parts.append(body.group(1).strip())
     detail = " - ".join(parts)
+    code_match = _DEEPGRAM_ERR_CODE.search(text)
+    err_code = code_match.group(1).strip() if code_match else ""
     from_deepgram = any(mark in text for mark in ("dg-request-id", "dg-error", "err_code"))
-    if status in (401, 403) and from_deepgram:
-        return DeepgramKeyRejected(status, detail)
-    return DeepgramRefusedStart(status, detail)
+
+    if status == 401 and from_deepgram:
+        reason = (
+            REFUSAL_KEY_NO_PERMISSION
+            if err_code == "INSUFFICIENT_PERMISSIONS"
+            else REFUSAL_KEY_INVALID
+        )
+        return DeepgramKeyRejected(status, detail, reason=reason, err_code=err_code)
+    if status == 403 and from_deepgram:
+        if "model" in detail.lower():
+            return DeepgramRefusedStart(
+                status, detail, reason=REFUSAL_NO_MODEL_ACCESS, err_code=err_code
+            )
+        return DeepgramKeyRejected(
+            status, detail, reason=REFUSAL_KEY_NO_PERMISSION, err_code=err_code
+        )
+    if status == 402 or err_code == "ASR_PAYMENT_REQUIRED":
+        reason = REFUSAL_CREDIT_EXHAUSTED
+    elif status == 429:
+        reason = REFUSAL_RATE_LIMITED
+    elif 500 <= status < 600:
+        reason = REFUSAL_SERVICE_UNAVAILABLE
+    else:
+        reason = REFUSAL_OTHER
+    return DeepgramRefusedStart(status, detail, reason=reason, err_code=err_code)
 
 
 def _resolve_active_japanese_keyterms() -> dict[str, Any]:
@@ -2299,6 +2361,8 @@ class DeepgramClientMixin:
             print("Nova-3 connected — streaming audio to Deepgram")
             # The key was accepted, so any earlier rejection is stale.
             self._dg_auth_failed = False
+            # And the account has credit again (item 30).
+            self._dg_credit_exhausted = False
             # Item 44, second correction. The gap marker used to be emitted in
             # `_reconnect_deepgram` just before `run_forever`, i.e. before the
             # socket was known to connect -- so on run `...20260812-142447` it
@@ -2781,6 +2845,20 @@ class DeepgramClientMixin:
                     )
                 except Exception:
                     pass
+            # Item 30. The free trial running out mid-meeting arrives here as a
+            # 402 on the next reconnect -- an open socket survives its credit and
+            # its key -- and nothing recognised it, so the indicator said
+            # "Reconnecting" for the rest of the meeting. A flag only, like the
+            # auth one above: the reconnect loop keeps trying, so a top-up still
+            # recovers the meeting.
+            if _deepgram_handshake_status(err, err_text) == 402:
+                self._dg_credit_exhausted = True
+                try:
+                    from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+                    jp_accuracy_log("DEEPGRAM_CREDIT_EXHAUSTED", error=err_text[:200])
+                except Exception:
+                    pass
             # The same early return swallowed EVERY refusal at Start, not only
             # a rejected key -- out of credits, rate limited -- and the Start
             # worker then waited out its full timeout. Record it for that wait;
@@ -2791,6 +2869,11 @@ class DeepgramClientMixin:
                 refusal = deepgram_start_refusal(err, err_text)
                 if refusal is not None:
                     self._dg_start_refusal = refusal
+                else:
+                    # No handshake answer at all: DNS, a refused or reset
+                    # connection, a substituted certificate. Kept so the Start
+                    # can say what actually happened instead of "timed out".
+                    self._dg_start_socket_error = err_text[:300]
             stop_requested = bool(
                 self._stop_event.is_set()
                 or getattr(self, "_is_stopping", False)
@@ -2876,10 +2959,15 @@ class DeepgramClientMixin:
             )
             # endregion
             if hasattr(self, "publish_error_event"):
+                # Always recoverable as far as the error event is concerned.
+                # A rejected query used to publish `recoverable=False`, which
+                # `_on_error_occurred` turns into a modal, AND post the stop
+                # notice below, which raises its own -- two dialogs for one
+                # error. The notice owns the dialog; this event is the log.
                 self.publish_error_event(
                     err_text,
                     source="deepgram",
-                    recoverable=not query_rejected,
+                    recoverable=True,
                 )
             if query_rejected:
                 try:
@@ -2888,12 +2976,12 @@ class DeepgramClientMixin:
                     get_ui_event_bus().post(
                         "partial_error_notice",
                         {
-                            "title": "Deepgram Connection Error",
-                            "message": (
-                                "Could not connect to Deepgram.\n\n"
-                                f"{err_text}\n\n"
-                                "Listening has been stopped."
-                            ),
+                            # English keys, translated where they are shown
+                            # (`main_window._show_partial_error`); the socket's
+                            # own text travels separately so it is not.
+                            "title": "Deepgram connection error",
+                            "message": "Deepgram rejected the connection settings, so listening has been stopped.",
+                            "detail": err_text,
                             "action": "stop_listening",
                         },
                     )

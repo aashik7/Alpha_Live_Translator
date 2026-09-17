@@ -197,8 +197,8 @@ _JA: dict[str, str] = {
     "Deepgram rejected the API key, so listening could not start.": (
         "Deepgram が API キーを拒否したため、認識を開始できませんでした。"
     ),
-    "The key may be mistyped, deleted, or from a different account.": (
-        "キーの入力ミス、削除済み、または別のアカウントのキーの可能性があります。"
+    "The key may be mistyped, expired, deleted, or from a different account.": (
+        "キーの入力ミス、期限切れ、削除済み、または別のアカウントのキーの可能性があります。"
     ),
     "Enter a valid Deepgram key in the next window.": (
         "次のウィンドウで正しい Deepgram キーを入力してください。"
@@ -209,6 +209,81 @@ _JA: dict[str, str] = {
         "Alpha を終了してもう一度起動してください:"
     ),
     "Deepgram refused the connection": "Deepgram が接続を拒否しました",
+    # -- Item 30: every way Deepgram can stop a meeting (service_status.py) --
+    "The Deepgram API key does not have permission to transcribe, so listening could not start.": (
+        "この Deepgram API キーには文字起こしの権限がないため、認識を開始できませんでした。"
+    ),
+    "Create a new key at console.deepgram.com and use that instead.": (
+        "console.deepgram.com で新しいキーを作成し、そのキーを使用してください。"
+    ),
+    "Deepgram credit used up": "Deepgram のクレジットを使い切りました",
+    "Deepgram has no credit left for this account, so listening could not start.": (
+        "Deepgram アカウントのクレジットが残っていないため、認識を開始できませんでした。"
+    ),
+    "The free trial credit may have run out. Add credit or a payment method at console.deepgram.com, or use a key from an account that has credit.": (
+        "無料トライアルのクレジットが終了した可能性があります。"
+        "console.deepgram.com でクレジットまたは支払い方法を追加するか、"
+        "クレジットが残っているアカウントのキーを使用してください。"
+    ),
+    "Deepgram model not available": "Deepgram のモデルを利用できません",
+    "This Deepgram project does not have access to the model Alpha uses (Nova-3), so listening could not start.": (
+        "この Deepgram プロジェクトは Alpha が使用するモデル (Nova-3) を利用できないため、"
+        "認識を開始できませんでした。"
+    ),
+    "Check the project's plan at console.deepgram.com, or use a key from another project.": (
+        "console.deepgram.com でプロジェクトのプランを確認するか、別のプロジェクトのキーを使用してください。"
+    ),
+    "Deepgram is busy": "Deepgram が混雑しています",
+    "Deepgram is receiving too many requests for this key right now, so listening could not start.": (
+        "このキーへのリクエストが現在多すぎるため、認識を開始できませんでした。"
+    ),
+    "Wait a minute, then press Start again. Close any other app that uses the same key.": (
+        "1 分ほど待ってから、もう一度開始してください。同じキーを使っている他のアプリは閉じてください。"
+    ),
+    "Deepgram is unavailable": "Deepgram を利用できません",
+    "Deepgram's service is having a problem right now, so listening could not start.": (
+        "Deepgram のサービスで問題が発生しているため、認識を開始できませんでした。"
+    ),
+    "Try again in a few minutes.": "数分後にもう一度お試しください。",
+    "Cannot reach Deepgram": "Deepgram に接続できません",
+    "Alpha could not connect to Deepgram, so listening could not start.": (
+        "Alpha が Deepgram に接続できなかったため、認識を開始できませんでした。"
+    ),
+    "Check the internet connection. On a company network, a firewall or proxy may be blocking api.deepgram.com.": (
+        "インターネット接続を確認してください。"
+        "社内ネットワークでは、ファイアウォールまたはプロキシが api.deepgram.com をブロックしている可能性があります。"
+    ),
+    "No response from Deepgram within 30 seconds.": "30 秒以内に Deepgram から応答がありませんでした。",
+    "To use a different Deepgram key, enter it in the next window.": (
+        "別の Deepgram キーを使う場合は、次のウィンドウで入力してください。"
+    ),
+    "To use a different Deepgram key, put it on the DEEPGRAM_API_KEY line of this file, then close Alpha and start it again:": (
+        "別の Deepgram キーを使う場合は、次のファイルの DEEPGRAM_API_KEY の行に入れ、"
+        "Alpha を終了してもう一度起動してください:"
+    ),
+    "Deepgram rejected the API key (it may have expired). Transcription has stopped — check the key, then restart the session.": (
+        "Deepgram が API キーを拒否しました (期限切れの可能性があります)。"
+        "文字起こしは停止しています。キーを確認してから、セッションを再開してください。"
+    ),
+    "Deepgram has no credit left (the free trial may have run out), so transcription has stopped. Add credit at console.deepgram.com, then restart the session.": (
+        "Deepgram のクレジットが残っていないため (無料トライアルが終了した可能性があります)、"
+        "文字起こしは停止しています。console.deepgram.com でクレジットを追加してから、"
+        "セッションを再開してください。"
+    ),
+    "● Deepgram credit used up": "● Deepgram クレジット切れ",
+    "Deepgram API Key": "Deepgram API キー",
+    "No Deepgram API key found. Set DEEPGRAM_API_KEY in your environment or .env file, then start again. Without it there is no transcription.": (
+        "Deepgram API キーが見つかりません。環境変数または .env ファイルに "
+        "DEEPGRAM_API_KEY を設定してから、もう一度開始してください。"
+        "キーがないと文字起こしはできません。"
+    ),
+    "The Deepgram API key is still the example placeholder. Replace it with your real key, then start again.": (
+        "Deepgram API キーがサンプルのままです。実際のキーに置き換えてから、もう一度開始してください。"
+    ),
+    "Deepgram connection error": "Deepgram 接続エラー",
+    "Deepgram rejected the connection settings, so listening has been stopped.": (
+        "Deepgram が接続設定を拒否したため、認識を停止しました。"
+    ),
     "Deepgram refused the connection, so listening could not start.": (
         "Deepgram が接続を拒否したため、認識を開始できませんでした。"
     ),

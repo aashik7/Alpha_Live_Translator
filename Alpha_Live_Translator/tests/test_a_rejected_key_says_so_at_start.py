@@ -242,11 +242,18 @@ class TheOperatorIsToldWhatIsWrong(unittest.TestCase):
         self.assertIn("deepl", self.calls[1][1], "the working DeepL key was not carried over")
 
     def test_out_of_credits_is_reported_as_itself(self):
+        """Item 30 changed two things here, both deliberately.
+
+        A keyless build now offers the key dialog after the explanation: a key
+        from an account that still has credit cures it. And the popup shows
+        Deepgram's status and error code, not its English sentence -- that stays
+        in the log, because the popup follows the display language.
+        """
         self._explain(deepgram_client.deepgram_start_refusal(None, OUT_OF_CREDITS_402), keyless=True)
-        self.assertEqual([kind for kind, _ in self.calls], ["error"])
+        self.assertEqual([kind for kind, _ in self.calls], ["error", "offer"])
         message = self.calls[0][1][1]
-        self.assertIn("402", message)
-        self.assertIn("enough credits", message)
+        self.assertIn("HTTP 402 ASR_PAYMENT_REQUIRED", message)
+        self.assertIn("trial", message.lower())
         self.assertNotIn("internet", message.lower())
 
     def test_a_failure_that_is_not_deepgrams_raises_no_new_dialog(self):

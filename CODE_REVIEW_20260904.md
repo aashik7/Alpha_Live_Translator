@@ -1757,3 +1757,83 @@ this item.
   left as it is only to keep this change to the behaviour the operator sees.
 
 Suite: 1565 tests, the same **set of eight** failing names.
+
+---
+
+## Item 30 — every way Deepgram stops a meeting says so, in the operator's language
+
+**Asked by the owner after item 29:** "deepgram er o key trial expired hoye jai.
+Setar o error message lagbe", with every popup in English or Japanese by the
+display-language setting.
+
+### What Deepgram actually answers
+
+From its error reference (developers.deepgram.com/docs/errors), verbatim:
+
+| Status | `err_code` | `err_msg` | Meaning here |
+|---|---|---|---|
+| 401 | `INVALID_AUTH` | Invalid credentials. | wrong, deleted **or expired** key — the answer does not say which |
+| 401 | `INSUFFICIENT_PERMISSIONS` | User does not have sufficient permissions. | the key may not transcribe |
+| 402 | `ASR_PAYMENT_REQUIRED` | Project does not have enough credits for an ASR request and does not have an overage agreement. | **the free trial credit is gone** |
+| 403 | `INSUFFICIENT_PERMISSIONS` | Project does not have access to the requested model. | plan has no Nova-3 |
+| 429 | `TOO_MANY_REQUESTS` | Too many requests. Please try again later | busy |
+| 503 | — | — | down |
+
+Deepgram's forum also confirms that an already-open socket survives its key
+expiring, so mid-meeting these arrive on the next reconnect, not at once.
+
+### Measured before the change
+
+| # | Case | Before |
+|---|---|---|
+| 1 | 402 on a mid-meeting reconnect | indicator `● Reconnecting` for the rest of the meeting; no flag existed |
+| 2 | a genuine 400 mid-meeting | **two** modals for one error (the error event and the stop notice) |
+| 3 | a socket that failed at once, at Start | waited out the full timeout (3.02 s of 3.0 in the probe; 30 s in the app) |
+| 4 | 402 at Start | "Deepgram refused the connection" — no reason attribute, no credit wording |
+| 5 | the preflight "no key" popup, the mid-meeting "key rejected" popup | English on a Japanese screen |
+
+### The change
+
+* `deepgram_start_refusal` gives every documented answer a `reason`
+  (`service_status.REFUSAL_*`); `DeepgramUnreachable` covers a Start that got
+  no answer at all, carrying the socket's own error.
+* The words live in `service_status` as one English literal per sentence and
+  are shown through `t()`; status, Deepgram's error code and the `.env` path are
+  shown as they are. A keyless build offers its key dialog only where a
+  different key cures it — rejected key, no permission, **used-up credit** —
+  never for a busy service or a plan without the model.
+* `_wait_for_deepgram_sender` fails as soon as the Deepgram thread has ended
+  with no answer (`run_forever` returns only once the socket is gone).
+* A 402 mid-meeting sets `_dg_credit_exhausted`: failed state,
+  `● Deepgram credit used up`, one dialog; cleared when the socket opens, so a
+  top-up recovers the meeting.
+* The rejected-query stop notice owns its dialog; the error event is no longer
+  published unrecoverable beside it.
+
+### Verified on the real socket stack
+
+A local server answering the websocket upgrade exactly as documented, the real
+`AlphaApp` running its real `_deepgram_worker` (real websocket-client),
+`_deepgram_on_error`, `_wait_for_deepgram_sender`, `_finish_start_listening` and
+`_explain_start_failure`, in both languages:
+
+| Answer | Reason | Failed after | Dialog (en / ja title) |
+|---|---|---|---|
+| 402 `ASR_PAYMENT_REQUIRED` | `credit_exhausted` | 0.05–0.10 s | Deepgram credit used up / Deepgram のクレジットを使い切りました |
+| 401 `INVALID_AUTH` | `key_invalid` | 0.05 s | Deepgram API key rejected / Deepgram の API キーが拒否されました |
+| 403 `INSUFFICIENT_PERMISSIONS` (model) | `no_model_access` | 0.05 s | Deepgram model not available / Deepgram のモデルを利用できません |
+| 429 `TOO_MANY_REQUESTS` | `rate_limited` | 0.05 s | Deepgram is busy / Deepgram が混雑しています |
+| 503 | `service_unavailable` | 0.05 s | Deepgram is unavailable / Deepgram を利用できません |
+| closed port | `unreachable` | **2.07 s** (was 30) | Cannot reach Deepgram / Deepgram に接続できません, with `[WinError 10061]` |
+
+Mid-meeting, the real `_reconnect_deepgram` against the documented 402: the
+indicator went `● Reconnecting` → `● Deepgram credit used up` (`● Deepgram
+クレジット切れ`), **one** dialog across two retries, the loop still retrying.
+
+Five mutants (credit flag never set, no fast fail, the second modal back, 402
+not told apart, popup lines untranslated) are each caught by the new tests.
+Two older assertions were changed deliberately and say why: item 29's
+out-of-credit test now expects the key offer, and the 400 test expects the
+error event recoverable.
+
+Suite: 1602 tests, the same **set of eight** failing names.

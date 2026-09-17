@@ -721,6 +721,7 @@ taking.
 | external monitor, live on 26.5.24 | **Item 27** — at 100 % scaling Hide/Show did not re-flow the reading grid until a resize (Tk skips re-arranging a 1 px master) | ✅ fixed `160f94a`, package 26.5.25 |
 | operator report, live | **Item 28** — the microphone switch was read once at Start and locked for the session, so turning the mic on mid-meeting meant Stop and Start (the audio graph never needed the restart) | ✅ fixed, package 26.5.26 |
 | field log bundle, shared build 26.5.25 | **Item 29** — a key Deepgram refused at Start was taken for a Stop: 30 s wait, silent "Stopped", no dialog. Also: every other refusal at Start (credits, rate limit) swallowed the same way, and the key dialog's nested mainloop never returned once the main window existed; and every update package through 26.5.26 deleted a keyless install's `.needs-api-keys`. Retracts DELIVERY.md's "press Start with the bad key" note | ✅ fixed, package 26.5.27 |
+| owner request, after item 29 | **Item 30** — every way Deepgram can stop a meeting says what happened, in the display language: the free trial credit running out (402) at Start and on a mid-meeting reconnect, a wrong/expired key, no permission, no model access, busy, down, and a network that never reached Deepgram (now fails in ~2 s, not 30). One dialog per error; the existing Start and mid-meeting popups translated | ✅ fixed, package 26.5.28 |
 
 Phase 3's audits are complete — 5 of 5, as the table above says. (This line used
 to read "Phase 3's four remaining audits", contradicting the table two rows

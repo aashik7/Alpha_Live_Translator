@@ -37,6 +37,129 @@ FAILED = "failed"
 # translation warning.
 _SEVERITY = {CONNECTED: 0, DEGRADED: 1, RECONNECTING: 2, FAILED: 3}
 
+# --- Why a Start failed, in words (item 30) ------------------------------------
+#
+# The reason is decided by `deepgram_client.deepgram_start_refusal` from
+# Deepgram's documented answers (developers.deepgram.com/docs/errors):
+#
+#   401 INVALID_AUTH              a wrong, deleted or EXPIRED key -- the answer
+#                                 does not say which
+#   401 INSUFFICIENT_PERMISSIONS  the key may not transcribe
+#   402 ASR_PAYMENT_REQUIRED      no credit left -- the free trial run out
+#   403 INSUFFICIENT_PERMISSIONS  "Project does not have access to the
+#                                 requested model."
+#   429 TOO_MANY_REQUESTS / 5xx   busy / down
+#
+# `UNREACHABLE` is the case with no answer at all: DNS, a dropped network, a
+# firewall that swallows the connection.
+#
+# Every sentence is shown through `t()`, so each is ONE literal on ONE line,
+# however long: item 88's test looks Japanese keys up verbatim in the source,
+# and implicit concatenation is not verbatim.
+REFUSAL_KEY_INVALID = "key_invalid"
+REFUSAL_KEY_NO_PERMISSION = "key_no_permission"
+REFUSAL_CREDIT_EXHAUSTED = "credit_exhausted"
+REFUSAL_NO_MODEL_ACCESS = "no_model_access"
+REFUSAL_RATE_LIMITED = "rate_limited"
+REFUSAL_SERVICE_UNAVAILABLE = "service_unavailable"
+REFUSAL_OTHER = "refused"
+UNREACHABLE = "unreachable"
+
+_START_FAILURE_TEXT = {
+    REFUSAL_KEY_INVALID: (
+        "Deepgram API key rejected",
+        (
+            "Deepgram rejected the API key, so listening could not start.",
+            "The key may be mistyped, expired, deleted, or from a different account.",
+        ),
+    ),
+    REFUSAL_KEY_NO_PERMISSION: (
+        "Deepgram API key rejected",
+        (
+            "The Deepgram API key does not have permission to transcribe, so listening could not start.",
+            "Create a new key at console.deepgram.com and use that instead.",
+        ),
+    ),
+    REFUSAL_CREDIT_EXHAUSTED: (
+        "Deepgram credit used up",
+        (
+            "Deepgram has no credit left for this account, so listening could not start.",
+            "The free trial credit may have run out. Add credit or a payment method at console.deepgram.com, or use a key from an account that has credit.",
+        ),
+    ),
+    REFUSAL_NO_MODEL_ACCESS: (
+        "Deepgram model not available",
+        (
+            "This Deepgram project does not have access to the model Alpha uses (Nova-3), so listening could not start.",
+            "Check the project's plan at console.deepgram.com, or use a key from another project.",
+        ),
+    ),
+    REFUSAL_RATE_LIMITED: (
+        "Deepgram is busy",
+        (
+            "Deepgram is receiving too many requests for this key right now, so listening could not start.",
+            "Wait a minute, then press Start again. Close any other app that uses the same key.",
+        ),
+    ),
+    REFUSAL_SERVICE_UNAVAILABLE: (
+        "Deepgram is unavailable",
+        (
+            "Deepgram's service is having a problem right now, so listening could not start.",
+            "Try again in a few minutes.",
+        ),
+    ),
+    REFUSAL_OTHER: (
+        "Deepgram refused the connection",
+        ("Deepgram refused the connection, so listening could not start.",),
+    ),
+    UNREACHABLE: (
+        "Cannot reach Deepgram",
+        (
+            "Alpha could not connect to Deepgram, so listening could not start.",
+            "Check the internet connection. On a company network, a firewall or proxy may be blocking api.deepgram.com.",
+        ),
+    ),
+}
+
+# Refusals a different key can cure, so a keyless build offers its key dialog
+# for them. Not the model, not a busy or broken service: re-entering a working
+# key there sends the operator the wrong way.
+KEY_DIALOG_REASONS = frozenset(
+    {REFUSAL_KEY_INVALID, REFUSAL_KEY_NO_PERMISSION, REFUSAL_CREDIT_EXHAUSTED}
+)
+
+# Shown in place of the socket's own error when the connection simply never
+# answered, which leaves nothing more specific to say.
+NO_DEEPGRAM_RESPONSE_TEXT = "No response from Deepgram within 30 seconds."
+
+# The failed state, mid-meeting. An already-open socket survives its key
+# expiring (Deepgram's forum), so these arrive on the next reconnect.
+MID_SESSION_KEY_REJECTED_TEXT = "Deepgram rejected the API key (it may have expired). Transcription has stopped — check the key, then restart the session."
+MID_SESSION_CREDIT_EXHAUSTED_TEXT = "Deepgram has no credit left (the free trial may have run out), so transcription has stopped. Add credit at console.deepgram.com, then restart the session."
+
+
+def start_failure_text(reason: str) -> tuple[str, tuple[str, ...]]:
+    """The title and sentences for a failed Start, in English -- `t()` them to show."""
+    return _START_FAILURE_TEXT.get(reason, _START_FAILURE_TEXT[REFUSAL_OTHER])
+
+
+def key_dialog_hint(reason: str) -> str:
+    """What to do next on a keyless build, or "" when a new key would not help."""
+    if reason == REFUSAL_CREDIT_EXHAUSTED:
+        return "To use a different Deepgram key, enter it in the next window."
+    if reason in KEY_DIALOG_REASONS:
+        return "Enter a valid Deepgram key in the next window."
+    return ""
+
+
+def env_file_hint(reason: str) -> str:
+    """What to do next on a keyed build; the `.env` path is appended by the UI."""
+    if reason == REFUSAL_CREDIT_EXHAUSTED:
+        return "To use a different Deepgram key, put it on the DEEPGRAM_API_KEY line of this file, then close Alpha and start it again:"
+    if reason in KEY_DIALOG_REASONS:
+        return "Put a valid Deepgram key on the DEEPGRAM_API_KEY line of this file, then close Alpha and start it again:"
+    return ""
+
 
 @dataclass
 class CredentialProblem:
@@ -107,11 +230,8 @@ def preflight_credentials(
             CredentialProblem(
                 service="Deepgram",
                 code="deepgram_key_missing",
-                message=(
-                    "No Deepgram API key found. Set DEEPGRAM_API_KEY in your "
-                    "environment or .env file, then start again. Without it "
-                    "there is no transcription."
-                ),
+                # One literal on one line, so `t()` finds it (item 30).
+                message="No Deepgram API key found. Set DEEPGRAM_API_KEY in your environment or .env file, then start again. Without it there is no transcription.",
                 blocks_start=True,
             )
         )
@@ -120,10 +240,7 @@ def preflight_credentials(
             CredentialProblem(
                 service="Deepgram",
                 code="deepgram_key_placeholder",
-                message=(
-                    "The Deepgram API key is still the example placeholder. "
-                    "Replace it with your real key, then start again."
-                ),
+                message="The Deepgram API key is still the example placeholder. Replace it with your real key, then start again.",
                 blocks_start=True,
             )
         )
@@ -181,6 +298,7 @@ def describe_connection(
     deepgram_connected: bool,
     deepgram_reconnecting: bool = False,
     deepgram_auth_failed: bool = False,
+    deepgram_credit_exhausted: bool = False,
     translation_degraded: bool = False,
     translation_status_message: str = "",
     gap_seconds: float = 0.0,
@@ -264,12 +382,18 @@ def describe_connection(
         if _SEVERITY[candidate] >= _SEVERITY[state]:
             state, message = candidate, candidate_message
 
+    # Item 30. A 402 on reconnect was not recognised at all, so the indicator
+    # read "Reconnecting" for the rest of the meeting -- a wait for a recovery
+    # that only a top-up can bring. Failed, like a rejected key, and checked
+    # BEFORE it so a key problem keeps the last word: the two cannot come from
+    # one answer, and the key is the more fundamental of the two.
+    if deepgram_credit_exhausted:
+        state = FAILED
+        message = MID_SESSION_CREDIT_EXHAUSTED_TEXT
+
     if deepgram_auth_failed:
         state = FAILED
-        message = (
-            "Deepgram rejected the API key. Transcription has stopped — check "
-            "the key, then restart the session."
-        )
+        message = MID_SESSION_KEY_REJECTED_TEXT
 
     return ConnectionStatus(
         state=state,
@@ -279,6 +403,7 @@ def describe_connection(
             "deepgram_connected": deepgram_connected,
             "deepgram_reconnecting": deepgram_reconnecting,
             "deepgram_auth_failed": deepgram_auth_failed,
+            "deepgram_credit_exhausted": deepgram_credit_exhausted,
             "translation_degraded": translation_degraded,
             "audio_device_changed": audio_device_changed,
             "audio_capture_device": audio_capture_device,
@@ -298,4 +423,19 @@ __all__ = [
     "blocking_problems",
     "preflight_summary",
     "describe_connection",
+    "REFUSAL_KEY_INVALID",
+    "REFUSAL_KEY_NO_PERMISSION",
+    "REFUSAL_CREDIT_EXHAUSTED",
+    "REFUSAL_NO_MODEL_ACCESS",
+    "REFUSAL_RATE_LIMITED",
+    "REFUSAL_SERVICE_UNAVAILABLE",
+    "REFUSAL_OTHER",
+    "UNREACHABLE",
+    "KEY_DIALOG_REASONS",
+    "NO_DEEPGRAM_RESPONSE_TEXT",
+    "MID_SESSION_KEY_REJECTED_TEXT",
+    "MID_SESSION_CREDIT_EXHAUSTED_TEXT",
+    "start_failure_text",
+    "key_dialog_hint",
+    "env_file_hint",
 ]
