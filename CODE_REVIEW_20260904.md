@@ -1984,3 +1984,73 @@ bigger change than the problem.
 
 Full suite at this change: `Ran 1649 tests`, the same eight stale failures as
 the recorded baseline and nothing else.
+
+---
+
+## Item 33 — the meeting's language is fixed for the run
+
+The other half of the report that produced item 28: "changing the language
+mid-session stops it working; I have to stop and start again." Item 28 made the
+microphone switch work mid-meeting. This one cannot be made to work, so the
+window now says so instead of letting the operator find out from a transcript.
+
+Deepgram is told the language in the query string of the socket the Start
+opens. `on_language_change` rewrites `self._listen_language`, but the live
+socket cannot be told, so a switch left the OLD language transcribing while the
+header claimed the new one. The canonical ledger carries no language of its own
+either, so the finalize pass stamps whatever is selected at the end onto records
+the previous language produced. Stopping and starting was already the only way
+to change it.
+
+### The change
+
+* `_set_language_controls_enabled` locks the five controls that can change the
+  meeting language: `source_combo`, `target_combo`, `source_combo_menu`,
+  `target_combo_menu` and `swap_button`. All of them together -- there are two
+  languages, so `on_language_change` makes picking either dropdown decide the
+  other, and the swap button writes both.
+* Locked from **`_set_starting_status`**, not from success: `_start_listening`
+  has already snapshotted the dropdown by then, so a switch during
+  "Starting…" would run the session on the snapshot while the header showed the
+  other language.
+* Released from **`_set_listen_button_state(False)`**, which only
+  `_set_stopped_ui_state` calls -- so every Stop, and every Start that fails
+  (`_stop_listening(graceful=False)`), releases it with no second code path.
+  A combo comes back `readonly`, never `normal`: there is nothing in this window
+  to type into.
+* The UI's own **display** language is deliberately untouched. That one is
+  re-rendered live and item 88e tests that path.
+
+### Two leaks the lock had, both measured on the real window
+
+| | before | after |
+|---|---|---|
+| text half of a locked combo posts the language list | **True** | False |
+| a pick from a list already open when the lock landed | **True** -> English | False -> Japanese |
+
+`_make_combos_fully_clickable` bound `<Button-1>` on each combo's entry
+straight to `_open_dropdown_menu`, which checks no state at all, and a disabled
+tk Entry still delivers user bindings (measured). It now calls `_clicked`, which
+is what the arrow uses and refuses while disabled. And a list can already be
+posted when the lock lands -- a Start completing while it is open -- so
+`on_select`, the only way a header combo writes the language, refuses and puts
+the label back.
+
+### Verified on real code
+
+* Real `AlphaApp`, mapped window, locked and released: arrow blocked/open,
+  text half blocked/open, swap blocked/works, `readonly` restored, and the
+  label still showing the run's language.
+* Also fixed in the same pass, because the lock caused it:
+  `CTkComboBox.set` writes through its entry and a disabled entry drops the
+  write silently, so item 71's responsive "Japanese" -> "JP" narrowing stopped
+  landing while a meeting ran. `_write_combo_text` lifts the lock around the
+  write.
+* Six mutants -- no lock while running, no lock during "Starting…", a combo
+  restored as a text box, the write helper not lifting the lock, the
+  whole-combo click calling the opener again, an already-open pick accepted
+  again -- all caught.
+
+Full suite at this change: `Ran 1657 tests`, the same eight stale failures as
+the recorded baseline and nothing else. No build: the owner calls the final
+one, and `APP_VERSION` is bumped so the next package carries this.

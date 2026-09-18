@@ -452,6 +452,68 @@ def _offer_key_setup(deepl: str = "") -> bool:
 # exception by design, so a name missing from `self` counted nothing, silently.
 _AUDIO_FRAME_SECONDS = 0.02
 
+# Item 33. Every control that can change the MEETING's language, with the state
+# it goes back to when no session is running: a combo here is a picker, never a
+# text box, so "readonly" and not "normal". The UI's own display language is
+# deliberately absent -- that one is re-rendered live (item 88e) and keeps
+# working mid-meeting.
+_LANGUAGE_PICKERS = (
+    ("source_combo", "readonly"),
+    ("target_combo", "readonly"),
+    ("source_combo_menu", "readonly"),
+    ("target_combo_menu", "readonly"),
+    ("swap_button", "normal"),
+)
+
+
+def _set_language_controls_enabled(host, enabled) -> None:
+    """Lock or release the meeting language controls.
+
+    Deepgram is told the language in the query string of the socket the Start
+    opens, so a switch mid-meeting cannot reach the live connection: the old
+    language keeps transcribing while the header claims the new one, and the
+    finalize pass stamps whatever is selected at the end onto records the
+    previous language produced. Stopping and starting was already the only way
+    to change it -- this makes the window say so instead of letting the
+    operator find out from a transcript.
+
+    All of them together: there are two languages, so `on_language_change`
+    makes picking either dropdown decide the other, and the swap button writes
+    both. Locking one and leaving the rest locks nothing.
+
+    Never raises. A control missing on a host that builds part of the window
+    must not be able to stop a Start or a Stop.
+    """
+    for name, released_state in _LANGUAGE_PICKERS:
+        control = getattr(host, name, None)
+        if control is None:
+            continue
+        try:
+            control.configure(state=released_state if enabled else "disabled")
+        except Exception as exc:
+            print(f"Error setting {name} state: {exc}")
+
+
+def _write_combo_text(combo, text) -> None:
+    """Set a combo's displayed text even while it is locked.
+
+    `CTkComboBox.set` writes through its entry widget, and a disabled entry
+    drops the write without raising a thing. Item 71's header labels narrow to
+    "JP"/"EN" on a resize, which can happen at any point during a meeting --
+    with the language locked (item 33) that write silently stopped landing, and
+    the narrowed row kept the wide label it had been narrowed to fit.
+    """
+    if combo is None:
+        return
+    locked = str(combo.cget("state")) == "disabled"
+    if locked:
+        combo.configure(state="readonly")
+    try:
+        combo.set(text)
+    finally:
+        if locked:
+            combo.configure(state="disabled")
+
 
 def _explain_start_failure(error) -> None:
     """Tell the operator why a Start could not reach a working Deepgram. Never raises.
@@ -3095,6 +3157,13 @@ class AlphaApp(
         combo_values = list(plain_values)
 
         def on_select(choice):
+            if str(combo.cget("state")) == "disabled":
+                # Item 33. The list can be posted when the lock lands: a Start
+                # completes while it is open, and the pick still arrives here.
+                # `_dropdown_callback` writes the entry too, which a disabled
+                # entry drops, so the label is put back from the variable.
+                self._sync_language_combo_displays()
+                return
             plain = self._strip_language_flag(choice)
             if variable.get() != plain:
                 # `source_language` / `target_language` carry a write trace that
@@ -3135,12 +3204,14 @@ class AlphaApp(
         at whichever width mode (full name / abbreviated) is currently set."""
         abbreviated = getattr(self, "_header_lang_abbreviated", False)
         if hasattr(self, "source_combo") and self.source_combo is not None:
-            self.source_combo.set(
-                self._header_language_label(self.source_language.get(), abbreviated)
+            _write_combo_text(
+                self.source_combo,
+                self._header_language_label(self.source_language.get(), abbreviated),
             )
         if hasattr(self, "target_combo") and self.target_combo is not None:
-            self.target_combo.set(
-                self._header_language_label(self.target_language.get(), abbreviated)
+            _write_combo_text(
+                self.target_combo,
+                self._header_language_label(self.target_language.get(), abbreviated),
             )
 
     def _set_header_language_abbreviated(self, abbreviated):
@@ -3179,7 +3250,9 @@ class AlphaApp(
                         for name in plain_values
                     ]
                 )
-            combo.set(self._header_language_label(variable.get(), abbreviated))
+            _write_combo_text(
+                combo, self._header_language_label(variable.get(), abbreviated)
+            )
 
     # -----------------------------------------------------------------------
     # Logo
@@ -9382,6 +9455,10 @@ class AlphaApp(
         for btn in (self.listen_button, self.listen_button_menu):
             if btn is not None:
                 self._set_dynamic_text(btn, label, state="normal", **cfg)
+        # Item 33. The meeting's language is fixed for the run; released here,
+        # where a stop is already being painted, so a Start that fails releases
+        # it too (`_stop_listening` -> `_set_stopped_ui_state`).
+        _set_language_controls_enabled(self, not listening)
         self._update_status_bar(listening=listening)
 
     def _set_stopping_ui_state(self):
@@ -10709,6 +10786,10 @@ class AlphaApp(
             lpp.mark("start_ui_acknowledged_at")
         except Exception:
             pass
+        # Item 33: the run's language is decided by now, so the controls that
+        # would change it are locked here rather than on success -- the
+        # snapshot is taken before the worker starts.
+        _set_language_controls_enabled(self, False)
         # Keep button responsive lock visible immediately.
         try:
             if self.listen_button is not None:
@@ -11982,7 +12063,12 @@ class AlphaApp(
                 entry.configure(cursor="hand2")
                 entry.bind(
                     "<Button-1>",
-                    lambda event, c=combo: c._open_dropdown_menu(),
+                    # `_clicked`, not `_open_dropdown_menu`: it is what the
+                    # arrow uses, and it refuses while the combo is disabled.
+                    # A disabled Entry still delivers this binding, so calling
+                    # the opener directly reopened the language list through
+                    # item 33's lock.
+                    lambda event, c=combo: c._clicked(),
                     add=True,
                 )
             except Exception as exc:
