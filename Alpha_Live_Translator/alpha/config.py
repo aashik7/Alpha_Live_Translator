@@ -10,8 +10,13 @@ from alpha.constants import APP_CODENAME, APP_VERSION
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 ASSETS_DIR = PROJECT_ROOT / "assets"
 
-# Load .env from project root (no-op if missing; does not crash on import)
-load_dotenv(PROJECT_ROOT / ".env")
+# Load .env from project root (no-op if missing; does not crash on import).
+# override=True: the file beside the app is the authority. Without it
+# python-dotenv skips any name already in os.environ, so a DEEPGRAM_API_KEY
+# left in the machine environment beat this file and every instruction the
+# app gives -- edit the DEEPGRAM_API_KEY line, restart, same rejected key.
+# A name the file does NOT carry still comes from the environment.
+load_dotenv(PROJECT_ROOT / ".env", override=True)
 
 # API keys from environment / .env only — never hardcoded in source
 DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY") or None

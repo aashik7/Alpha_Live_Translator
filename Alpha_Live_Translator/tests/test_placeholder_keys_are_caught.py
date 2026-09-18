@@ -39,6 +39,9 @@ import os
 import sys
 import unittest
 from pathlib import Path
+from unittest import mock
+
+import dotenv
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
@@ -60,7 +63,16 @@ SHIPPED_DEEPGRAM_PLACEHOLDERS = (
 
 
 class _Env:
-    """Reload `alpha.config` and `service_status` under a chosen environment."""
+    """Reload `alpha.config` and `service_status` under a chosen environment.
+
+    The reload reads no `.env` file. Item 32 made the file beside the app
+    outrank the environment (`load_dotenv(..., override=True)`), so a reload in
+    this tree would hand every test the developer's own real keys instead of
+    the ones it set. Loading nothing makes the environment built here the whole
+    truth, which is all these tests are about; the file-versus-environment
+    order is pinned by
+    `test_the_env_file_outranks_a_stale_environment_variable.py`.
+    """
 
     def __init__(self, **env):
         self.env = env
@@ -69,15 +81,15 @@ class _Env:
     def __enter__(self):
         for k, v in self.env.items():
             self.saved[k] = os.environ.get(k)
-            # An "absent" key is set to "" rather than removed. The repo has a
-            # real `.env`, and `load_dotenv` fills in any name that is NOT
-            # already in os.environ -- so popping the variable hands the test
-            # the developer's own key and the assertion measures nothing.
+            # An "absent" key is set to "" rather than removed: `get_*_status`
+            # reads the module attribute, and "" and absent both reach it as
+            # None, while "" also survives anything that reads os.environ.
             os.environ[k] = "" if v is None else v
         import alpha.config as cfg
         from alpha.utils import service_status as ss
 
-        importlib.reload(cfg)
+        with mock.patch.object(dotenv, "load_dotenv", lambda *a, **k: False):
+            importlib.reload(cfg)
         importlib.reload(ss)
         return cfg, ss
 

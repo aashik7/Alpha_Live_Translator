@@ -1926,3 +1926,61 @@ Found while wiring it, each fixed before shipping:
   A successful translation and `reset_session` now clear it, with a test.
 
 Suite: 1647 tests, the same **set of eight** failing names, plus two known timing-sensitive tests that passed alone (item48's documented intermittent; item71's 5 ms/40 ms first-map snapshot, 3/3 in isolation and green in the previous full run of this change).
+
+---
+
+## Item 32 — the file the operator is told to edit is the one that is read
+
+Found while reviewing item 30, not in a field log. Items 29 and 30 print the
+`.env` path and tell the operator to put a valid key on its `DEEPGRAM_API_KEY`
+line and start Alpha again. The first-run dialog writes that same file, and so
+does the installer. On a machine with a `DEEPGRAM_API_KEY` left in the user
+environment, every one of those instructions was a lie.
+
+`alpha/config.py` read the file with `load_dotenv(PROJECT_ROOT / ".env")`.
+python-dotenv skips every name already in `os.environ` -- its
+`DotEnv.set_as_environment_variables` is `if k in os.environ and not
+self.override: continue` -- so the variable won, silently, and the operator
+edits the file, restarts, and gets the same rejected key with no hint that the
+file is being ignored.
+
+### Measured on the real module
+
+Both against the real `alpha.config`, with this tree's own `.env` in place:
+
+| | `DEEPGRAM_API_KEY` from the environment wins | `DEEPL_AUTH_KEY` wins |
+|---|---|---|
+| before | **True** (`get_deepgram_key_status()` = `configured`) | **True** |
+| after | False | False |
+
+With no `.env` at all, the environment is still the source (`True`) -- a
+developer exporting a key in a shell, and the app's own "set
+`DEEPGRAM_API_KEY` in your environment or .env file", both keep working. That
+sentence only ever appears when no key is configured, so it stays true.
+
+### The change
+
+`load_dotenv(PROJECT_ROOT / ".env", override=True)`. One line, at the single
+load site; nothing else in the app or the installers reads either key from the
+environment, and nothing writes them there except the key dialog, which writes
+the file first.
+
+One test changed with it, deliberately: `_Env` in
+`test_placeholder_keys_are_caught.py` injected keys through `os.environ` and
+relied on the file NOT winning ("`load_dotenv` fills in any name that is NOT
+already in os.environ"). It now reloads with no file loaded at all, so the
+environment it builds is the whole truth; the file-versus-environment order is
+pinned by the new test instead. Proven load-bearing both ways: without
+`override=True` the new test fails, and without the harness change seven of
+those nine tests fail.
+
+### Still open, deliberately
+
+On a keyless build with **no** `.env` and a stale variable, the key dialog
+still never appears (the variable reads as a configured key) and item 30's
+hint points at a file that is not the source. Reported, not fixed: the file
+does not exist to be outranked, and inventing one to fight a variable is a
+bigger change than the problem.
+
+Full suite at this change: `Ran 1649 tests`, the same eight stale failures as
+the recorded baseline and nothing else.
