@@ -242,6 +242,25 @@ def _is_deepgram_status_400(err: Any, err_text: str) -> bool:
     return _deepgram_handshake_status(err, err_text) == 400
 
 
+def _keyterm_fallback_would_help(host: Any, err: Any, err_text: str) -> bool:
+    """True when dropping the Japanese keyterms is worth one more attempt.
+
+    The same question at Start and mid-meeting, so it is asked in one place.
+    Once per session: `_start_listening` clears the flag, and a Deepgram that
+    refuses the query for some other reason must not be reconnected to forever.
+    """
+    return bool(
+        bool(JAPANESE_MODE_ENABLED)
+        and bool(JAPANESE_KEYTERMS_ENABLED)
+        and not bool(getattr(host, "_jp_keyterms_fallback_used", False))
+        and (
+            _is_deepgram_status_400(err, err_text)
+            or "INVALID_QUERY_PARAMETER" in err_text
+            or "keyterm" in (err_text or "").lower()
+        )
+    )
+
+
 def _is_deepgram_auth_rejection(err: Any, err_text: str) -> bool:
     """True when Deepgram refused the key itself (item 47).
 
@@ -2866,6 +2885,20 @@ class DeepgramClientMixin:
             if getattr(self, "_starting_listening", False) and not getattr(
                 self, "is_listening", False
             ):
+                # Item 34. The keyterm fallback below is unreachable at Start:
+                # `stop_requested` counts `not is_listening` as a stop, and
+                # that is what Start looks like, so Deepgram refusing the
+                # keyterms ended the Start instead of retrying without them.
+                # No refusal is recorded -- `_wait_for_deepgram_sender` raises
+                # one the moment it appears -- and `_deepgram_worker` reopens
+                # the socket with a URL that no longer carries them.
+                if _keyterm_fallback_would_help(self, err, err_text):
+                    self._jp_keyterms_fallback_used = True
+                    print(
+                        "[JAPANESE] keyterm query refused at Start; "
+                        "retrying once without keyterms"
+                    )
+                    return
                 refusal = deepgram_start_refusal(err, err_text)
                 if refusal is not None:
                     self._dg_start_refusal = refusal
@@ -2904,12 +2937,7 @@ class DeepgramClientMixin:
             query_rejected = _is_deepgram_status_400(err, err_text) or (
                 "INVALID_QUERY_PARAMETER" in err_text
             )
-            if (
-                bool(JAPANESE_MODE_ENABLED)
-                and bool(JAPANESE_KEYTERMS_ENABLED)
-                and not bool(getattr(self, "_jp_keyterms_fallback_used", False))
-                and (query_rejected or "keyterm" in err_text.lower())
-            ):
+            if query_rejected and _keyterm_fallback_would_help(self, err, err_text):
                 self._jp_keyterms_fallback_used = True
                 # This read `JAPANESE_KEYTERMS`, a name defined nowhere, so the
                 # NameError fired right after the flag was set and before the
@@ -3203,22 +3231,42 @@ class DeepgramClientMixin:
                     pass
             except Exception:
                 pass
-            try:
-                ws = _keepalive_websocket_app_class()(
-                    url,
-                    header={"Authorization": f"Token {DEEPGRAM_API_KEY}"},
-                    on_message=self._deepgram_on_message,
-                    on_open=self._deepgram_on_open,
-                    on_error=self._deepgram_on_error,
-                    on_close=self._deepgram_on_close,  # CHANGED: reconnect on close (fix 5)
+            retries_left = 1
+            while True:
+                keyterms_were_on = not bool(
+                    getattr(self, "_jp_keyterms_fallback_used", False)
                 )
-                self._dg_ws = ws
-                ws.run_forever(
-                    ping_interval=DG_WS_PING_INTERVAL_S,
-                    ping_timeout=DG_WS_PING_TIMEOUT_S,
-                )
-            except Exception as exc:
-                print(f"Deepgram connection error: {exc}")
+                try:
+                    ws = _keepalive_websocket_app_class()(
+                        url,
+                        header={"Authorization": f"Token {DEEPGRAM_API_KEY}"},
+                        on_message=self._deepgram_on_message,
+                        on_open=self._deepgram_on_open,
+                        on_error=self._deepgram_on_error,
+                        on_close=self._deepgram_on_close,  # CHANGED: reconnect on close (fix 5)
+                    )
+                    self._dg_ws = ws
+                    ws.run_forever(
+                        ping_interval=DG_WS_PING_INTERVAL_S,
+                        ping_timeout=DG_WS_PING_TIMEOUT_S,
+                    )
+                except Exception as exc:
+                    print(f"Deepgram connection error: {exc}")
+                # Item 34. `run_forever` returns only when the socket is down,
+                # and at Start there is nothing else to try again:
+                # `_schedule_reconnect` refuses while `is_listening` is False.
+                # The one case worth another attempt is the error handler
+                # having just turned the Japanese keyterms off.
+                if not (
+                    retries_left > 0
+                    and keyterms_were_on
+                    and bool(getattr(self, "_jp_keyterms_fallback_used", False))
+                    and bool(getattr(self, "_starting_listening", False))
+                    and not self._stop_event.is_set()
+                ):
+                    return
+                retries_left -= 1
+                url = self._build_deepgram_url()
 
     def _health_monitor(self):
             """Log pipeline health every 5 seconds while listening."""

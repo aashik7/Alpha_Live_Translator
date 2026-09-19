@@ -2054,3 +2054,91 @@ the label back.
 Full suite at this change: `Ran 1657 tests`, the same eight stale failures as
 the recorded baseline and nothing else. No build: the owner calls the final
 one, and `APP_VERSION` is bumped so the next package carries this.
+
+---
+
+## Item 34 — a keyterm Deepgram refuses at Start costs the meeting
+
+The keyterm fallback has existed since the 2026-09-14 audit: Deepgram refusing
+the query turns the Japanese keyterms off and reconnects without them. It runs
+only mid-meeting. `stop_requested` in `_deepgram_on_error` counts
+`not is_listening` as a stop, and `is_listening` is False for the whole of
+Start -- the same early return item 29 had to reach around for a rejected key.
+
+### Measured before, through the real `_deepgram_on_error`
+
+| | keyterms turned off | reconnect scheduled | next URL still sends keyterms |
+|---|---|---|---|
+| mid-meeting | True | 1 | False |
+| at Start | **False** | **0** | **True**, and `_dg_start_refusal` = `DeepgramRefusedStart 400` |
+
+So the one answer the fallback exists for ended the Start instead, and the
+operator got "Deepgram refused the request (HTTP 400)" with nothing to act on.
+
+### The change
+
+* `_keyterm_fallback_would_help(host, err, err_text)` -- one function, both
+  callers. Mid-meeting keeps its own `query_rejected` gate; nothing about that
+  path changes.
+* At Start the fallback turns the keyterms off and returns **without recording
+  a refusal**: `_wait_for_deepgram_sender` raises one the moment it appears, so
+  recording it would make the retry impossible.
+* `_deepgram_worker` reopens the socket once, with a URL rebuilt without the
+  keyterms. It is the only place that can: `_schedule_reconnect` returns
+  immediately while `is_listening` is False, which is all of Start.
+
+The retry is bounded twice -- by the keyterms-were-on transition (the flag is
+cleared only by a new Start) and by a counter. The counter is unreachable
+today and the mutant that raises it is not caught; it is kept because the loop
+runs on the Start thread, where an unbounded reconnect would hang the Start
+instead of failing it.
+
+### Verified
+
+* Four tests in the file that already owns this fallback, three of them red
+  before the change. The socket test drives the real `_deepgram_worker` with
+  the WebSocket class faked, and asserts two attempts, the first carrying
+  `keyterm` and the second not.
+* Four mutants: the Start never running the fallback, the Start swallowing
+  every refusal, the retry reusing the refused URL, the retry unbounded. The
+  first three are caught; the fourth is the unreachable counter described
+  above.
+* Neighbouring suites unchanged: items 29/30's 27 + 37 tests, the URL builder,
+  and item 31's 45.
+
+Full suite at this change: `Ran 1661 tests`, the same eight stale failures as
+the recorded baseline and nothing else.
+
+---
+
+## Item 4 of the pending list — closed by item 32, no change
+
+Raised in the item 32 report: on a keyless build with **no** `.env` and a stale
+`DEEPGRAM_API_KEY` in the machine environment, the first-run dialog never
+appears (the variable reads as a configured key) and item 30's hint was
+believed to name a file that is not the source.
+
+Driven through the real `key_setup.should_prompt` and the real
+`_explain_start_failure`, on a synthetic keyless install with no `.env`:
+
+```
+first-run prompt with a stale variable supplying both keys : False
+Deepgram API key rejected
+Deepgram rejected the API key, so listening could not start.
+The key may be mistyped, expired, deleted, or from a different account.
+
+Deepgram: HTTP 401 INVALID_AUTH
+
+Enter a valid Deepgram key in the next window.
+key dialog offered : True
+```
+
+The hint is the keyless one, not the `.env` path, and the dialog opens. The
+operator's key is written to `.env`, and since item 32 that file outranks the
+stale variable, so the restart the dialog asks for cures it. The only residue
+is that the problem surfaces at the first Start rather than at first run --
+which is what a configured-but-wrong key looks like from inside the app.
+
+An earlier run of this same measurement reported the wrong thing (the generic
+refusal text, no dialog) because the harness had `ALPHA_NO_KEY_PROMPT=1` set,
+which `should_prompt` honours. Recorded because the mistake is easy to repeat.
