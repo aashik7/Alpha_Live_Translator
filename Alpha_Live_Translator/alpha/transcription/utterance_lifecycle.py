@@ -104,6 +104,35 @@ _HARD_BOUNDARY_COMMIT_REASONS = frozenset(
     {"provider_disconnected", "sentence_boundary_flush"}
 )
 
+# Item 35. Commit reasons that can land on text the provider has NOT finalised.
+# `utterance_end` fires on a gap in words and `inactivity_timeout_fallback` on
+# silence from the socket; both commit whatever interim is held. Deepgram then
+# goes on revising that same span -- same first-word start -- until it
+# finalises it, and each revision used to become a line of its own: the owner's
+# run of 2026-09-25 exported one 1.2 s utterance as "I will send you a" /
+# "I will send you both." / "I'm sending you both.", all starting at 13.28.
+# Deliberately not `speech_final` (Deepgram finalised that span and does not
+# re-send it) and not `sentence_boundary_flush` (its tail shares the window's
+# start legitimately -- it is the rest of the window, not a revision of it).
+_REOPENABLE_COMMIT_REASONS = frozenset({"utterance_end", "inactivity_timeout_fallback"})
+
+
+def _same_provider_segment(held_start: float, cand_start: float) -> bool:
+    """Both texts begin on the same audio: the provider's own segment identity.
+
+    Deepgram's interim results are cumulative per segment -- each is the whole
+    current hypothesis from the segment's first word -- so two interims whose
+    first words start at the same instant are two guesses at the same audio,
+    never two things said. `_TIMING_START_MATCH_S` covers the first word being
+    re-timed or re-recognised (0.08 s on the owner's run: "Would I would" at
+    69.76, "I would I would, ..." at 69.84). Missing timing is never a match.
+    """
+    return (
+        held_start >= 0
+        and cand_start >= 0
+        and abs(held_start - cand_start) <= _TIMING_START_MATCH_S
+    )
+
 # A sentence terminator, allowing for a closing quote or bracket after it.
 _SENTENCE_TERMINATED = re.compile(r'[.!?]["\')\]]*\s*$')
 
@@ -350,6 +379,14 @@ def _strip_committed_tail_prefix(
     prefix revises nothing and cannot reach the ledger's existing records.
 
     Returns the trimmed text, or None when there is no qualifying overlap.
+
+    Item 35 (2026-09-25): the `already_committed` skip described above had a
+    cause, and it is fixed. `_commit_locked` spread the registry entry, whose
+    `canonical_record_id` for a supersede is the record being REVISED, and
+    duplicate protection read that as "already written"; a second gate then
+    dropped the revision as `idempotent_replay`. English revisions now reach
+    the ledger. This trim is kept: it removes a re-sent tail without a
+    revision at all, which is still the cheaper outcome when it applies.
     """
     prev_tokens = _compare_tokens(committed_text)
     curr_parts = (lexical or "").split()
@@ -719,6 +756,16 @@ class ActiveUtterance:
     commit_reason: str = ""
     last_event_mono: float = field(default_factory=time.monotonic)
     created_mono: float = field(default_factory=time.monotonic)
+    # Item 35. Absorbed an is_final chunk. The provider never re-sends a
+    # finalised span, so only an all-interim utterance can be one segment's
+    # whole current hypothesis -- the precondition for replacing or re-opening.
+    has_final: bool = False
+    # Item 35. Created by a sentence split: its start is the split window's,
+    # so a candidate starting there is the rest of that window, not a revision.
+    from_sentence_split: bool = False
+    # Item 35. Re-opened after an early commit to take the provider's revision
+    # of the same audio; its commit supersedes the record it re-opened.
+    reopened: bool = False
 
 
 @dataclass
@@ -789,6 +836,8 @@ class UtteranceLifecycleOwner:
             "sentence_boundary_flushes": 0,
             "in_flight_commits": 0,
             "resent_tails_trimmed": 0,
+            "committed_segments_reopened": 0,
+            "same_segment_hypotheses_replaced": 0,
         }
 
     # ------------------------------------------------------------------
@@ -1931,6 +1980,33 @@ class UtteranceLifecycleOwner:
                 pass
         return related
 
+    def _revises_committed_segment_locked(
+        self,
+        *,
+        channel: Any,
+        cand_start: float,
+        source: str,
+    ) -> bool:
+        """Item 35: is this interim the provider revising audio we committed early?
+
+        Every gate fails closed onto the old path (a new utterance, item 66's
+        trim), so the worst case is the duplicate this exists to remove, never
+        a lost or overwritten line. The identity is the audio clock -- the same
+        first-word start -- not the words, because the provider's revision may
+        share almost none of them ("I will send you a" -> "I'm sending you
+        both.") and a text threshold cannot tell that from a new sentence.
+        """
+        prev = self._last_committed
+        if prev is None or not prev.committed or source != "interim":
+            return False
+        if str(prev.commit_reason or "") not in _REOPENABLE_COMMIT_REASONS:
+            return False
+        if prev.has_final or prev.from_sentence_split:
+            return False
+        if not _channel_matches_exactly(prev.channel, channel):
+            return False
+        return _same_provider_segment(prev.start_time, cand_start)
+
     def _trim_resent_tail_locked(
         self,
         lexical: str,
@@ -2119,7 +2195,58 @@ class UtteranceLifecycleOwner:
                     )
                     return d
 
-        if force_new or active is None or active.committed:
+        prev = self._last_committed
+        reopen = (
+            not force_new
+            and not from_sentence_split
+            and (active is None or active.committed)
+            and self._revises_committed_segment_locked(
+                channel=channel, cand_start=cand_start, source=source
+            )
+        )
+        if reopen and _norm_text(lexical) in _norm_text(prev.text):
+            # An older, shorter guess at audio already committed -- it adds
+            # nothing, and re-opening with it would shrink the record.
+            d = LifecycleDecision(
+                decision=IGNORE_DUPLICATE,
+                reason="provider_resent_committed_segment",
+                utterance_id=prev.utterance_id,
+                text=prev.text,
+                previous_text=prev.text,
+                session_id=self._session_id,
+                event_id=event_id,
+                version=prev.version,
+                should_update_interim=False,
+            )
+            self._record_decision(
+                d, is_final=False, speech_final=speech_final, channel=channel
+            )
+            return d
+        if reopen:
+            # Item 35. Same canonical identity, next version: when this
+            # commits it is a SUPERSEDE, and duplicate protection revises the
+            # committed record in the ledger instead of appending a second one.
+            prev.state = SUPERSEDED
+            self._committed_utterance_ids.discard(prev.utterance_id)
+            active = ActiveUtterance(
+                utterance_id=prev.utterance_id,
+                session_id=self._session_id,
+                state=state,
+                speaker=int(speaker or prev.speaker or 1),
+                channel=channel if channel is not None else prev.channel,
+                text=lexical,
+                version=int(prev.version) + 1,
+                start_time=min(prev.start_time, cand_start),
+                end_time=max(prev.end_time, cand_end),
+                deepgram_request_id=str(deepgram_request_id or prev.deepgram_request_id),
+                lineage_ids=list(prev.lineage_ids) + ([event_id] if event_id else []),
+                reopened=True,
+            )
+            self._active = active
+            self._stats["committed_segments_reopened"] += 1
+            decision = REPLACE_ACTIVE
+            reason = "reopen_committed_segment_revision"
+        elif force_new or active is None or active.committed:
             # Item 66: a commit that landed mid-sentence is followed by the
             # provider re-sending that span. The previous utterance is already
             # committed, so `_merge_lexical`'s overlap machinery never sees it
@@ -2156,6 +2283,8 @@ class UtteranceLifecycleOwner:
                 end_time=cand_end,
                 deepgram_request_id=str(deepgram_request_id or ""),
                 lineage_ids=[event_id] if event_id else [],
+                has_final=source == "final",
+                from_sentence_split=bool(from_sentence_split),
             )
             self._active = active
             decision = CREATE_ACTIVE if not force_new else CREATE_NEW_UTTERANCE
@@ -2211,6 +2340,24 @@ class UtteranceLifecycleOwner:
                     active.start_time, active.end_time, cand_start, cand_end
                 ),
             )
+            # Item 35. `_merge_lexical` joins two chunks when their words
+            # differ enough ("I will send you both." + "I'm sending you both."
+            # scored 0.5 overlap), which is right for consecutive audio and
+            # wrong for two guesses at the SAME audio: the join then met the
+            # sentence flush and became two records. An interim that starts
+            # where this all-interim utterance starts is the provider's whole
+            # current hypothesis, so it replaces. Only the joining outcomes
+            # change -- a result equal to either input (growth, keep-longer)
+            # is the old behaviour, untouched.
+            if (
+                source == "interim"
+                and not active.has_final
+                and not self._split_committed_prefix
+                and _same_provider_segment(active.start_time, cand_start)
+                and _norm_text(merged) not in (prev_n, curr_n)
+            ):
+                merged = (lexical or "").strip()
+                self._stats["same_segment_hypotheses_replaced"] += 1
             # Item 66, second half. Trimming only when the utterance is
             # CREATED is not durable: Deepgram re-sends its window
             # cumulatively, so the very next chunk arrives carrying the head we
@@ -2292,6 +2439,8 @@ class UtteranceLifecycleOwner:
             active.text = merged
             active.version += 1
             active.state = state
+            if source == "final":
+                active.has_final = True
             active.channel = channel if channel is not None else active.channel
             active.speaker = int(speaker or active.speaker or 1)
             if cand_start >= 0:
@@ -2619,6 +2768,12 @@ class UtteranceLifecycleOwner:
             self._record_decision(d, is_final=True, speech_final=True, channel=active.channel)
             return d
 
+        reopened = bool(active.reopened)
+        if reopened:
+            # Item 35. Whatever ended it -- a word gap, the timeout, the flush,
+            # speech_final -- this utterance replaces the record it re-opened.
+            decision_name = SUPERSEDE_PREVIOUS
+
         accepted, identity_reason, identity_meta = self._observe_identity(
             utterance_id=active.utterance_id,
             channel=active.channel,
@@ -2708,6 +2863,23 @@ class UtteranceLifecycleOwner:
                 **{k: v for k, v in metadata.items() if k not in ("text",)},
             },
         )
+        if reopened:
+            d.should_supersede_committed = True
+            d.metadata["reopened_committed_segment"] = True
+        if decision_name == SUPERSEDE_PREVIOUS:
+            # Item 35. `**identity_meta` above spreads the registry entry, and
+            # for a supersede its `canonical_record_id` is the record this
+            # commit REVISES. Duplicate protection reads that key as "the
+            # Japanese assembler already wrote the ledger" and skipped the
+            # write: the store and the pane took the correction while the
+            # ledger -- and so the export -- kept the old text. Item 66 measured
+            # this on the extend path and worked around it; this is the cause.
+            # The id travels on as what it is, the revision target. (The
+            # Japanese assembler commits through `accept_boundary_proposal`,
+            # never through here, so its already-written claim is untouched.)
+            target = str(d.metadata.pop("canonical_record_id", "") or "")
+            if target and not d.superseded_record_id:
+                d.superseded_record_id = target
         self._record_decision(
             d, is_final=True, speech_final=True, channel=active.channel, commit=True
         )
@@ -2782,6 +2954,7 @@ class UtteranceLifecycleOwner:
             end_time=cand_end if cand_end >= 0 else prev.end_time,
             deepgram_request_id=str(deepgram_request_id or prev.deepgram_request_id),
             lineage_ids=list(prev.lineage_ids) + ([event_id] if event_id else []),
+            has_final=True,
         )
         # Mark previous committed snapshot superseded in audit trail.
         prev.state = SUPERSEDED
@@ -2914,6 +3087,7 @@ class UtteranceLifecycleOwner:
             end_time=cand_end if cand_end >= 0 else prev.end_time,
             deepgram_request_id=str(deepgram_request_id or prev.deepgram_request_id),
             lineage_ids=list(prev.lineage_ids) + ([event_id] if event_id else []),
+            has_final=True,
         )
         # Mark previous committed snapshot superseded in audit trail (it's
         # being absorbed into the extended utterance, same as a correction).

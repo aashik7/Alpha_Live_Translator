@@ -2142,3 +2142,117 @@ which is what a configured-but-wrong key looks like from inside the app.
 An earlier run of this same measurement reported the wrong thing (the generic
 refusal text, no dialog) because the harness had `ALPHA_NO_KEY_PROMPT=1` set,
 which `should_prompt` honours. Recorded because the mistake is easy to repeat.
+
+---
+
+## Item 35 — one utterance is one line, and the ledger agrees with the pane
+
+The owner's 1:45 English session (2026-09-25 16:40:43) exported one 1.2-second
+sentence as three lines. The audio clock says it was one sentence:
+
+| Record | Audio | Commit reason | Text |
+|---|---|---|---|
+| U-4 | **13.28**–14.08 | utterance_end | I will send you a |
+| U-5 | **13.28**–14.40 | sentence_boundary_flush | I will send you both. |
+| U-6 | **13.28**–14.48 | utterance_end | I'm sending you both. |
+
+"Would I would" [69.76] / "I would I would, Why would those who are?" [69.84]
+the same way. The app's own visible-error audit flagged "Good afternoon." /
+"Good afternoon. How are you?" as well -- a false positive: different
+speakers, starts 3.7 s apart. It is left alone.
+
+### Two mechanisms, one cause
+
+A later guess at the SAME audio was treated as new speech. Deepgram's interims
+are cumulative per segment, so two interims whose first words start together
+are two guesses at one span of audio.
+
+1. **Across a commit.** `UtteranceEnd` committed the held interim 10 ms after
+   it arrived; Deepgram had not finalised the segment and kept revising it
+   (0.55 s, 1.5 s, 2.5 s later). Each revision started a new utterance. Item
+   66's trim needs the committed tail verbatim, and a revised last word
+   ("a" -> "both") defeats it.
+2. **Inside one utterance.** "I will send you both." + "I'm sending you both."
+   share 2 of 4 words, under `_merge_lexical`'s 0.6 similarity gate, so it
+   concatenated them -- and the sentence flush split the glue into two records.
+
+### The first fix made the export worse -- found by replaying, not by reading
+
+The lifecycle half (re-open the committed utterance, commit it as a SUPERSEDE)
+passed its unit tests. Replayed through the REAL app -- real Start, WASAPI,
+`_deepgram_on_message`, UI queue, duplicate protection, registry, ledger,
+Stop, sealed export -- against a local stand-in sending the owner's exact
+messages, the pane read "I'm sending you both." and the **sealed export read
+"I will send you a"**: the revision never reached the ledger, so the export
+kept only the early wrong guess. Two gates, each written for another case:
+
+* `_commit_locked` spreads the registry entry into the commit metadata; for a
+  supersede its `canonical_record_id` is the record being REVISED, and
+  duplicate protection reads that key as "the Japanese assembler already wrote
+  the ledger" (`already_committed`) and skips the write. Item 66 measured this
+  on the extend path and routed around it.
+* With that fixed, the lifecycle's own observation of the commit makes duplicate
+  protection's second one `idempotent_replay`. The registry excuses that for a
+  first commit (`awaiting_canonical_commit`, no record yet) but not for a
+  revision, so every English revision was dropped as a duplicate.
+
+Neither was specific to the new path: **the existing final-correction
+(`_supersede_committed_locked`) and extend (`_extend_committed_locked`) paths
+never reached the ledger either.** For extend that was content loss -- the
+continuation was in the pane and absent from the export.
+
+### The change
+
+* `_same_provider_segment` -- first-word starts within `_TIMING_START_MATCH_S`.
+* **Re-open** (`_revises_committed_segment_locked`): an interim that would start
+  a new utterance re-opens the last committed one -- same canonical id, next
+  version -- when that commit was `utterance_end` or the inactivity timeout,
+  same channel, same audio, and the record never absorbed a final and was not a
+  sentence-flush tail. An older, shorter guess (contained in the record) is
+  ignored rather than allowed to shrink it. Every gate fails closed onto the old
+  path.
+* **No glue**: inside an all-interim utterance, a same-segment interim replaces
+  when `_merge_lexical` would have joined the two; growth and keep-longer are
+  untouched.
+* `_commit_locked`: a re-opened utterance commits as `SUPERSEDE_PREVIOUS`, and
+  any supersede carries the registry record id as its revision target instead
+  of an already-written claim. (Japanese commits through
+  `accept_boundary_proposal`, never through here.)
+* `duplicate_protection`: a lifecycle SUPERSEDE seen as `idempotent_replay` is a
+  duplicate only if the target ledger record already holds that text; logged as
+  `LIFECYCLE_REVISION_PAST_REPLAY`.
+
+### Verified
+
+* Replay through the real app, owner's messages, sealed export:
+
+  | | before | after |
+  |---|---|---|
+  | dup A | I will send you a / I will send you both. / I'm sending you both. | I'm sending you both. |
+  | dup B | Would I would / I would I would, Why would those who are? | I would I would, Why would those who are? |
+  | two speakers | 2 lines | 2 lines |
+  | two sentences, one window | 1 line | 1 line |
+
+  Ledger: `revise` transactions targeting the early records. Translation pane:
+  one line each -- the revised translation replaced the stale one.
+* `test_one_utterance_is_one_line.py` (9) and `test_a_revision_reaches_the_ledger.py`
+  (3, real lifecycle + real publisher + real duplicate protection + real
+  ledger). The owner's sequences fail before the change exactly as observed
+  (`3 != 1`, `2 != 1`).
+* Nine mutants -- no re-open, glue again, re-open committed as an ordinary
+  commit, the record id leaking again, the replay gate removed, the has-final
+  guard, the flush-tail guard, the shrink guard, the channel guard -- all
+  caught.
+* Items 66 (21), 70 (33), line quality, cross-speaker guards, substitution
+  update, commit-in-flight -- unchanged.
+
+### Not fixed, deliberately
+
+A sentence flush that commits text Deepgram later revises (the owner's U-13
+"...If I can, I can?" / U-14 "If I can't, actually, ..." at the same start):
+the flush is a confident boundary and its tail legitimately shares the window's
+start, so re-opening there cannot tell a revision from the rest of the window.
+Excluded, and pinned by a test.
+
+Full suite at this change: `Ran 1673 tests`, the same eight stale failures as
+the recorded baseline and nothing else.

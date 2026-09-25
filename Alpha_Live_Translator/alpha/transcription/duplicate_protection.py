@@ -498,7 +498,50 @@ class DuplicateProtectionMixin:
                         source_version=source_version,
                     )
                     return
-                if identity.duplicate:
+                # Item 35. The English lifecycle observes every commit before
+                # publishing it, so this second observation of a SUPERSEDE
+                # always reads as `idempotent_replay` -- for a first commit the
+                # registry already answers "awaiting_canonical_commit", but a
+                # revision's record exists, so every English revision was
+                # dropped here and never reached the ledger. Whether it is a
+                # duplicate is a question about the LEDGER: skip only if the
+                # target record already holds this text. A missing target
+                # stays a skip -- there is nothing to revise.
+                lifecycle_revision_pending = False
+                if (
+                    identity.duplicate
+                    and life_decision == "SUPERSEDE_PREVIOUS"
+                    and identity.reason == "idempotent_replay"
+                ):
+                    try:
+                        from alpha.transcription.canonical_transcript_ledger import (
+                            get_active_records,
+                        )
+
+                        target_id = str((identity.entry or {}).get("canonical_record_id") or "")
+                        held = next(
+                            (
+                                str(record.get("final_text") or "")
+                                for record in get_active_records()
+                                if target_id and str(record.get("record_id")) == target_id
+                            ),
+                            None,
+                        )
+                    except Exception:
+                        held = None
+                    lifecycle_revision_pending = held is not None and held.strip() != result_text.strip()
+                    if lifecycle_revision_pending:
+                        # The registry has just logged DUPLICATE_IGNORE for this
+                        # observation; say why the revise goes ahead anyway.
+                        jp_accuracy_log(
+                            "LIFECYCLE_REVISION_PAST_REPLAY",
+                            session_id=session_id,
+                            channel_index=channel_index,
+                            canonical_utterance_id=canonical_utterance_id,
+                            source_version=source_version,
+                            canonical_record_id=target_id,
+                        )
+                if identity.duplicate and not lifecycle_revision_pending:
                     self._transcript_stability_counters.skipped += 1
                     jp_accuracy_log(
                         "DUPLICATE_IGNORE",
