@@ -1516,7 +1516,6 @@ class DeepgramClientMixin:
                     "language",
                     "punctuate",
                     "smart_format",
-                    "numerals",
                     "profanity_filter",
                     "redact",
                     "endpointing",
@@ -1611,7 +1610,10 @@ class DeepgramClientMixin:
                 f"&punctuate=true"
                 f"&smart_format=true"
                 f"{diarize_param}"
-                f"&numerals=true"
+                # Item 36: no `numerals`. On English it turned "third quarter"
+                # into "3rd 0.25" and "a quarter of the team" into "0.25 of the
+                # team" (measured live); `smart_format` alone still writes 12%,
+                # dates and times. Japanese output was byte-identical either way.
                 f"&profanity_filter=false"
                 f"&redact=false"
                 f"&endpointing={endpointing_ms}"
@@ -1644,7 +1646,6 @@ class DeepgramClientMixin:
                             "language": str(lang),
                             "punctuate": True,
                             "smart_format": True,
-                            "numerals": True,
                             "profanity_filter": False,
                             "redact": False,
                             "endpointing": endpointing_ms,

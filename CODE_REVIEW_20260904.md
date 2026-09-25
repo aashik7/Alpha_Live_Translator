@@ -2256,3 +2256,66 @@ Excluded, and pinned by a test.
 
 Full suite at this change: `Ran 1673 tests`, the same eight stale failures as
 the recorded baseline and nothing else.
+
+---
+
+## Item 36 — a quarter is not 0.25
+
+Found in the owner's end-to-end test: English "third quarter revenue" was
+transcribed "3rd 0.25 revenue", and DeepL carried the fragment into the
+translation ("第3四半期の売上高（0.25）"). Every live request carried
+`numerals=true` beside `smart_format=true`.
+
+### Measured live, one TTS clip, the app's own parameters
+
+| | `numerals=true` (production) | without `numerals` |
+|---|---|---|
+| third quarter | **3rd 0.25** | third quarter |
+| a quarter of the team | **0.25** of the team | a quarter of the team |
+| fourth quarter | **4th 0.25** | fourth quarter |
+| 12%, 2.5 million, March 3, 2025, 09:30 | same | same |
+
+The same measurement with a Japanese clip was byte-identical either way, so the
+parameter is dropped for every language rather than special-cased for English.
+After the change, the clip streamed through the URL `_build_deepgram_url` now
+builds reads "third quarter ... a quarter of the team ... fourth quarter".
+
+### The change
+
+`&numerals=true` removed from the live request; the diagnostic key list and the
+request snapshot no longer claim it; `build_english_live_query_params` (used by
+the replay tools, documented as matching production) matches. The English
+validator never required it. `ENGLISH_QUERY_ALLOWLIST` still permits the key --
+an allowlist, not a requirement -- and the two root-level experiment scripts
+keep their own sample queries.
+
+`tests/test_a_quarter_is_not_a_number.py`: the English and Japanese URLs the app
+opens, and the builder, do not ask for `numerals` and do ask for `smart_format`;
+three of the four fail before the change.
+
+Full suite at this change: `Ran 1677 tests`, the same eight stale failures as
+the recorded baseline and nothing else.
+
+---
+
+## Two findings from the same report, examined and deliberately not changed
+
+**An empty session reads `final_status: failed`.** The owner's 18-second
+session at 16:40:17 had all three audio tracks silent (0 speech-level windows of
+36) and committed nothing; finalize reported `canonical_ledger_validation`
+failed. That is REPAIR_PLAN Phase 4's acceptance gate, stated in
+`canonical_finalize.py`: "Empty Stable reconstruction cannot be marked
+completed", because from the ledger alone an empty export cannot be told apart
+from a session that lost everything. Nothing in the UI reads the status -- the
+operator sees "Stopped". Relabelling it would mean distinguishing silence from
+loss inside a documented gate, for a label only a log reader sees. Left as is;
+worth doing only together with a real "no speech" signal (item 31 has one live).
+
+**Stop took ~5 s.** In the owner's session the Deepgram graceful close waited
+3.03 s for final results (deliberate: it is how the last words are kept), the
+export was sealed 3.4 s after Stop, and `stop_core_completed_event` is set only
+after the run's evidence files are written (~1.8 s more), so the 5 s watchdog
+restored the window first. The replays of item 35 stopped in 3.3-3.5 s. Moving
+the signal to the seal would restore the window ~2 s sooner, but it sits inside
+the stop sequence that keeps a second Start from repointing writers at a new
+run while the old worker is still writing. Not changed for 2 seconds.

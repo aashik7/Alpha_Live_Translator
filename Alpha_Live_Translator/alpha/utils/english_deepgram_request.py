@@ -77,7 +77,6 @@ def build_english_live_query_params(
         "interim_results": "true",
         "punctuate": "true",
         "smart_format": "true",
-        "numerals": "true",
         "profanity_filter": "false",
         "redact": "false",
         "endpointing": str(ep),
