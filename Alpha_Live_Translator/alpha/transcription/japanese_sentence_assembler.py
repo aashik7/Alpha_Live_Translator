@@ -783,6 +783,7 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
         self._pending_flush_generation: int = 0
         self._flush_generation: int = 0
         self._cached_snapshot: dict[str, Any] = {}
+        self._cached_held_text: str = ""
         self._snapshot_cached_return_count: int = 0
         self._quarantine_drop_scheduled: bool = False
         self._last_raw_stt_mono: float = 0.0
@@ -933,6 +934,38 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
 
     def get_snapshot_nonblocking(self) -> dict[str, Any]:
         return self.get_buffer_snapshot_nonblocking()
+
+    def get_held_text_nonblocking(self) -> str:
+        """Every word this pipeline holds uncommitted right now, oldest first.
+
+        Section 0g: the UI keeps these on screen as the pending line while they
+        wait, instead of letting the ghost watchdog blank the window. Oldest
+        first because that is the order they will commit in: the boundary
+        stabilizer's held line, then the stable-layer hold, then the buffer.
+        Never blocks the UI thread: a busy lock returns the last answer.
+        """
+        acquired = self._lock.try_acquire(timeout=0.0)
+        if not acquired:
+            return self._cached_held_text
+        try:
+            parts: list[str] = []
+            try:
+                from alpha.transcription import japanese_boundary_stabilizer as _jbs
+
+                # The module's instance, never `get_boundary_stabilizer()`: that
+                # would create one, from the UI thread, in an English session.
+                stabilizer = getattr(_jbs, "_stabilizer", None)
+                if stabilizer is not None:
+                    parts.append(stabilizer.pending_text)
+            except Exception:
+                pass
+            parts.append(str((self._stable_hold_pending or {}).get("text") or ""))
+            parts.append(str((self._buffer or {}).get("text") or ""))
+            text = "".join(p.strip() for p in parts if p and p.strip())
+            self._cached_held_text = text
+            return text
+        finally:
+            self._lock.release()
 
     def ingest_raw_final(self, raw_event: dict[str, Any]) -> None:
         self.ingest(

@@ -2471,3 +2471,40 @@ Four defects in the one hold:
   line at 4.0 s, none over 4.5 s.
 * Full suite: `Ran 1690 tests`, the same eight stale failures as the recorded
   baseline and nothing else.
+
+---
+
+## Item 39 — speech the pipeline still holds stays on screen (PENDING_TASKS 0g)
+
+The grey "⏳" line is Deepgram's interim. When a speaker pauses, interims stop
+and the ghost watchdog removes any interim not refreshed for 6 s -- while the
+Japanese pipeline may still be holding those words (assembler buffer,
+stable-layer hold, boundary stabilizer). The window then showed nothing until
+the line committed.
+
+Measured on the retained logs: 26 of the 35 watchdog wipes in the three
+meetings fell while the boundary stabilizer held a line (3/3, 6/9, 17/23); from
+wipe to the next commit the window was blank for a median 5.4-19.3 s, up to
+38 s.
+
+### The change
+
+* `JapaneseContinuityAssembler.get_held_text_nonblocking()` -- every word held
+  uncommitted, oldest first (stabilizer, stable hold, buffer); never blocks the
+  UI thread, answers from a cache when the lock is busy, and never creates a
+  stabilizer from the UI thread.
+* `_check_interim_ghost_watchdog`: a stale interim is replaced by the held text
+  instead of wiped; the line then follows the held text each tick and is
+  cleared the moment nothing is held -- through `_clear_interim_tail`, not the
+  orphan path, so committed words are never stashed for Stop-time recovery.
+  Live speech (`_handle_interim_transcript_ui`) takes the line back. With
+  nothing held, the watchdog is unchanged -- a permanent ghost is still
+  impossible, and `test_interim_ghost_line.py` still pins it.
+
+### Verified
+
+* `tests/test_held_speech_stays_on_screen.py` (6): 4 fail before the change;
+  the other two pin unchanged behaviour (live speech wins, a real ghost is
+  still cleared).
+* Four mutants, each caught (held text ignored, no per-tick follow, live
+  interim not taking the line back, the stabilizer's hold left out).

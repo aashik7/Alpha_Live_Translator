@@ -1207,6 +1207,25 @@ class AlphaApp(
         forgets to clear. Firing is logged so a recurring miss upstream is
         visible rather than silently papered over.
         """
+        # Section 0g (2026-09-28). Looked up, not called directly, so a host
+        # without the pipeline (every older test host) keeps the plain
+        # watchdog: "" means nothing is held.
+        held_fn = getattr(self, "_pipeline_held_text", None)
+
+        def _held() -> str:
+            return held_fn() if callable(held_fn) else ""
+
+        # The pending line is showing words the pipeline still holds -- keep it
+        # matched to them every tick, and remove it the moment nothing is held
+        # (they have committed).
+        if getattr(self, "_interim_from_held", False):
+            held = _held()
+            if not held:
+                self._clear_interim_tail()
+            elif held != (getattr(self, "_latest_interim_text", "") or "").strip():
+                self._latest_interim_text = held
+                self._update_interim_line_only()
+            return
         if not (getattr(self, "_latest_interim_text", "") or "").strip():
             return
         last_at = getattr(self, "_last_interim_ui_at", 0.0) or 0.0
@@ -1214,6 +1233,29 @@ class AlphaApp(
             return
         stale_ms = (time.perf_counter() - last_at) * 1000.0
         if stale_ms < INTERIM_GHOST_TTL_MS:
+            return
+        # Section 0g. The interim stopped because the speaker paused, but the
+        # Japanese pipeline may still be HOLDING those words -- buffer, stable
+        # hold, boundary stabilizer -- for seconds more. Wiping the line then
+        # blanked the window while speech was pending: 23 wipes and four
+        # 30-34 s blank stretches in `...140417`. What is held is not a ghost;
+        # show it as the pending line until it commits.
+        held = _held()
+        if held:
+            self._interim_from_held = True
+            if held != (getattr(self, "_latest_interim_text", "") or "").strip():
+                self._latest_interim_text = held
+                self._update_interim_line_only()
+            try:
+                from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+                jp_accuracy_log(
+                    "INTERIM_KEPT_WHILE_PIPELINE_HOLDS",
+                    stale_ms=round(stale_ms, 1),
+                    held_len=len(held),
+                )
+            except Exception:
+                pass
             return
         stale_text = (getattr(self, "_latest_interim_text", "") or "").strip()
         stale_id = str(getattr(self, "_latest_interim_utterance_id", "") or "")
@@ -1267,6 +1309,22 @@ class AlphaApp(
             )
         except Exception:
             pass
+
+    def _pipeline_held_text(self) -> str:
+        """Words the Japanese assembler still holds uncommitted, oldest first, or "".
+
+        Section 0g. Never blocks: the assembler answers from a cache when its
+        lock is busy. "" when there is no assembler or it holds nothing -- an
+        English session's assembler buffer is always empty.
+        """
+        assembler = getattr(self, "_jp_continuity_assembler", None)
+        getter = getattr(assembler, "get_held_text_nonblocking", None)
+        if not callable(getter):
+            return ""
+        try:
+            return str(getter() or "").strip()
+        except Exception:
+            return ""
 
     def _process_ui_queue_once(self):
         """Drain transcript queue with per-tick item and time budgets."""
@@ -6978,6 +7036,8 @@ class AlphaApp(
         interim_text = (text or "").strip()
         if not interim_text:
             return
+        # Section 0g: live speech takes the pending line back from held text.
+        self._interim_from_held = False
         speaker_num = speaker
         if speaker_num is not None and str(speaker_num).isdigit():
             speaker_num = int(speaker_num)
@@ -7012,6 +7072,7 @@ class AlphaApp(
         self._latest_interim_text = ""
         self._latest_interim_speaker = 1
         self._latest_interim_utterance_id = ""
+        self._interim_from_held = False
         self._remove_interim_line_from_display()
 
     def _discard_watchdog_orphaned_interim(self):
