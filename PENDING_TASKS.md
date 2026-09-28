@@ -1,7 +1,7 @@
 # Pending tasks — Alpha Live Translator
 
 Handoff for the next Claude Code session. Written 2026-09-25 at `3070dca`,
-updated 2026-09-28 with the owner's Japanese meeting (section 0),
+updated 2026-09-28 with the owner's two Japanese meetings (section 0),
 `APP_VERSION = "3.3.5.5.8.5.26.5.34"`. The owner writes Banglish, wants terse
 answers, proof over plausible reads, and findings as a table with
 issue / risk / severity / importance.
@@ -28,58 +28,109 @@ issue / risk / severity / importance.
 
 ---
 
-## 0. The owner's Japanese meeting of 2026-09-28 — do these first
+## 0. The owner's Japanese meetings of 2026-09-28 — do these first
 
-Owner's report: "it seemed to stop mid-way, I restarted", "translation was very
-slow", "accuracy was very poor". Runs, all at 26.5.34, in
-`Alpha_Live_Translator/troubleshooting/runs/`:
+Runs, all at 26.5.34, in `Alpha_Live_Translator/troubleshooting/runs/`:
 
-| Run | Time | Captured |
-|---|---|---|
-| `v3.3.5.5.8.5.26.5.34-20260928-100031` | 10:00–10:14 | meeting audio until 10:11, mic until 10:07 |
-| `v3.3.5.5.8.5.26.5.34-20260928-101440` (restart) | 10:14–10:29 | laptop mic only; meeting audio never |
+| Run | Time | Owner's report | Captured |
+|---|---|---|---|
+| `v3.3.5.5.8.5.26.5.34-20260928-100031` | 10:00–10:14 | "stopped mid-way, I restarted"; slow translation; poor accuracy | meeting audio until 10:11, mic until 10:07 |
+| `v3.3.5.5.8.5.26.5.34-20260928-101440` | 10:14–10:29 | (the restart) | laptop mic only; meeting audio never |
+| `v3.3.5.5.8.5.26.5.34-20260928-140417` | 14:04–14:40 | "seemed to disconnect mid-way; did not capture 100%" | meeting audio all 36 min; mic off by choice |
 
-Nothing crashed and Deepgram never disconnected. Measured findings:
+In none of them did Alpha crash or Deepgram disconnect. Measured causes:
 
-* **"Stopped mid-way" was the audio, not Alpha.** Per-minute speech in the
-  retained `audio_temp/*_audio/*.wav` (0.5 s windows, rms > 300): the system
-  (meeting) track has speech until 10:11:41, then exact digital zero; the mic is
-  exact zero from 10:07 (`MICROPHONE_CAPTURE_DISABLED_MID_SESSION` — the mic
-  switch was turned off). At 10:11:26 Windows' default output moved from
-  "soundcore R50i NC" (Bluetooth) to "Realtek"; Alpha followed the default
-  (rebind OK, 0.26 s) but the meeting app was not playing there. In the restart
-  the Realtek loopback was exact zero for all 15 minutes: the meeting played on
-  another device (probably the "Jabra SPEAK 410" captured at 10:00:41).
-* **Slow translation is the Japanese boundary hold, not DeepL.** DeepL p50
-  0.4–0.5 s; commit → translation shown p50 0.5–0.7 s. Last Deepgram final of a
-  line → commit: p50 3.2 s (by design: `SENTENCE_HOLD_MIN_MS/MAX_MS` =
-  2000/3500 in `japanese_sentence_assembler.py`), p90 5.7–7.4 s, max 20–24 s.
-  **Bug:** `JapaneseBoundaryStabilizer.process()` emits a timed-out pending line
+### A. Audio routing (morning only)
+
+Per-minute speech in the retained `audio_temp/*_audio/*.wav` (0.5 s windows,
+rms > 300): in `...100031` the system (meeting) track is exact digital zero
+after 10:11:41, the mic exact zero from 10:07
+(`MICROPHONE_CAPTURE_DISABLED_MID_SESSION` — switched off). At 10:11:26 the
+Windows default output moved from "soundcore R50i NC" (Bluetooth) to "Realtek";
+Alpha followed the default (rebind OK, 0.26 s) but the meeting app was not
+playing there. In `...101440` the Realtek loopback was exact zero for all 15
+minutes — the meeting played on another device (probably the "Jabra SPEAK 410"
+captured at 10:00:41). The afternoon run had continuous meeting audio.
+
+### B. The screen goes quiet for 30+ s while people talk (all runs)
+
+Lines are held by the Japanese boundary logic, and the in-progress (grey)
+interim line is wiped meanwhile, so the window looks disconnected.
+
+* Last Deepgram final of a line → commit: p50 3.2–3.3 s (by design:
+  `SENTENCE_HOLD_MIN_MS/MAX_MS` = 2000/3500 in `japanese_sentence_assembler.py`),
+  p90 5.7–7.6 s, max 20–24 s; first final → commit up to 41 s.
+* **Bug:** `JapaneseBoundaryStabilizer.process()` emits a timed-out pending line
   (`BOUNDARY_STABILIZER_HOLD_MS_MAX = 4000`) only when the NEXT final arrives;
-  `flush_pending()` is called only at Stop. Log of run `...100031`: line in at
-  10:09:21.789, 8 s max-hold timer fired at 10:09:29.801 with no emit, emitted at
-  10:09:41.768 (`INCOMPLETE_ENDING_TIMEOUT_EMITTED`, reason
-  `pending_timeout_emit`) when the next speaker's final arrived. 27 such lines
-  in that run.
-* **Accuracy.** Deepgram was confident (median 0.98, 8% under 0.7); dropped
-  low-confidence finals were only 26 + 20 characters. Causes: the restart
-  captured only the far-field laptop mic; Japanese/English code-switching by
-  non-native speakers ("Javaのノーエクスプレイエクスペリエンス", "1gradish");
-  names not in keyterms (シャフィー / シャーピー / シャンピー, タリク / ターリップ).
-  **`language=multi` was measured and is worse** — on the same retained chunks it
-  hallucinated Italian ("Sembra latte. Vabbè è camera ogni."), Hindi script and
-  "Daigalguru" ×3. Do not switch to it.
+  `flush_pending()` runs only at Stop. `...100031`: line in at 10:09:21.789, 8 s
+  max-hold timer fired at 10:09:29.801 with no emit, emitted at 10:09:41.768
+  (`INCOMPLETE_ENDING_TIMEOUT_EMITTED`, reason `pending_timeout_emit`) when the
+  next speaker's final arrived. 27 such lines in `...100031`, 69 in `...140417`.
+* `INTERIM_GHOST_LINE_CLEARED_BY_WATCHDOG` wiped the interim during those holds
+  (23 times in `...140417`). `...140417` at 14:09:40–14:10:14: commit, interim
+  wiped at 14:09:49, final ending in が held, assembler released it at
+  14:10:02.8 (`SAFE_HOLD_TIMEOUT_COMMIT`, 8.1 s), the stabilizer held it again,
+  interim wiped at 14:10:01.9, line shown at 14:10:14.4 only when the next final
+  arrived (`incomplete_previous`). Four such 30–34 s silent stretches in
+  `...140417`, each with 12–25 s of speech.
 
-Plan, in order:
+### C. What was not captured or not translated
+
+* **English speech in a Japanese session is dropped.** `...140417`
+  14:37:41–14:38:05: 18.5 s of speech, Deepgram (`ja`) returned only
+  "ブルンテクト、" / "はいいですか。". The same audio cut out and re-sent:
+  `ja` → "僕、六ディスプレイ、ディスプレイ / はいいですか。 / ブルーテクト化可能";
+  `en` → "I didn't know… I didn't understand it / whether mock text will be
+  fine. / Is mock display fine? / Okay. / No. So display display / Blue text".
+* **8 of 225 lines (3.6%) got no translation during the meeting.** In
+  `...140417` they were committed 14:08–14:38 and queued for translation only at
+  Stop, 14:39:58 (stop reconciliation). 15 `TRANSLATION_STORE_ID_MATCH_NOT_FOUND`
+  in that run. Commit paths of the eight: `hold_timeout_sentence_end_punc` (×4),
+  `safe_chunk_boundary_commit` (×2), `continuity_emergency`, `hold_timeout_safe_prefix`;
+  six had `translation_ready: True`. The morning run `...101440` had three
+  (segments 81–83: 387 s, 327 s, 51 s after commit).
+* Duplicate lines: 2 of 204 in `...140417` (a line repeated as the head of the
+  next).
+* Accuracy is not a confidence problem: Deepgram median confidence 0.98–1.00,
+  6–8% under 0.7; dropped low-confidence finals were 26 and 20 characters in
+  the two morning runs.
+  The rest: code-switching by non-native speakers
+  ("Javaのノーエクスプレイエクスペリエンス"), names missing from keyterms
+  (シャフィー / シャーピー / シャンピー), and in `...101440` the far-field laptop
+  mic.
+
+### D. `language=multi`, measured on retained audio
+
+| Audio | Result with `multi` |
+|---|---|
+| `...101440` mic chunk 0020 (far-field room) | worse: Hindi and Korean script, "Daigalguru" ×3 |
+| `...100031` system chunk 0005 | worse at the start: "Sembra latte. Vabbè è camera ogni." |
+| `...140417` English stretch 14:37:40–14:38:07 | good: the English is captured |
+| `...140417` system chunk 0012 (JA/EN mix) | mixed: English terms better ("this is the crmかな"), some Japanese worse ("ウカラも会うと") |
+
+Not a safe switch. Using it would also need per-segment translation direction
+(an English line must not go to DeepL as Japanese).
+
+### E. False alarm in the evidence
+
+`...140417` reports `LINEAGE_EXPORT_COVERAGE_FAILED` / `valid_segment_loss` for
+16 commits (`stable-213`…`stable-228`); all 16 are in `Alpha_output_FINAL.txt`
+verbatim, and the record-level `export_coverage_report.json` shows 204/204. The
+lineage matcher is wrong, not the export.
+
+### Plan, in order
 
 | # | Task | Kind | Done when |
 |---|---|---|---|
 | 0a | Meeting setup: meeting app speaker = Windows default (or set the default to the meeting device before Start); no output-device switching mid-meeting; keep the mic on when the room speaks; prefer the speakerphone as both meeting output and room mic | Owner, no code | Next run's system track is not zero |
-| 0b | Release a timed-out stabilizer pending line on a timer — schedule the check on the existing `language_pipeline_worker` heap, no new thread; emit through the same path as the `pending_timeout_emit` branch | Code, HIGH | Replay: a final, 20 s silence, another final — the first line commits ≤ 4 s after its final; re-measure the 27 lines of `...100031` |
-| 0c | Visible warning when the system loopback is exact zero for 30–60 s while the mic has speech, naming the device ("Alpha is listening to Realtek; nothing is playing there"), and a notice when Alpha follows an output-device change. Item 31's "● No sound" fires only when BOTH tracks are silent and is a small status-bar label | Code, HIGH | Replaying run `...100031`'s audio shows the warning at ~10:12 |
-| 0d | Why three lines in `...101440` got their translation 387 s, 327 s and 51 s after commit (translation segments 81–83) | Investigate | Root cause + regression test |
+| 0b | Release a timed-out stabilizer pending line on a timer — schedule the check on the existing `language_pipeline_worker` heap, no new thread; emit through the same path as the `pending_timeout_emit` branch | Code, HIGH | Replay: a final, 20 s silence, another final — the first line commits ≤ 4 s after its final; the 27 + 69 lines above re-measured |
+| 0g | While the assembler holds a line, do not let the ghost watchdog wipe the interim; show the held text as pending (grey) until it commits | Code, HIGH | Replaying 14:09:40–14:10:14 of `...140417`, the window never goes blank |
+| 0d | Every committed line with `translation_ready: True` is queued for translation at commit, not at Stop — trace `TRANSLATION_STORE_ID_MATCH_NOT_FOUND` and the four commit paths above | Code, HIGH | The 8 lines of `...140417` (and 3 of `...101440`) translate live in a replay |
+| 0c | Visible warning when the system loopback is exact zero for 30–60 s while the mic has speech, naming the device ("Alpha is listening to Realtek; nothing is playing there"), and a notice when Alpha follows an output-device change. Item 31's "● No sound" fires only when BOTH tracks are silent and is a small status-bar label | Code, HIGH | Replaying `...100031`'s audio shows the warning at ~10:12 |
+| 0h | English inside Japanese meetings: the owner writes a reference transcript of ~5 minutes of `...140417` (include 14:37–14:38); score `ja` vs `multi` (errors and hallucinations). Only if `multi` wins: implement it with per-segment language and translation direction | Evaluate, then code | A scored comparison on the same audio |
 | 0e | Tune the 2–3.5 s sentence hold: less for lines ending in 。/？ with `speech_final` | Tuning, MEDIUM | Replay of retained runs: latency vs. extra line splits |
 | 0f | Participant names and project terms as keyterms (`alpha/resources/keyterms/user_terms.json` exists) — needs the owner's name list; A/B on the retained chunks | Config + test | Same audio before/after |
+| 0i | Fix the lineage coverage matcher so exported text is never reported as `valid_segment_loss` | Code, LOW | `...140417` re-checked: 0 flagged |
 
 ---
 
