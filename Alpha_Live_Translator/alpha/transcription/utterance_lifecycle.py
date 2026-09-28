@@ -763,9 +763,12 @@ class ActiveUtterance:
     # Item 35. Created by a sentence split: its start is the split window's,
     # so a candidate starting there is the rest of that window, not a revision.
     from_sentence_split: bool = False
-    # Item 35. Re-opened after an early commit to take the provider's revision
-    # of the same audio; its commit supersedes the record it re-opened.
-    reopened: bool = False
+    # Items 35 and 37. A new version of an utterance that is already committed:
+    # re-opened to take the provider's revision of the same audio (item 35), or
+    # held open by a correction or extend waiting for more finals (item 37).
+    # Whatever ends it -- a word gap, the timeout, the flush, speech_final --
+    # its commit replaces that record; it never adds a second one.
+    supersedes_committed: bool = False
 
 
 @dataclass
@@ -2015,6 +2018,7 @@ class UtteranceLifecycleOwner:
         speaker: Any,
         cand_start: float = -1.0,
         cand_end: float = -1.0,
+        utterance_id: str = "",
     ) -> str:
         """Item 66: drop a head that repeats the previously committed tail.
 
@@ -2024,11 +2028,19 @@ class UtteranceLifecycleOwner:
         either side of the hole are unrelated, so an apparent overlap there is
         coincidence rather than the provider repeating itself.
 
+        `utterance_id` is the utterance `lexical` belongs to, when it already
+        has one. Never trims a new version of the previous record itself
+        (item 37): that text REPLACES the record when it commits, so the words
+        they share are not "already in the previous record" -- they are about to
+        be overwritten, and cutting them deleted them from the export.
+
         Returns `lexical` unchanged whenever anything is uncertain -- this can
         remove text, so every gate fails closed.
         """
         prev = self._last_committed
         if prev is None or not prev.committed or not (lexical or "").strip():
+            return lexical
+        if utterance_id and utterance_id == str(prev.utterance_id or ""):
             return lexical
         if str(prev.commit_reason or "") in _HARD_BOUNDARY_COMMIT_REASONS:
             return lexical
@@ -2240,7 +2252,7 @@ class UtteranceLifecycleOwner:
                 end_time=max(prev.end_time, cand_end),
                 deepgram_request_id=str(deepgram_request_id or prev.deepgram_request_id),
                 lineage_ids=list(prev.lineage_ids) + ([event_id] if event_id else []),
-                reopened=True,
+                supersedes_committed=True,
             )
             self._active = active
             self._stats["committed_segments_reopened"] += 1
@@ -2373,12 +2385,17 @@ class UtteranceLifecycleOwner:
             # changes, while a cumulative re-send that reintroduces it is
             # trimmed again. A later, mid-text recurrence of the same words is
             # never touched.
+            #
+            # Item 37: `utterance_id` lets the trim see when this utterance IS
+            # a new version of the previous record (re-opened, or a held
+            # correction/extend), whose own words it must not cut.
             merged = self._trim_resent_tail_locked(
                 merged,
                 channel=channel,
                 speaker=speaker,
                 cand_start=cand_start,
                 cand_end=cand_end,
+                utterance_id=active.utterance_id,
             )
             # item 65: a sentence that ended is a boundary, not a place to keep
             # appending. Only fires when the merge above was a *pure* append
@@ -2768,10 +2785,15 @@ class UtteranceLifecycleOwner:
             self._record_decision(d, is_final=True, speech_final=True, channel=active.channel)
             return d
 
-        reopened = bool(active.reopened)
-        if reopened:
-            # Item 35. Whatever ended it -- a word gap, the timeout, the flush,
-            # speech_final -- this utterance replaces the record it re-opened.
+        supersedes = bool(active.supersedes_committed)
+        if supersedes:
+            # Items 35 and 37. Whatever ended it -- a word gap, the timeout, the
+            # flush, speech_final -- this utterance replaces the record it is a
+            # new version of. Item 37: a correction or extend held open by
+            # `speech_final=False` reaches here through Case B/C as a plain
+            # COMMIT_ACTIVE; committed as that, it carried the registry's record
+            # id, duplicate protection read it as already written, and the
+            # ledger -- and so the export -- kept the early guess.
             decision_name = SUPERSEDE_PREVIOUS
 
         accepted, identity_reason, identity_meta = self._observe_identity(
@@ -2863,9 +2885,9 @@ class UtteranceLifecycleOwner:
                 **{k: v for k, v in metadata.items() if k not in ("text",)},
             },
         )
-        if reopened:
+        if supersedes:
             d.should_supersede_committed = True
-            d.metadata["reopened_committed_segment"] = True
+            d.metadata["supersedes_committed_record"] = True
         if decision_name == SUPERSEDE_PREVIOUS:
             # Item 35. `**identity_meta` above spreads the registry entry, and
             # for a supersede its `canonical_record_id` is the record this
@@ -2955,6 +2977,9 @@ class UtteranceLifecycleOwner:
             deepgram_request_id=str(deepgram_request_id or prev.deepgram_request_id),
             lineage_ids=list(prev.lineage_ids) + ([event_id] if event_id else []),
             has_final=True,
+            # Item 37: held open below when speech_final is False, it commits
+            # later through Case B/C -- still as a revision of `original_id`.
+            supersedes_committed=True,
         )
         # Mark previous committed snapshot superseded in audit trail.
         prev.state = SUPERSEDED
@@ -3088,6 +3113,9 @@ class UtteranceLifecycleOwner:
             deepgram_request_id=str(deepgram_request_id or prev.deepgram_request_id),
             lineage_ids=list(prev.lineage_ids) + ([event_id] if event_id else []),
             has_final=True,
+            # Item 37: held open below when speech_final is False, it commits
+            # later through Case B/C -- still as a revision of `original_id`.
+            supersedes_committed=True,
         )
         # Mark previous committed snapshot superseded in audit trail (it's
         # being absorbed into the extended utterance, same as a correction).

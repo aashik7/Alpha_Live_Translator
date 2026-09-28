@@ -2201,6 +2201,13 @@ Neither was specific to the new path: **the existing final-correction
 never reached the ledger either.** For extend that was content loss -- the
 continuation was in the pane and absent from the export.
 
+> **Correction, 2026-09-28 -- see item 37.** The change below fixed those two
+> paths only when they commit at once. ~~The existing final-correction and
+> extend paths reach the ledger.~~ Held open by a `speech_final=False` final they
+> still never did, and every re-opened line that the provider went on extending
+> lost its first words to item 66's trim. Both were found by driving the real
+> code in review, not by the tests below, which pass on both defects.
+
 ### The change
 
 * `_same_provider_segment` -- first-word starts within `_TIMING_START_MATCH_S`.
@@ -2319,3 +2326,85 @@ restored the window first. The replays of item 35 stopped in 3.3-3.5 s. Moving
 the signal to the seal would restore the window ~2 s sooner, but it sits inside
 the stop sequence that keeps a second Start from repointing writers at a new
 run while the old worker is still writing. Not changed for 2 seconds.
+
+---
+
+## Item 37 — a re-opened line keeps its words
+
+Found reviewing items 35-36 on 2026-09-28, by driving the real lifecycle, the
+real `_publish_final_transcript_segment`, the real `_display_transcript_item`,
+the real identity registry and the real ledger, and running the same messages
+against `cb66936` (before item 35) for comparison. Item 35's own tests pass on
+both defects: every fixture's later guess rewrites the committed head or last
+word, so none of them grows the early guess.
+
+### What was broken
+
+| Messages | Export before item 35 | Export at 26.5.34 |
+|---|---|---|
+| "I will send you" / UtteranceEnd / "I will send you both" / "I will send you both today" / UtteranceEnd | I will send you / both today | **both today** |
+| "We should review the" / timeout / "...the numbers" / "...the numbers first." / UtteranceEnd | (two lines) | **numbers first.** |
+| "We should review" / timeout / final "the numbers" (`speech_final=False`) / final "first." | We should review | We should review -- pane: "the numbers, first." |
+
+1. **A re-opened line lost its own head.** After item 35 re-opens a committed
+   record, every later interim of the same segment went through item 66's
+   `_trim_resent_tail_locked`, which compares the text with `_last_committed` --
+   and after a re-open that is the old version of the SAME line. Deepgram's
+   interims grow cumulatively, so the new text starts with the old one; the
+   trim cut it, and the SUPERSEDE overwrote the record with the rest. Any early
+   commit of 3+ words that the provider then extends did this -- a regression
+   from item 35, and the pane lost the words too, so an export-versus-pane
+   check cannot see it.
+2. **A held correction or extend never reached the ledger.** Item 35 fixed
+   `_supersede_committed_locked` and `_extend_committed_locked` only when they
+   commit at once. With `speech_final=False` they hold the line -- same
+   utterance id, next version -- and it commits later through Case B/C as an
+   ordinary COMMIT_ACTIVE, which still carries the registry's record id, which
+   duplicate protection reads as "already written". The same self-trim also cut
+   the pane's copy. Present before item 35 as well.
+
+### The change
+
+* `ActiveUtterance.reopened` becomes `supersedes_committed`: set for a re-open,
+  and now also for the line a correction or extend creates. `_commit_locked`
+  commits any such line as `SUPERSEDE_PREVIOUS`, whatever ends it -- word gap,
+  timeout, sentence flush, speech_final, disconnect -- so the ledger revises
+  the record instead of skipping it. (Metadata marker renamed from
+  `reopened_committed_segment` to `supersedes_committed_record`; nothing reads it.)
+* `_trim_resent_tail_locked(utterance_id=...)`: never trims a new version of
+  the previous record itself. That text replaces the record, so the words they
+  share are not "already in the previous record" -- they are about to be
+  overwritten. The merge path passes the active utterance's id; a genuinely new
+  line has a new id and is trimmed exactly as before.
+
+### Verified
+
+* `tests/test_a_reopened_line_keeps_its_words.py` (5, same real-code host as
+  `test_a_revision_reaches_the_ledger.py`): the three rows above plus a held
+  correction; 4 of the 5 fail before the change (`['both today'] != [...]`,
+  `'the numbers' not found in 'We should review'`). The fifth pins item 66: a
+  new line that repeats the committed tail on overlapping audio is still
+  trimmed.
+* Mutants, each alone: trim guard removed; merge path passing no id (4 red
+  each); promotion to SUPERSEDE removed (8 red, including item 35's own
+  tests); the correction flag removed; the extend flag removed (1 red each,
+  its own test). Source mutants of equal size written within one second
+  re-used a stale `.pyc` -- rerun with `PYTHONDONTWRITEBYTECODE=1` or by
+  monkeypatch.
+* Full suite: `Ran 1682 tests`, the same eight stale failures as the recorded
+  baseline and nothing else.
+
+### Not fixed
+
+* **Re-opening a line item 66 trimmed at creation brings the trimmed head
+  back.** "in Duterte, he writes openly, I never considered" / UtteranceEnd /
+  "he writes openly, I never considered him an impostor" (trimmed to "him an
+  impostor") / UtteranceEnd / the same window again, longer: the re-open takes
+  the whole window, and the export repeats "he writes openly, I never
+  considered". Not new -- before item 35 the same messages exported three lines
+  with the same repetition -- but item 35 left it. A fix needs the re-open to
+  know what the creation trim removed (the lifecycle keeps only the last
+  committed record).
+* The English accuracy experiment (`run_english_accuracy_experiment.py`, two
+  functions) still asks Deepgram for `numerals`, so it no longer measures what
+  production sends; `ENGLISH_QUERY_ALLOWLIST` still accepts the key.
