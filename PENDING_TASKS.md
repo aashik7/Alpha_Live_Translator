@@ -1,18 +1,34 @@
 # Pending tasks — Alpha Live Translator
 
 Handoff for the next Claude Code session. Written 2026-09-25 at `3070dca`,
-updated 2026-09-28 with the owner's two Japanese meetings (section 0),
-`APP_VERSION = "3.3.5.5.8.5.26.5.34"`. The owner writes Banglish, wants terse
-answers, proof over plausible reads, and findings as a table with
-issue / risk / severity / importance.
+updated 2026-09-28 with the owner's two Japanese meetings (section 0) and
+item 37 (`a83dbaa`), `APP_VERSION = "3.3.5.5.8.5.26.5.35"`. The owner writes
+Banglish, wants terse answers, proof over plausible reads, and findings as a
+table with issue / risk / severity / importance.
 
 ## Where things stand
 
-* Every item through **36** in `CODE_REVIEW_20260904.md` is fixed and pushed.
+* Every item through **37** in `CODE_REVIEW_20260904.md` is fixed and pushed.
   `FIX_SEQUENCE.md` is the execution-order ledger; read both before any fix.
-* **Items 33–36 are committed but NOT packaged.** The last update package built
+* **Item 35 was incomplete; item 37 finished it** (review of 2026-09-28, proven
+  by driving the real code against `cb66936`): a re-opened line the provider
+  went on extending lost its first words in the export AND the pane, and a
+  correction or extend held open by `speech_final=False` still never reached
+  the ledger. Item 35's ledger entries carry a visible correction.
+* **Items 33–37 are committed but NOT packaged.** The last update package built
   is 26.5.30; the last share build is `build/share/*-1.4.*`, which is 26.5.29.
   The owner calls the final build — do not build unasked.
+
+### Pending work, in order
+
+| # | What | Section | Kind |
+|---|---|---|---|
+| 1 | Japanese meeting fixes: 0b stabilizer timer, 0g no interim wipe while held, 0d translate at commit, 0c zero-loopback warning (all HIGH); then 0h, 0e, 0f, 0i | 0 | Code |
+| 2 | Owner: meeting audio setup (0a); names/terms list for keyterms (0f); a ~5 min reference transcript for the `multi` test (0h) | 0 | Owner |
+| 3 | One real English meeting to prove items 35 + 37 live, checked against the audio, not only the pane | 1 | Test |
+| 4 | Final build 1.5 / update package 26.5.35+, owner's call | 2 | Build |
+| 5 | Deliver | 3 | Owner |
+| 6 | Open defects table, (k) and (l) new | 4 | Code, lower |
 * Deepgram: the owner's original account was deactivated ("Deactivated token")
   and blocked. `Alpha_Live_Translator/.env` now holds a working key from
   another account, verified live on 2026-09-25 (English and Japanese sockets
@@ -25,6 +41,7 @@ issue / risk / severity / importance.
 | `cb66936` | 26.5.32 | Item 34: keyterm 400 at Start retries once without keyterms |
 | `f4784d8` | 26.5.33 | Item 35: one utterance = one line; English revisions reach the ledger |
 | `3070dca` | 26.5.34 | Item 36: `numerals` no longer sent ("third quarter" was "3rd 0.25") |
+| `a83dbaa` | 26.5.35 | Item 37: a re-opened line keeps its words; a held correction/extend reaches the ledger |
 
 ---
 
@@ -136,12 +153,19 @@ lineage matcher is wrong, not the export.
 
 ## 1. Before the final build: one real English meeting — HIGH
 
-Item 35 changed the commit pipeline in a way production has never exercised:
-**before it, no English revision ever reached the canonical ledger** (two gates
-dropped them), so the export kept an early guess while the pane showed the
-correction. English revisions are now written as ledger `revise` transactions.
-It is proven by replaying the owner's recorded messages through the real app
-(see section 6), not yet by a live meeting.
+Items 35 and 37 changed the commit pipeline in a way production has never
+exercised: **before them, no English revision ever reached the canonical
+ledger** (two gates dropped them), so the export kept an early guess while the
+pane showed the correction. English revisions are now written as ledger
+`revise` transactions. Item 35 is proven by replaying the owner's recorded
+messages through the real app (see section 6), item 37 by driving the real
+lifecycle, publisher, duplicate protection, registry and ledger -- neither yet
+by a live meeting.
+
+**Why the pane is not enough:** item 37's first defect removed the same words
+from the pane AND the export ("I will send you" / "both today" became "both
+today" in both), so an export-versus-pane comparison passed while speech was
+lost. Compare against what was said.
 
 Run one real English meeting of 5–10 minutes with two or more people, Stop, then
 check the newest `Alpha_Live_Translator/troubleshooting/runs/<run>/`:
@@ -156,9 +180,19 @@ check the newest `Alpha_Live_Translator/troubleshooting/runs/<run>/`:
   Same start means a real duplicate; different start and speaker means two people
   (the audit does not look at speaker or timing — see 4g).
 * The translation pane has one translation per transcript line.
+* Listen to the retained audio (`audio_temp/*_audio/*.wav`) for at least 3
+  minutes and check the export word for word: every spoken sentence is in it,
+  none cut at the front. A Windows TTS script played into the meeting gives an
+  exact reference.
+* `logs/japanese_accuracy.log`: for every `RESENT_TAIL_TRIMMED`, the
+  `removed_preview` words are in the export line just before the trimmed one
+  -- the trim may only remove words already exported (item 37's first defect
+  removed words that ended up in no line). The lifecycle's own event log is not
+  written in production (`set_event_log_path` has no caller), so this log is
+  the record.
 
-Acceptance: no line in the export that the pane does not show, and no line
-exported twice.
+Acceptance: every spoken sentence is in the export once, no line in the export
+that the pane does not show, and no line exported twice.
 
 ## 2. Final build — owner's call
 
@@ -182,7 +216,8 @@ Verify the update package on a synthetic install of the previous package:
 2. Put `X/app/.env`, `X/app/.needs-api-keys` and `X/app/user_settings.json` there.
 3. From the new package folder: `py apply_update.py "X" --force`.
 4. Expect "UPDATE COMPLETE -- every file verified by SHA-256", the three files
-   listed under "kept untouched", and `X/app/alpha/constants.py` at 26.5.34.
+   listed under "kept untouched", and `X/app/alpha/constants.py` at 26.5.35 (or
+   whatever the package was built at).
 
 Also still owed: **`Setup-*.exe` has never been silently installed and
 checked** (only the portable zip was unpacked and inspected). Do that once for
@@ -190,7 +225,8 @@ checked** (only the portable zip was unpacked and inspected). Do that once for
 
 ## 3. Deliver
 
-* Field user: send the new update package (26.5.34 or later).
+* Field user: send the new update package (26.5.35 or later — not 26.5.33 or
+  26.5.34, which carry item 37's defects).
 * **Never apply an update package of 26.5.26 or older to a keyless install** —
   those delete its `.needs-api-keys` marker.
 * New recipients: `build/share/AlphaLiveTranslator-Setup-1.5.exe` or the
@@ -203,7 +239,7 @@ checked** (only the portable zip was unpacked and inspected). Do that once for
 | # | Issue | Risk | Severity | Importance |
 |---|---|---|---|---|
 | a | Sentence flush commits text Deepgram later revises. Owner's run: U-13 "Let's see. What is the task? If I can, I can?" then U-14 "If I can't, actually, ..." at the same start 55.39 | Stale tail sentence in the export | Medium | Medium |
-| b | English revisions reaching the ledger are new in production (item 35) | Untested live; section 1 | Medium | High |
+| b | English revisions reaching the ledger are new in production (items 35, 37) | Untested live; section 1 | Medium | High |
 | c | Japanese: one live probe returned 「十二パーセント」 as 「12」, dropping パーセント; identical with and without `numerals` | Wrong or missing unit in Japanese numbers | Unknown | Medium — measure on real speech first |
 | d | English `smart_format`: "two point five million dollars" came back "US2.5 million dollars" | Odd currency text | Low | Low |
 | e | `installer/keys.local.ini` still holds a different, probably deactivated, Deepgram key | A KEYED build would ship a dead key; keyless builds unaffected | Low | Medium before any keyed build |
@@ -212,6 +248,8 @@ checked** (only the portable zip was unpacked and inspected). Do that once for
 | h | Every transcript line reads "Speaker:" with no number under a "Speaker 2 · time" header | Looks unfinished; not checked whether new | Low | Low |
 | i | Each Japanese Start leaves an empty skeleton run folder next to the real one (e.g. `...-161849` + `...-161850`) | Folder clutter | Low | Low |
 | j | Eight stale failing tests in the baseline (section 7) | A new regression can hide in the noise | Low | Low |
+| k | Re-opening a line that item 66 trimmed at creation brings the trimmed head back: "in Duterte, he writes openly, I never considered" / "he writes openly, I never considered him an impostor" (trimmed to "him an impostor") / the same window again, longer → the export repeats "he writes openly, I never considered". Proven on real code; also at `cb66936` (3 lines then, 2 now) | A repeated half-sentence in the export | Medium | Medium |
+| l | `run_english_accuracy_experiment.py` (lines ~421, ~499) still sends `numerals=true`; `ENGLISH_QUERY_ALLOWLIST` still accepts `numerals` | The accuracy experiment no longer measures production; a re-added `numerals` passes the validator | Low | Low |
 
 Notes:
 
@@ -221,6 +259,10 @@ Notes:
   tell the rest of the window from a revision. A fix needs a different signal —
   for example re-comparing the flushed head against the provider's next
   cumulative window while `_split_committed_prefix` is still set.
+* **(k)**: the lifecycle keeps only the last committed record, so the re-open
+  cannot see what the creation trim removed. A fix needs the utterance to carry
+  what item 66 cut at creation and remove it again from the re-opened text.
+  Reproduce with the host in `tests/test_a_reopened_line_keeps_its_words.py`.
 * **(c)**: the probe script used Windows TTS (Haruka). The owner's earlier
   Japanese TTS run through Alpha kept 「十二パーセント」, so this may be Deepgram
   variance. Collect evidence before touching anything.
@@ -286,7 +328,7 @@ the owner's machine.
 
 * Tests, from `Alpha_Live_Translator/`:
   `py -m unittest discover -s tests -t tests -p "test_*.py"` (summary on
-  stderr). At `3070dca`: `Ran 1677 tests`, and exactly these eight fail (stale):
+  stderr). At `a83dbaa`: `Ran 1682 tests`, and exactly these eight fail (stale):
   * `test_final_transcript_commit_v3_2_5::test_commit_allowed_while_finalizing`
   * `test_final_transcript_commit_v3_2_5::test_commit_allowed_while_listening`
   * `test_keepalive_ping_thread_cannot_crash::test_the_crash_is_reproducible_on_the_unguarded_base_class`
@@ -300,7 +342,14 @@ the owner's machine.
   `test_item71_startup_and_hamburger::test_map_corrects_it_before_any_human_could_see_it`.
   Compare failing NAMES, never counts.
 * A regression test must fail before the fix. Prove each part of a fix is
-  load-bearing with mutants (remove it, a test must go red).
+  load-bearing with mutants (remove it, a test must go red). Mutating source in
+  place: set `PYTHONDONTWRITEBYTECODE=1` -- two mutants of equal size written in
+  the same second re-use a stale `.pyc` and report the wrong test.
+* A unit test on the lifecycle alone is not proof for a transcript change
+  (items 35 and 37 both passed theirs while the export lost text). Drive the
+  real publisher, duplicate protection, registry and ledger, as
+  `tests/test_a_revision_reaches_the_ledger.py` does, and compare with the code
+  before the change.
 * One change set = one `APP_VERSION` bump; record it in `FIX_SEQUENCE.md` and
   `CODE_REVIEW_20260904.md`.
 * Files are CRLF. Match the file's line endings; never `sed -i` a `.py`; never
