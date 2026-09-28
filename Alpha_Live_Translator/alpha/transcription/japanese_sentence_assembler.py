@@ -848,6 +848,11 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
         self._commit_gate_consecutive_rejects: int = 0
         self._stable_hold_pending: Optional[dict[str, Any]] = None
         self._stable_hold_generation: int = 0
+        # Section 0b: the context (speaker, reason, lineage) of the line the
+        # boundary stabilizer is holding, and the generation of its release
+        # timer on the language pipeline worker.
+        self._boundary_pending_ctx: Optional[dict[str, Any]] = None
+        self._boundary_release_generation: int = 0
         self._stop_boundary_active: bool = False
         # One-shot sibling of the flag above, for a boundary that happens
         # MID-session: an audio device swap. Set by `flush(DEVICE_SWAP...)`
@@ -985,6 +990,10 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
             self._assembler_commit_gate_failed = False
             self._stable_hold_pending = None
             self._stable_hold_generation = 0
+            self._boundary_pending_ctx = None
+            # Bumped, never zeroed: a release timer from the previous session
+            # must find a generation it can never match.
+            self._boundary_release_generation += 1
             self._stop_boundary_active = False
             self._merge_boundary_pending = False
             self._assembler_exception_recovery_buffer = None
@@ -1068,6 +1077,10 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
                     )
 
                     stab_flush = get_boundary_stabilizer().flush_pending(stop_flush=True)
+                    # Section 0b: the held line's own context, if it has one.
+                    held_ctx = self._boundary_pending_ctx or {}
+                    self._boundary_pending_ctx = None
+                    self._boundary_release_generation += 1
                     if stab_flush and stab_flush.get("emit_now") and stab_flush.get("output_text"):
                         # fixes TASK_2C_REPORT.md: the flushed pending text
                         # belongs to whichever speaker actually said it, not
@@ -1076,7 +1089,8 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
                         # fragment and let it pass the speaker-boundary
                         # guard as a false same-speaker match.
                         pending_speaker = stab_flush.get("pending_speaker")
-                        pending_meta: dict[str, Any] = {"source": "boundary_stabilizer_stop_flush"}
+                        pending_meta: dict[str, Any] = dict(held_ctx.get("metadata") or {})
+                        pending_meta["source"] = "boundary_stabilizer_stop_flush"
                         if pending_speaker is not None:
                             speaker = int(pending_speaker)
                             # fixes TASK_2C_REPORT.md: this speaker is a
@@ -1096,6 +1110,7 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
                             stab_flush["output_text"],
                             pending_meta,
                             "stop_listening",
+                            raw_fragments=list(held_ctx.get("raw_fragments") or []),
                             stop_incomplete=True,
                             force_release=True,
                         )
@@ -2198,6 +2213,132 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
             f"stable_layer_hold_release:{hold_kind}",
         )
 
+    def _schedule_boundary_release_locked(self, deadline: Optional[float]) -> None:
+        """Section 0b: (re)arm the release of the stabilizer's held line.
+
+        Every call invalidates the previous timer; a new one is armed only while
+        something is held. Called under `self._lock`.
+        """
+        self._boundary_release_generation += 1
+        if deadline is None:
+            return
+        from alpha.utils.language_pipeline_worker import get_language_pipeline_worker
+
+        get_language_pipeline_worker().schedule_boundary_release(
+            self, float(deadline), self._boundary_release_generation
+        )
+
+    def try_release_boundary_pending(self, generation: int) -> bool:
+        """Section 0b: the timer's half. Off the UI thread, on the pipeline worker.
+
+        Returns False only when the lock is busy, so the worker retries; a stale
+        generation or a line that is not due yet is a normal True.
+        """
+        acquired = self._lock.try_acquire(timeout=0.0)
+        if not acquired:
+            return False
+        try:
+            if generation != self._boundary_release_generation:
+                return True
+            from alpha.transcription.japanese_boundary_stabilizer import get_boundary_stabilizer
+
+            stabilizer = get_boundary_stabilizer()
+            released = stabilizer.release_expired_pending()
+            if released is None:
+                self._schedule_boundary_release_locked(stabilizer.pending_deadline())
+                return True
+            ctx = self._boundary_pending_ctx
+            self._boundary_pending_ctx = None
+            self._boundary_release_generation += 1
+            self._publish_boundary_release_locked(released, ctx, released_by="timer")
+            return True
+        except Exception as exc:
+            try:
+                from alpha.utils.crash_guard_log import log_exception
+
+                log_exception(
+                    exc,
+                    source="boundary_pending_release",
+                    callback_name="try_release_boundary_pending",
+                    host=self._host,
+                )
+            except Exception:
+                pass
+            return True
+        finally:
+            self._lock.release()
+
+    def _publish_boundary_release_locked(
+        self,
+        released: dict[str, Any],
+        ctx: Optional[dict[str, Any]],
+        *,
+        released_by: str,
+    ) -> None:
+        """Publish a line the boundary stabilizer held, with ITS OWN context.
+
+        Section 0b. `ctx` is what the line arrived with; without one (an older
+        run's state, a reset in between) the stabilizer's recorded speaker is
+        used and the line is still published -- never dropped. A failure here
+        hands the text to item 43's recovery queue instead of losing it.
+        """
+        text = str(released.get("output_text") or "").strip()
+        if not text:
+            return
+        ctx = dict(ctx or {})
+        speaker = ctx.get("speaker")
+        if speaker is None:
+            pending_speaker = released.get("pending_speaker")
+            speaker = (
+                int(pending_speaker)
+                if pending_speaker is not None
+                else int((self._last_stable_commit or {}).get("speaker", 0) or 0)
+            )
+        metadata = dict(ctx.get("metadata") or {})
+        metadata["boundary_stabilizer_enabled"] = True
+        metadata["boundary_action"] = released.get("output_action") or released.get("action", "")
+        metadata["boundary_reason"] = released.get("reason", "")
+        metadata["boundary_confidence"] = released.get("confidence", "")
+        metadata["boundary_pending_used"] = True
+        metadata["boundary_merged"] = False
+        metadata["boundary_raw_mutation"] = False
+        metadata["boundary_should_revise"] = False
+        metadata["boundary_should_export"] = bool(released.get("should_export", True))
+        metadata["boundary_stab_result"] = dict(released)
+        metadata["boundary_released_by"] = released_by
+        jp_accuracy_log(
+            "BOUNDARY_STABILIZER_PENDING_RELEASED",
+            released_by=released_by,
+            reason=released.get("reason"),
+            had_context=bool(ctx),
+            text_preview=text[:80],
+        )
+        try:
+            self._publish_sentence(
+                int(speaker or 0),
+                text,
+                metadata,
+                str(ctx.get("reason") or released.get("commit_reason") or "boundary_pending_release"),
+                raw_fragments=list(ctx.get("raw_fragments") or []),
+                held_tail=str(ctx.get("held_tail") or ""),
+                safe_boundary_used=str(ctx.get("safe_boundary_used") or ""),
+                boundary_type=str(ctx.get("boundary_type") or ""),
+                stop_incomplete=bool(ctx.get("stop_incomplete")),
+                incomplete_reason=str(ctx.get("incomplete_reason") or ""),
+                stable_layer_update_previous=False,
+            )
+        except Exception as exc:
+            self._quarantine_recovery_pending.append(
+                {"speaker": int(speaker or 0), "text": text, "raw": text}
+            )
+            jp_accuracy_log(
+                "BOUNDARY_PENDING_RELEASE_PUBLISH_FAILED",
+                exception_type=type(exc).__name__,
+                exception_message=str(exc),
+                queued_for_recovery=True,
+                text_preview=text[:80],
+            )
+
     def _release_stable_hold_locked(self, hold_kind: str, *, force: bool = False) -> None:
         pending = self._stable_hold_pending
         if not pending:
@@ -2505,6 +2646,24 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
                 from alpha.transcription.japanese_boundary_stabilizer import get_boundary_stabilizer
 
                 stabilizer = get_boundary_stabilizer()
+                # Section 0b. This text's own context, kept WITH it if the
+                # stabilizer holds it. A held line used to be published by
+                # whichever later call released it, carrying that call's
+                # speaker, commit reason and raw-event lineage -- so the ledger
+                # record of the held words named the next line's events, and
+                # the next line's own events were never named at all.
+                current_ctx = {
+                    "speaker": speaker,
+                    "metadata": dict(metadata),
+                    "reason": reason,
+                    "raw_fragments": list(raw_fragments or []),
+                    "held_tail": held_tail,
+                    "safe_boundary_used": safe_boundary_used,
+                    "boundary_type": boundary_type,
+                    "stop_incomplete": stop_incomplete,
+                    "incomplete_reason": incomplete_reason,
+                }
+                held_ctx = self._boundary_pending_ctx
                 stab = stabilizer.process(
                     segment,
                     commit_reason=reason,
@@ -2517,6 +2676,36 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
                     speaker=speaker,
                     stop_flush=is_stop_flush,
                 )
+                # Section 0b: a held line the stabilizer released on this call
+                # is older than this text and goes out first, with its own
+                # context -- whatever happens to this text below.
+                first = stab.get("flush_first")
+                if first:
+                    self._boundary_pending_ctx = None
+                    self._publish_boundary_release_locked(
+                        first, held_ctx, released_by="before_newer_line"
+                    )
+                    held_ctx = None
+                if held_ctx and stab.get("action") == "merge_pending_and_current":
+                    # The held words are inside this output now: carry their
+                    # lineage with it rather than dropping it.
+                    raw_fragments = list(held_ctx.get("raw_fragments") or []) + list(
+                        raw_fragments or []
+                    )
+                    held_ids = list(
+                        (held_ctx.get("metadata") or {}).get("source_raw_event_ids") or []
+                    )
+                    if held_ids:
+                        metadata = dict(metadata)
+                        metadata["source_raw_event_ids"] = list(
+                            dict.fromkeys(
+                                held_ids + list(metadata.get("source_raw_event_ids") or [])
+                            )
+                        )
+                # After `process`, the stabilizer holds either nothing or THIS
+                # text, never an older line (it releases that first).
+                self._boundary_pending_ctx = current_ctx if stabilizer.pending_text else None
+                self._schedule_boundary_release_locked(stabilizer.pending_deadline())
                 if not stab.get("emit_now", True):
                     if stab.get("action") == "suppress_duplicate_continuation" or stab.get("suppress_current"):
                         return
@@ -2536,7 +2725,9 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
                 metadata["boundary_raw_mutation"] = False
                 metadata["boundary_should_revise"] = bool(stab.get("should_revise"))
                 metadata["boundary_should_export"] = bool(stab.get("should_export", True))
-                metadata["boundary_stab_result"] = stab
+                metadata["boundary_stab_result"] = {
+                    k: v for k, v in stab.items() if k != "flush_first"
+                }
                 jp_accuracy_log(
                     "BOUNDARY_STABILIZER_OUTPUT_COMMITTED",
                     action=stab.get("action"),

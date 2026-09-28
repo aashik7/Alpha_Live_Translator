@@ -147,6 +147,33 @@ class LanguagePipelineWorker:
             ]
             heapq.heapify(self._heap)
 
+    def schedule_boundary_release(
+        self, assembler: Any, due_mono: float, generation: int
+    ) -> None:
+        """Section 0b: release the boundary stabilizer's held line when it is due.
+
+        Its own task type, NOT a "flush": `cancel_flush` runs on every assembler
+        flush and would silently drop this timer with it, leaving the held line
+        to wait for the next final again -- the very delay this exists to end.
+        Staleness is the assembler's generation number instead.
+        """
+        if self._stop.is_set():
+            return
+        with self._cond:
+            self._seq += 1
+            heapq.heappush(
+                self._heap,
+                _ScheduledTask(
+                    due_mono=due_mono,
+                    seq=self._seq,
+                    task_type="boundary_release",
+                    assembler=assembler,
+                    generation=generation,
+                    reason="boundary_stabilizer_pending_due",
+                ),
+            )
+            self._cond.notify()
+
     def schedule_quarantine_drop(
         self, assembler: Any, drop_ms: int, *, skip_valid_short: bool = False
     ) -> None:
@@ -198,6 +225,8 @@ class LanguagePipelineWorker:
                     self._run_flush(task)
                 elif task.task_type == "quarantine_drop":
                     self._run_quarantine_drop(task)
+                elif task.task_type == "boundary_release":
+                    self._run_boundary_release(task)
             except Exception as exc:
                 try:
                     from alpha.utils.crash_guard_log import log_exception
@@ -243,6 +272,18 @@ class LanguagePipelineWorker:
                     task.generation,
                     task.reason,
                 )
+
+    def _run_boundary_release(self, task: _ScheduledTask) -> None:
+        assembler = task.assembler
+        release = getattr(assembler, "try_release_boundary_pending", None)
+        if not callable(release):
+            return
+        # False means the assembler lock was busy -- try again shortly, the
+        # same retry `_run_flush` uses.
+        if not release(task.generation) and not self._stop.is_set():
+            self.schedule_boundary_release(
+                assembler, time.monotonic() + 0.05, task.generation
+            )
 
     def _run_quarantine_drop(self, task: _ScheduledTask) -> None:
         assembler = task.assembler

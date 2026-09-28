@@ -278,6 +278,14 @@ class JapaneseBoundaryStabilizer:
         self._duplicate_suppressed_count = 0
         self._punctuation_cleanup_count = 0
         self._timeout_emit_count = 0
+        # Section 0b (2026-09-28): a held line released by the timer rather than
+        # by the next final, and a held line released because a newer line was
+        # about to go out ahead of it.
+        self._timer_release_count = 0
+        self._superseded_emit_count = 0
+        # The held line this call releases before anything it produces itself;
+        # attached to the call's result by `_build_result` (see `process`).
+        self._flush_first: Optional[dict[str, Any]] = None
         self._stop_flush_emit_count = 0
         self._stop_flush_drop_count = 0
         self._leading_before = 0
@@ -293,6 +301,91 @@ class JapaneseBoundaryStabilizer:
     def set_previous_line(self, text: str, speaker: Any = None) -> None:
         self._previous_line = (text or "").strip()
         self._previous_speaker = speaker
+
+    @property
+    def pending_text(self) -> str:
+        """The line held back from the transcript right now, or ""."""
+        return (self._pending or "").strip()
+
+    def pending_deadline(self) -> Optional[float]:
+        """When the held line is due out (the clock `process` was given), or None.
+
+        Section 0b: the owner uses this to schedule `release_expired_pending`,
+        so a held line leaves on time instead of waiting for the next final.
+        """
+        if not self._pending or not self._pending_since:
+            return None
+        return self._pending_since + BOUNDARY_STABILIZER_HOLD_MS_MAX / 1000.0
+
+    def release_expired_pending(self, *, now: float | None = None) -> Optional[dict[str, Any]]:
+        """Release the held line once it has waited `BOUNDARY_STABILIZER_HOLD_MS_MAX`.
+
+        Section 0b. The same release `process` performs when the next final
+        finds the line timed out -- but a hold ended only when more speech
+        arrived, so a line followed by silence stayed off the screen: measured
+        on the three meetings of 2026-09-28, held lines waited p50 8 s and up
+        to 47 s (163 s once, until Stop), 115 of 140 in `...140417` longer
+        than the 4 s this constant allows. Returns the emit result, or None
+        when nothing is held or the line is not due yet.
+        """
+        if not self._pending or not self._pending_since:
+            return None
+        now = time.monotonic() if now is None else now
+        if (now - self._pending_since) * 1000.0 < BOUNDARY_STABILIZER_HOLD_MS_MAX:
+            return None
+        self._timer_release_count += 1
+        return self._release_pending("pending_timeout_emit", commit_reason="boundary_pending_timer")
+
+    def _release_pending(self, reason: str, *, commit_reason: str = "") -> Optional[dict[str, Any]]:
+        """Emit the held line on its own and clear the hold. Section 0b.
+
+        One release path for every way a held line leaves before Stop: the
+        timer, a timed-out hold met by the next final, a speaker change, and a
+        newer line that is about to go out first. The result carries the held
+        line's own speaker (`pending_speaker`) so the caller can publish it
+        with that line's context rather than the current one's.
+        """
+        pending = (self._pending or "").strip()
+        pending_speaker = self._pending_speaker
+        self._pending = ""
+        self._pending_speaker = None
+        self._pending_since = 0.0
+        if not pending:
+            return None
+        if reason == "pending_timeout_emit":
+            self._timeout_emit_count += 1
+        elif reason == "pending_superseded_emit":
+            self._superseded_emit_count += 1
+        cleaned, _ = cleanup_midline_punctuation(pending)
+        self._output_count += 1
+        self._record_output_metrics(cleaned)
+        if reason == "speaker_change_pending_flush":
+            _jp_log(
+                "SPEAKER_BOUNDARY_PENDING_FLUSHED",
+                pending_speaker=pending_speaker,
+                text_preview=cleaned[:80],
+            )
+        elif reason == "pending_superseded_emit":
+            _jp_log("BOUNDARY_PENDING_RELEASED_BEFORE_NEWER_LINE", text_preview=cleaned[:80])
+        else:
+            _jp_log(
+                "INCOMPLETE_ENDING_TIMEOUT_EMITTED",
+                text_preview=cleaned[:80],
+                released_by=commit_reason or "next_final",
+            )
+        result = self._build_result(
+            emit_now=True,
+            output_text=cleaned,
+            pending_text="",
+            action="hold_leading_fragment",
+            reason=reason,
+            before_text=pending,
+            confidence="low",
+            commit_reason=commit_reason,
+        )
+        result["pending_speaker"] = pending_speaker
+        self._log_decision(result, emitted_to_ui=True)
+        return result
 
     def _estimate_translation_ready(self, text: str) -> bool:
         segment = (text or "").strip()
@@ -445,7 +538,7 @@ class JapaneseBoundaryStabilizer:
             update_previous=update_previous,
             suppress=action == "suppress_duplicate_continuation",
         )
-        return {
+        result = {
             "emit_now": emit_now,
             "output_text": out_text,
             "pending_text": pend_text,
@@ -463,6 +556,12 @@ class JapaneseBoundaryStabilizer:
             "pending_before": self._pending,
             **contract,
         }
+        # Section 0b: a held line this call released goes out BEFORE whatever
+        # this call decided about its own text. Consumed here, once.
+        if self._flush_first is not None:
+            result["flush_first"] = self._flush_first
+            self._flush_first = None
+        return result
 
     def _with_speaker(self, text: str, speaker_prefix: str) -> str:
         body = (text or "").strip()
@@ -530,35 +629,10 @@ class JapaneseBoundaryStabilizer:
             # pending-merge text logic. A pending fragment can never be
             # merged with a different (or unknown) speaker's incoming
             # fragment -- emit the pending fragment on its own first.
-            if not speakers_confirmed_same(self._pending_speaker, speaker):
-                emit_pending = self._pending
-                emit_pending_speaker = self._pending_speaker
-                self._pending = text
-                self._pending_speaker = speaker
-                self._pending_since = now
-                cleaned, _ = cleanup_midline_punctuation(emit_pending)
-                self._output_count += 1
-                self._record_output_metrics(cleaned)
-                _jp_log(
-                    "SPEAKER_BOUNDARY_PENDING_FLUSHED",
-                    pending_speaker=emit_pending_speaker,
-                    candidate_speaker=speaker,
-                    text_preview=cleaned[:80],
-                )
-                result = self._build_result(
-                    emit_now=True,
-                    output_text=cleaned,
-                    pending_text=text,
-                    action="hold_leading_fragment",
-                    reason="speaker_change_pending_flush",
-                    before_text=emit_pending,
-                    confidence="low",
-                    commit_reason=commit_reason,
-                    speaker_prefix=speaker_prefix,
-                )
-                self._log_decision(result, emitted_to_ui=True)
-                return result
-            merged, merge_reason, ok = safe_merge_text(self._pending, text)
+            same_speaker = speakers_confirmed_same(self._pending_speaker, speaker)
+            merged, merge_reason, ok = (
+                safe_merge_text(self._pending, text) if same_speaker else ("", "", False)
+            )
             if ok and count_japanese_chars(merged) <= BOUNDARY_STABILIZER_PENDING_MERGE_MAX_CHARS:
                 self._pending = ""
                 self._pending_speaker = None
@@ -583,29 +657,33 @@ class JapaneseBoundaryStabilizer:
                 )
                 self._log_decision(result, emitted_to_ui=True)
                 return result
-            if pending_age_ms >= BOUNDARY_STABILIZER_HOLD_MS_MAX:
-                emit_pending = self._pending
-                self._pending = text
-                self._pending_speaker = speaker
-                self._pending_since = now
-                self._timeout_emit_count += 1
-                cleaned, _ = cleanup_midline_punctuation(emit_pending)
-                self._output_count += 1
-                self._record_output_metrics(cleaned)
-                _jp_log("INCOMPLETE_ENDING_TIMEOUT_EMITTED", text_preview=cleaned[:80])
-                result = self._build_result(
-                    emit_now=True,
-                    output_text=cleaned,
-                    pending_text=text,
-                    action="hold_leading_fragment",
-                    reason="pending_timeout_emit",
-                    before_text=emit_pending,
-                    confidence="low",
-                    commit_reason=commit_reason,
-                    speaker_prefix=speaker_prefix,
-                )
-                self._log_decision(result, emitted_to_ui=True)
-                return result
+            # Section 0b (2026-09-28). The held line did not continue into this
+            # text, so it is finished and goes out FIRST, ahead of anything this
+            # text produces; this text is then judged on its own merits, with
+            # the released line as the previous one.
+            #
+            # Before, the three ways out of this block each misbehaved:
+            #   * a speaker change and a timed-out hold emitted the held line
+            #     but then held THIS text unconditionally -- a complete sentence
+            #     waited for the next final;
+            #   * a young hold (same speaker, under the limit) fell through with
+            #     the old line still held, so this text went out AHEAD of it --
+            #     measured 4, 4 and 9 times in the three meetings of 2026-09-28
+            #     ("二千二十一から、..." shown before "私は...卒業しました。");
+            #     and if this text was itself held, the old line was
+            #     overwritten and never shown at all.
+            if not same_speaker:
+                release_reason = "speaker_change_pending_flush"
+            elif pending_age_ms >= BOUNDARY_STABILIZER_HOLD_MS_MAX:
+                release_reason = "pending_timeout_emit"
+            else:
+                release_reason = "pending_superseded_emit"
+            released_speaker = self._pending_speaker
+            released = self._release_pending(release_reason, commit_reason=commit_reason)
+            if released is not None:
+                self._previous_line = str(released.get("output_text") or "")
+                self._previous_speaker = released_speaker
+                self._flush_first = released
 
         cleaned, punct_changed = cleanup_midline_punctuation(text)
         if punct_changed:
@@ -852,6 +930,8 @@ class JapaneseBoundaryStabilizer:
             "duplicate_suppressed_count": self._duplicate_suppressed_count,
             "punctuation_cleanup_count": self._punctuation_cleanup_count,
             "timeout_emit_count": self._timeout_emit_count,
+            "timer_release_count": self._timer_release_count,
+            "superseded_emit_count": self._superseded_emit_count,
             "stop_flush_emit_count": self._stop_flush_emit_count,
             "stop_flush_drop_count": self._stop_flush_drop_count,
             "raw_mutation_count": 0,
@@ -964,6 +1044,10 @@ class JapaneseBoundaryStabilizer:
                 continue
             result = self.process(line, commit_reason="simulation")
             decisions.append(result)
+            first = result.get("flush_first")
+            if first and first.get("output_text"):
+                outputs.append(first["output_text"])
+                self.note_emitted(first["output_text"])
             if result.get("emit_now") and result.get("output_text"):
                 if result.get("should_revise") or result.get("update_previous"):
                     if outputs:

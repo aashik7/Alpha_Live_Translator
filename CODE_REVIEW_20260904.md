@@ -2408,3 +2408,66 @@ word, so none of them grows the early guess.
 * The English accuracy experiment (`run_english_accuracy_experiment.py`, two
   functions) still asks Deepgram for `numerals`, so it no longer measures what
   production sends; `ENGLISH_QUERY_ALLOWLIST` still accepts the key.
+
+---
+
+## Item 38 — a held Japanese line leaves on time, in order, as itself (PENDING_TASKS 0b)
+
+The owner's Japanese meetings of 2026-09-28 "seemed to disconnect": lines were
+held off the screen for 30 s and more while people talked.
+
+### Measured on the retained runs
+
+`JapaneseBoundaryStabilizer` holds a line that opens on a particle or ends
+mid-clause, for at most `BOUNDARY_STABILIZER_HOLD_MS_MAX` (4 s). Nothing
+enforced it: the hold ended only when the next final arrived.
+
+| Run | Held lines released | Wait p50 / p90 / max | Over 4.5 s | Newer line shown before the held one |
+|---|---|---|---|---|
+| `...100031` | 52 | 8.0 / 16.6 / 163.4 s | 44 | 4 |
+| `...101440` | 45 | 8.0 / 29.7 / 47.3 s | 37 | 4 |
+| `...140417` | 140 | 8.1 / 16.2 / 47.8 s | 115 | 9 |
+
+Four defects in the one hold:
+
+1. **No timer.** `flush_pending()` ran only at Stop.
+2. **Order inverted.** A young hold the next text did not merge into stayed
+   held while the next text went out ahead of it ("二千二十一から、..." shown
+   before "私は...卒業しました。"). Had the next text itself been held, the
+   older line would have been overwritten and never shown (0 in these runs;
+   the code allowed it).
+3. **New sentence held.** A speaker change and a timed-out hold released the
+   held line but then held the new text unconditionally, complete or not.
+4. **Wrong context.** A held line was published by whichever later call
+   released it -- that call's speaker, commit reason and raw-event lineage.
+
+### The change
+
+* Stabilizer: one release path, `_release_pending`, for the timer, a timed-out
+  hold, a speaker change and a newer line about to go out first; the released
+  line rides on the call's result as `flush_first` and becomes the previous line
+  for the rest of the decision. `release_expired_pending()` and
+  `pending_deadline()` for the timer.
+* Worker: a `boundary_release` task on the existing `language_pipeline_worker`
+  heap -- no new thread. Its own task type, because `cancel_flush` runs on every
+  assembler flush and would take a "flush" with it.
+* Assembler: the held line's context is kept with it
+  (`_boundary_pending_ctx`) and used when it is released -- by the timer
+  (`try_release_boundary_pending`), before a newer line, merged into the next
+  text (lineage of both), or at Stop.
+
+### Verified
+
+* `tests/test_a_held_line_leaves_on_time.py` (8, real assembler + stabilizer +
+  lifecycle + ledger; stand-in clock and worker heap): all 8 fail before the
+  change -- the four behavioural ones as measured (`['今日は...']` first;
+  the new sentence held twice; Stop lineage `[]`).
+* Six mutants, each caught: release-first removed, `flush_first` dropped by
+  the assembler, no timer armed, timer ignoring the held context, the release
+  task typed as a flush, Stop ignoring the held context.
+* Replay of each meeting's recorded stabilizer inputs (text, time, speaker
+  turns) through the stabilizer: the old code reproduces the live numbers
+  (p50 8.0-9.2 s, max 163.4 / 47.3 / 47.8 s); the new code releases every held
+  line at 4.0 s, none over 4.5 s.
+* Full suite: `Ran 1690 tests`, the same eight stale failures as the recorded
+  baseline and nothing else.
