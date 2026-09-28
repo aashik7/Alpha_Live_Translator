@@ -1,6 +1,7 @@
 # Pending tasks — Alpha Live Translator
 
 Handoff for the next Claude Code session. Written 2026-09-25 at `3070dca`,
+updated 2026-09-28 with the owner's Japanese meeting (section 0),
 `APP_VERSION = "3.3.5.5.8.5.26.5.34"`. The owner writes Banglish, wants terse
 answers, proof over plausible reads, and findings as a table with
 issue / risk / severity / importance.
@@ -24,6 +25,61 @@ issue / risk / severity / importance.
 | `cb66936` | 26.5.32 | Item 34: keyterm 400 at Start retries once without keyterms |
 | `f4784d8` | 26.5.33 | Item 35: one utterance = one line; English revisions reach the ledger |
 | `3070dca` | 26.5.34 | Item 36: `numerals` no longer sent ("third quarter" was "3rd 0.25") |
+
+---
+
+## 0. The owner's Japanese meeting of 2026-09-28 — do these first
+
+Owner's report: "it seemed to stop mid-way, I restarted", "translation was very
+slow", "accuracy was very poor". Runs, all at 26.5.34, in
+`Alpha_Live_Translator/troubleshooting/runs/`:
+
+| Run | Time | Captured |
+|---|---|---|
+| `v3.3.5.5.8.5.26.5.34-20260928-100031` | 10:00–10:14 | meeting audio until 10:11, mic until 10:07 |
+| `v3.3.5.5.8.5.26.5.34-20260928-101440` (restart) | 10:14–10:29 | laptop mic only; meeting audio never |
+
+Nothing crashed and Deepgram never disconnected. Measured findings:
+
+* **"Stopped mid-way" was the audio, not Alpha.** Per-minute speech in the
+  retained `audio_temp/*_audio/*.wav` (0.5 s windows, rms > 300): the system
+  (meeting) track has speech until 10:11:41, then exact digital zero; the mic is
+  exact zero from 10:07 (`MICROPHONE_CAPTURE_DISABLED_MID_SESSION` — the mic
+  switch was turned off). At 10:11:26 Windows' default output moved from
+  "soundcore R50i NC" (Bluetooth) to "Realtek"; Alpha followed the default
+  (rebind OK, 0.26 s) but the meeting app was not playing there. In the restart
+  the Realtek loopback was exact zero for all 15 minutes: the meeting played on
+  another device (probably the "Jabra SPEAK 410" captured at 10:00:41).
+* **Slow translation is the Japanese boundary hold, not DeepL.** DeepL p50
+  0.4–0.5 s; commit → translation shown p50 0.5–0.7 s. Last Deepgram final of a
+  line → commit: p50 3.2 s (by design: `SENTENCE_HOLD_MIN_MS/MAX_MS` =
+  2000/3500 in `japanese_sentence_assembler.py`), p90 5.7–7.4 s, max 20–24 s.
+  **Bug:** `JapaneseBoundaryStabilizer.process()` emits a timed-out pending line
+  (`BOUNDARY_STABILIZER_HOLD_MS_MAX = 4000`) only when the NEXT final arrives;
+  `flush_pending()` is called only at Stop. Log of run `...100031`: line in at
+  10:09:21.789, 8 s max-hold timer fired at 10:09:29.801 with no emit, emitted at
+  10:09:41.768 (`INCOMPLETE_ENDING_TIMEOUT_EMITTED`, reason
+  `pending_timeout_emit`) when the next speaker's final arrived. 27 such lines
+  in that run.
+* **Accuracy.** Deepgram was confident (median 0.98, 8% under 0.7); dropped
+  low-confidence finals were only 26 + 20 characters. Causes: the restart
+  captured only the far-field laptop mic; Japanese/English code-switching by
+  non-native speakers ("Javaのノーエクスプレイエクスペリエンス", "1gradish");
+  names not in keyterms (シャフィー / シャーピー / シャンピー, タリク / ターリップ).
+  **`language=multi` was measured and is worse** — on the same retained chunks it
+  hallucinated Italian ("Sembra latte. Vabbè è camera ogni."), Hindi script and
+  "Daigalguru" ×3. Do not switch to it.
+
+Plan, in order:
+
+| # | Task | Kind | Done when |
+|---|---|---|---|
+| 0a | Meeting setup: meeting app speaker = Windows default (or set the default to the meeting device before Start); no output-device switching mid-meeting; keep the mic on when the room speaks; prefer the speakerphone as both meeting output and room mic | Owner, no code | Next run's system track is not zero |
+| 0b | Release a timed-out stabilizer pending line on a timer — schedule the check on the existing `language_pipeline_worker` heap, no new thread; emit through the same path as the `pending_timeout_emit` branch | Code, HIGH | Replay: a final, 20 s silence, another final — the first line commits ≤ 4 s after its final; re-measure the 27 lines of `...100031` |
+| 0c | Visible warning when the system loopback is exact zero for 30–60 s while the mic has speech, naming the device ("Alpha is listening to Realtek; nothing is playing there"), and a notice when Alpha follows an output-device change. Item 31's "● No sound" fires only when BOTH tracks are silent and is a small status-bar label | Code, HIGH | Replaying run `...100031`'s audio shows the warning at ~10:12 |
+| 0d | Why three lines in `...101440` got their translation 387 s, 327 s and 51 s after commit (translation segments 81–83) | Investigate | Root cause + regression test |
+| 0e | Tune the 2–3.5 s sentence hold: less for lines ending in 。/？ with `speech_final` | Tuning, MEDIUM | Replay of retained runs: latency vs. extra line splits |
+| 0f | Participant names and project terms as keyterms (`alpha/resources/keyterms/user_terms.json` exists) — needs the owner's name list; A/B on the retained chunks | Config + test | Same audio before/after |
 
 ---
 
