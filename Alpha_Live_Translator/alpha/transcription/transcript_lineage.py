@@ -360,6 +360,68 @@ def build_export_chain_from_stable_commits(commits: list[dict[str, Any]]) -> lis
     return chain
 
 
+# Section 0i (2026-09-28): how far past the last matched line a commit's words
+# are looked for, and how close a corrected line must still read.
+_ALIGN_WINDOW_LINES = 6
+_ALIGN_MIN_SIMILARITY = 0.75
+
+
+def _line_body(raw: str) -> str:
+    """An export line without its speaker label ("[Speaker N] " or "Speaker: ")."""
+    body = (raw or "").strip()
+    body = re.sub(r"^\[Speaker\s+\d+\]\s*", "", body)
+    return re.sub(r"^Speaker(?:\s+\d+)?\s*[:：]\s*", "", body)
+
+
+def _align_chain_to_lines(chain: list[dict[str, Any]], lines: list[str]) -> list[list[str]]:
+    """Give each export line the stable commits whose words it holds. Section 0i.
+
+    Replaces pairing by POSITION (line i <- chain entry i), which shifted every
+    pairing after the first count difference: `...140417` reported 16 exported
+    commits as lost; with one line really removed it blamed the wrong commit,
+    or nothing; and lines past the end of the chain all got the chain's last
+    id, so the lineage lock (`select_final_export_canonical_lines`, one line
+    per lineage group) could drop them from the export.
+
+    Both lists are in commit order, so each commit is looked for from the line
+    the previous one matched, a few lines ahead at most: a line that contains
+    the commit's words (or is contained in them, for a trimmed line), or reads
+    nearly the same (a glossary correction). A commit found nowhere is left
+    unrepresented -- a real loss is still reported, now as ITS commit. Each
+    commit goes to exactly one line, so no two lines share a lineage group.
+    """
+    from difflib import SequenceMatcher
+
+    norm_lines = [_normalize(_line_body(line)) for line in lines]
+    assigned: list[list[str]] = [[] for _ in lines]
+    cursor = 0
+    for entry in chain:
+        words = _normalize(str(entry.get("text") or ""))
+        ids = [str(sid) for sid in (entry.get("source_commit_ids") or []) if sid]
+        if not words or not ids:
+            continue
+        hit = None
+        for k in range(cursor, min(cursor + _ALIGN_WINDOW_LINES, len(norm_lines))):
+            line = norm_lines[k]
+            if not line:
+                continue
+            if (
+                words in line
+                or (len(line) >= max(4, len(words) // 2) and line in words)
+                or SequenceMatcher(None, words, line).ratio() >= _ALIGN_MIN_SIMILARITY
+            ):
+                hit = k
+                break
+        if hit is None:
+            _jp_log("LINEAGE_COMMIT_NOT_FOUND_IN_EXPORT", source_commit_ids=ids)
+            continue
+        for sid in ids:
+            if sid not in assigned[hit]:
+                assigned[hit].append(sid)
+        cursor = hit
+    return assigned
+
+
 def build_registry_from_export_lines(
     lines: list[str],
     *,
@@ -370,6 +432,7 @@ def build_registry_from_export_lines(
     chain: list[dict[str, Any]] = []
     if stable_commits_path and stable_commits_path.exists():
         chain = build_export_chain_from_stable_commits(_load_jsonl(stable_commits_path))
+    aligned = _align_chain_to_lines(chain, lines) if chain else []
 
     glossary_decisions = glossary_decisions or []
     for i, raw in enumerate(lines):
@@ -382,13 +445,10 @@ def build_registry_from_export_lines(
         prefix = _speaker_prefix(speaker)
         full = f"{prefix}{text}"
 
-        source_ids: list[str] = []
-        if i < len(chain):
-            source_ids = list(chain[i].get("source_commit_ids", []))
-        elif chain:
-            source_ids = [chain[min(i, len(chain) - 1)].get("source_commit_ids", ["unknown"])[0]]
-        else:
-            source_ids = [f"lineage-{i+1}"]
+        # Section 0i: the commits whose words this line holds, not whichever
+        # commit sits at the same position. A line no commit matched carries
+        # none -- it is kept, and cannot be grouped with another line.
+        source_ids: list[str] = list(aligned[i]) if chain else [f"lineage-{i+1}"]
 
         row = registry.create_canonical_line(
             full,

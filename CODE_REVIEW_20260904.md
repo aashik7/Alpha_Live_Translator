@@ -2649,3 +2649,46 @@ the only doubt -> `_flush_locked("sentence_punctuation_speech_final")`, behind
   committed at once with `speech_final`; held without it; held for "…ので。"
   even with it. Three mutants, each caught -- the branch removed (the old
   behaviour), any incomplete reason accepted, `speech_final` ignored.
+* Full suite: `Ran 1719 tests`, the same eight stale failures and nothing else.
+
+---
+
+## Item 43 — export lineage pairs a line with the commits whose words it holds (PENDING_TASKS 0i)
+
+`...140417` reported 16 exported commits (`stable-213`..`stable-228`) as
+`valid_segment_loss`; all 16 are in `Alpha_output_FINAL.txt` verbatim.
+
+### Cause
+
+`build_registry_from_export_lines` gave export line *i* the commits of chain
+entry *i* -- by position -- so the first difference in count between stable
+commits and exported lines (a merged revision, a line the dedupe sweep removed,
+a stop-tail line) shifted every pairing after it. Run on the retained runs' own
+files with one exported line really removed, it blamed `stable-228` (the last
+commit) for line 103 of `...140417`, `stable-81` for line 35 of `...100031`, and
+reported NO loss in `...101440`. Worse than a wrong report: lines past the end of
+the chain all got the chain's last id, and `select_final_export_canonical_lines`
+keeps one line per lineage group -- the lineage lock itself dropped them from
+the export (a fixture of 5 commits and 7 lines exported 5).
+
+### The change
+
+`_align_chain_to_lines`: both lists are in commit order; each commit is looked
+for from the line the previous one matched, up to 6 lines ahead -- a line that
+contains its words, is contained in them (a trimmed line), or reads nearly the
+same (a glossary correction, ratio >= 0.75). A commit found nowhere stays
+unrepresented and is reported as itself. Each commit goes to one line only, so
+no two lines share a lineage group; a line nothing matched carries no id and is
+kept.
+
+### Verified
+
+* `tests/test_lineage_coverage_matches_by_content.py` (4): 3 fail before the
+  change -- the wrong commit blamed (`['stable-5'] != ['stable-2']`), a false
+  loss on a merged line, and `5 != 7` exported lines. Three mutants caught
+  (positional pairing back, one commit per line, containment removed).
+* The retained runs' own files, through the real functions: no false loss in
+  any of the three, every exported line kept (69 / 70 / 204); with one line
+  removed, exactly that line's commit is named (`stable-44` "廊は。はやさん…",
+  `stable-125` "かいたさんライセンスで…", `stable-120` "これはメッセーね…").
+* Full suite: `Ran 1723 tests`, the same eight stale failures and nothing else.
