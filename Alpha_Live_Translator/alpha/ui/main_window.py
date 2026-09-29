@@ -8800,8 +8800,22 @@ class AlphaApp(
         # belong to this same speaker -- refuses to reach back across an
         # intervening different-speaker turn. previous_text itself (used below
         # by decide_transcript_action for both languages) is left untouched.
+        #
+        # Section 0d (2026-09-28): never for a line the continuity assembler
+        # committed. The assembler owns Japanese boundaries and has already
+        # written that line to the ledger as its own record (its own merges,
+        # the boundary stabilizer's `merge_with_previous`, revise the ledger
+        # and the pane together). Gluing it onto the pane's previous row here
+        # was a second, UI-only boundary decision: the pane showed one row
+        # where the export has two, the row kept the previous line's id while
+        # the translation was keyed on a session-wide `jpm-utt` id, and
+        # `add_translation` dropped it -- 8 lines of `...140417` translated
+        # only at Stop, 15 `TRANSLATION_STORE_ID_MATCH_NOT_FOUND`, all on one
+        # id. Manual-mode items that never passed through the assembler still
+        # merge here.
         speaker_confirmed_active = bool(
             self._is_japanese_manual_mode()
+            and not item.get("_jp_continuity_assembler")
             and previous_text
             and text
             and self.transcript_store is not None

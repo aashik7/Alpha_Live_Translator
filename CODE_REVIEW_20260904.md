@@ -2508,3 +2508,56 @@ wipe to the next commit the window was blank for a median 5.4-19.3 s, up to
   still cleared).
 * Four mutants, each caught (held text ignored, no per-tick follow, live
   interim not taking the line back, the stabilizer's hold left out).
+* Full suite: `Ran 1696 tests`, the same eight stale failures and nothing else.
+
+---
+
+## Item 40 — an assembler line keeps its own row, id and translation (PENDING_TASKS 0d)
+
+`...140417`: 8 of 225 lines got no translation during the meeting and were
+translated only by the Stop reconciliation, 81 s to 32 min after commit. Every
+one is a `TRANSLATION_STORE_ID_MATCH_NOT_FOUND` about a second after its commit;
+all 15 misses in the run name ONE id, `jpm-utt-9ee2ca2ccbc2`, for different
+sentences.
+
+### Cause: a second boundary authority in the UI
+
+The assembler had already decided "new line" and written its own ledger record
+(`stable-218` "あら、どれを直さないと駄目だ。", `speaker_boundary_forced_new_line`)
+when `_commit_transcript_item_to_store` ran the manual-mode cross-segment merge:
+it glued the line onto the pane's previous row ("デザインドキュメントを") and
+relabelled the item with `_jp_manual_mode_current_utterance_id` -- a session-wide
+id that is never re-minted while assembler items (which always carry their own
+id) keep arriving. The row kept the previous line's id; the translation was
+keyed on the jpm id; `add_translation` found no row and dropped it. And the pane
+showed one row where the export -- built from the ledger -- has two (export
+lines 18-19); once the glued row read "…さんにまるさんが…さんにとあとはバッチ?か".
+
+### The change
+
+`_commit_transcript_item_to_store` no longer runs the cross-segment merge for a
+`_jp_continuity_assembler` item. The assembler owns Japanese boundaries
+(REPAIR_PLAN Phase 2), and its own merge -- the stabilizer's
+`merge_with_previous` -- revises the ledger and the pane together. Items that
+never passed through the assembler still merge.
+
+> **Correction** to `test_task2g_acceptance_gate.py` tests 3 and 4, which pinned
+> the merge for ASSEMBLER items as "real, currently necessary work". Measured on
+> `...140417`, it was a divergence from the export and a translation loss. The
+> tests now drive manual-mode items, the path that keeps the merge; the old
+> claim is noted in the test, not erased.
+
+### Verified
+
+* `tests/test_an_assembler_line_keeps_its_own_row.py` (3, the real
+  `_commit_transcript_item_to_store` on task2g's method-borrowed host): two fail
+  before the change -- `['本日の会議の資料を確認してください'] != ['本日の会議の資料を',
+  '確認してください']`, and the translation `None` -- the third pins the kept
+  manual-mode merge.
+* Two more tests changed with it. `test_task5_final_cleanup.py` Fix3 test 2
+  pinned the same assembler-item merge (now driven with manual-mode items, the
+  correction noted in the test). `test_silent_failure_landmines.py` item 62 read
+  a fixed 12000-character slice of `_commit_transcript_item_to_store`, with
+  `retry_pending` at 11894: this change's comment pushed it out and failed the
+  test with the behaviour unchanged. It now reads the whole method.
+* Full suite: `Ran 1699 tests`, the same eight stale failures and nothing else.

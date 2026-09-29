@@ -268,9 +268,18 @@ class ManualModeIntegrationTests(unittest.TestCase):
         # merge path is genuinely reachable and does real, currently
         # necessary work for Japanese sessions -- same-speaker compound
         # continuation must still work exactly as before Task 2F.
+        #
+        # CORRECTED 2026-09-28 (item 40, PENDING_TASKS 0d): this test used to
+        # drive the merge with ASSEMBLER items (the host's default). That
+        # "necessary work" was measured wrong for them: the assembler had
+        # already committed each line as its own ledger record, so the UI
+        # merge made the pane disagree with the export and lost translations
+        # (`test_an_assembler_line_keeps_its_own_row.py`). The merge is kept
+        # for items that never passed through the assembler, which is what
+        # this test now drives.
         host = ManualModeCommitHost()
-        host.commit(1, "これはテストの音声")
-        host.commit(1, "認識をテストしています")
+        host.commit(1, "これはテストの音声", jp_continuity_assembler=False)
+        host.commit(1, "認識をテストしています", jp_continuity_assembler=False)
 
         segments = host.transcript_store.get_all()
         self.assertEqual(
@@ -292,8 +301,9 @@ class ManualModeIntegrationTests(unittest.TestCase):
         # "previous" must compact to >= 8 chars and end in a particle
         # (_previous_blocks_particle_merge's own minimum-length guard);
         # "current" starts with "確認", one of _JAPANESE_CONTINUATION_PREFIXES.
-        host.commit(1, "本日の会議の資料を")
-        host.commit(1, "確認してください")
+        # Manual-mode items, not assembler ones -- see the correction on test 3.
+        host.commit(1, "本日の会議の資料を", jp_continuity_assembler=False)
+        host.commit(1, "確認してください", jp_continuity_assembler=False)
         segments = host.transcript_store.get_all()
         self.assertEqual(
             len(segments), 1,

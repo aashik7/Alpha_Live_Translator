@@ -197,11 +197,16 @@ class Fix3ManualModeIdentityTests(unittest.TestCase):
         self.assertTrue(resolved, "the assigned canonical_utterance_id must resolve in the identity registry")
 
     def test_2_merged_continuation_reuses_same_utterance_id_with_bumped_version(self) -> None:
+        # CORRECTED 2026-09-28 (item 40): driven with manual-mode items. With
+        # the host's default ASSEMBLER items this pinned the UI re-merging a
+        # line the assembler had already committed as its own ledger record --
+        # the pane then disagreed with the export and the translation was lost
+        # (`test_an_assembler_line_keeps_its_own_row.py`).
         host = ManualModeCommitHost()
-        first_item = host.commit(1, "これはテストの音声")
+        first_item = host.commit(1, "これはテストの音声", jp_continuity_assembler=False)
         first_id = first_item.get("canonical_utterance_id")
         self.assertTrue(first_id)
-        second_item = host.commit(1, "認識をテストしています")
+        second_item = host.commit(1, "認識をテストしています", jp_continuity_assembler=False)
         # Same speaker, no interjection -> compound continuation merges into
         # the SAME utterance identity, not a fresh one.
         self.assertEqual(second_item.get("canonical_utterance_id"), first_id)

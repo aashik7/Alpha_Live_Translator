@@ -162,7 +162,12 @@ class RetryPendingIsPropagatedTest(unittest.TestCase):
             encoding="utf-8"
         )
         start = source.index("def _commit_transcript_item_to_store")
-        source = source[start : start + 12000]
+        # The whole method, up to the next one. This was a fixed 12000-char
+        # slice, and `retry_pending` sat at 11894 -- any comment added above
+        # it (item 40's did) pushed it out and failed the test with the
+        # behaviour unchanged.
+        end = source.index("\n    def ", start + 1)
+        source = source[start:end]
         self.assertIn(
             "retry_pending",
             source,
