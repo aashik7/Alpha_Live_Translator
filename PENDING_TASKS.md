@@ -24,9 +24,17 @@ issue / risk / severity / importance.
   went on extending lost its first words in the export AND the pane, and a
   correction or extend held open by `speech_final=False` still never reached
   the ledger. Item 35's ledger entries carry a visible correction.
-* **Items 33–48 are committed but NOT packaged.** The last update package built
-  is 26.5.30; the last share build is `build/share/*-1.4.*`, which is 26.5.29.
-  The owner calls the final build — do not build unasked.
+* **Update package 26.5.46 built 2026-09-29 (owner's request)** and applied to
+  the owner's own installed app (`%LOCALAPPDATA%\Programs\Alpha Live Translator`,
+  was 26.5.3): every file SHA-256 verified, `.env`, `user_settings.json` and
+  `troubleshooting\` untouched, backup `app_backup_20260929-172652`, launches
+  and reaches the main loop. Tested first on a synthetic copy of that install.
+  Not yet sent to any client. The last share build is still
+  `build/share/*-1.4.*` (26.5.29); a new share build stays the owner's call.
+* **Run Alpha from ONE place:** `Alpha_Translator V 1.0\Alpha_Live_Translator\main.py`
+  (has `.env`) or the installed app. Never from `.claude\worktrees\...` (no
+  keys). A push from a worktree does not update the main folder: fast-forward
+  it (`git -C "<main folder>" pull --ff-only`) after every push.
 
 ### Pending work, in order
 
