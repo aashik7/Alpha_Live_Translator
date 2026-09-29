@@ -2818,8 +2818,11 @@ f-string it could not be translated either -- a Japanese screen showed English.
   `publish_error_event`, `_on_error_occurred` and `EventBus`): the follow is an
   INFO line and no ERROR, once per transition; a problem after it and a device
   change are still published; the sentence names no device, is translated, and
-  a click on a Japanese screen shows the Japanese. 8 fail before the change
-  (4 of them because the new constant did not exist); two mutants caught.
+  a click on a Japanese screen shows the Japanese. 7 of the 8 fail before the
+  change (3 of them because the new constant did not exist); the 8th -- a
+  device change is still published -- is the guard and passes both ways. Two
+  mutants caught. (Corrected the same day: this line and the message of
+  `437259f` first said "8 fail", counting one test's two subtests twice.)
 * **Retargeted, with a visible correction note:** two tests in
   `test_items_46_47_wiring.py` pinned the old wording (name the device this
   session bound; "stop and start" before "default again") -- true when capture
