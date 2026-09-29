@@ -2,20 +2,24 @@
 
 Handoff for the next Claude Code session. Written 2026-09-25 at `3070dca`,
 updated 2026-09-28 with the owner's two Japanese meetings (section 0) and
-item 37 (`a83dbaa`), `APP_VERSION = "3.3.5.5.8.5.26.5.35"`. The owner writes
-Banglish, wants terse answers, proof over plausible reads, and findings as a
-table with issue / risk / severity / importance.
+item 37 (`a83dbaa`), and 2026-09-29 with section 0's code done (items 38-43),
+`APP_VERSION = "3.3.5.5.8.5.26.5.41"`. The owner writes Banglish, wants terse
+answers, proof over plausible reads, and findings as a table with
+issue / risk / severity / importance.
 
 ## Where things stand
 
-* Every item through **37** in `CODE_REVIEW_20260904.md` is fixed and pushed.
+* Every item through **43** in `CODE_REVIEW_20260904.md` is fixed and pushed.
   `FIX_SEQUENCE.md` is the execution-order ledger; read both before any fix.
+* **Section 0's code is done** (items 38-43, 0b/0g/0d/0c/0e/0i). What is left of
+  section 0 needs the owner: 0a (meeting setup), 0f (the names list), 0h (a
+  reference transcript). See the plan table in section 0.
 * **Item 35 was incomplete; item 37 finished it** (review of 2026-09-28, proven
   by driving the real code against `cb66936`): a re-opened line the provider
   went on extending lost its first words in the export AND the pane, and a
   correction or extend held open by `speech_final=False` still never reached
   the ledger. Item 35's ledger entries carry a visible correction.
-* **Items 33–37 are committed but NOT packaged.** The last update package built
+* **Items 33–43 are committed but NOT packaged.** The last update package built
   is 26.5.30; the last share build is `build/share/*-1.4.*`, which is 26.5.29.
   The owner calls the final build — do not build unasked.
 
@@ -23,12 +27,13 @@ table with issue / risk / severity / importance.
 
 | # | What | Section | Kind |
 |---|---|---|---|
-| 1 | Japanese meeting fixes: 0b stabilizer timer, 0g no interim wipe while held, 0d translate at commit, 0c zero-loopback warning (all HIGH); then 0h, 0e, 0f, 0i | 0 | Code |
-| 2 | Owner: meeting audio setup (0a); names/terms list for keyterms (0f); a ~5 min reference transcript for the `multi` test (0h) | 0 | Owner |
+| 1 | Owner: meeting audio setup (0a); names/terms list for keyterms (0f); a ~5 min reference transcript of `...140417` for the `multi` test (0h) | 0 | Owner |
+| 2 | One real Japanese meeting on 26.5.41 to prove items 38-43 live (section 1) | 1 | Test |
 | 3 | One real English meeting to prove items 35 + 37 live, checked against the audio, not only the pane | 1 | Test |
-| 4 | Final build 1.5 / update package 26.5.35+, owner's call | 2 | Build |
-| 5 | Deliver | 3 | Owner |
-| 6 | Open defects table, (k) and (l) new | 4 | Code, lower |
+| 4 | 0f and 0h once the owner's inputs arrive | 0 | Config / evaluate |
+| 5 | Final build 1.5 / update package 26.5.41+, owner's call | 2 | Build |
+| 6 | Deliver | 3 | Owner |
+| 7 | Open defects table, (k)-(o) | 4 | Code, lower |
 * Deepgram: the owner's original account was deactivated ("Deactivated token")
   and blocked. `Alpha_Live_Translator/.env` now holds a working key from
   another account, verified live on 2026-09-25 (English and Japanese sockets
@@ -42,6 +47,12 @@ table with issue / risk / severity / importance.
 | `f4784d8` | 26.5.33 | Item 35: one utterance = one line; English revisions reach the ledger |
 | `3070dca` | 26.5.34 | Item 36: `numerals` no longer sent ("third quarter" was "3rd 0.25") |
 | `a83dbaa` | 26.5.35 | Item 37: a re-opened line keeps its words; a held correction/extend reaches the ledger |
+| `add7c11` | 26.5.36 | Item 38 (0b): a held Japanese line leaves on a 4 s timer, in order, with its own lineage |
+| `b6b1890` | 26.5.37 | Item 39 (0g): held speech stays on screen as the grey pending line |
+| `86b0209` | 26.5.38 | Item 40 (0d): an assembler line keeps its own row, id and translation |
+| `6a2bd2a` | 26.5.39 | Item 41 (0c): "● Meeting audio silent" / "● Audio device switched", naming the device |
+| `d8d17f6` | 26.5.40 | Item 42 (0e): a finished sentence on a `speech_final` final commits at once |
+| `2b55484` | 26.5.41 | Item 43 (0i): export lineage matched by content, not position |
 
 ---
 
@@ -135,23 +146,46 @@ Not a safe switch. Using it would also need per-segment translation direction
 verbatim, and the record-level `export_coverage_report.json` shows 204/204. The
 lineage matcher is wrong, not the export.
 
-### Plan, in order
+### Plan, in order — status 2026-09-29
 
-| # | Task | Kind | Done when |
+| # | Task | Kind | Status |
 |---|---|---|---|
-| 0a | Meeting setup: meeting app speaker = Windows default (or set the default to the meeting device before Start); no output-device switching mid-meeting; keep the mic on when the room speaks; prefer the speakerphone as both meeting output and room mic | Owner, no code | Next run's system track is not zero |
-| 0b | Release a timed-out stabilizer pending line on a timer — schedule the check on the existing `language_pipeline_worker` heap, no new thread; emit through the same path as the `pending_timeout_emit` branch | Code, HIGH | Replay: a final, 20 s silence, another final — the first line commits ≤ 4 s after its final; the 27 + 69 lines above re-measured |
-| 0g | While the assembler holds a line, do not let the ghost watchdog wipe the interim; show the held text as pending (grey) until it commits | Code, HIGH | Replaying 14:09:40–14:10:14 of `...140417`, the window never goes blank |
-| 0d | Every committed line with `translation_ready: True` is queued for translation at commit, not at Stop — trace `TRANSLATION_STORE_ID_MATCH_NOT_FOUND` and the four commit paths above | Code, HIGH | The 8 lines of `...140417` (and 3 of `...101440`) translate live in a replay |
-| 0c | Visible warning when the system loopback is exact zero for 30–60 s while the mic has speech, naming the device ("Alpha is listening to Realtek; nothing is playing there"), and a notice when Alpha follows an output-device change. Item 31's "● No sound" fires only when BOTH tracks are silent and is a small status-bar label | Code, HIGH | Replaying `...100031`'s audio shows the warning at ~10:12 |
-| 0h | English inside Japanese meetings: the owner writes a reference transcript of ~5 minutes of `...140417` (include 14:37–14:38); score `ja` vs `multi` (errors and hallucinations). Only if `multi` wins: implement it with per-segment language and translation direction | Evaluate, then code | A scored comparison on the same audio |
-| 0e | Tune the 2–3.5 s sentence hold: less for lines ending in 。/？ with `speech_final` | Tuning, MEDIUM | Replay of retained runs: latency vs. extra line splits |
-| 0f | Participant names and project terms as keyterms (`alpha/resources/keyterms/user_terms.json` exists) — needs the owner's name list; A/B on the retained chunks | Config + test | Same audio before/after |
-| 0i | Fix the lineage coverage matcher so exported text is never reported as `valid_segment_loss` | Code, LOW | `...140417` re-checked: 0 flagged |
+| 0a | Meeting setup: meeting app speaker = Windows default (or set the default to the meeting device before Start); no output-device switching mid-meeting; keep the mic on when the room speaks; prefer the speakerphone as both meeting output and room mic | Owner, no code | **OWNER.** Alpha now says when this goes wrong (item 41): "● Meeting audio silent" names the device it records, "● Audio device switched" names the new one |
+| 0b | Release a timed-out stabilizer pending line on a timer | Code, HIGH | **DONE, item 38 (`add7c11`).** Replay of the three meetings' recorded stabilizer inputs: every held line out at 4.0 s (was p50 8 s, max 47-163 s). Also fixed: a newer line shown before an older held one (4/4/9), a new speaker's sentence held, a held line published with the wrong lineage |
+| 0g | While a line is held, do not wipe the interim; show the held text as pending | Code, HIGH | **DONE, item 39 (`b6b1890`).** 26 of 35 wipes in the three meetings fell during a hold (blank median 5-19 s, up to 38 s); the held text now stays as the grey line |
+| 0d | Lines translated at commit, not at Stop | Code, HIGH | **DONE, item 40 (`86b0209`).** Cause was not the commit paths: the UI re-merged an assembler line into the previous row under a session-wide `jpm-utt` id, so its translation missed the row (15 `TRANSLATION_STORE_ID_MATCH_NOT_FOUND`, one id) and the pane disagreed with the export |
+| 0c | Warning when the meeting track is silent while the mic hears the room, naming the device; notice when Alpha follows a device change | Code, HIGH | **DONE, item 41 (`6a2bd2a`).** Replayed on the morning's per-stream audio timeline: `...101440` warned at 10:16:10 naming Realtek (was green all 15 min); `...100031` announced the switch to Realtek at 10:11:26, then item 31's "No sound" at 10:12:21 (mic was off) |
+| 0h | English inside Japanese meetings: score `ja` vs `multi` on a reference transcript | Evaluate, then code | **WAITING FOR THE OWNER:** a hand-written transcript of ~5 minutes of `...140417` including 14:37-14:38. The retained WAVs expire after 2 h -- keep a copy of that run's `audio_temp/` (or record a new meeting) before scoring |
+| 0e | Shorter sentence hold for lines ending in 。/？ with `speech_final` | Tuning, MEDIUM | **DONE, item 42 (`d8d17f6`).** 85 such lines waited p50 3.0 s; 3 (3.5%) were extended in the wait and now split instead. Lines without `speech_final`, or with a real ので/けど ending, keep the hold |
+| 0f | Participant names and project terms as keyterms (`alpha/resources/keyterms/user_terms.json`) | Config + test | **WAITING FOR THE OWNER:** the correct spellings of the names heard as シャフィー / シャーピー / シャンピー and the other participants, plus project terms. Then A/B on retained audio (needs a kept copy, see 0h) |
+| 0i | Lineage coverage matcher | Code, LOW | **DONE, item 43 (`2b55484`).** Matched by content: no false loss on the three runs, a real loss named as its own commit, and the lineage lock can no longer drop exported lines past the end of the chain |
 
 ---
 
-## 1. Before the final build: one real English meeting — HIGH
+## 1. Before the final build: one real Japanese meeting and one real English meeting — HIGH
+
+### Japanese (items 38-43, 26.5.41)
+
+Proven on the real code and on the three retained meetings' own recorded
+inputs, not yet live. In a 10-15 minute Japanese meeting with pauses and two or
+more speakers, then in the newest run folder:
+
+* The window never goes blank while people talk: `INTERIM_KEPT_WHILE_PIPELINE_HOLDS`
+  appears where `INTERIM_GHOST_LINE_CLEARED_BY_WATCHDOG` used to; the latter
+  only when nothing was held.
+* `accuracy/boundary_stabilizer_decisions.jsonl` (this run's rows): no held line
+  waits more than ~4.5 s (`BOUNDARY_STABILIZER_PENDING_RELEASED released_by=timer`
+  in `logs/japanese_accuracy.log`), and no newer line is emitted while an older
+  one is still held.
+* `translation/translation_events.jsonl`: no segment queued more than a few
+  seconds after its commit; zero `TRANSLATION_STORE_ID_MATCH_NOT_FOUND`.
+* The pane and `transcripts/Alpha_output_FINAL.txt` have the same lines.
+* `LINEAGE_EXPORT_COVERAGE_PASSED`, not `..._FAILED`.
+* Unplug or switch the Windows output once mid-meeting: "● Audio device
+  switched" names the new device; if the meeting then plays elsewhere,
+  "● Meeting audio silent" names the device Alpha records within ~45 s.
+
+### English (items 35 and 37)
 
 Items 35 and 37 changed the commit pipeline in a way production has never
 exercised: **before them, no English revision ever reached the canonical
@@ -250,6 +284,9 @@ checked** (only the portable zip was unpacked and inspected). Do that once for
 | j | Eight stale failing tests in the baseline (section 7) | A new regression can hide in the noise | Low | Low |
 | k | Re-opening a line that item 66 trimmed at creation brings the trimmed head back: "in Duterte, he writes openly, I never considered" / "he writes openly, I never considered him an impostor" (trimmed to "him an impostor") / the same window again, longer → the export repeats "he writes openly, I never considered". Proven on real code; also at `cb66936` (3 lines then, 2 now) | A repeated half-sentence in the export | Medium | Medium |
 | l | `run_english_accuracy_experiment.py` (lines ~421, ~499) still sends `numerals=true`; `ENGLISH_QUERY_ALLOWLIST` still accepts `numerals` | The accuracy experiment no longer measures production; a re-added `numerals` passes the validator | Low | Low |
+| m | The informational "● Audio device switched" (item 41) still goes through `publish_error_event`, like every non-connected state, so the follow is logged at ERROR level (`[connection] Windows changed…`); nothing is shown as an error | Misleading log line | Low | Low |
+| n | Item 73's text for a device change still says the session "cannot follow the change … Stop and start the session" -- capture now follows by itself; the text shows only in the ~1 s before the rebind is confirmed, or when it fails | Stale advice in a rare window | Low | Low |
+| o | Item 43's matcher looks at most 6 lines past the last match: more than 6 exported lines that come from no commit in a row would make the next commits read as lost (a report error, never an export change) | False `valid_segment_loss` in an unusual export | Low | Low |
 
 Notes:
 
@@ -328,7 +365,8 @@ the owner's machine.
 
 * Tests, from `Alpha_Live_Translator/`:
   `py -m unittest discover -s tests -t tests -p "test_*.py"` (summary on
-  stderr). At `a83dbaa`: `Ran 1682 tests`, and exactly these eight fail (stale):
+  stderr). At `2b55484`: `Ran 1723 tests` (~6.5 min), and exactly these eight
+  fail (stale):
   * `test_final_transcript_commit_v3_2_5::test_commit_allowed_while_finalizing`
   * `test_final_transcript_commit_v3_2_5::test_commit_allowed_while_listening`
   * `test_keepalive_ping_thread_cannot_crash::test_the_crash_is_reproducible_on_the_unguarded_base_class`
@@ -352,8 +390,12 @@ the owner's machine.
   before the change.
 * One change set = one `APP_VERSION` bump; record it in `FIX_SEQUENCE.md` and
   `CODE_REVIEW_20260904.md`.
-* Files are CRLF. Match the file's line endings; never `sed -i` a `.py`; never
-  write Python source through a bash heredoc — use a script or the Write tool.
+* Files are MOSTLY CRLF, not all: `alpha/utils/service_status.py`,
+  `tests/test_interim_ghost_line.py`, `tests/test_task2g_acceptance_gate.py` and
+  `tests/test_task5_final_cleanup.py` are LF in HEAD. Check
+  `git ls-files --eol -- <file>` and match it; never normalise a whole file.
+  Never `sed -i` a `.py`; never write Python source through a bash heredoc —
+  use a script or the Write tool.
 * Before every push: `git fetch origin`, check both directions of divergence,
   and after pushing confirm `git log HEAD..origin/main` and
   `git log origin/main..HEAD` are both empty.
