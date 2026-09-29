@@ -2782,3 +2782,47 @@ with the numerals mirror rejected. All 4 fail before the change; a mutant
 putting `numerals` back into the streaming request is caught. Full suite, on
 items 44-48 together: `Ran 1751 tests`, the same eight stale failures and
 nothing else.
+
+---
+
+## Item 46 — a device switch says what is true, and is not logged as an error (PENDING_TASKS open defects m and n)
+
+(m) "● Audio device switched" (item 41) went through `publish_error_event` like
+every state other than "connected", and `_on_error_occurred` logs each at ERROR:
+the one good outcome of item 73's rebind was written to every log as an error.
+
+(n) Item 73's sentence for the seconds before the rebind is confirmed still said
+the session "captures “X” and cannot follow the change, so nothing is being
+recorded now. Stop and start the session to capture the new device, or make “X”
+the default again." Capture follows by itself now; "make X the default again"
+would undo the switch Alpha is making; and while it is up the device name is
+ambiguous (the old one until the new one opens, then the new one). Being an
+f-string it could not be translated either -- a Japanese screen showed English.
+
+### The change
+
+* `_sync_connection_indicator`: `device_followed` is logged at INFO
+  (`[connection] …`), once per transition; everything else is published as
+  before.
+* `service_status.AUDIO_DEVICE_CHANGING_TEXT`, one literal with Japanese: Alpha
+  is switching to the new device and has not heard it yet; make sure the
+  meeting plays through the Windows default output; if the message stays, stop
+  and start. No device named. The same sentence covers the switching window, a
+  rebind that failed and one that brought no sound.
+* Stale comments and the `AUDIO_OUTPUT_DEVICE_CHANGED` log note ("capture stays
+  on the original device") corrected.
+
+### Verified
+
+* `tests/test_a_device_switch_says_what_is_true.py` (8, the real indicator,
+  `publish_error_event`, `_on_error_occurred` and `EventBus`): the follow is an
+  INFO line and no ERROR, once per transition; a problem after it and a device
+  change are still published; the sentence names no device, is translated, and
+  a click on a Japanese screen shows the Japanese. 8 fail before the change
+  (4 of them because the new constant did not exist); two mutants caught.
+* **Retargeted, with a visible correction note:** two tests in
+  `test_items_46_47_wiring.py` pinned the old wording (name the device this
+  session bound; "stop and start" before "default again") -- true when capture
+  never followed. They now pin the new sentence.
+* Full suite, on items 44-48 together: `Ran 1751 tests`, the same eight stale
+  failures and nothing else.

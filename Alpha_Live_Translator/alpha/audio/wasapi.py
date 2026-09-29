@@ -225,8 +225,8 @@ class WasapiCaptureMixin:
                 captured_device_name=str(
                     getattr(self, "_diag_wasapi_device_name", "") or ""
                 ),
-                note="capture stays on the original device; audio routed to "
-                "the new default is not captured",
+                note="capture moves to the new default next; audio from it is "
+                "unconfirmed until AUDIO_DEVICE_REBIND_COMPLETED",
             )
         except Exception:
             pass

@@ -4436,10 +4436,9 @@ class AlphaApp(
                 audio_device_changed=bool(
                     getattr(self, "_audio_device_changed", False)
                 ),
-                # Named so "switch back" is actionable. Capture binds at Start
-                # and never follows, so the operator has to know WHICH device
-                # this session is on -- without it the advice sent one live
-                # test to the wrong device.
+                # The device this session records, for section 0c's
+                # silent-meeting sentence. (Item 73's sentence used to name it
+                # too; capture now follows the default, so it no longer does.)
                 audio_capture_device=str(
                     getattr(self, "_diag_wasapi_device_name", "") or ""
                 ),
@@ -4501,7 +4500,13 @@ class AlphaApp(
         previous = getattr(self, "_connection_indicator_state", None)
         if status.state != previous:
             self._connection_indicator_state = status.state
-            if listening and status.state != "connected":
+            if listening and status.state == "device_followed":
+                # Open defect (m), 2026-09-29: a followed device is news, not a
+                # problem, and every published event is logged at ERROR level
+                # (`_on_error_occurred`) -- so the one good outcome of item 73's
+                # rebind read as an error in every log that recorded it.
+                logger.info("[connection] %s", status.message)
+            elif listening and status.state != "connected":
                 try:
                     self.publish_error_event(
                         status.message,

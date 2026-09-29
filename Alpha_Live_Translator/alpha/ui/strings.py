@@ -343,6 +343,12 @@ _JA: dict[str, str] = {
         "Windows の既定の音声出力が変更され、Alpha は「{device}」を録音しています。"
         "会議の音声が別の場所で再生されている場合は、そのデバイスを Windows の既定の出力にしてください。"
     ),
+    "Windows changed the default audio output. Alpha is switching its recording to the new device and has not heard sound from it yet, so the meeting may not be recorded right now. Make sure the meeting's sound plays through the Windows default output; if this message stays, stop and start the session.": (
+        "Windows の既定の音声出力が変更されました。Alpha は録音を新しいデバイスに切り替えていますが、"
+        "まだそのデバイスから音声を受け取っていないため、現在は会議が録音されていない可能性があります。"
+        "会議の音声が Windows の既定の出力から再生されていることを確認してください。"
+        "このメッセージが消えない場合は、セッションを停止してもう一度開始してください。"
+    ),
     # -- Connection status (rendered from alpha/utils/service_status.py) ----
     "Idle.": "待機中。",
     "Connected.": "接続済み。",

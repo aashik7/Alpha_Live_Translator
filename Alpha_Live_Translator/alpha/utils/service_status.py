@@ -174,6 +174,11 @@ CONNECTION_DETAILS_TITLE = "Alpha status"
 MEETING_AUDIO_SILENT_TEXT = "Alpha is recording “{device}”, but nothing has played there for {seconds} seconds while the microphone hears speech. If people in the online meeting are talking, their sound is going to another device: make that device the Windows default output, or set the meeting app's speaker to “{device}”. In a meeting with no one online, ignore this."
 MEETING_AUDIO_SILENT_NO_DEVICE_TEXT = "Nothing has played on the audio output Alpha records for {seconds} seconds while the microphone hears speech. If people in the online meeting are talking, their sound is going to another device: make that device the Windows default output. In a meeting with no one online, ignore this."
 AUDIO_DEVICE_FOLLOWED_TEXT = "Windows changed the default audio output, and Alpha now records “{device}”. If the meeting's sound plays somewhere else, make that device the Windows default output."
+# Item 73's warning, while capture is moving to the new default and before any
+# sound from it is confirmed -- and after a move that failed or brought no
+# sound. Open defect (n): it used to say capture "cannot follow the change",
+# which stopped being true when the rebind landed. One literal, for `t()`.
+AUDIO_DEVICE_CHANGING_TEXT = "Windows changed the default audio output. Alpha is switching its recording to the new device and has not heard sound from it yet, so the meeting may not be recorded right now. Make sure the meeting's sound plays through the Windows default output; if this message stays, stop and start the session."
 
 
 def start_failure_text(reason: str) -> tuple[str, tuple[str, ...]]:
@@ -448,34 +453,18 @@ def describe_connection(
     # do something, and telling them to wait would be wrong.
     if audio_device_changed:
         candidate = RECONNECTING
-        # The advice is deliberately ordered "stop and start" FIRST, and the
-        # captured device is NAMED, because the previous wording was misleading
-        # in the field.
-        #
-        # Capture binds to whatever was default at Start and never follows a
-        # change. Measured on the live runs of 2026-08-21: loopback goes to
-        # EXACT digital silence (rms 0.0, 100% of samples) the moment the
-        # default moves, and stays there for the rest of the session -- 85 s in
-        # one run, 65 s in the other. "Switch back" therefore only helps if the
-        # user switches back to the device THIS session bound, which the old
-        # message never said. In the second run the user switched the default
-        # to the device the FIRST session had used, which was exactly the wrong
-        # move for the session that was actually running.
-        device = (audio_capture_device or "").strip()
-        if device:
-            candidate_message = (
-                "Windows changed the default audio output. This session "
-                f"captures “{device}” and cannot follow the change, so nothing "
-                "is being recorded now. Stop and start the session to capture "
-                f"the new device, or make “{device}” the default again."
-            )
-        else:
-            candidate_message = (
-                "Windows changed the default audio output. This session cannot "
-                "follow the change, so nothing is being recorded now. Stop and "
-                "start the session to capture the new device, or make the "
-                "previous device the default again."
-            )
+        # CORRECTED 2026-09-29 (open defect n). This used to say the session
+        # "cannot follow the change" and to name the captured device so the
+        # operator could switch back to it. That was true when it was written:
+        # measured on the live runs of 2026-08-21, capture stayed bound to the
+        # device from Start and went to exact digital silence for the rest of
+        # the session. Capture now follows (`_rebind_wasapi_to_default_device`),
+        # and this signal is up only until the new device is confirmed to
+        # deliver sound -- or after a move that failed or brought no sound.
+        # In all three the device name is ambiguous (the old one until the new
+        # one opens, then the new one), and "make it the default again" would
+        # undo the switch Alpha is making, so the sentence names no device.
+        candidate_message = AUDIO_DEVICE_CHANGING_TEXT
         if _SEVERITY[candidate] >= _SEVERITY[state]:
             state, message = candidate, candidate_message
 
@@ -531,6 +520,7 @@ __all__ = [
     "MEETING_AUDIO_SILENT_TEXT",
     "MEETING_AUDIO_SILENT_NO_DEVICE_TEXT",
     "AUDIO_DEVICE_FOLLOWED_TEXT",
+    "AUDIO_DEVICE_CHANGING_TEXT",
     "NO_SPEECH",
     "NO_SOUND_TEXT",
     "NO_SPEECH_TEXT",
