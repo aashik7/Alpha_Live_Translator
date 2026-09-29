@@ -2,15 +2,20 @@
 
 Handoff for the next Claude Code session. Written 2026-09-25 at `3070dca`,
 updated 2026-09-28 with the owner's two Japanese meetings (section 0) and
-item 37 (`a83dbaa`), and 2026-09-29 with section 0's code done (items 38-43),
-`APP_VERSION = "3.3.5.5.8.5.26.5.41"`. The owner writes Banglish, wants terse
+item 37 (`a83dbaa`), and 2026-09-29 with section 0's code done (items 38-43)
+and the open defects (k)-(o) closed (items 44-48),
+`APP_VERSION = "3.3.5.5.8.5.26.5.46"`. The owner writes Banglish, wants terse
 answers, proof over plausible reads, and findings as a table with
 issue / risk / severity / importance.
 
 ## Where things stand
 
-* Every item through **43** in `CODE_REVIEW_20260904.md` is fixed and pushed.
+* Every item through **48** in `CODE_REVIEW_20260904.md` is fixed and pushed.
   `FIX_SEQUENCE.md` is the execution-order ledger; read both before any fix.
+* **Open defects (k)-(o) are closed** (items 44-47), plus item 48 found
+  reviewing 0b/0e. Item 44 was proven through the real app with a local fake
+  Deepgram: at `f1090d7` the sealed export repeats "he writes openly, I never
+  considered"; at `1c16241` it does not.
 * **Section 0's code is done** (items 38-43, 0b/0g/0d/0c/0e/0i). What is left of
   section 0 needs the owner: 0a (meeting setup), 0f (the names list), 0h (a
   reference transcript). See the plan table in section 0.
@@ -19,7 +24,7 @@ issue / risk / severity / importance.
   went on extending lost its first words in the export AND the pane, and a
   correction or extend held open by `speech_final=False` still never reached
   the ledger. Item 35's ledger entries carry a visible correction.
-* **Items 33–43 are committed but NOT packaged.** The last update package built
+* **Items 33–48 are committed but NOT packaged.** The last update package built
   is 26.5.30; the last share build is `build/share/*-1.4.*`, which is 26.5.29.
   The owner calls the final build — do not build unasked.
 
@@ -28,12 +33,12 @@ issue / risk / severity / importance.
 | # | What | Section | Kind |
 |---|---|---|---|
 | 1 | Owner: meeting audio setup (0a); names/terms list for keyterms (0f); a ~5 min reference transcript of `...140417` for the `multi` test (0h) | 0 | Owner |
-| 2 | One real Japanese meeting on 26.5.41 to prove items 38-43 live (section 1) | 1 | Test |
-| 3 | One real English meeting to prove items 35 + 37 live, checked against the audio, not only the pane | 1 | Test |
+| 2 | One real Japanese meeting on 26.5.46 to prove items 38-43 and 46-48 live (section 1) | 1 | Test |
+| 3 | One real English meeting to prove items 35, 37 and 44 live, checked against the audio, not only the pane | 1 | Test |
 | 4 | 0f and 0h once the owner's inputs arrive | 0 | Config / evaluate |
-| 5 | Final build 1.5 / update package 26.5.41+, owner's call | 2 | Build |
+| 5 | Final build 1.5 / update package 26.5.46+, owner's call | 2 | Build |
 | 6 | Deliver | 3 | Owner |
-| 7 | Open defects table, (k)-(o) | 4 | Code, lower |
+| 7 | Open defects (a)-(j) (section 4); (k)-(o) are closed | 4 | Code, lower |
 * Deepgram: the owner's original account was deactivated ("Deactivated token")
   and blocked. `Alpha_Live_Translator/.env` now holds a working key from
   another account, verified live on 2026-09-25 (English and Japanese sockets
@@ -53,6 +58,11 @@ issue / risk / severity / importance.
 | `6a2bd2a` | 26.5.39 | Item 41 (0c): "● Meeting audio silent" / "● Audio device switched", naming the device |
 | `d8d17f6` | 26.5.40 | Item 42 (0e): a finished sentence on a `speech_final` final commits at once |
 | `2b55484` | 26.5.41 | Item 43 (0i): export lineage matched by content, not position |
+| `1c16241` | 26.5.42 | Item 44 (k): a line item 66 trimmed stays trimmed in every later version (re-open, correction, extend); an older guess no longer drops its words |
+| `22786b5` | 26.5.43 | Item 45 (l): the accuracy experiment drops `numerals`; the validator refuses it |
+| `437259f` | 26.5.44 | Item 46 (m, n): the device follow logged at INFO; item 73's sentence says Alpha is switching, translated |
+| `45bb457` | 26.5.45 | Item 47 (o): lineage finds a commit past more than 6 other lines, guarded |
+| `1bae6d1` | 26.5.46 | Item 48: 0e reads the last fragment's own `speech_final`; 0b's release tested on the real worker thread |
 
 ---
 
@@ -164,7 +174,7 @@ lineage matcher is wrong, not the export.
 
 ## 1. Before the final build: one real Japanese meeting and one real English meeting — HIGH
 
-### Japanese (items 38-43, 26.5.41)
+### Japanese (items 38-43 and 46-48, 26.5.46)
 
 Proven on the real code and on the three retained meetings' own recorded
 inputs, not yet live. In a 10-15 minute Japanese meeting with pauses and two or
@@ -184,8 +194,11 @@ more speakers, then in the newest run folder:
 * Unplug or switch the Windows output once mid-meeting: "● Audio device
   switched" names the new device; if the meeting then plays elsewhere,
   "● Meeting audio silent" names the device Alpha records within ~45 s.
+  The switch is an INFO line in the log (`[connection] Windows changed…`,
+  item 46), not an ERROR; during the switch a click on "● Audio device changed"
+  says Alpha is switching, in the display language.
 
-### English (items 35 and 37)
+### English (items 35, 37 and 44)
 
 Items 35 and 37 changed the commit pipeline in a way production has never
 exercised: **before them, no English revision ever reached the canonical
@@ -221,9 +234,11 @@ check the newest `Alpha_Live_Translator/troubleshooting/runs/<run>/`:
 * `logs/japanese_accuracy.log`: for every `RESENT_TAIL_TRIMMED`, the
   `removed_preview` words are in the export line just before the trimmed one
   -- the trim may only remove words already exported (item 37's first defect
-  removed words that ended up in no line). The lifecycle's own event log is not
-  written in production (`set_event_log_path` has no caller), so this log is
-  the record.
+  removed words that ended up in no line). That includes the ones with
+  `reason=new_version_repeats_head_trimmed_at_creation` (item 44: a re-opened
+  or corrected line cut the same way as when it was created). The lifecycle's
+  own event log is not written in production (`set_event_log_path` has no
+  caller), so this log is the record.
 
 Acceptance: every spoken sentence is in the export once, no line in the export
 that the pane does not show, and no line exported twice.
@@ -259,8 +274,9 @@ checked** (only the portable zip was unpacked and inspected). Do that once for
 
 ## 3. Deliver
 
-* Field user: send the new update package (26.5.35 or later — not 26.5.33 or
-  26.5.34, which carry item 37's defects).
+* Field user: send the new update package (26.5.46 or later — 26.5.33 and
+  26.5.34 carry item 37's defects, 26.5.35-26.5.41 item 44's repeated
+  half-sentence).
 * **Never apply an update package of 26.5.26 or older to a keyless install** —
   those delete its `.needs-api-keys` marker.
 * New recipients: `build/share/AlphaLiveTranslator-Setup-1.5.exe` or the
@@ -282,11 +298,11 @@ checked** (only the portable zip was unpacked and inspected). Do that once for
 | h | Every transcript line reads "Speaker:" with no number under a "Speaker 2 · time" header | Looks unfinished; not checked whether new | Low | Low |
 | i | Each Japanese Start leaves an empty skeleton run folder next to the real one (e.g. `...-161849` + `...-161850`) | Folder clutter | Low | Low |
 | j | Eight stale failing tests in the baseline (section 7) | A new regression can hide in the noise | Low | Low |
-| k | Re-opening a line that item 66 trimmed at creation brings the trimmed head back: "in Duterte, he writes openly, I never considered" / "he writes openly, I never considered him an impostor" (trimmed to "him an impostor") / the same window again, longer → the export repeats "he writes openly, I never considered". Proven on real code; also at `cb66936` (3 lines then, 2 now) | A repeated half-sentence in the export | Medium | Medium |
-| l | `run_english_accuracy_experiment.py` (lines ~421, ~499) still sends `numerals=true`; `ENGLISH_QUERY_ALLOWLIST` still accepts `numerals` | The accuracy experiment no longer measures production; a re-added `numerals` passes the validator | Low | Low |
-| m | The informational "● Audio device switched" (item 41) still goes through `publish_error_event`, like every non-connected state, so the follow is logged at ERROR level (`[connection] Windows changed…`); nothing is shown as an error | Misleading log line | Low | Low |
-| n | Item 73's text for a device change still says the session "cannot follow the change … Stop and start the session" -- capture now follows by itself; the text shows only in the ~1 s before the rebind is confirmed, or when it fails | Stale advice in a rare window | Low | Low |
-| o | Item 43's matcher looks at most 6 lines past the last match: more than 6 exported lines that come from no commit in a row would make the next commits read as lost (a report error, never an export change) | False `valid_segment_loss` in an unusual export | Low | Low |
+| ~~k~~ | ~~Re-opening a line that item 66 trimmed at creation brings the trimmed head back~~ **FIXED, item 44** -- and five more paths to the same repeat, plus an older shorter guess that dropped words (see `CODE_REVIEW_20260904.md` item 44) | -- | -- | -- |
+| ~~l~~ | ~~`run_english_accuracy_experiment.py` still sends `numerals=true`; the allowlist still accepts it~~ **FIXED, item 45** | -- | -- | -- |
+| ~~m~~ | ~~"● Audio device switched" logged at ERROR~~ **FIXED, item 46** (INFO now) | -- | -- | -- |
+| ~~n~~ | ~~Item 73's "cannot follow the change" text~~ **FIXED, item 46** (says Alpha is switching; translated) | -- | -- | -- |
+| ~~o~~ | ~~Lineage matcher's 6-line window~~ **FIXED, item 47** (identical on all 84 retained runs) | -- | -- | -- |
 
 Notes:
 
@@ -296,10 +312,9 @@ Notes:
   tell the rest of the window from a revision. A fix needs a different signal —
   for example re-comparing the flushed head against the provider's next
   cumulative window while `_split_committed_prefix` is still set.
-* **(k)**: the lifecycle keeps only the last committed record, so the re-open
-  cannot see what the creation trim removed. A fix needs the utterance to carry
-  what item 66 cut at creation and remove it again from the re-opened text.
-  Reproduce with the host in `tests/test_a_reopened_line_keeps_its_words.py`.
+* **(k)-(o)** closed 2026-09-29 as items 44-47; item 48 closed two more found
+  reviewing 0b/0e. Each was reproduced on the real code first and proven with a
+  test that fails before the change; see `CODE_REVIEW_20260904.md`.
 * **(c)**: the probe script used Windows TTS (Haruka). The owner's earlier
   Japanese TTS run through Alpha kept 「十二パーセント」, so this may be Deepgram
   variance. Collect evidence before touching anything.
@@ -341,6 +356,13 @@ stand-in for Deepgram that replays recorded messages:
    `troubleshooting/runs/<newest>/transcripts/Alpha_output_FINAL.txt`.
 4. UI calls from the driver go through `app._run_on_ui_thread(fn)`. Replace
    `tkinter.messagebox.show*/ask*` with recorders so a dialog cannot hang the run.
+5. In a worktree there is no `.env`: set `DEEPGRAM_API_KEY` to any non-placeholder
+   value (the stand-in ignores it), `DEEPL_AUTH_KEY=""` (the strip then reads
+   "● No translation") and `ALPHA_NO_KEY_PROMPT=1`, before the app imports.
+6. To compare with the code before a change, extract
+   `git archive HEAD Alpha_Live_Translator` (~8 MB) outside the repo and run the
+   same script against that copy. Done this way for item 44 on 2026-09-29:
+   English and Japanese scripts, Stop 3.2 s, no dialog, lineage passed on both.
 
 Message shapes the app parses:
 
@@ -365,7 +387,7 @@ the owner's machine.
 
 * Tests, from `Alpha_Live_Translator/`:
   `py -m unittest discover -s tests -t tests -p "test_*.py"` (summary on
-  stderr). At `2b55484`: `Ran 1723 tests` (~6.5 min), and exactly these eight
+  stderr). At `1bae6d1`: `Ran 1751 tests` (~6.7 min), and exactly these eight
   fail (stale):
   * `test_final_transcript_commit_v3_2_5::test_commit_allowed_while_finalizing`
   * `test_final_transcript_commit_v3_2_5::test_commit_allowed_while_listening`
