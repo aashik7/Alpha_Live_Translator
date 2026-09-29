@@ -28,6 +28,10 @@ FAILED = "failed"
 # Item 31: running, but nothing useful is coming out.
 NO_SOUND = "no_sound"
 NO_SPEECH = "no_speech"
+# Section 0c: the meeting track silent while the microphone hears the room,
+# and the notice that Alpha followed a change of the default output.
+NO_MEETING_AUDIO = "no_meeting_audio"
+DEVICE_FOLLOWED = "device_followed"
 
 # Severity order matters: several signals are routinely true at once and the
 # worst must win.
@@ -44,9 +48,13 @@ NO_SPEECH = "no_speech"
 # change is the better explanation for the same silence when one is in flight.
 _SEVERITY = {
     CONNECTED: 0,
+    # Section 0c: information, not a problem -- anything wrong outranks it.
+    DEVICE_FOLLOWED: 0.5,
     DEGRADED: 1,
     NO_SOUND: 1.5,
     NO_SPEECH: 1.5,
+    # Section 0c: as bad as no sound -- the meeting's words are not captured.
+    NO_MEETING_AUDIO: 1.5,
     RECONNECTING: 2,
     FAILED: 3,
 }
@@ -160,6 +168,12 @@ DEEPL_QUOTA_TEXT = "DeepL's translation quota for this key is used up, so transl
 DEEPL_KEY_REJECTED_TEXT = "DeepL rejected the translation key, so translation has stopped. The transcript continues. Check the DeepL key, then restart the session."
 DEEPL_KEY_MISSING_TEXT = "No translation: the DeepL key is missing. The transcript still works; add a DeepL key to translate."
 CONNECTION_DETAILS_TITLE = "Alpha status"
+# Section 0c. Templates, filled with `.format(...)` AFTER `t()`, so the device
+# name -- which is never in a translation table -- does not stop the sentence
+# from being translated. One literal each, for item 88's verbatim-key test.
+MEETING_AUDIO_SILENT_TEXT = "Alpha is recording “{device}”, but nothing has played there for {seconds} seconds while the microphone hears speech. If people in the online meeting are talking, their sound is going to another device: make that device the Windows default output, or set the meeting app's speaker to “{device}”. In a meeting with no one online, ignore this."
+MEETING_AUDIO_SILENT_NO_DEVICE_TEXT = "Nothing has played on the audio output Alpha records for {seconds} seconds while the microphone hears speech. If people in the online meeting are talking, their sound is going to another device: make that device the Windows default output. In a meeting with no one online, ignore this."
+AUDIO_DEVICE_FOLLOWED_TEXT = "Windows changed the default audio output, and Alpha now records “{device}”. If the meeting's sound plays somewhere else, make that device the Windows default output."
 
 
 def start_failure_text(reason: str) -> tuple[str, tuple[str, ...]]:
@@ -332,6 +346,8 @@ def describe_connection(
     gap_seconds: float = 0.0,
     audio_device_changed: bool = False,
     audio_capture_device: str = "",
+    meeting_audio_silent_seconds: float = 0.0,
+    audio_device_followed: str = "",
 ) -> ConnectionStatus:
     """Collapse the live signals into one indicator state (item 47).
 
@@ -379,6 +395,37 @@ def describe_connection(
         candidate, candidate_message = NO_SPEECH, NO_SPEECH_TEXT
     if candidate is not None and _SEVERITY[candidate] >= _SEVERITY[state]:
         state, message = candidate, candidate_message
+
+    # Section 0c (2026-09-28). The meeting track Alpha records is silent while
+    # the microphone hears the room: the meeting plays on a device Alpha is not
+    # recording. "No sound" cannot say so -- it needs BOTH tracks silent -- so
+    # `...101440` showed a green light for 15 minutes of meeting it never
+    # heard. Named, with the device, because the fix is to route the meeting
+    # there (or make its device the default).
+    from alpha.constants import MEETING_AUDIO_SILENT_HINT_AFTER_S
+
+    templates: dict[str, tuple[str, dict[str, Any]]] = {}
+    silent = float(meeting_audio_silent_seconds or 0.0)
+    if silent >= MEETING_AUDIO_SILENT_HINT_AFTER_S:
+        device = (audio_capture_device or "").strip()
+        args: dict[str, Any] = {"seconds": int(silent)}
+        if device:
+            args["device"] = device
+            template = MEETING_AUDIO_SILENT_TEXT
+        else:
+            template = MEETING_AUDIO_SILENT_NO_DEVICE_TEXT
+        templates[NO_MEETING_AUDIO] = (template, args)
+        if _SEVERITY[NO_MEETING_AUDIO] >= _SEVERITY[state]:
+            state, message = NO_MEETING_AUDIO, template.format(**args)
+    # Section 0c: Alpha followed a change of the default output. Item 73's
+    # warning clears the moment the rebind succeeds, and nothing said WHICH
+    # device Alpha now records -- in `...100031` it was one the meeting was not
+    # playing on. Information only: anything wrong outranks it.
+    followed = (audio_device_followed or "").strip()
+    if followed:
+        templates[DEVICE_FOLLOWED] = (AUDIO_DEVICE_FOLLOWED_TEXT, {"device": followed})
+        if _SEVERITY[DEVICE_FOLLOWED] > _SEVERITY[state]:
+            state, message = DEVICE_FOLLOWED, AUDIO_DEVICE_FOLLOWED_TEXT.format(device=followed)
 
     if deepgram_reconnecting or (listening and not deepgram_connected):
         candidate = RECONNECTING
@@ -445,10 +492,17 @@ def describe_connection(
         state = FAILED
         message = MID_SESSION_KEY_REJECTED_TEXT
 
+    # Section 0c: a templated sentence travels with its template, so the UI can
+    # translate it and fill the device name in afterwards.
+    template, template_args = templates.get(state, ("", {}))
     return ConnectionStatus(
         state=state,
         message=message,
         detail={
+            "message_template": template,
+            "message_args": dict(template_args),
+            "meeting_audio_silent_seconds": round(silent, 1),
+            "audio_device_followed": followed,
             "listening": listening,
             "deepgram_connected": deepgram_connected,
             "deepgram_reconnecting": deepgram_reconnecting,
@@ -472,6 +526,11 @@ __all__ = [
     "DEGRADED",
     "FAILED",
     "NO_SOUND",
+    "NO_MEETING_AUDIO",
+    "DEVICE_FOLLOWED",
+    "MEETING_AUDIO_SILENT_TEXT",
+    "MEETING_AUDIO_SILENT_NO_DEVICE_TEXT",
+    "AUDIO_DEVICE_FOLLOWED_TEXT",
     "NO_SPEECH",
     "NO_SOUND_TEXT",
     "NO_SPEECH_TEXT",

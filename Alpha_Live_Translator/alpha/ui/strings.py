@@ -323,6 +323,26 @@ _JA: dict[str, str] = {
     "● Translation degraded": "● 翻訳機能が低下",
     "● Key rejected": "● キーが拒否されました",
     "● Audio device changed": "● 音声デバイスが変更されました",
+    # -- Section 0c: the meeting's device, named (service_status.py) --------
+    "● Meeting audio silent": "● 会議の音声なし",
+    "● Audio device switched": "● 音声デバイスを切り替えました",
+    "Alpha is recording “{device}”, but nothing has played there for {seconds} seconds while the microphone hears speech. If people in the online meeting are talking, their sound is going to another device: make that device the Windows default output, or set the meeting app's speaker to “{device}”. In a meeting with no one online, ignore this.": (
+        "Alpha は「{device}」を録音していますが、マイクには声が入っているのに、"
+        "{seconds} 秒間そこでは何も再生されていません。オンライン会議の参加者が話している場合、"
+        "その音声は別のデバイスに出力されています。そのデバイスを Windows の既定の出力にするか、"
+        "会議アプリのスピーカーを「{device}」に設定してください。"
+        "オンラインの参加者がいない会議では、このメッセージは無視してください。"
+    ),
+    "Nothing has played on the audio output Alpha records for {seconds} seconds while the microphone hears speech. If people in the online meeting are talking, their sound is going to another device: make that device the Windows default output. In a meeting with no one online, ignore this.": (
+        "マイクには声が入っているのに、Alpha が録音している音声出力では {seconds} 秒間"
+        "何も再生されていません。オンライン会議の参加者が話している場合、その音声は別の"
+        "デバイスに出力されています。そのデバイスを Windows の既定の出力にしてください。"
+        "オンラインの参加者がいない会議では、このメッセージは無視してください。"
+    ),
+    "Windows changed the default audio output, and Alpha now records “{device}”. If the meeting's sound plays somewhere else, make that device the Windows default output.": (
+        "Windows の既定の音声出力が変更され、Alpha は「{device}」を録音しています。"
+        "会議の音声が別の場所で再生されている場合は、そのデバイスを Windows の既定の出力にしてください。"
+    ),
     # -- Connection status (rendered from alpha/utils/service_status.py) ----
     "Idle.": "待機中。",
     "Connected.": "接続済み。",

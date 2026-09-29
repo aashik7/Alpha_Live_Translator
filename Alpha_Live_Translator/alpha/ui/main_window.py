@@ -831,6 +831,12 @@ class AlphaApp(
         # the mixer thread (sound, speech seconds) and the UI tick (baselines).
         self._listening_started_mono = 0.0
         self._last_any_sound_mono = 0.0
+        # Section 0c: each track on its own, and the device Alpha last followed.
+        self._last_system_sound_mono = 0.0
+        self._last_mic_sound_mono = 0.0
+        self._audio_device_followed_mono = 0.0
+        self._audio_device_followed_name = ""
+        self._meeting_silent_latched_since = 0.0
         self._voiced_seconds_total = 0.0
         self._voiced_total_at_last_words = 0.0
         self._hint_ledger_sequence = None
@@ -4332,6 +4338,10 @@ class AlphaApp(
         # Item 31. The same colour as `degraded`: the meeting runs, something is wrong.
         "no_sound": ("● No sound", "accent_red_glow"),
         "no_speech": ("● No speech recognised", "accent_red_glow"),
+        # Section 0c: the meeting track silent while the room is heard, and
+        # the notice that Alpha now records a different output device.
+        "no_meeting_audio": ("● Meeting audio silent", "accent_red_glow"),
+        "device_followed": ("● Audio device switched", "accent_green"),
     }
 
     def _sync_connection_indicator(self, *, force_idle: bool = False):
@@ -4379,6 +4389,15 @@ class AlphaApp(
                     no_sound, voiced_without_words = inputs()
                 except Exception:
                     no_sound, voiced_without_words = (0.0, 0.0)
+            # Section 0c, the same way: an addition that can never blank the
+            # indicator.
+            meeting_silent, followed_device = (0.0, "")
+            meeting_inputs = getattr(self, "_meeting_audio_inputs", None)
+            if listening and callable(meeting_inputs):
+                try:
+                    meeting_silent, followed_device = meeting_inputs()
+                except Exception:
+                    meeting_silent, followed_device = (0.0, "")
             status = describe_connection(
                 listening=listening,
                 # `_dg_disconnected_at` is the authoritative outage clock: set
@@ -4424,6 +4443,8 @@ class AlphaApp(
                 audio_capture_device=str(
                     getattr(self, "_diag_wasapi_device_name", "") or ""
                 ),
+                meeting_audio_silent_seconds=meeting_silent,
+                audio_device_followed=followed_device,
             )
         except Exception:
             # A status indicator must never be able to break the UI tick it
@@ -4507,7 +4528,17 @@ class AlphaApp(
         try:
             from alpha.utils.service_status import CONNECTION_DETAILS_TITLE
 
-            messagebox.showinfo(t(CONNECTION_DETAILS_TITLE), t(status.message))
+            # Section 0c: a sentence built around a device name is translated
+            # as its template, then filled -- the name is in no table.
+            template = str(status.detail.get("message_template") or "")
+            if template:
+                try:
+                    text = t(template).format(**dict(status.detail.get("message_args") or {}))
+                except Exception:
+                    text = status.message
+            else:
+                text = t(status.message)
+            messagebox.showinfo(t(CONNECTION_DETAILS_TITLE), text)
         except Exception:
             pass
 
@@ -4532,6 +4563,15 @@ class AlphaApp(
                 loudest = 0.0
             if loudest >= ANY_SOUND_RMS:
                 self._last_any_sound_mono = now
+            # Section 0c: the two tracks apart -- the meeting (system loopback)
+            # silent while the microphone hears the room is its own problem.
+            try:
+                if float(speaker_meta.get("sys_rms") or 0.0) >= ANY_SOUND_RMS:
+                    self._last_system_sound_mono = now
+                if float(speaker_meta.get("mic_rms") or 0.0) >= ANY_SOUND_RMS:
+                    self._last_mic_sound_mono = now
+            except (TypeError, ValueError):
+                pass
             if speaker_meta.get("system_active") or speaker_meta.get("mic_active"):
                 self._voiced_seconds_total = (
                     float(getattr(self, "_voiced_seconds_total", 0.0) or 0.0)
@@ -4574,6 +4614,56 @@ class AlphaApp(
             0.0, total - float(getattr(self, "_voiced_total_at_last_words", 0.0) or 0.0)
         )
         return no_sound, voiced
+
+    def _meeting_audio_inputs(self, now_mono=None):
+        """(seconds the meeting track has been silent while the mic hears the room,
+        the device Alpha just followed to, or ""). Section 0c. UI tick.
+
+        The silence counts only while the microphone is live -- heard within
+        `MIC_LIVE_WINDOW_S` and after the meeting track went quiet; with both
+        silent, item 31's "No sound" is the right hint and this stays 0. The
+        clock restarts at Start and when Alpha follows a device change, so a
+        new device is judged on its own silence.
+        """
+        from alpha.constants import (
+            AUDIO_DEVICE_FOLLOWED_NOTICE_S,
+            MEETING_AUDIO_NEVER_HEARD_HINT_AFTER_S,
+            MEETING_AUDIO_SILENT_HINT_AFTER_S,
+            MIC_LIVE_WINDOW_S,
+        )
+
+        now = time.monotonic() if now_mono is None else float(now_mono)
+        started = float(getattr(self, "_listening_started_mono", 0.0) or 0.0)
+        if not started:
+            return 0.0, ""
+        followed_at = float(getattr(self, "_audio_device_followed_mono", 0.0) or 0.0)
+        system_heard = float(getattr(self, "_last_system_sound_mono", 0.0) or 0.0)
+        mic_heard = float(getattr(self, "_last_mic_sound_mono", 0.0) or 0.0)
+        opened = max(started, followed_at)
+        since = max(system_heard, opened)
+        silent = max(0.0, now - since)
+        mic_live = mic_heard > since and (now - mic_heard) <= MIC_LIVE_WINDOW_S
+        # Once raised, the hint holds until the meeting track itself is heard
+        # (or Alpha moves to another device): a pause in the ROOM is not the
+        # meeting coming back. Replaying `...101440`, it flickered off at every
+        # 10 s gap in the room's talk.
+        latched = float(getattr(self, "_meeting_silent_latched_since", 0.0) or 0.0) == since
+        # A device that has not played anything since Start (or since Alpha
+        # moved to it) gets longer: before remote people speak, a meeting's
+        # output is legitimately silent. Replaying `...100031`, the first
+        # remote sound came 61 s after Start, while the room was talking.
+        never_heard = system_heard <= opened
+        threshold = (
+            MEETING_AUDIO_NEVER_HEARD_HINT_AFTER_S if never_heard else MEETING_AUDIO_SILENT_HINT_AFTER_S
+        )
+        if latched or (mic_live and silent >= threshold):
+            self._meeting_silent_latched_since = since
+        else:
+            silent = 0.0
+        followed = ""
+        if followed_at and followed_at >= started and (now - followed_at) <= AUDIO_DEVICE_FOLLOWED_NOTICE_S:
+            followed = str(getattr(self, "_audio_device_followed_name", "") or "")
+        return silent, followed
 
     def _update_status_bar(self, listening=False):
         """Refresh status bar visuals for idle vs listening."""
@@ -11355,6 +11445,11 @@ class AlphaApp(
         # during "Starting...".
         self._listening_started_mono = time.monotonic()
         self._last_any_sound_mono = 0.0
+        self._last_system_sound_mono = 0.0
+        self._last_mic_sound_mono = 0.0
+        self._audio_device_followed_mono = 0.0
+        self._audio_device_followed_name = ""
+        self._meeting_silent_latched_since = 0.0
         self._voiced_seconds_total = 0.0
         self._voiced_total_at_last_words = 0.0
         self._hint_ledger_sequence = None

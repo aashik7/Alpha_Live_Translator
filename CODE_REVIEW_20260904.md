@@ -2561,3 +2561,55 @@ never passed through the assembler still merge.
   `retry_pending` at 11894: this change's comment pushed it out and failed the
   test with the behaviour unchanged. It now reads the whole method.
 * Full suite: `Ran 1699 tests`, the same eight stale failures and nothing else.
+
+---
+
+## Item 41 — a meeting playing where Alpha is not listening is named (PENDING_TASKS 0c)
+
+`...101440` recorded the laptop microphone for 15 minutes and the meeting for
+none of them: the Realtek loopback was exact zero from Start to Stop, the
+meeting playing on another device. `...100031`: the Windows default output
+moved Bluetooth -> Realtek at 10:11:26, Alpha followed (rebind OK) -- onto a
+device nothing played on. The indicator was green through both: item 31's
+"● No sound" needs BOTH tracks silent (the room mic was not), and a successful
+rebind cleared item 73's warning without saying which device Alpha now records.
+
+### The change
+
+* `service_status`: two states. `no_meeting_audio` (severity of "no sound") when
+  the meeting track has been silent while the microphone hears the room, naming
+  the recorded device; `device_followed` (information, outranked by anything
+  wrong) for `AUDIO_DEVICE_FOLLOWED_NOTICE_S` after Alpha follows a change,
+  naming the new device. Both sentences are templates, translated with `t()`
+  and filled afterwards (the device name is in no table); Japanese added.
+* `main_window._note_audio_activity` tracks the two tracks apart;
+  `_meeting_audio_inputs` counts meeting-track silence while the mic is live
+  (heard within `MIC_LIVE_WINDOW_S`): 45 s after a drop-out, 90 s when the
+  device has not played at all since Start or since Alpha moved to it (before
+  the remote side speaks a meeting's output is legitimately silent). Once
+  raised it holds until the meeting track is heard -- a pause in the room is not
+  the meeting coming back.
+* `wasapi`: a confirmed rebind records the device it followed to.
+
+### Replayed, the morning's own timeline
+
+The WAVs had expired, but `audio_manifest.json` keeps every packet's
+ACTIVE / SOURCE_SILENCE per stream with wall times. Fed through the real
+`_note_audio_activity`, `_audio_attention_inputs`, `_meeting_audio_inputs` and
+`describe_connection` every 0.5 s:
+
+| Session | Before | After |
+|---|---|---|
+| `...100031` | green; "No sound" 10:12:21 | "Audio device switched -> Realtek" 10:11:26-10:11:56; "No sound" 10:12:21 (mic was off, so both tracks silent -- item 31's) |
+| `...101440` | green for all 15 minutes | "Meeting audio silent ... Realtek" at 10:16:10, held to Stop |
+
+The first version fired a harmless warning 45 s into `...100031` (the remote
+side first spoke 61 s after Start) and flickered off at every 10 s pause in the
+room in `...101440`; both are what the grace and the latch above are for.
+
+### Verified
+
+* `tests/test_a_silent_meeting_device_is_named.py` (17): states, severities,
+  templates and their Japanese; the mixer signals; the real rebind recording
+  the device. Six mutants, each caught (latch, grace, mic requirement, clock
+  restart on a follow, the notice's severity, the rebind's record).

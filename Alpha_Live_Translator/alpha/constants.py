@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-APP_VERSION = "3.3.5.5.8.5.26.5.38"
+APP_VERSION = "3.3.5.5.8.5.26.5.39"
 APP_CODENAME = "Preserve Real Silence Multi-Stream Retention"
 FROZEN_INFRASTRUCTURE_BASELINE = "3.3.5.5.8.5.25.3.3.2.8"
 
@@ -259,6 +259,21 @@ NO_SPEECH_HINT_AFTER_VOICED_S = 30.0
 # silence inside a healthy retained run was 7.7 s.
 NO_SOUND_HINT_AFTER_S = 60.0
 ANY_SOUND_RMS = 1.0
+# Section 0c (2026-09-28): the meeting track Alpha records exactly silent while
+# the microphone hears the room -- the meeting is playing on a device Alpha is
+# not recording. `...101440` ran 15 minutes like that under a green light,
+# because "No sound" needs BOTH tracks silent. Named after this long.
+MEETING_AUDIO_SILENT_HINT_AFTER_S = 45.0
+# ... and after this long when the meeting track has not been heard at all
+# since Start (or since Alpha moved to a new device): before the remote side
+# speaks, a meeting's output is legitimately silent. `...100031`'s first remote
+# sound came 61 s after Start.
+MEETING_AUDIO_NEVER_HEARD_HINT_AFTER_S = 90.0
+# How recently the microphone must have heard something for that to count.
+MIC_LIVE_WINDOW_S = 10.0
+# How long "Alpha now records <device>" shows after Alpha follows a change of
+# the Windows default output (the warning of item 73 clears on success).
+AUDIO_DEVICE_FOLLOWED_NOTICE_S = 30.0
 
 # Utterance lifecycle: bounded inactivity commit when speech_final / UtteranceEnd
 # never arrive. Does not change Deepgram endpointing configuration.

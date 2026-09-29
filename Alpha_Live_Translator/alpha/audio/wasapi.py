@@ -388,6 +388,13 @@ class WasapiCaptureMixin:
                 return False
             self._audio_device_changed = False
             self._wasapi_device_change_reported = False
+            # Section 0c: say WHICH device Alpha now records. Clearing the
+            # warning alone left "● Signal OK" over a device the meeting might
+            # not play on -- `...100031`, 10:11:26, Bluetooth -> Realtek.
+            self._audio_device_followed_name = str(
+                getattr(self, "_diag_wasapi_device_name", "") or ""
+            )
+            self._audio_device_followed_mono = time.monotonic()
             self._refresh_connection_indicator()
             # Only now, with the new device confirmed producing: the next
             # stable line must not be merged into one captured on the old one.
