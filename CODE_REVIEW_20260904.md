@@ -2692,3 +2692,63 @@ kept.
   removed, exactly that line's commit is named (`stable-44` "廊は。はやさん…",
   `stable-125` "かいたさんライセンスで…", `stable-120` "これはメッセーね…").
 * Full suite: `Ran 1723 tests`, the same eight stale failures and nothing else.
+
+---
+
+## Item 44 — a line item 66 trimmed stays trimmed in every later version of it (PENDING_TASKS open defect k)
+
+Item 66 removes the head of a new line when the record before it already ends
+with those words. Item 35 lets a later guess at the same audio re-open that line,
+and item 37 rightly refuses to trim a new version against the record it
+replaces. Nothing trimmed it against the record item 66 had trimmed it against
+-- the lifecycle keeps only the last committed record -- so the cut words came
+back:
+
+    "in Duterte, he writes openly, I never considered"  [100.0-104.0]  UtteranceEnd
+    "he writes openly, I never considered him an impostor"  [102.0-105.5]  UtteranceEnd  -> "him an impostor"
+    "he writes openly, I never considered him an impostor at all"  [102.0-106.0]  UtteranceEnd
+    export: "in Duterte, he writes openly, I never considered" / "he writes openly, I never considered him an impostor at all"
+
+Driving the real lifecycle, publisher, duplicate protection, registry and ledger
+found the same repeat on five more paths -- a second re-open, growing interims
+while re-opened, the provider's final taken as a correction, a cumulative final
+after the inactivity timeout, and an extend whose merge took the whole re-send --
+and one worse: an older, SHORTER guess at the trimmed line's audio was compared
+with the trimmed text only, so it did not read as an older guess, re-opened the
+line, and replaced "him an impostor" with "he writes openly, I never considered
+him" -- "an impostor" gone from the export.
+
+### The change
+
+* `ActiveUtterance.trim_context_text` / `trimmed_head`: the committed text item
+  66 matched and the words it cut, recorded where the trim fires (at creation
+  and on a merge) and inherited by every new version -- re-open, correction,
+  extend.
+* `_retrim_new_version_locked`: a new version is cut against that text by the
+  same rule (`_committed_tail_split`, the body of `_strip_committed_tail_prefix`
+  now also returning the head). Its gates passed when the context was recorded,
+  and a new version is the same audio. Only words proven to repeat the record
+  before are cut; a revision whose head no longer matches is left whole.
+* The re-open's "older, shorter guess" check also compares against the uncut
+  text (`trimmed_head` + text).
+
+### Verified
+
+* `tests/test_a_trimmed_line_stays_trimmed.py` (9, the item-37 host: the real
+  lifecycle -> `_publish_final_transcript_segment` -> `_display_transcript_item`
+  -> registry -> ledger): 8 fail before the change, the 9th (a revised head is
+  left whole) pins the fail-closed side. Nine mutants, each caught: no re-trim,
+  no re-trim on re-open / correction / extend, no inheritance, no record at
+  creation / on a merge, the same-id path back to "unchanged", the uncut check
+  removed.
+* The end-to-end scenarios of item 37 (re-opened growth, the owner's fixture,
+  held extend, extend at once) export exactly what they did before.
+* The real app (`main.py`, Start/Stop driven, a local stand-in for Deepgram
+  replaying the three windows above plus one more sentence -- PENDING_TASKS
+  section 6): at `f1090d7` the sealed `Alpha_output_FINAL.txt` reads
+  "in Duterte, he writes openly, I never considered" / "he writes openly, I
+  never considered him an impostor at all" / "Thank you everyone for joining
+  today."; now the second line is "him an impostor at all". Stop 3.2 s, no
+  dialog, `LINEAGE_EXPORT_COVERAGE_PASSED`.
+* Full suite, on items 44-48 together: `Ran 1751 tests`, the same eight stale
+  failures and nothing else.

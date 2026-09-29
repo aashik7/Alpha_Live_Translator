@@ -388,6 +388,22 @@ def _strip_committed_tail_prefix(
     the ledger. This trim is kept: it removes a re-sent tail without a
     revision at all, which is still the cheaper outcome when it applies.
     """
+    split = _committed_tail_split(committed_text, lexical, min_run=min_run)
+    return split[1] if split is not None else None
+
+
+def _committed_tail_split(
+    committed_text: str,
+    lexical: str,
+    *,
+    min_run: int = 3,
+) -> Optional[tuple[str, str]]:
+    """`_strip_committed_tail_prefix`, also returning the head it cuts.
+
+    Returns `(head, remainder)`, or None when there is no qualifying overlap or
+    nothing would remain. Open defect (k) keeps the head: a later version of
+    the same record is checked against the text it was trimmed from.
+    """
     prev_tokens = _compare_tokens(committed_text)
     curr_parts = (lexical or "").split()
     curr_tokens = _compare_tokens(lexical)
@@ -403,7 +419,9 @@ def _strip_committed_tail_prefix(
         if _compare_tokens(" ".join(curr_parts[:k])) != curr_tokens[:k]:
             return None
         remainder = " ".join(curr_parts[k:]).strip()
-        return remainder or None
+        if not remainder:
+            return None
+        return " ".join(curr_parts[:k]).strip(), remainder
     return None
 
 
@@ -769,6 +787,13 @@ class ActiveUtterance:
     # Whatever ends it -- a word gap, the timeout, the flush, speech_final --
     # its commit replaces that record; it never adds a second one.
     supersedes_committed: bool = False
+    # Open defect (k), 2026-09-29. What item 66 cut from this utterance's head
+    # because the record before it already ended with those words: that
+    # record's text, and the words cut. A new version of this record --
+    # re-opened, corrected, extended -- inherits both and is trimmed against
+    # the same text; without them the re-open brought the cut words back.
+    trim_context_text: str = ""
+    trimmed_head: str = ""
 
 
 @dataclass
@@ -2037,15 +2062,43 @@ class UtteranceLifecycleOwner:
         Returns `lexical` unchanged whenever anything is uncertain -- this can
         remove text, so every gate fails closed.
         """
+        return self._trim_resent_tail_detail_locked(
+            lexical,
+            channel=channel,
+            speaker=speaker,
+            cand_start=cand_start,
+            cand_end=cand_end,
+            utterance_id=utterance_id,
+        )[0]
+
+    def _trim_resent_tail_detail_locked(
+        self,
+        lexical: str,
+        *,
+        channel: Any,
+        speaker: Any,
+        cand_start: float = -1.0,
+        cand_end: float = -1.0,
+        utterance_id: str = "",
+    ) -> tuple[str, str, str]:
+        """`_trim_resent_tail_locked`, returning `(text, context, head)`.
+
+        `context` is the committed text the head was matched against and
+        `head` the words cut; both "" when nothing was cut. The caller keeps
+        them on the utterance (open defect k).
+        """
         prev = self._last_committed
         if prev is None or not prev.committed or not (lexical or "").strip():
-            return lexical
+            return lexical, "", ""
         if utterance_id and utterance_id == str(prev.utterance_id or ""):
-            return lexical
+            # Item 37: never trimmed against the record it is a new version
+            # of. Open defect (k): but it IS trimmed against the record item 66
+            # trimmed that one against, or the cut words come back.
+            return self._retrim_new_version_locked(prev, lexical)
         if str(prev.commit_reason or "") in _HARD_BOUNDARY_COMMIT_REASONS:
-            return lexical
+            return lexical, "", ""
         if not _channel_matches_exactly(prev.channel, channel):
-            return lexical
+            return lexical, "", ""
         # Same speaker, OR the two spans overlap on the audio clock. The second
         # is what live run `...20260814-101813` needed: records [4] and [5]
         # share the re-sent run "and the number 1 thing", but the provider
@@ -2068,10 +2121,11 @@ class UtteranceLifecycleOwner:
             prev.start_time, prev.end_time, cand_start, cand_end
         )
         if not same_speaker and not overlapping_audio:
-            return lexical
-        trimmed = _strip_committed_tail_prefix(prev.text, lexical)
-        if trimmed is None or trimmed == lexical:
-            return lexical
+            return lexical, "", ""
+        split = _committed_tail_split(prev.text, lexical)
+        if split is None or split[1] == lexical:
+            return lexical, "", ""
+        head, trimmed = split
         self._stats["resent_tails_trimmed"] += 1
         try:
             from alpha.utils.japanese_accuracy_log import jp_accuracy_log
@@ -2086,7 +2140,50 @@ class UtteranceLifecycleOwner:
             )
         except Exception:
             pass
-        return trimmed
+        return trimmed, str(prev.text or ""), head
+
+    def _retrim_new_version_locked(
+        self, prev: "ActiveUtterance", text: str
+    ) -> tuple[str, str, str]:
+        """Trim a new version of `prev` against what `prev` was trimmed against.
+
+        Open defect (k), 2026-09-29. Item 66 cut "he writes openly, I never
+        considered" from "he writes openly, I never considered him an impostor"
+        because the record before it ended with those words, and committed "him
+        an impostor". Deepgram's next guess at that audio re-opened the record
+        (item 35) with the words back in, and item 37 rightly refuses to trim a
+        new version against the record it replaces -- so the export read the
+        half-sentence twice. The record before is gone from the lifecycle by
+        then; the utterance carries its text instead, and the same item-66
+        rule is applied to that. Its gates (channel, speaker or overlapping
+        audio, no hard boundary) were passed when the context was recorded,
+        and a new version is the same audio.
+
+        Returns `(text, context, head)`: the context and head the new version
+        inherits, the head refreshed when this cut one.
+        """
+        context = str(prev.trim_context_text or "")
+        inherited_head = str(prev.trimmed_head or "")
+        if not context:
+            return text, "", ""
+        split = _committed_tail_split(context, text)
+        if split is None:
+            return text, context, inherited_head
+        head, trimmed = split
+        self._stats["resent_tails_trimmed"] += 1
+        try:
+            from alpha.utils.japanese_accuracy_log import jp_accuracy_log
+
+            jp_accuracy_log(
+                "RESENT_TAIL_TRIMMED",
+                reason="new_version_repeats_head_trimmed_at_creation",
+                session_id=self._session_id,
+                canonical_utterance_id=prev.utterance_id,
+                removed_preview=head[:120],
+            )
+        except Exception:
+            pass
+        return trimmed, context, head
 
     def _is_premature_continuation_locked(
         self,
@@ -2216,7 +2313,13 @@ class UtteranceLifecycleOwner:
                 channel=channel, cand_start=cand_start, source=source
             )
         )
-        if reopen and _norm_text(lexical) in _norm_text(prev.text):
+        # Open defect (k): what the provider sent for this audio before item 66
+        # cut the head, so an older guess still reads as one after the cut.
+        uncut_prev_text = f"{prev.trimmed_head} {prev.text}" if reopen and prev.trimmed_head else ""
+        if reopen and (
+            _norm_text(lexical) in _norm_text(prev.text)
+            or (uncut_prev_text and _norm_text(lexical) in _norm_text(uncut_prev_text))
+        ):
             # An older, shorter guess at audio already committed -- it adds
             # nothing, and re-opening with it would shrink the record.
             d = LifecycleDecision(
@@ -2240,6 +2343,10 @@ class UtteranceLifecycleOwner:
             # committed record in the ledger instead of appending a second one.
             prev.state = SUPERSEDED
             self._committed_utterance_ids.discard(prev.utterance_id)
+            # Open defect (k): cut again what item 66 cut from this record.
+            lexical, trim_context, trimmed_head = self._retrim_new_version_locked(
+                prev, lexical
+            )
             active = ActiveUtterance(
                 utterance_id=prev.utterance_id,
                 session_id=self._session_id,
@@ -2253,6 +2360,8 @@ class UtteranceLifecycleOwner:
                 deepgram_request_id=str(deepgram_request_id or prev.deepgram_request_id),
                 lineage_ids=list(prev.lineage_ids) + ([event_id] if event_id else []),
                 supersedes_committed=True,
+                trim_context_text=trim_context,
+                trimmed_head=trimmed_head,
             )
             self._active = active
             self._stats["committed_segments_reopened"] += 1
@@ -2273,8 +2382,9 @@ class UtteranceLifecycleOwner:
             # simple." lost "The bottom line", present in no record. The trim's
             # own contract says it is for text arriving from the wire, so the
             # split path is excluded rather than the trim being loosened.
+            trim_context, trimmed_head = "", ""
             if not from_sentence_split:
-                lexical = self._trim_resent_tail_locked(
+                lexical, trim_context, trimmed_head = self._trim_resent_tail_detail_locked(
                     lexical,
                     channel=channel,
                     speaker=speaker,
@@ -2297,6 +2407,8 @@ class UtteranceLifecycleOwner:
                 lineage_ids=[event_id] if event_id else [],
                 has_final=source == "final",
                 from_sentence_split=bool(from_sentence_split),
+                trim_context_text=trim_context,
+                trimmed_head=trimmed_head,
             )
             self._active = active
             decision = CREATE_ACTIVE if not force_new else CREATE_NEW_UTTERANCE
@@ -2389,7 +2501,10 @@ class UtteranceLifecycleOwner:
             # Item 37: `utterance_id` lets the trim see when this utterance IS
             # a new version of the previous record (re-opened, or a held
             # correction/extend), whose own words it must not cut.
-            merged = self._trim_resent_tail_locked(
+            #
+            # Open defect (k): what was cut is kept on the utterance, so a
+            # later version of its record can be cut the same way.
+            merged, trim_context, trimmed_head = self._trim_resent_tail_detail_locked(
                 merged,
                 channel=channel,
                 speaker=speaker,
@@ -2397,6 +2512,9 @@ class UtteranceLifecycleOwner:
                 cand_end=cand_end,
                 utterance_id=active.utterance_id,
             )
+            if trim_context:
+                active.trim_context_text = trim_context
+                active.trimmed_head = trimmed_head
             # item 65: a sentence that ended is a boundary, not a place to keep
             # appending. Only fires when the merge above was a *pure* append
             # across a sentence terminator, so every revision, overlap-join and
@@ -2964,6 +3082,9 @@ class UtteranceLifecycleOwner:
             )
         self._seq += 1
         uid = str(target_utterance_id or prev.utterance_id)  # keep same canonical identity
+        # Open defect (k): a correction of a record item 66 trimmed is cut the
+        # same way, or the provider's full text brings the cut words back.
+        lexical, trim_context, trimmed_head = self._retrim_new_version_locked(prev, lexical)
         active = ActiveUtterance(
             utterance_id=uid,
             session_id=self._session_id,
@@ -2980,6 +3101,8 @@ class UtteranceLifecycleOwner:
             # Item 37: held open below when speech_final is False, it commits
             # later through Case B/C -- still as a revision of `original_id`.
             supersedes_committed=True,
+            trim_context_text=trim_context,
+            trimmed_head=trimmed_head,
         )
         # Mark previous committed snapshot superseded in audit trail.
         prev.state = SUPERSEDED
@@ -3100,6 +3223,11 @@ class UtteranceLifecycleOwner:
         )
         self._seq += 1
         uid = str(target_utterance_id or prev.utterance_id)  # keep same canonical identity
+        # Open defect (k): a cumulative re-send merged in here can carry the
+        # head item 66 cut from this record; the extension inherits the cut.
+        merged_text, trim_context, trimmed_head = self._retrim_new_version_locked(
+            prev, merged_text
+        )
         active = ActiveUtterance(
             utterance_id=uid,
             session_id=self._session_id,
@@ -3116,6 +3244,8 @@ class UtteranceLifecycleOwner:
             # Item 37: held open below when speech_final is False, it commits
             # later through Case B/C -- still as a revision of `original_id`.
             supersedes_committed=True,
+            trim_context_text=trim_context,
+            trimmed_head=trimmed_head,
         )
         # Mark previous committed snapshot superseded in audit trail (it's
         # being absorbed into the extended utterance, same as a correction).
