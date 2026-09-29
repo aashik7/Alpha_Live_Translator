@@ -364,6 +364,9 @@ def build_export_chain_from_stable_commits(commits: list[dict[str, Any]]) -> lis
 # are looked for, and how close a corrected line must still read.
 _ALIGN_WINDOW_LINES = 6
 _ALIGN_MIN_SIMILARITY = 0.75
+# Open defect (o), 2026-09-29: the shortest commit (normalized characters) that
+# may be matched PAST the window. A short one ("はい") is found almost anywhere.
+_ALIGN_FAR_MIN_CHARS = 8
 
 
 def _line_body(raw: str) -> str:
@@ -371,6 +374,27 @@ def _line_body(raw: str) -> str:
     body = (raw or "").strip()
     body = re.sub(r"^\[Speaker\s+\d+\]\s*", "", body)
     return re.sub(r"^Speaker(?:\s+\d+)?\s*[:：]\s*", "", body)
+
+
+def _line_holds(words: str, line: str) -> bool:
+    """A normalized line holds a commit's normalized words (section 0i's rule).
+
+    Contains them, is contained in them (a trimmed line), or reads nearly the
+    same (a glossary correction). The quick ratios are upper bounds of
+    `ratio()`, so checking them first changes no answer, only the cost.
+    """
+    from difflib import SequenceMatcher
+
+    if not line:
+        return False
+    if words in line or (len(line) >= max(4, len(words) // 2) and line in words):
+        return True
+    matcher = SequenceMatcher(None, words, line)
+    return (
+        matcher.real_quick_ratio() >= _ALIGN_MIN_SIMILARITY
+        and matcher.quick_ratio() >= _ALIGN_MIN_SIMILARITY
+        and matcher.ratio() >= _ALIGN_MIN_SIMILARITY
+    )
 
 
 def _align_chain_to_lines(chain: list[dict[str, Any]], lines: list[str]) -> list[list[str]]:
@@ -389,29 +413,45 @@ def _align_chain_to_lines(chain: list[dict[str, Any]], lines: list[str]) -> list
     nearly the same (a glossary correction). A commit found nowhere is left
     unrepresented -- a real loss is still reported, now as ITS commit. Each
     commit goes to exactly one line, so no two lines share a lineage group.
-    """
-    from difflib import SequenceMatcher
 
+    Open defect (o), 2026-09-29: more than a window's worth of exported lines
+    from no commit in a row (lines from another path, a long stop tail) left
+    every later commit outside the window, all reported lost. A commit not
+    found in the window is now looked for further on -- but only when the
+    NEXT commit is not in the window either, so the alignment itself has moved,
+    and only for a commit long enough to be told apart. Otherwise a lost commit
+    whose words the speaker repeats later would pull the cursor past every
+    commit in between and report THEM lost.
+    """
     norm_lines = [_normalize(_line_body(line)) for line in lines]
     assigned: list[list[str]] = [[] for _ in lines]
-    cursor = 0
+    entries: list[tuple[str, list[str]]] = []
     for entry in chain:
         words = _normalize(str(entry.get("text") or ""))
         ids = [str(sid) for sid in (entry.get("source_commit_ids") or []) if sid]
-        if not words or not ids:
-            continue
-        hit = None
-        for k in range(cursor, min(cursor + _ALIGN_WINDOW_LINES, len(norm_lines))):
-            line = norm_lines[k]
-            if not line:
-                continue
-            if (
-                words in line
-                or (len(line) >= max(4, len(words) // 2) and line in words)
-                or SequenceMatcher(None, words, line).ratio() >= _ALIGN_MIN_SIMILARITY
-            ):
-                hit = k
-                break
+        if words and ids:
+            entries.append((words, ids))
+
+    def find(words: str, start: int, stop: int) -> int | None:
+        for k in range(start, min(stop, len(norm_lines))):
+            if _line_holds(words, norm_lines[k]):
+                return k
+        return None
+
+    cursor = 0
+    for j, (words, ids) in enumerate(entries):
+        window_end = cursor + _ALIGN_WINDOW_LINES
+        hit = find(words, cursor, window_end)
+        if hit is None and len(words) >= _ALIGN_FAR_MIN_CHARS:
+            following = entries[j + 1][0] if j + 1 < len(entries) else None
+            if following is None or find(following, cursor, window_end) is None:
+                hit = find(words, window_end, len(norm_lines))
+                if hit is not None:
+                    _jp_log(
+                        "LINEAGE_COMMIT_FOUND_PAST_WINDOW",
+                        source_commit_ids=ids,
+                        lines_skipped=hit - cursor,
+                    )
         if hit is None:
             _jp_log("LINEAGE_COMMIT_NOT_FOUND_IN_EXPORT", source_commit_ids=ids)
             continue

@@ -2826,3 +2826,39 @@ f-string it could not be translated either -- a Japanese screen showed English.
   never followed. They now pin the new sentence.
 * Full suite, on items 44-48 together: `Ran 1751 tests`, the same eight stale
   failures and nothing else.
+
+---
+
+## Item 47 — lineage finds a commit past a long run of other lines (PENDING_TASKS open defect o)
+
+Item 43's matcher looked for each commit at most 6 lines past the last match.
+More than 6 exported lines that come from no commit in a row -- lines from
+another path, a long stop tail -- left every later commit outside the window,
+all reported as `valid_segment_loss` (a report error; the export itself is
+unaffected).
+
+### The change
+
+A commit not found in the window is looked for further on, but only when the
+NEXT commit is not in the window either -- the alignment itself has moved --
+and only for a commit of at least `_ALIGN_FAR_MIN_CHARS` (8) characters. Without
+the first guard a lost commit whose words the speaker repeats later pulls the
+cursor past every commit in between and reports THEM lost; without the second
+「はい」 matches almost anywhere. `_line_holds` is the window's own rule, with
+`SequenceMatcher`'s quick upper bounds checked first (same answers, less work).
+
+### Verified
+
+* `tests/test_lineage_coverage_matches_by_content.py` +5: commits after a run of
+  8 other lines, and before the first commit, are found (3 fail before the
+  change: 3 and 5 commits falsely lost); a real loss after the run is still
+  named; a lost line repeated later does not pull the rest with it; a short
+  commit is not matched far away. Three mutants caught (each guard, the far
+  search).
+* All 84 retained runs, through the real functions: lost ids, kept lines and
+  every line's source ids identical to before. With 8 foreign lines inserted
+  mid-export, 6 real runs: before, 20-109 false losses each; after, none (the one
+  run with 5 real losses keeps exactly those 5); with a line then removed, its
+  own commit is named.
+* Full suite, on items 44-48 together: `Ran 1751 tests`, the same eight stale
+  failures and nothing else.

@@ -97,6 +97,72 @@ class ARealLossIsNamedTest(_Case):
         self.assertEqual(self.lost(report), ["stable-2"])
 
 
+OTHER_LINES = [
+    "Speaker: Thank you all for joining the review today.",
+    "Speaker: Let us look at the schedule for next week first.",
+    "Speaker: The design team has finished the first draft.",
+    "Speaker: We still need the numbers from the finance side.",
+    "Speaker: Please send them before Friday if you can.",
+    "Speaker: I will share the updated slides after this call.",
+    "Speaker: Any questions before we switch back to Japanese?",
+    "Speaker: Okay, let us continue then.",
+]
+
+
+class ALongRunOfOtherLinesTest(_Case):
+    """Open defect (o), 2026-09-29: item 43's matcher looked at most six lines
+    past the last match, so more than six exported lines from no commit in a row
+    made every later commit read as lost."""
+
+    def test_commits_after_the_run_are_still_found(self):
+        self.assertGreater(len(OTHER_LINES), tl._ALIGN_WINDOW_LINES)
+        lines = (
+            [f"Speaker: {t}" for _, t in COMMITS[:2]]
+            + OTHER_LINES
+            + [f"Speaker: {t}" for _, t in COMMITS[2:]]
+        )
+        _, report = self.coverage(lines)
+        self.assertEqual(self.lost(report), [], "commits after the run were reported lost")
+
+    def test_the_run_before_the_first_commit(self):
+        lines = OTHER_LINES + [f"Speaker: {t}" for _, t in COMMITS]
+        _, report = self.coverage(lines)
+        self.assertEqual(self.lost(report), [])
+
+    def test_a_real_loss_after_the_run_is_still_named(self):
+        lines = (
+            [f"Speaker: {t}" for _, t in COMMITS[:2]]
+            + OTHER_LINES
+            + [f"Speaker: {t}" for cid, t in COMMITS[2:] if cid != "stable-4"]
+        )
+        _, report = self.coverage(lines)
+        self.assertEqual(self.lost(report), ["stable-4"])
+
+    def test_a_lost_line_repeated_later_does_not_pull_the_rest_with_it(self):
+        """stable-2's own line is missing, and the speaker says the same words
+        again much later. Jumping there would leave stable-3..5 behind it and
+        report THEM lost; stable-2 is the loss."""
+        lines = (
+            [f"Speaker: {t}" for cid, t in COMMITS if cid != "stable-2"]
+            + OTHER_LINES
+            + ["Speaker: " + COMMITS[1][1]]
+        )
+        _, report = self.coverage(lines)
+        self.assertEqual(self.lost(report), ["stable-2"])
+
+    def test_a_short_commit_is_not_matched_far_away(self):
+        """「はい。」 is found almost anywhere; past the window it proves nothing."""
+        commits = [COMMITS[0], ("stable-short", "はい。")] + COMMITS[2:]
+        lines = (
+            ["Speaker: " + COMMITS[0][1]]
+            + OTHER_LINES
+            + ["Speaker: はい、そうですね、それで行きましょう。"]
+            + [f"Speaker: {t}" for _, t in COMMITS[2:]]
+        )
+        _, report = self.coverage(lines, commits=commits)
+        self.assertEqual(self.lost(report), ["stable-short"])
+
+
 class TheLineageLockNeverDropsALineTest(_Case):
     def test_lines_beyond_the_commits_are_all_exported(self):
         lines = [f"Speaker: {t}" for _, t in COMMITS] + [
