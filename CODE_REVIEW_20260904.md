@@ -2613,3 +2613,39 @@ room in `...101440`; both are what the grace and the latch above are for.
   templates and their Japanese; the mixer signals; the real rebind recording
   the device. Six mutants, each caught (latch, grace, mic requirement, clock
   restart on a follow, the notice's severity, the rebind's record).
+* Full suite: `Ran 1716 tests`, the same eight stale failures and nothing else.
+
+---
+
+## Item 42 — a finished Japanese sentence the speaker stopped on commits at once (PENDING_TASKS 0e)
+
+The continuity assembler commits a buffer at once when it ends on 。/？ and the
+text before the punctuation does not look incomplete. Stripped of its
+punctuation, though, almost every sentence looks incomplete
+(`looks_incomplete_japanese_fragment` -> `no_sentence_boundary`), so that branch
+rarely fired and a finished sentence waited out the sentence hold (2.9-5 s under
+`JAPANESE_ACCURACY_MODE`).
+
+### Measured on the three meetings of 2026-09-28
+
+Hold-timeout commits: 51 / 54 / 145. Of those, the buffers that already ended on
+。/？ -- 44 / 44 / 117 -- waited p50 3.0-3.2 s; cutting all of them at the
+punctuation would have split 7 / 5 / 19 (the next fragment extended them during
+the hold). Restricted to the ones whose last final Deepgram marked
+`speech_final` (the speaker stopped) and whose only doubt was the missing
+boundary (not a real ので/けど ending): **12 / 16 / 57 lines, p50 3.0 s, of which
+0 / 1 / 2 were extended**. Those 85 now commit at once; the 3 become two lines
+each instead of one -- a split, never a lost word.
+
+### The change
+
+`_maybe_commit_at_boundary`: 。/？ + `speech_final` + `no_sentence_boundary` as
+the only doubt -> `_flush_locked("sentence_punctuation_speech_final")`, behind
+`JAPANESE_SPEECH_FINAL_SENTENCE_COMMIT_ENABLED`. Everything else keeps the hold.
+
+### Verified
+
+* `tests/test_a_finished_sentence_does_not_wait.py` (3, the real `ingest`):
+  committed at once with `speech_final`; held without it; held for "…ので。"
+  even with it. Three mutants, each caught -- the branch removed (the old
+  behaviour), any incomplete reason accepted, `speech_final` ignored.

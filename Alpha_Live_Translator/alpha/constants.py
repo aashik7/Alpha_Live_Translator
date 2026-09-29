@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-APP_VERSION = "3.3.5.5.8.5.26.5.39"
+APP_VERSION = "3.3.5.5.8.5.26.5.40"
 APP_CODENAME = "Preserve Real Silence Multi-Stream Retention"
 FROZEN_INFRASTRUCTURE_BASELINE = "3.3.5.5.8.5.25.3.3.2.8"
 
@@ -601,6 +601,13 @@ JAPANESE_CONTINUITY_ASSEMBLER_SAFE_MODE = True
 JAPANESE_CONTINUITY_MAX_BUFFER_CHARS = 100
 JAPANESE_CONTINUITY_MAX_PARTS = 12
 JAPANESE_CONTINUITY_MAX_HOLD_MS = 8000
+# Section 0e (2026-09-28): a buffer that ends on 。/？ on a final Deepgram marked
+# speech_final commits at once instead of waiting out the sentence hold, when
+# the only doubt is the boundary the stripped punctuation hides (not a real
+# ので/けど ending). Measured on the three meetings of 2026-09-28: 85 such lines
+# waited p50 3.0 s; 3 of them (3.5%) were extended during that wait -- a line
+# split in two, never a word lost.
+JAPANESE_SPEECH_FINAL_SENTENCE_COMMIT_ENABLED = True
 JAPANESE_EMERGENCY_LAST_FRAG_GRACE_MS = 3500
 JAPANESE_NOISE_QUARANTINE_SILENCE_S = 15.0
 JAPANESE_NOISE_QUARANTINE_MAX_COMPACT = 20

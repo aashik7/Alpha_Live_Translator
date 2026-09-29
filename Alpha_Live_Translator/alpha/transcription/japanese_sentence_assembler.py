@@ -28,6 +28,7 @@ from alpha.constants import (
     JAPANESE_NOISE_QUARANTINE_MAX_COMPACT,
     JAPANESE_NOISE_QUARANTINE_RELEASE_COMPACT,
     JAPANESE_NOISE_QUARANTINE_SILENCE_S,
+    JAPANESE_SPEECH_FINAL_SENTENCE_COMMIT_ENABLED,
     JAPANESE_STABLE_ACCURACY_FIX_ENABLED,
     JAPANESE_STT_PROFILE,
     MIC_ACTIVE_RMS_MIN,
@@ -3305,9 +3306,25 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
 
         if has_strong_sentence_end(merged_text):
             body = merged_text.rstrip("。！？!?")
-            inc, _ = looks_incomplete_japanese_fragment(body)
+            inc, inc_reason = looks_incomplete_japanese_fragment(body)
             if not inc:
                 self._flush_locked("sentence_punctuation")
+                return True
+            # Section 0e (2026-09-28). With the punctuation stripped, almost
+            # every sentence "looks incomplete" for want of a boundary, so the
+            # branch above rarely fires and a finished sentence waits out the
+            # whole sentence hold (~3 s). When Deepgram marked the final that
+            # ended it `speech_final` -- the speaker stopped -- and that missing
+            # boundary is the only doubt (not a real ので/けど ending), commit
+            # now. Measured: 85 lines in the three meetings of 2026-09-28 waited
+            # p50 3.0 s this way; 3 were extended during the wait.
+            speech_final = (buf.get("metadata") or {}).get("speech_final")
+            if (
+                JAPANESE_SPEECH_FINAL_SENTENCE_COMMIT_ENABLED
+                and inc_reason == "no_sentence_boundary"
+                and (speech_final is True or str(speech_final).strip().lower() in ("true", "1"))
+            ):
+                self._flush_locked("sentence_punctuation_speech_final")
                 return True
 
         prefix, tail, bname, btype = find_commit_boundary(merged_text)
