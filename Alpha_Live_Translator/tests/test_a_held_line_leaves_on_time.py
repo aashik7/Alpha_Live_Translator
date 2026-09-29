@@ -184,6 +184,36 @@ class TheTimerSurvivesAnAssemblerFlushTest(unittest.TestCase):
         )
 
 
+class TheRealWorkerThreadRunsTheReleaseTest(unittest.TestCase):
+    """Added 2026-09-29 (review of 0b): every test above records the schedule
+    instead of running it, so nothing proved the worker's own thread dispatches
+    the task, or retries it when the assembler lock is busy."""
+
+    def test_dispatched_on_the_worker_thread_and_retried_while_busy(self):
+        import threading
+
+        worker = lpw.LanguagePipelineWorker()
+        self.addCleanup(worker.stop_and_join, 1.0)
+        calls = []
+        done = threading.Event()
+
+        class _Owner:
+            def try_release_boundary_pending(self, generation):
+                calls.append((generation, threading.current_thread().name))
+                if len(calls) == 1:
+                    return False  # the assembler lock was busy
+                done.set()
+                return True
+
+        worker.start()
+        worker.schedule_boundary_release(_Owner(), _time.monotonic(), 7)
+        self.assertTrue(done.wait(3.0), f"the release never ran again after a busy lock: {calls}")
+        self.assertEqual(
+            calls,
+            [(7, "LanguagePipelineWorker"), (7, "LanguagePipelineWorker")],
+        )
+
+
 class TheOlderLineGoesOutFirstTest(_Case):
     def test_a_newer_line_never_overtakes_a_held_one(self):
         self.commit(HELD)

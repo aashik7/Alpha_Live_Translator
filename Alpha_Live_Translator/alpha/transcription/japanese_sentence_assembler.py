@@ -3222,6 +3222,9 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
                 "upstream_reason": upstream_reason,
                 "raw_fragments": [raw_original or fragment],
                 "source_raw_event_ids": list(incoming_ids),
+                # Section 0e's "the speaker stopped" -- about the LAST fragment
+                # only, so kept apart from the merged metadata (see the merge).
+                "speech_final_last_fragment": metadata.get("speech_final"),
             }
             buf["metadata"]["source_raw_event_ids"] = list(incoming_ids)
             self._buffer = buf
@@ -3253,6 +3256,11 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
             post_cleaned, _, _ = cleanup_japanese_per_fragment(merged)
             buf["text"] = post_cleaned
             buf["metadata"].update(metadata)
+            # Found reviewing 0e (2026-09-29): read from the merged metadata, a
+            # fragment without the flag (a recovered quarantine entry, a stop
+            # flush) inherited the previous fragment's True, and the sentence
+            # it finished committed at once. The flag is this fragment's own.
+            buf["speech_final_last_fragment"] = metadata.get("speech_final")
             buf["updated_mono"] = time.monotonic()
             buf["part_count"] = int(buf.get("part_count") or 1) + 1
             raw_frags = list(buf.get("raw_fragments") or [])
@@ -3318,7 +3326,7 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
             # boundary is the only doubt (not a real ので/けど ending), commit
             # now. Measured: 85 lines in the three meetings of 2026-09-28 waited
             # p50 3.0 s this way; 3 were extended during the wait.
-            speech_final = (buf.get("metadata") or {}).get("speech_final")
+            speech_final = buf.get("speech_final_last_fragment")
             if (
                 JAPANESE_SPEECH_FINAL_SENTENCE_COMMIT_ENABLED
                 and inc_reason == "no_sentence_boundary"
@@ -3624,6 +3632,8 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
                         "upstream_reason": buf.get("upstream_reason", ""),
                         "raw_fragments": [tail],
                         "source_raw_event_ids": list(buf.get("source_raw_event_ids") or []),
+                        # The tail is the end of the same last fragment.
+                        "speech_final_last_fragment": buf.get("speech_final_last_fragment"),
                     }
                     partial_metadata = dict(buf.get("metadata") or {})
                     partial_metadata["source_raw_event_ids"] = list(

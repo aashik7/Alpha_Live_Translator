@@ -2862,3 +2862,35 @@ cursor past every commit in between and reports THEM lost; without the second
   own commit is named.
 * Full suite, on items 44-48 together: `Ran 1751 tests`, the same eight stale
   failures and nothing else.
+
+---
+
+## Item 48 — found reviewing 0b and 0e: the last fragment's own `speech_final`; the release timer on a real thread
+
+* **0e's commit read a stale flag.** The assembler's merge did
+  `buf["metadata"].update(metadata)`, and `_maybe_commit_at_boundary` read
+  `speech_final` from that. A fragment without the flag -- a recovered
+  quarantine entry carries only `quarantine_recovered`, a stop flush none --
+  inherited the previous fragment's True, and the sentence it finished
+  committed at once although nothing said the speaker had stopped after it.
+  Reproduced through the real `_commit_recovered_quarantine_entries`:
+  "今日はありがとうございました" (`speech_final`, held for want of 。) + a
+  recovered "ね。" committed at once. The flag is now the last fragment's own
+  (`speech_final_last_fragment`, set on open and on every merge, carried to a
+  flush's tail buffer) and the merged metadata -- which reaches the record -- is
+  unchanged. Deepgram's own finals always carry the key, so their behaviour is
+  identical.
+* **No test ran the 0b release on the worker's thread.** Every item-38 test
+  records the schedule instead of running it. Added: a real
+  `LanguagePipelineWorker` runs `boundary_release` on its own thread and
+  retries it when the assembler lock is busy. Two mutants caught (the dispatch,
+  the retry).
+* Tests: `test_a_finished_sentence_does_not_wait.py` +1 (fails before),
+  `test_a_held_line_leaves_on_time.py` +1; two more mutants caught.
+* The real app on a Japanese script (four finals, a particle-led line, a
+  `speech_final=False` fragment) exports the same two lines at `f1090d7` and
+  now, with every word; Stop 3.2 s, no dialog, lineage passed. (Both merge
+  "でやってみますか。" into the line before: the boundary stabilizer's
+  particle rule, unchanged.)
+* Full suite, on items 44-48 together: `Ran 1751 tests`, the same eight stale
+  failures and nothing else.

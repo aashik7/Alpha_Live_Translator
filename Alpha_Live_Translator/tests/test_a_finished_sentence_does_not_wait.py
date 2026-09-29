@@ -100,6 +100,23 @@ class AFinishedSentenceTest(unittest.TestCase):
         self.final("資料を送りますので。", speech_final=True)
         self.assertEqual(self.host.published, [], "…ので。 usually continues")
 
+    def test_the_flag_is_the_last_fragments_own(self):
+        """Found reviewing 0e (2026-09-29): the merge did
+        `buf["metadata"].update(metadata)`, so a fragment WITHOUT the flag -- a
+        recovered quarantine entry carries only `quarantine_recovered` --
+        inherited the True of the fragment before it, and the sentence it
+        finished committed at once although nobody had said the speaker
+        stopped after it. Through the real recovery path."""
+        self.final("今日はありがとうございました", speech_final=True)
+        self.assertEqual(self.host.published, [], "fixture: no 。, so held")
+        self.asm._commit_recovered_quarantine_entries(
+            [{"speaker": 1, "text": "ね。", "raw": "ね。"}]
+        )
+        self.assertEqual(
+            self.host.published, [], "an earlier fragment's speech_final committed this one"
+        )
+        self.assertIn("ね。", self.asm.get_held_text_nonblocking() or "")
+
 
 if __name__ == "__main__":
     unittest.main()

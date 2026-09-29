@@ -739,6 +739,7 @@ taking.
 | review of item 36 (open defect l) | **Item 45** — the English accuracy experiment asks Deepgram what production asks (no `numerals` in either request), and the English request validator, which every English Start runs, now refuses `numerals` instead of accepting it | ✅ fixed, 26.5.43 (package not built yet) |
 | review of item 41 (open defects m, n) | **Item 46** — "● Audio device switched" is logged at INFO, not as an error; item 73's sentence no longer says capture "cannot follow the change" (it follows now) or advises switching back, names no ambiguous device, and is translated | ✅ fixed, 26.5.44 (package not built yet) |
 | review of item 43 (open defect o) | **Item 47** — lineage finds a commit past a run of more than 6 exported lines from no commit, guarded so a lost line repeated later cannot pull the rest with it; identical results on all 84 retained runs | ✅ fixed, 26.5.45 (package not built yet) |
+| review of items 38, 42 | **Item 48** — 0e's immediate commit reads the last fragment's own `speech_final` (a recovered quarantine fragment inherited an earlier True); and a test runs 0b's release on the worker's real thread, retry included | ✅ fixed, 26.5.46 (package not built yet) |
 
 Phase 3's audits are complete — 5 of 5, as the table above says. (This line used
 to read "Phase 3's four remaining audits", contradicting the table two rows
