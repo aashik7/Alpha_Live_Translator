@@ -418,7 +418,6 @@ def prerecorded_transcribe(
         "language": language,
         "punctuate": "true",
         "smart_format": "true",
-        "numerals": "true",
         "utterances": "true",
     }
     if diarize:
@@ -496,7 +495,6 @@ def streaming_transcribe_realtime(
         "interim_results": "true",
         "punctuate": "true",
         "smart_format": "true",
-        "numerals": "true",
         "endpointing": str(endpointing_ms),
         "utterance_end_ms": str(utterance_end_ms),
     }

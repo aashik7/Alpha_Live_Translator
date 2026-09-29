@@ -33,7 +33,7 @@ def main() -> int:
     checks: list[dict] = []
     errors: list[str] = []
 
-    # Production English (diarize_model only)
+    # Production English (no diarization params, no numerals)
     try:
         q = production_english_live_query_string()
         v = validate_english_query_string(q)
@@ -57,7 +57,7 @@ def main() -> int:
     try:
         validate_english_query_string(
             "model=nova-3&language=en&encoding=linear16&sample_rate=16000&channels=1"
-            "&interim_results=true&punctuate=true&smart_format=true&numerals=true"
+            "&interim_results=true&punctuate=true&smart_format=true"
             "&endpointing=1200&utterance_end_ms=1500&diarize=true&diarize_model=latest"
         )
         errors.append("conflict_case_should_have_failed")
@@ -78,21 +78,37 @@ def main() -> int:
             errors.append(f"endpointing_{ep}:{exc}")
             checks.append({"name": f"endpointing_{ep}", "ok": False, "error": str(exc)})
 
-    # Mirror of last live English request (from evidence) must pass
+    # Mirror of an older live English request (run 057f111e, from evidence). It
+    # carried numerals=true, which item 36 removed from production ("third
+    # quarter" became "3rd 0.25"), so it must now be REJECTED.
     live_q = (
         "model=nova-3&language=en&punctuate=true&smart_format=true&diarize_model=latest"
         "&numerals=true&profanity_filter=false&redact=false&endpointing=1200"
         "&utterance_end_ms=1500&encoding=linear16&sample_rate=16000&channels=1"
         "&interim_results=true"
     )
+    numerals_rejected = False
     try:
-        v = validate_english_query_string(live_q)
-        checks.append({"name": "live_run_057f111e_mirror", "ok": True, "validation": v})
-    except Exception as exc:
-        errors.append(f"live_mirror:{exc}")
-        checks.append({"name": "live_run_057f111e_mirror", "ok": False, "error": str(exc)})
+        validate_english_query_string(live_q)
+        errors.append("numerals_request_should_have_failed")
+        checks.append({"name": "live_run_057f111e_mirror_numerals_rejected", "ok": False})
+    except ValueError as exc:
+        numerals_rejected = True
+        checks.append(
+            {
+                "name": "live_run_057f111e_mirror_numerals_rejected",
+                "ok": True,
+                "rejected": True,
+                "error": str(exc),
+            }
+        )
 
-    passed = (not errors) and conflict_ok and all(c.get("ok") for c in checks)
+    passed = (
+        (not errors)
+        and conflict_ok
+        and numerals_rejected
+        and all(c.get("ok") for c in checks)
+    )
     payload = {
         "generated_at_utc": _utc(),
         "ENGLISH_DEEPGRAM_REQUEST_VALIDATION": "PASSED" if passed else "FAILED",
@@ -100,7 +116,7 @@ def main() -> int:
         "checks": checks,
         "errors": errors,
         "notes": [
-            "Production English uses diarize_model=latest without diarize=true.",
+            "Production English sends no diarization params and no numerals.",
             "Japanese request building is not exercised by this validator.",
         ],
     }

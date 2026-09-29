@@ -2752,3 +2752,33 @@ him" -- "an impostor" gone from the export.
   dialog, `LINEAGE_EXPORT_COVERAGE_PASSED`.
 * Full suite, on items 44-48 together: `Ran 1751 tests`, the same eight stale
   failures and nothing else.
+
+---
+
+## Item 45 — the English accuracy experiment asks Deepgram what production asks (PENDING_TASKS open defect l)
+
+Item 36 dropped `numerals=true` from production, but
+`run_english_accuracy_experiment.py` still sent it in both its pre-recorded and
+its streaming request, so the experiment measured a request production no
+longer makes ("third quarter" -> "3rd 0.25"); and `ENGLISH_QUERY_ALLOWLIST`
+still accepted `numerals`, so a request that re-added it passed the validator
+(which production calls on every English Start).
+
+### The change
+
+`numerals` removed from both experiment requests and from the allowlist, and
+listed in `FORBIDDEN_ENGLISH_KEYS` with the reason. `validate_deepgram_english_request.py`:
+its conflict case no longer carries `numerals` (so it still fails for the
+diarization conflict it is about), and its mirror of run `057f111e`'s request,
+which carried `numerals`, must now be REJECTED; two stale notes corrected
+(production English sends no diarization parameters).
+
+### Verified
+
+`tests/test_a_quarter_is_not_a_number.py` +4: both experiment requests captured
+at the network call (a stubbed `urlopen` and `websocket` module), the validator
+refusing a production URL plus `numerals`, and the validation script passing
+with the numerals mirror rejected. All 4 fail before the change; a mutant
+putting `numerals` back into the streaming request is caught. Full suite, on
+items 44-48 together: `Ran 1751 tests`, the same eight stale failures and
+nothing else.

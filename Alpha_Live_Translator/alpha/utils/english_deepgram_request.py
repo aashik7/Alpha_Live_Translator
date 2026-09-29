@@ -34,7 +34,6 @@ ENGLISH_QUERY_ALLOWLIST = frozenset(
         "interim_results",
         "punctuate",
         "smart_format",
-        "numerals",
         "profanity_filter",
         "redact",
         "endpointing",
@@ -49,6 +48,8 @@ FORBIDDEN_ENGLISH_KEYS = frozenset(
     {
         # Japanese-only / unsafe for EN experiments
         "keywords",  # legacy
+        # item 36: turns "third quarter" into "3rd 0.25"; production dropped it
+        "numerals",
     }
 )
 
