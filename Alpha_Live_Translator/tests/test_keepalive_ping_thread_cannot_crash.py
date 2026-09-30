@@ -88,8 +88,21 @@ class PingThreadSurvivesTeardownTest(unittest.TestCase):
         self.assertTrue(done.wait(5), "ping thread did not exit on stop_ping.set()")
 
     def test_the_crash_is_reproducible_on_the_unguarded_base_class(self):
-        """Pins that the guard is what fixes it, not something else."""
-        base = _websocket().WebSocketApp("wss://example.invalid/v1/listen")
+        """Pins that the guard is what fixes it, not something else.
+
+        Skipped where websocket-client guards `_send_ping` itself (1.9.0, on
+        the development machine, returns when `stop_ping` is None); the
+        installed app bundles 1.6.0, which does not, and that is where it runs
+        (item 59, 2026-09-30: it had failed on every dev run since)."""
+        import inspect
+
+        websocket = _websocket()
+        if "stop_ping is None" in inspect.getsource(websocket.WebSocketApp._send_ping):
+            self.skipTest(
+                "websocket-client %s guards _send_ping itself"
+                % getattr(websocket, "__version__", "?")
+            )
+        base = websocket.WebSocketApp("wss://example.invalid/v1/listen")
         base.stop_ping = None
         base.ping_interval = 0.01
         base.keep_running = True

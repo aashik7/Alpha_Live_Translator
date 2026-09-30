@@ -54,12 +54,20 @@ class CommitHost(DeepgramClientMixin):
 
 
 class TestFinalTranscriptCommitV325(unittest.TestCase):
+    # Updated 2026-09-30 (item 59): these asserted one INLINE publish per
+    # commit, the v3.2.5 contract. Since the utterance lifecycle landed, a
+    # final is handed to the lifecycle and published later by its on_commit
+    # (after the utterance ends), so nothing is published inline and both
+    # failed on every run since -- triaged stale on 2026-09-04. The contract
+    # that still holds, and that these names describe, is that the commit is
+    # ALLOWED; the publish is covered end to end by
+    # test_a_revision_reaches_the_ledger and test_one_utterance_is_one_line.
+
     def test_commit_allowed_while_listening(self):
         host = CommitHost()
         host.is_listening = True
         self.assertTrue(host._allow_final_transcript_commit())
         self.assertTrue(host._commit_final_transcript_segment(1, "hello world"))
-        self.assertEqual(len(host.committed), 1)
 
     def test_commit_allowed_while_finalizing(self):
         host = CommitHost()
@@ -68,7 +76,6 @@ class TestFinalTranscriptCommitV325(unittest.TestCase):
         host._dg_receiver_allowed = True
         self.assertTrue(host._allow_final_transcript_commit())
         self.assertTrue(host._commit_final_transcript_segment(1, "tail sentence"))
-        self.assertEqual(len(host.committed), 1)
 
     def test_commit_blocked_after_receiver_disabled(self):
         host = CommitHost()

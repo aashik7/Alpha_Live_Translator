@@ -3204,3 +3204,14 @@ asserted the opposite ("noise at the edge of a finished session"); retracted
 visibly and turned into `test_a_stop_keeps_its_incomplete_tail`. **Verified:**
 `tests/test_the_last_words_survive_stop.py` (both fail on 26.5.52); three
 mutants caught.
+
+### Item 59 — the eight stale tests (open defect j)
+
+Triaged stale on 2026-09-04 and failing on every run since, so a new regression
+could hide among them. `test_package_glossary_flags_85253` (4) tested a glossary
+option the packaging tool no longer has: removed. `test_final_transcript_commit_v3_2_5`
+(2) asserted an inline publish that the utterance lifecycle replaced: now asserts
+the contract that holds (the commit is allowed). The keepalive crash test is
+skipped where websocket-client guards `_send_ping` itself (1.9.0 here; the app
+bundles 1.6.0). `test_phase_constants_match_spec` pins the deliberate 25 s drain.
+The suite's failing set is now empty.

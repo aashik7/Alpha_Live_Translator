@@ -129,7 +129,11 @@ class TestStopFinalizeV323(unittest.TestCase):
         self.assertFalse(host.request_close_stream())
 
     def test_phase_constants_match_spec(self):
-        self.assertEqual(GRACEFUL_DRAIN_MAX_S, 1.5)
+        # Item 59 (2026-09-30): 1.5 was the v3.2.3 spec. V26.5.1 raised the
+        # drain to 25 s on purpose (deepgram_client.py: a queued backlog must
+        # drain, not be discarded, and the 5 s UI watchdog restores the window
+        # meanwhile); this failed on every run since -- triaged stale 2026-09-04.
+        self.assertEqual(GRACEFUL_DRAIN_MAX_S, 25.0)
         self.assertEqual(GRACEFUL_FINALIZE_WAIT_S, 4.0)
         self.assertEqual(GRACEFUL_CLOSE_WAIT_S, 1.5)
 
