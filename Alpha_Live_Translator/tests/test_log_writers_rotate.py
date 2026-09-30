@@ -44,6 +44,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
@@ -199,6 +200,66 @@ class ThePendingPileIsBoundedTest(unittest.TestCase):
 
         shutil.rmtree(self.pending)
         self.tp.bound_pending_logs()
+
+    def test_a_backup_is_never_rotated_again(self):
+        """Item 52 (2026-09-29): every call rotated EVERY file over the cap,
+        backups included, so `x.log.1` became `x.log.1.1`, then
+        `x.log.1.1.1`... and nothing ever pruned them: 514 MB in four such
+        files on the development machine (one alone 350 MB). Three Starts,
+        each after the bootstrap log grew past the cap again.
+
+        The file is not named after a real writer's log on purpose: in the
+        full suite the `JapaneseAccuracyLogWriter` thread left running by
+        earlier tests reopens `japanese_accuracy.log` under the patched root,
+        Windows refuses the rename (PermissionError 13) and this test failed
+        while it passed alone. The rule under test is by suffix, not name."""
+        import alpha.utils.evidence_jsonl as ev
+
+        saved = ev.LOG_MAX_FILE_MB
+        ev.LOG_MAX_FILE_MB = 1
+        self.addCleanup(setattr, ev, "LOG_MAX_FILE_MB", saved)
+        base = self.pending / "bootstrap_probe.log"
+        chain = self.pending / "bootstrap_probe.log.1.1.1"
+        chain.write_bytes(b"old" * 1024)  # left behind by the old bug
+        for _ in range(3):
+            base.write_bytes(b"x" * (1024 * 1024 + 16))
+            self.tp.bound_pending_logs()
+        # Only the probe's files: that writer thread may also drop its own
+        # log into the folder while this runs.
+        names = sorted(p.name for p in self.pending.iterdir() if p.name.startswith("bootstrap_probe"))
+        self.assertEqual(
+            names,
+            ["bootstrap_probe.log.1", "bootstrap_probe.log.2", "bootstrap_probe.log.3"],
+            "a backup was rotated again (or a chain was kept)",
+        )
+
+    def test_a_chain_that_cannot_be_deleted_does_not_stop_the_rest(self):
+        """Item 52's review, 2026-09-30: the chain's `unlink` was the one call
+        in the loop without its own guard. A chain file held open elsewhere (a
+        log viewer, a sync agent) raised into the outer handler and ended the
+        pass, so no log sorted after it was bounded on that Start."""
+        import alpha.utils.evidence_jsonl as ev
+
+        saved = ev.LOG_MAX_FILE_MB
+        ev.LOG_MAX_FILE_MB = 1
+        self.addCleanup(setattr, ev, "LOG_MAX_FILE_MB", saved)
+        chain = self.pending / "a_probe.log.1.1"
+        chain.write_bytes(b"old")
+        live = self.pending / "z_probe.log"  # sorted after the chain
+        live.write_bytes(b"x" * (1024 * 1024 + 16))
+        real_unlink = Path.unlink
+
+        def locked(path, *a, **k):
+            if path.name == chain.name:
+                raise PermissionError(13, "held open by another process")
+            return real_unlink(path, *a, **k)
+
+        with patch.object(Path, "unlink", locked):
+            self.tp.bound_pending_logs()
+        self.assertTrue(
+            (self.pending / "z_probe.log.1").exists(),
+            "a chain that could not be deleted stopped the pass",
+        )
 
 
 if __name__ == "__main__":

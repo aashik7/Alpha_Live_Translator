@@ -717,6 +717,18 @@ def bound_pending_logs() -> int:
         for entry in sorted(folder.iterdir()):
             if not entry.is_file():
                 continue
+            # Item 52 (2026-09-29): only the live logs are rotated. A backup
+            # (`x.log.3`) is already at the cap by definition, and rotating it
+            # made `x.log.3.1`, then `x.log.3.1.1`... on every Start, a chain
+            # nothing ever pruned -- 514 MB on the development machine.
+            suffixes = entry.name.split(".")[2:]
+            if suffixes and all(s.isdigit() for s in suffixes):
+                if len(suffixes) > 1:
+                    try:
+                        entry.unlink(missing_ok=True)  # a chain from that bug
+                    except OSError:
+                        pass  # held open elsewhere: next Start; the logs after it still get bounded
+                continue
             if rotate_if_needed(entry):
                 rotated += 1
                 continue

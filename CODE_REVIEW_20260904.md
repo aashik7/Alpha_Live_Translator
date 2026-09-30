@@ -3000,3 +3000,22 @@ assertions; before: 8 wrong in the stable layer, 6 in the assembler. +1 test
 through the real assembler and ledger (one line, not two;
 `ACommittedLineIsNotRewrittenTest`, committed with item 54 because the held
 「…けど、」 reaches the join through item 54's release); two mutants caught.
+
+### Item 52 — the pending log pile grew without bound
+
+`bound_pending_logs()` rotated every file in `runs/_pending/logs/` over the cap,
+backups included, so `x.log.1` became `x.log.1.1`, then `x.log.1.1.1`... and
+nothing pruned them: 514 MB in four such files on the development machine (one
+350 MB), moved to the owner's cleanup quarantine the same day. **The change:**
+only live logs are rotated; a chain left by the old bug is removed.
+**Verified:** `tests/test_log_writers_rotate.py` +1 (three Starts): before,
+`...log.1.1.1.1` and `...log.1.1.2`; after, `.1 .2 .3`. Two mutants caught.
+Its first version, on `japanese_accuracy.log`, passed alone and failed in the
+full suite: the `JapaneseAccuracyLogWriter` thread earlier tests leave running
+reopened that path under the patched root, and Windows refused the rename
+(`PermissionError 13`, caught by a spy on `rotate_if_needed`). The test now uses
+a name no writer holds; in the app, that case is the existing truncate fallback.
+Review, 2026-09-30: the chain's `unlink` was the only call in the loop without
+its own guard, so a chain held open by another program (a log viewer, a sync
+agent) ended the pass and no log sorted after it was bounded on that Start. Now
+guarded; +1 test, and removing the guard fails it.
