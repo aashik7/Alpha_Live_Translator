@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-APP_VERSION = "3.3.5.5.8.5.26.5.50"
+APP_VERSION = "3.3.5.5.8.5.26.5.51"
 APP_CODENAME = "Preserve Real Silence Multi-Stream Retention"
 FROZEN_INFRASTRUCTURE_BASELINE = "3.3.5.5.8.5.25.3.3.2.8"
 
@@ -337,10 +337,20 @@ TRANSLATION_QUEUE_FULL_DEGRADED_S = 30.0
 #
 # ping_interval makes the library send a WebSocket PING; if no PONG arrives
 # within ping_timeout it raises and closes, which is what fires on_close and
-# starts the reconnect. 10/5 detects a dead socket within ~15s -- fast enough
+# starts the reconnect. 10/5 detects a dead socket within ~25s (measured
+# 9.5-25 s; "~15s" here before 2026-09-30 was not measured) -- fast enough
 # that a listener notices the gap marker rather than a silent freeze, and well
 # inside Deepgram's own idle tolerance. ping_timeout MUST stay < ping_interval
 # or websocket-client rejects it at runtime.
+#
+# Keep ping_timeout <= ping_interval / 2 (item 53, withdrawn 2026-09-30). On a
+# silent socket websocket-client (1.6.0 in the installed app, 1.9.0 here) only
+# checks once every ping_timeout, and a ping counts as unanswered only between
+# ping_timeout and the next ping. At 10/9 that window is 1 s of every 10 and the
+# checks drift across it: a dead socket was found after 35-90 s, against
+# 9.5-25 s at 10/5 (a local server that stops answering, the real WebSocketApp).
+# 10/5 does drop a live socket whose pong is more than 5 s late -- once in the
+# owner's meeting of 2026-09-29, 14:18:26, 2.2 s of audio -- a smaller cost.
 DG_WS_PING_INTERVAL_S = 10
 DG_WS_PING_TIMEOUT_S = 5
 

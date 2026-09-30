@@ -3019,3 +3019,27 @@ Review, 2026-09-30: the chain's `unlink` was the only call in the loop without
 its own guard, so a chain held open by another program (a log viewer, a sync
 agent) ended the pass and no log sorted after it was bounded on that Start. Now
 guarded; +1 test, and removing the guard fails it.
+
+### Item 53 — a 5 s ping timeout dropped a live socket — WITHDRAWN 2026-09-30
+
+At 14:18:26.256 in that meeting websocket-client raised `ping/pong timed out` 2 ms
+after a Results final arrived on the same socket; the reconnect lost 2.2 s of
+audio and restarted Deepgram's clock. ~~**The change:** `DG_WS_PING_TIMEOUT_S`
+5 -> 9 (still < the 10 s interval; worst-case dead-socket detection 19 s, inside
+the existing 20 s bound). **Verified:** `tests/test_deepgram_keepalive.py` +1.~~
+
+**Withdrawn: the 19 s was arithmetic, not a measurement, and it was wrong.**
+websocket-client (1.6.0 in the installed app, 1.9.0 here; the same code) checks a
+silent socket only when `select(ping_timeout)` times out, and a ping counts as
+unanswered only from `ping_timeout` until the next ping resets `last_ping_tm`.
+At 10/9 that window is 1 s of every 10, sampled every 9 s: the checks drift
+across it for up to ten cycles. Driving the real `WebSocketApp` class against a
+local server that stops answering: a dead socket was found after 35 s and 90 s
+(never answered: 90 s) at 10/9, against 14 s and 9.5 s (25 s) at 10/5. A WiFi
+drop (item 44) would have frozen the transcript for up to a minute and a half to
+save a 2.2 s gap that happened once. Back to 5 s; the constants comment carries
+the rule (timeout at most half the interval) and the measurement, and
+`test_a_dead_socket_is_found_in_the_first_ping_cycle` fails at 10/9. Its earlier
+"detects a dead socket within ~15s" was not measured either (9.5-25 s). A late
+pong is still a drop; tolerating one needs a different liveness signal (a data
+frame as proof of life), not a longer timeout.

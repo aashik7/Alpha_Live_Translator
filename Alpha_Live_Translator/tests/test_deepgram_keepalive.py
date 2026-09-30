@@ -73,6 +73,18 @@ class KeepaliveIsConfiguredTest(unittest.TestCase):
         self.assertGreater(float(DG_WS_PING_INTERVAL_S), 0)
         self.assertGreater(float(DG_WS_PING_TIMEOUT_S), 0)
 
+    def test_a_dead_socket_is_found_in_the_first_ping_cycle(self):
+        """Item 53 (withdrawn 2026-09-30) raised the timeout to 9 s so a late
+        pong would not drop a live socket. On a silent socket websocket-client
+        checks only once per ping_timeout, and a ping counts as unanswered only
+        from ping_timeout until the next ping; at 10/9 that is 1 s of every 10,
+        and a dead socket went unnoticed for 35-90 s (9.5-25 s at 10/5),
+        measured against a local server that stops answering. With the timeout
+        at most half the interval, the first check after it lands inside."""
+        self.assertLessEqual(
+            float(DG_WS_PING_TIMEOUT_S) * 2, float(DG_WS_PING_INTERVAL_S)
+        )
+
 
 class GapMarkerStillWiredTest(unittest.TestCase):
     """The marker built earlier for item 44 only has value once a close is

@@ -744,6 +744,7 @@ taking.
 | same meeting | **Item 50** — no diarization means one speaker: the fallback no longer invents speaker 2, 3, 4 after a 4 s gap (45 flips in that meeting, 20 splitting a sentence in two) | ✅ fixed, 26.5.48 |
 | same meeting; review 2026-09-30 | **Item 51** — a final that starts with the 、/。 of the pause before it no longer leaves 「。、」 or 「。。」 at the join, in the stable layer's merge and the assembler's; and the join never rewrites the line before it (「…けど、」+「。はい」 was committed twice) | ✅ fixed, 26.5.49 |
 | same meeting (found on the development machine) | **Item 52** — the pending log pile stops rotating its own backups (`x.log.1.1.1…`, 514 MB); a chain the old bug left is removed | ✅ fixed, 26.5.50 |
+| same meeting, 14:18:26 | ~~**Item 53** — Deepgram ping timeout 5 -> 9 s: a late pong no longer drops a live socket and 2 s of audio~~ **Withdrawn 2026-09-30:** measured, 10/9 found a dead socket after 35-90 s (10/5: 9.5-25 s). Stays 10/5; the rule (timeout at most half the interval) is now a test | ↩ withdrawn, 26.5.51 carries the test and the corrected comment |
 
 Phase 3's audits are complete — 5 of 5, as the table above says. (This line used
 to read "Phase 3's four remaining audits", contradicting the table two rows
