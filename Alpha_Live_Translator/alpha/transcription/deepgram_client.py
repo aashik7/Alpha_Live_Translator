@@ -113,6 +113,24 @@ def _keepalive_websocket_app_class():
     base = websocket.WebSocketApp
 
     class _KeepaliveWebSocketApp(base):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            inner = getattr(self, "on_message", None)
+            if inner is None:
+                return
+
+            def on_message(ws, message):
+                # Item 57 (2026-09-30): a message is proof of life. The library
+                # drops the socket when a pong is ping_timeout late even while
+                # Results keep arriving -- the owner's meeting of 2026-09-29,
+                # 14:18:26, 2 ms after a Results final, 2.2 s of audio lost.
+                # Clearing the ping time makes its check wait for the next ping;
+                # a dead socket sends nothing, so it is still found as before.
+                self.last_ping_tm = 0
+                return inner(ws, message)
+
+            self.on_message = on_message
+
         def _send_ping(self, *args, **kwargs):
             try:
                 return super()._send_ping(*args, **kwargs)

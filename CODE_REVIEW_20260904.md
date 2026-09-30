@@ -3177,3 +3177,15 @@ trim-related tests pass, and through the real app with a local Deepgram: 26.5.52
 exported 「is price, not the schedule」 for 「the number one thing is price, not
 the schedule」 (the lineage check did not notice), the new code the whole
 sentence; the original re-send replay is still trimmed exactly as before.
+
+### Item 57 — a late pong still dropped a live socket (the part of item 53 that was right)
+
+Item 53 was withdrawn; its problem was real. **The change:** every message from
+Deepgram clears the pending ping time (`_KeepaliveWebSocketApp` wraps
+`on_message`), so the library waits for the next ping before it can time out --
+a socket that is talking is alive. A dead socket sends nothing, so it is found as
+before. **Verified** with the real class against a local server: pongs 6 s and 8 s
+late with Results flowing no longer drop the socket (10/5 dropped it at 26 s); a
+silent socket with a late pong still drops; dead sockets are still found in 14.0
+s, 9.5 s and 25 s -- unchanged. `tests/test_deepgram_keepalive.py` +2; one
+mutant caught.

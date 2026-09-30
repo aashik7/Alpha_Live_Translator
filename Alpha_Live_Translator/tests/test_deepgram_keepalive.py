@@ -86,6 +86,32 @@ class KeepaliveIsConfiguredTest(unittest.TestCase):
         )
 
 
+class AMessageIsProofOfLifeTest(unittest.TestCase):
+    """Item 57 (2026-09-30). websocket-client drops the socket when a pong is
+    ping_timeout late even while Results keep arriving on it: the owner's
+    meeting of 2026-09-29, `ping/pong timed out` at 14:18:26.256, 2 ms after a
+    Results final, 2.2 s of audio lost. Every message now clears the pending
+    ping time, so the library's check waits for the next ping. Measured with
+    the real class against a local server: pongs 6-8 s late on a talking
+    socket no longer drop it; a dead socket is found as fast as before."""
+
+    def _app(self, got):
+        app_cls = deepgram_client._keepalive_websocket_app_class()
+        return app_cls("ws://127.0.0.1:9", on_message=lambda ws, m: got.append(m))
+
+    def test_a_message_clears_the_ping_time(self):
+        got = []
+        app = self._app(got)
+        app.last_ping_tm = 123.0
+        app.on_message(app, '{"type": "Results"}')
+        self.assertEqual(got, ['{"type": "Results"}'], "the app's own handler still runs")
+        self.assertFalse(app.last_ping_tm, "an unanswered ping outlived a message")
+
+    def test_no_handler_is_left_alone(self):
+        app_cls = deepgram_client._keepalive_websocket_app_class()
+        self.assertIsNone(app_cls("ws://127.0.0.1:9").on_message)
+
+
 class GapMarkerStillWiredTest(unittest.TestCase):
     """The marker built earlier for item 44 only has value once a close is
     actually detected -- keep them tied together."""
