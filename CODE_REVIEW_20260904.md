@@ -2974,3 +2974,29 @@ translated "As the main one," / "This is my go-to."). **The change:** no speaker
 data means one speaker. **Verified:** `tests/test_no_diarization_means_one_speaker.py`
 (3; 2 fail before: `[1, 2, 3] != [1, 1, 1]`); a response that does carry
 speakers still splits by them.
+
+### Item 51 — 「。、」 and 「。。」 at a join
+
+Deepgram often starts a final with the 、 or 。 of the pause before it. The stable
+layer's `merge_punctuation_fragment` (both of its branches returned
+`f"{prev}{frag}"`) and the assembler's `merge_japanese_fragments` fallback
+appended it to a line that had already ended: 「谷口さんでやろうか。、はい。」,
+「ありましたよね。。こでしっけ」 (that one from the stable layer). **The change:** one
+`join_japanese_fragments` in `cjk_text` drops the leading mark after 。/？/、.
+**Verified:** `tests/test_japanese_joins_do_not_double_punctuation.py`.
+
+~~(8 pairs through both joiners; 6 of them wrong before)~~ **Corrected
+2026-09-30:** 6 wrong in the stable layer, 4 in the assembler, whose overlap
+search already handled two of them.
+
+**Reviewed 2026-09-30:** the first version also turned 「…、」+「。」 into 「…。」,
+rewriting the PREVIOUS text -- usually a committed line. 「…話しましたけど、」 then
+「。はい、そうです。」 gave 「…けど。はい、そうです。」, which no longer starts with
+the committed line, so it was committed a second time (export: both lines; also
+on the code before, whose cleanup made the same rewrite). The joiner now only
+ever drops the fragment's marks: 「…けど、はい、そうです。」, one line. And a line
+ending in ．/. is a sentence end too (「話しました．、それで」). Now 10 pairs, 20
+assertions; before: 8 wrong in the stable layer, 6 in the assembler. +1 test
+through the real assembler and ledger (one line, not two;
+`ACommittedLineIsNotRewrittenTest`, committed with item 54 because the held
+「…けど、」 reaches the join through item 54's release); two mutants caught.

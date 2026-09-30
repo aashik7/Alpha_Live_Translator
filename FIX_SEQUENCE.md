@@ -742,6 +742,7 @@ taking.
 | review of items 38, 42 | **Item 48** — 0e's immediate commit reads the last fragment's own `speech_final` (a recovered quarantine fragment inherited an earlier True); and a test runs 0b's release on the worker's real thread, retry included | ✅ fixed, 26.5.46, package 26.5.46 |
 | owner's Japanese meeting 2026-09-29 `...140302`; review 2026-09-30 | **Item 49** — Japanese cleanup keeps words and numbers: a repeat is collapsed only when the speaker separated the copies (サンプル、サンプル), never inside a word or number (ここ, 二二七, スリーセブンセブン, サーバーバージョン were cut; 二十、二十一 lost the 20), never a sentence the next one echoes (声の高さです。声の高さですか。), no 。 is lost rebuilding the line, and はいはい/そうそう are kept as said. 119 of the 133 historical inputs it changed now stay as said | ✅ fixed, 26.5.47 |
 | same meeting | **Item 50** — no diarization means one speaker: the fallback no longer invents speaker 2, 3, 4 after a 4 s gap (45 flips in that meeting, 20 splitting a sentence in two) | ✅ fixed, 26.5.48 |
+| same meeting; review 2026-09-30 | **Item 51** — a final that starts with the 、/。 of the pause before it no longer leaves 「。、」 or 「。。」 at the join, in the stable layer's merge and the assembler's; and the join never rewrites the line before it (「…けど、」+「。はい」 was committed twice) | ✅ fixed, 26.5.49 |
 
 Phase 3's audits are complete — 5 of 5, as the table above says. (This line used
 to read "Phase 3's four remaining audits", contradicting the table two rows

@@ -73,6 +73,7 @@ from alpha.utils.cjk_text import (
     compact_cjk_for_compare,
     detect_kana_prefix_overlap_removal,
     detect_raw_stt_error_suspected,
+    join_japanese_fragments,
 )
 from alpha.utils.japanese_accuracy_log import (
     get_japanese_accuracy_event_counts,
@@ -664,7 +665,7 @@ def merge_japanese_fragments(previous: str, current: str) -> str:
                     tail = curr[end:]
                     break
             return (prev + tail).strip()
-    return (prev + curr).strip()
+    return join_japanese_fragments(prev, curr)  # item 51: no 「。、」 at the seam
 
 
 def should_hold_speaker_continuation(

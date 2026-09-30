@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 from typing import Any, Optional
 
-from alpha.utils.cjk_text import compact_cjk_for_compare
+from alpha.utils.cjk_text import compact_cjk_for_compare, join_japanese_fragments
 
 PUNCTUATION_START_PREFIXES: tuple[str, ...] = (
     "、",
@@ -174,15 +174,9 @@ def can_merge_punctuation_with_previous(
 
 
 def merge_punctuation_fragment(previous_text: str, fragment_text: str) -> str:
-    prev = (previous_text or "").strip()
-    frag = (fragment_text or "").strip()
-    if not prev:
-        return frag
-    if not frag:
-        return prev
-    if frag.startswith("、") or frag.startswith("。"):
-        return f"{prev}{frag}"
-    return f"{prev}{frag}"
+    # Item 51: both branches here used to return f"{prev}{frag}", so a
+    # fragment starting with 、/。 doubled the punctuation of a finished line.
+    return join_japanese_fragments(previous_text, fragment_text)
 
 
 def merge_short_fragments(previous_text: str, fragment_text: str) -> str:

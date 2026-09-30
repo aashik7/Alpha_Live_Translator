@@ -431,6 +431,23 @@ def _should_protect_duplicate_unit(unit: str) -> bool:
     return False
 
 
+def join_japanese_fragments(previous: str, fragment: str) -> str:
+    """Join two Japanese pieces without doubling the punctuation at the seam.
+
+    Item 51 (2026-09-29): Deepgram often starts a final with 、 or 。 that
+    belongs to the pause before it. Joined as-is onto a line that already
+    ended, it wrote 「谷口さんでやろうか。、はい。」 and 「ありましたよね。。」.
+    The fragment's marks go, never the previous text's: that is often a line
+    already committed, and changing its last 、 to 。 made the join no longer
+    start with it, so it was committed a second time (review, 2026-09-30).
+    """
+    prev = (previous or "").strip()
+    frag = (fragment or "").strip()
+    if prev and frag and frag[0] in "、。" and prev[-1] in "。．.！？!?、":
+        frag = frag.lstrip("、。")
+    return f"{prev}{frag}"
+
+
 # Item 49: a phrase the speaker said twice with a pause written between the
 # copies, starting a phrase: 「サンプル、サンプル」「Java、Javaの」.
 _REPEAT_SEPARATORS = r"\s、。，,．.！？!?"
