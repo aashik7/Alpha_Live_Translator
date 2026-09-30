@@ -3,15 +3,27 @@
 Handoff for the next Claude Code session. Written 2026-09-25 at `3070dca`,
 updated 2026-09-28 with the owner's two Japanese meetings (section 0) and
 item 37 (`a83dbaa`), and 2026-09-29 with section 0's code done (items 38-43)
-and the open defects (k)-(o) closed (items 44-48),
-`APP_VERSION = "3.3.5.5.8.5.26.5.46"`. The owner writes Banglish, wants terse
+and the open defects (k)-(o) closed (items 44-48), and 2026-09-30 with items
+49-54 from the owner's Japanese meeting of 2026-09-29,
+`APP_VERSION = "3.3.5.5.8.5.26.5.52"`. The owner writes Banglish, wants terse
 answers, proof over plausible reads, and findings as a table with
 issue / risk / severity / importance.
 
 ## Where things stand
 
-* Every item through **48** in `CODE_REVIEW_20260904.md` is fixed and pushed.
-  `FIX_SEQUENCE.md` is the execution-order ledger; read both before any fix.
+* Every item through **54** in `CODE_REVIEW_20260904.md` is fixed and pushed,
+  except item 53, withdrawn (measured worse; see there). `FIX_SEQUENCE.md` is
+  the execution-order ledger; read both before any fix.
+* **Items 49-54 (2026-09-30), the owner's Japanese meeting `...140302`:** it ran
+  26.5.34 (the main folder was 16 commits behind). Replaying its own recorded
+  finals through the real app: cleanup no longer cuts words or numbers (ここ,
+  二二七), no fake speaker changes without diarization, no 「。、」, the pending
+  log pile no longer grows, and a revised line is never exported twice. Commit
+  delay p50 8.6 -> 2.9 s, p90 24.3 -> 7.9 s, translation id mismatches 17 -> 0,
+  lineage PASSED. Each item was then reviewed by an independent reviewer that
+  had to reproduce every claim on the real code; that found item 53 wrong (a 9 s
+  ping timeout found a dead socket after 35-90 s) and seven more defects on the
+  same seams, all fixed with tests. Details and numbers in `CODE_REVIEW_20260904.md`.
 * **Open defects (k)-(o) are closed** (items 44-47), plus item 48 found
   reviewing 0b/0e. Item 44 was proven through the real app with a local fake
   Deepgram: at `f1090d7` the sealed export repeats "he writes openly, I never
@@ -24,12 +36,14 @@ issue / risk / severity / importance.
   went on extending lost its first words in the export AND the pane, and a
   correction or extend held open by `speech_final=False` still never reached
   the ledger. Item 35's ledger entries carry a visible correction.
-* **Update package 26.5.46 built 2026-09-29 (owner's request)** and applied to
-  the owner's own installed app (`%LOCALAPPDATA%\Programs\Alpha Live Translator`,
-  was 26.5.3): every file SHA-256 verified, `.env`, `user_settings.json` and
-  `troubleshooting\` untouched, backup `app_backup_20260929-172652`, launches
-  and reaches the main loop. Tested first on a synthetic copy of that install.
-  Not yet sent to any client. The last share build is still
+* **Update package 26.5.52 built 2026-09-30** and applied to the owner's own
+  installed app (`%LOCALAPPDATA%\Programs\Alpha Live Translator`, was 26.5.46):
+  7 files, every one SHA-256 verified, `.env`, `user_settings.json` and
+  `troubleshooting\` untouched, backup `app_backup_20260930-162550` (the
+  26.5.3 one, `app_backup_20260929-172652`, is still there too; both can go
+  once the owner has run a meeting), launches to the main window. Tested first
+  on a synthetic copy of that install. 26.5.46 was built and applied the day
+  before. Not yet sent to any client. The last share build is still
   `build/share/*-1.4.*` (26.5.29); a new share build stays the owner's call.
 * **Run Alpha from ONE place:** `Alpha_Translator V 1.0\Alpha_Live_Translator\main.py`
   (has `.env`) or the installed app. Never from `.claude\worktrees\...` (no
@@ -41,12 +55,12 @@ issue / risk / severity / importance.
 | # | What | Section | Kind |
 |---|---|---|---|
 | 1 | Owner: meeting audio setup (0a); names/terms list for keyterms (0f); a ~5 min reference transcript of `...140417` for the `multi` test (0h) | 0 | Owner |
-| 2 | One real Japanese meeting on 26.5.46 to prove items 38-43 and 46-48 live (section 1) | 1 | Test |
+| 2 | One real Japanese meeting on 26.5.52 to prove items 38-43, 46-52 and 54 live (section 1) | 1 | Test |
 | 3 | One real English meeting to prove items 35, 37 and 44 live, checked against the audio, not only the pane | 1 | Test |
 | 4 | 0f and 0h once the owner's inputs arrive | 0 | Config / evaluate |
-| 5 | Final build 1.5 / update package 26.5.46+, owner's call | 2 | Build |
+| 5 | Final build 1.5 / update package 26.5.52+, owner's call | 2 | Build |
 | 6 | Deliver | 3 | Owner |
-| 7 | Open defects (a)-(j) (section 4); (k)-(o) are closed | 4 | Code, lower |
+| 7 | Open defects (a)-(j) and (p)-(u) (section 4); (k)-(o) are closed | 4 | Code, lower |
 * Deepgram: the owner's original account was deactivated ("Deactivated token")
   and blocked. `Alpha_Live_Translator/.env` now holds a working key from
   another account, verified live on 2026-09-25 (English and Japanese sockets
@@ -71,6 +85,12 @@ issue / risk / severity / importance.
 | `437259f` | 26.5.44 | Item 46 (m, n): the device follow logged at INFO; item 73's sentence says Alpha is switching, translated |
 | `45bb457` | 26.5.45 | Item 47 (o): lineage finds a commit past more than 6 other lines, guarded |
 | `1bae6d1` | 26.5.46 | Item 48: 0e reads the last fragment's own `speech_final`; 0b's release tested on the real worker thread |
+| `9e69529` | 26.5.47 | Item 49: Japanese cleanup keeps words, numbers and a sentence the next one echoes |
+| `9d8ec93` | 26.5.48 | Item 50: no diarization means one speaker (pauses were speaker changes) |
+| `d34acd2` | 26.5.49 | Item 51: no 「。、」/「。。」 at a join; the line before is never rewritten |
+| `4938d87` | 26.5.50 | Item 52: the pending log pile stops rotating its own backups |
+| `034b31a` | 26.5.51 | Item 53 withdrawn: ping timeout stays 5 s (9 s found a dead socket after 35-90 s) |
+| `1975665` | 26.5.52 | Item 54: a held revision stays a revision on every way out; a 「。…」 final joins the newest line |
 
 ---
 
@@ -182,7 +202,7 @@ lineage matcher is wrong, not the export.
 
 ## 1. Before the final build: one real Japanese meeting and one real English meeting — HIGH
 
-### Japanese (items 38-43 and 46-48, 26.5.46)
+### Japanese (items 38-43, 46-52 and 54, 26.5.52)
 
 Proven on the real code and on the three retained meetings' own recorded
 inputs, not yet live. In a 10-15 minute Japanese meeting with pauses and two or
@@ -205,6 +225,13 @@ more speakers, then in the newest run folder:
   The switch is an INFO line in the log (`[connection] Windows changed…`,
   item 46), not an ERROR; during the switch a click on "● Audio device changed"
   says Alpha is switching, in the display language.
+* Items 49-54, in `transcripts/Alpha_output_FINAL.txt`: no 「。、」/「。。」; no
+  line that repeats the one before it; ここ / numbers (二二七, スリーセブン…) as
+  said; a sentence is not split at a pause (without diarization everything is
+  "Speaker 1" now -- item 50); `logs/japanese_accuracy.log` has no
+  `SPEAKER_CHANGE_HARD_BOUNDARY`. Check the run was 26.5.52 first
+  (`RUN_MANIFEST.json` / the run folder name): the meeting of 2026-09-29 ran
+  stale code from a main folder 16 commits behind.
 
 ### English (items 35, 37 and 44)
 
@@ -282,9 +309,10 @@ checked** (only the portable zip was unpacked and inspected). Do that once for
 
 ## 3. Deliver
 
-* Field user: send the new update package (26.5.46 or later — 26.5.33 and
+* Field user: send the new update package (26.5.52 or later — 26.5.33 and
   26.5.34 carry item 37's defects, 26.5.35-26.5.41 item 44's repeated
-  half-sentence).
+  half-sentence, everything before 26.5.47 item 49's word-cutting cleanup and
+  item 50's fake speakers).
 * **Never apply an update package of 26.5.26 or older to a keyless install** —
   those delete its `.needs-api-keys` marker.
 * New recipients: `build/share/AlphaLiveTranslator-Setup-1.5.exe` or the
@@ -311,6 +339,12 @@ checked** (only the portable zip was unpacked and inspected). Do that once for
 | ~~m~~ | ~~"● Audio device switched" logged at ERROR~~ **FIXED, item 46** (INFO now) | -- | -- | -- |
 | ~~n~~ | ~~Item 73's "cannot follow the change" text~~ **FIXED, item 46** (says Alpha is switching; translated) | -- | -- | -- |
 | ~~o~~ | ~~Lineage matcher's 6-line window~~ **FIXED, item 47** (identical on all 84 retained runs) | -- | -- | -- |
+| p | A Japanese line the boundary stabilizer still holds at Stop is dropped if under 8 Japanese characters (`BOUNDARY_STABILIZER_STOP_FLUSH_DROPPED`, e.g. 「メインで」); by design, found by the item 50 review | The last few words before Stop can be lost | Medium | Medium — measure how often on retained runs before changing |
+| q | Lines committed by `hold_timeout_safe_prefix` / `safe_chunk_boundary_commit` still wait 11-14 s (5 lines in the meeting replay, one 47 s) | Some lines still late | Medium | Medium — tune with live measurement, not a replay |
+| r | A Deepgram pong more than 5 s late drops a live socket (once in the 2026-09-29 meeting, 2.2 s of audio). A longer timeout is NOT the fix (item 53, withdrawn): count a received data frame as proof of life instead | Short gap, reconnect | Low | Low |
+| s | Separated list items where the second extends the first collapse: 「日本、日本語」 -> 「日本語」 (the same rule as the restart 「Java、Javaの」, which it cannot tell apart); no retained final has one | A word dropped in a list | Low | Low |
+| t | The in-app lineage report reads `stable_line_revision`'s active lines while the export comes from the frozen ledger, so it can report a loss the export does not have | False alarm in evidence | Low | Low |
+| u | `last_speech_time` / `fallback_speaker` are still written (deepgram_client, main_window) though nothing reads them since item 50 | Dead state | Low | Low |
 
 Notes:
 
@@ -395,7 +429,7 @@ the owner's machine.
 
 * Tests, from `Alpha_Live_Translator/`:
   `py -m unittest discover -s tests -t tests -p "test_*.py"` (summary on
-  stderr). At `1bae6d1`: `Ran 1751 tests` (~6.7 min), and exactly these eight
+  stderr). At `1975665`: `Ran 1777 tests` (~6.8 min), and exactly these eight
   fail (stale):
   * `test_final_transcript_commit_v3_2_5::test_commit_allowed_while_finalizing`
   * `test_final_transcript_commit_v3_2_5::test_commit_allowed_while_listening`
@@ -421,8 +455,9 @@ the owner's machine.
 * One change set = one `APP_VERSION` bump; record it in `FIX_SEQUENCE.md` and
   `CODE_REVIEW_20260904.md`.
 * Files are MOSTLY CRLF, not all: `alpha/utils/service_status.py`,
-  `tests/test_interim_ghost_line.py`, `tests/test_task2g_acceptance_gate.py` and
-  `tests/test_task5_final_cleanup.py` are LF in HEAD. Check
+  `tests/test_interim_ghost_line.py`, `tests/test_task2g_acceptance_gate.py`,
+  `tests/test_task5_final_cleanup.py` and `tests/test_deepgram_keepalive.py`
+  are LF in HEAD. Check
   `git ls-files --eol -- <file>` and match it; never normalise a whole file.
   Never `sed -i` a `.py`; never write Python source through a bash heredoc —
   use a script or the Write tool.
