@@ -293,5 +293,49 @@ class DisconnectIsNeverTrimmedTest(unittest.TestCase):
         self.assertEqual(life.stats().get("resent_tails_trimmed"), 0)
 
 
+class ARepeatOnNewAudioIsSpeechTest(unittest.TestCase):
+    """Item 56 (2026-09-30, review of item 50). Without diarization every line
+    is speaker 1 now, so the same-speaker gate always passed and the trim cut
+    words someone said again after a pause. A re-send is the same audio and
+    overlaps (13.5 < 14.0 and 136.32 < 138.24 in the live runs above); new
+    audio is new speech."""
+
+    PRE = "we should look at many things, and the number one thing"
+    POST = "the number one thing is price, not the schedule"
+
+    def _run(self, *, start, end, timing=True):
+        rec = _Recorder()
+        life = ul.UtteranceLifecycleOwner(on_commit=rec)
+        life.reset_for_session("sess-56")
+        life.on_final_chunk(
+            text=self.PRE, speaker=1, channel=0,
+            start=10.0 if timing else -1.0, end=14.0 if timing else -1.0,
+            is_final=True, speech_final=True, event_id="a1",
+            metadata={"start_time": 10.0, "end_time": 14.0} if timing else {},
+        )
+        life.on_final_chunk(
+            text=self.POST, speaker=1, channel=0,
+            start=start if timing else -1.0, end=end if timing else -1.0,
+            is_final=True, speech_final=True, event_id="b1",
+            metadata={"start_time": start, "end_time": end} if timing else {},
+        )
+        life.on_utterance_end(event_id="end", channel=0)
+        return life, rec
+
+    def test_a_repeat_six_seconds_later_is_kept(self):
+        life, rec = self._run(start=20.0, end=23.0)
+        self.assertEqual(life.stats().get("resent_tails_trimmed"), 0)
+        self.assertIn(self.POST, rec.commits)
+
+    def test_the_same_audio_arriving_twice_is_still_trimmed(self):
+        life, rec = self._run(start=12.5, end=17.0)
+        self.assertEqual(life.stats().get("resent_tails_trimmed"), 1)
+        self.assertEqual(" ".join(rec.commits).count("the number one thing"), 1)
+
+    def test_without_timing_the_speaker_still_decides(self):
+        life, _ = self._run(start=0, end=0, timing=False)
+        self.assertEqual(life.stats().get("resent_tails_trimmed"), 1)
+
+
 if __name__ == "__main__":
     unittest.main()

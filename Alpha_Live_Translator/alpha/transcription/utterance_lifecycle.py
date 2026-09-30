@@ -2120,7 +2120,16 @@ class UtteranceLifecycleOwner:
         overlapping_audio = _audio_spans_overlap(
             prev.start_time, prev.end_time, cand_start, cand_end
         )
-        if not same_speaker and not overlapping_audio:
+        # Item 56 (2026-09-30): with timing, a re-send IS the same audio, so it
+        # overlaps; words that repeat the last ones on NEW audio are someone
+        # saying them again ("... the number one thing" / "the number one thing
+        # is price") and are not cut. The speaker label decides only when there
+        # is no timing: without diarization it is 1 for everyone (item 50), and
+        # before that it was a guess that changed after a 4 s pause.
+        if prev.end_time >= 0 and cand_start >= 0:
+            if not overlapping_audio:
+                return lexical, "", ""
+        elif not same_speaker:
             return lexical, "", ""
         split = _committed_tail_split(prev.text, lexical)
         if split is None or split[1] == lexical:

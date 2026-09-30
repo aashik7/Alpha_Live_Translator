@@ -3161,3 +3161,19 @@ a repeat arriving within `DUPLICATE_RESEND_WINDOW_S` (1 s) of the last line let
 out is a re-send. **Verified:** `tests/test_a_reply_is_not_a_duplicate.py` (the
 three replies fail on 26.5.52; a same-moment re-send is still dropped); two
 mutants caught.
+
+### Item 56 — English: words said again after a pause were cut
+
+The same accident in the English lifecycle: item 66's re-sent-tail trim cuts a
+new line's head when it repeats the last 3+ words of the line before, gated on
+same speaker OR overlapping audio. With one speaker it now cut a second person
+repeating the end of the last line after a pause. Real re-sends are the same
+audio and overlap (13.5 < 14.0 and 136.32 < 138.24 in the live runs item 66 was
+built on). **The change:** with timing, only overlapping audio is a re-send; the
+speaker decides only when there is no timing. **Verified:**
+`tests/test_item66_resent_tail.py` +3 (a repeat 6 s later is kept -- fails on
+26.5.52; the same audio twice is still trimmed; no timing still trims), all 138
+trim-related tests pass, and through the real app with a local Deepgram: 26.5.52
+exported 「is price, not the schedule」 for 「the number one thing is price, not
+the schedule」 (the lineage check did not notice), the new code the whole
+sentence; the original re-send replay is still trimmed exactly as before.
