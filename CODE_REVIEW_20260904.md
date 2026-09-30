@@ -3226,3 +3226,38 @@ runtime left on the empty one (its Stop logged `RUNTIME_AUDIO_COUNTERS_FROZEN`
 for `...-131613`). **The change:** the wrapper reuses the Start's identity unless
 it belongs to a finished session. **Verified:** `tests/test_one_start_one_run_folder.py`
 (fails on 26.5.52); one mutant caught.
+
+### Item 61 — a line not yet committed ended on 「、」
+
+Item 51's review stopped every join from rewriting 「…、」+「。」 to 「…。」, also for
+text not committed yet (the assembler's buffer, a held short fragment), which
+then ended on 「、」 with no sentence end for the sentence-end rules. **The
+change:** `join_japanese_fragments(previous_committed=False)` for those two;
+a committed line is still never changed. **Verified:**
+`tests/test_japanese_joins_do_not_double_punctuation.py` now checks all three
+joiners; one mutant caught.
+
+Also removed: `last_speech_time` / `fallback_speaker`, written in four places and
+read nowhere since item 50 (open defect u).
+
+### Not changed, and why
+
+* **A 「。…」 final after a held line is two ledger writes** (the release, then the
+  join) and so two translations of that line. Rare (149 of 6,188 finals start with
+  punctuation, fewer while a line is held); merging them would reopen the seam
+  items 54-55 just closed.
+* **Open defects needing the owner or live data:** (a) a flushed English tail
+  revised later needs a new signal, (b) a live English meeting, (c) 十二パーセント
+  needs evidence, (d) Deepgram's "US2.5 million" is its own formatting, (e) the
+  old key in `installer/keys.local.ini` is the owner's file, (f) Ctrl+L is a
+  product choice, (h) the "Speaker:" header is cosmetic, (q) hold timing needs a
+  live meeting, (s) 「日本、日本語」 and 「Java、Javaの」 cannot be told apart by
+  text.
+* **(g) the visible-error audit** reads only the export text, with no timing, so
+  it cannot tell a re-send from two people; it is evidence, not the transcript.
+* **(t) the lineage report's source** differs from the export's; every replay
+  since 26.5.46 passes it, and aligning two evidence subsystems is not worth the
+  risk without a failing case.
+* **The graphify graph** was 22 commits old: its post-commit hook skips worktrees
+  by design and nothing ran on a pull. A `post-merge` copy of the hook now
+  rebuilds it when the main folder is fast-forwarded (local, not committed).

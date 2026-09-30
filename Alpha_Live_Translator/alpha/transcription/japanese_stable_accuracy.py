@@ -180,7 +180,8 @@ def merge_punctuation_fragment(previous_text: str, fragment_text: str) -> str:
 
 
 def merge_short_fragments(previous_text: str, fragment_text: str) -> str:
-    return merge_punctuation_fragment(previous_text, fragment_text)
+    # The held fragment is not committed yet (item 51's review).
+    return join_japanese_fragments(previous_text, fragment_text, previous_committed=False)
 
 
 _LEADING_PUNCTUATION_STRIP_MAP: tuple[tuple[str, str], ...] = (

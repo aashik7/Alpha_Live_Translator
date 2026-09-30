@@ -752,6 +752,7 @@ taking.
 | PENDING_TASKS open defect (p) | **Item 58** — the sentence in progress at Stop and a short held line reach the export (10 of 12 dropped texts in the retained runs were lost, up to 104 characters) | ✅ fixed, 26.5.56 |
 | PENDING_TASKS open defect (j) | **Item 59** — the eight stale tests fixed or removed; the suite's failing set is empty | ✅ fixed (tests only) |
 | PENDING_TASKS open defect (i) | **Item 60** — one Start makes one run folder, and the session runtime and the ledger use the same one | ✅ fixed, 26.5.57 |
+| review of item 51 | **Item 61** — a line not yet committed ends its sentence at 「…、」+「。」; unused speaker state removed (open defect u) | ✅ fixed, 26.5.58 |
 
 Phase 3's audits are complete — 5 of 5, as the table above says. (This line used
 to read "Phase 3's four remaining audits", contradicting the table two rows

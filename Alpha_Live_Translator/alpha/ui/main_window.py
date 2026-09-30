@@ -862,8 +862,6 @@ class AlphaApp(
         self.last_speaker_id = None
         self.current_speaker = None
         self.last_displayed_speaker = None
-        self.last_speech_time = 0.0
-        self.fallback_speaker = 1
         self._health_monitor_job = None
         self._chunks_sent_count = 0
         self._transcripts_received = 0
@@ -11285,8 +11283,6 @@ class AlphaApp(
         self.last_speaker_id = None
         self.current_speaker = None
         self.last_displayed_speaker = None
-        self.last_speech_time = 0.0
-        self.fallback_speaker = 1
         self._chunks_sent_count = 0
         self._transcripts_received = 0
         self.reset_transcript_stability_state()
@@ -12900,8 +12896,6 @@ class AlphaApp(
             self._pending_translations_by_utterance = {}
             self._translation_debounce_after_ids = {}
             self._recent_displayed_texts = []
-            self.last_speech_time = 0.0
-            self.fallback_speaker = 1
             self._reset_interim_tail_state()
             self._reset_meeting_segment_buffer_state()
             self._reset_segment_repair_state()

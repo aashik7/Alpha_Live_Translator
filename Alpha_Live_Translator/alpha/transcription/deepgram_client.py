@@ -2248,8 +2248,6 @@ class DeepgramClientMixin:
                     except Exception as exc:
                         print(f"[UtteranceEnd] lifecycle flush error: {exc}")
                     self.current_speaker = None
-                    self.fallback_speaker = 1
-                    self.last_speech_time = time.time()
                     self._fragment_merge_meta = None
                     return
 

@@ -15,9 +15,11 @@ assembler.
 WHAT THESE TESTS PIN
 --------------------
 * after 。/．/？/、 a leading 、 or 。 is dropped
-* the previous text is never changed: it is often a committed line, and
-  rewriting its last 、 to 。 (as the first version did) made the join no
-  longer start with that line, so it was committed a second time
+* a COMMITTED previous line is never changed: rewriting its last 、 to 。 (as
+  the first version did everywhere) made the join no longer start with that
+  line, so it was committed a second time
+* text not committed yet (the assembler's buffer, a held short fragment)
+  still ends its sentence: 「…、」+「。」 is 「…。」, not a line left on 「、」
 * anything else is joined exactly as before
 """
 
@@ -30,32 +32,41 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from alpha.transcription.japanese_sentence_assembler import merge_japanese_fragments  # noqa: E402
-from alpha.transcription.japanese_stable_accuracy import merge_punctuation_fragment  # noqa: E402
+from alpha.transcription.japanese_stable_accuracy import (  # noqa: E402
+    merge_punctuation_fragment,
+    merge_short_fragments,
+)
 
+# (previous, fragment, joined onto a committed line, joined onto uncommitted text)
 CASES = [
-    ("谷口さんでやろうか。", "、はい。", "谷口さんでやろうか。はい。"),
-    ("石ブランチだよね。", "、おはようます。", "石ブランチだよね。おはようます。"),
-    ("ありましたよね。", "。ここでし", "ありましたよね。ここでし"),
-    ("何ですか？", "、それで", "何ですか？それで"),
-    ("もう一個あって、", "。", "もう一個あって、"),
-    ("もう一個あって、", "、耳なの", "もう一個あって、耳なの"),
-    ("話しましたけど、", "。はい、そうです。", "話しましたけど、はい、そうです。"),
-    ("話しました．", "、それで", "話しました．それで"),
-    ("これは", "、ここ", "これは、ここ"),  # no mark to double: kept
-    ("資料を送ります", "。", "資料を送ります。"),
+    ("谷口さんでやろうか。", "、はい。", "谷口さんでやろうか。はい。", "谷口さんでやろうか。はい。"),
+    ("石ブランチだよね。", "、おはようます。", "石ブランチだよね。おはようます。", "石ブランチだよね。おはようます。"),
+    ("ありましたよね。", "。ここでし", "ありましたよね。ここでし", "ありましたよね。ここでし"),
+    ("何ですか？", "、それで", "何ですか？それで", "何ですか？それで"),
+    ("もう一個あって、", "。", "もう一個あって、", "もう一個あって。"),
+    ("もう一個あって、", "、耳なの", "もう一個あって、耳なの", "もう一個あって、耳なの"),
+    ("話しましたけど、", "。はい、そうです。", "話しましたけど、はい、そうです。", "話しましたけど。はい、そうです。"),
+    ("話しました．", "、それで", "話しました．それで", "話しました．それで"),
+    ("これは", "、ここ", "これは、ここ", "これは、ここ"),  # no mark to double: kept
+    ("資料を送ります", "。", "資料を送ります。", "資料を送ります。"),
 ]
 
 
 class TheJoinersTest(unittest.TestCase):
-    def test_stable_layer(self):
-        for prev, frag, expected in CASES:
+    def test_onto_a_committed_line(self):
+        for prev, frag, expected, _ in CASES:
             with self.subTest(prev=prev, frag=frag):
                 self.assertEqual(merge_punctuation_fragment(prev, frag), expected)
 
-    def test_assembler(self):
-        for prev, frag, expected in CASES:
+    def test_assembler_buffer(self):
+        for prev, frag, _, expected in CASES:
             with self.subTest(prev=prev, frag=frag):
                 self.assertEqual(merge_japanese_fragments(prev, frag), expected)
+
+    def test_held_short_fragment(self):
+        for prev, frag, _, expected in CASES:
+            with self.subTest(prev=prev, frag=frag):
+                self.assertEqual(merge_short_fragments(prev, frag), expected)
 
 
 if __name__ == "__main__":

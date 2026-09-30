@@ -665,7 +665,8 @@ def merge_japanese_fragments(previous: str, current: str) -> str:
                     tail = curr[end:]
                     break
             return (prev + tail).strip()
-    return join_japanese_fragments(prev, curr)  # item 51: no 「。、」 at the seam
+    # Item 51: no 「。、」 at the seam; the buffer is not committed yet.
+    return join_japanese_fragments(prev, curr, previous_committed=False)
 
 
 def should_hold_speaker_continuation(
