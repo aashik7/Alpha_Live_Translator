@@ -4,16 +4,25 @@ Handoff for the next Claude Code session. Written 2026-09-25 at `3070dca`,
 updated 2026-09-28 with the owner's two Japanese meetings (section 0) and
 item 37 (`a83dbaa`), and 2026-09-29 with section 0's code done (items 38-43)
 and the open defects (k)-(o) closed (items 44-48), and 2026-09-30 with items
-49-54 from the owner's Japanese meeting of 2026-09-29,
-`APP_VERSION = "3.3.5.5.8.5.26.5.52"`. The owner writes Banglish, wants terse
+49-54 from the owner's Japanese meeting of 2026-09-29 and items 55-61 (the
+review of 26.5.52 and every open defect code can close),
+`APP_VERSION = "3.3.5.5.8.5.26.5.58"`. The owner writes Banglish, wants terse
 answers, proof over plausible reads, and findings as a table with
 issue / risk / severity / importance.
 
 ## Where things stand
 
-* Every item through **54** in `CODE_REVIEW_20260904.md` is fixed and pushed,
-  except item 53, withdrawn (measured worse; see there). `FIX_SEQUENCE.md` is
-  the execution-order ledger; read both before any fix.
+* Every item through **61** in `CODE_REVIEW_20260904.md` is fixed and pushed,
+  except item 53, withdrawn (measured worse; see there; item 57 fixed its real
+  problem). `FIX_SEQUENCE.md` is the execution-order ledger; read both before
+  any fix.
+* **Items 55-61 (2026-09-30):** a review of 26.5.52 found item 50 (one speaker)
+  had removed an accidental gate: replies that repeat the line before were
+  dropped in Japanese (55) and repeated words cut in English (56). Also fixed:
+  a late pong no longer drops a socket that is still talking (57), the words in
+  progress at Stop reach the export (58, 10 of 12 dropped texts were lost), the
+  eight stale tests (59, the suite's failing set is now EMPTY), one run folder
+  per Start (60), a buffer join ends its sentence (61). Each fails on 26.5.52.
 * **Items 49-54 (2026-09-30), the owner's Japanese meeting `...140302`:** it ran
   26.5.34 (the main folder was 16 commits behind). Replaying its own recorded
   finals through the real app: cleanup no longer cuts words or numbers (ここ,
@@ -36,15 +45,18 @@ issue / risk / severity / importance.
   went on extending lost its first words in the export AND the pane, and a
   correction or extend held open by `speech_final=False` still never reached
   the ledger. Item 35's ledger entries carry a visible correction.
-* **Update package 26.5.52 built 2026-09-30** and applied to the owner's own
-  installed app (`%LOCALAPPDATA%\Programs\Alpha Live Translator`, was 26.5.46):
-  7 files, every one SHA-256 verified, `.env`, `user_settings.json` and
-  `troubleshooting\` untouched, backup `app_backup_20260930-162550` (the
-  26.5.3 one, `app_backup_20260929-172652`, is still there too; both can go
-  once the owner has run a meeting), launches to the main window. Tested first
-  on a synthetic copy of that install. 26.5.46 was built and applied the day
-  before. Not yet sent to any client. The last share build is still
+* **Update package 26.5.58 built 2026-09-30** and applied to the owner's own
+  installed app (`%LOCALAPPDATA%\Programs\Alpha Live Translator`, was 26.5.52,
+  and 26.5.46 before that): 9 files, every one SHA-256 verified, `.env`,
+  `user_settings.json` and `troubleshooting\` untouched, launches to the main
+  window. Tested first on a synthetic copy of that install. Backups
+  `app_backup_20260929-172652` (26.5.3), `app_backup_20260930-162550`
+  (26.5.46), `app_backup_20260930-175247` (26.5.52): all can go once the owner
+  has run a meeting. Not yet sent to any client. The last share build is still
   `build/share/*-1.4.*` (26.5.29); a new share build stays the owner's call.
+* **graphify:** its post-commit hook skips worktrees by design, so the graph
+  went 22 commits stale. A local `post-merge` copy of the hook (in the main
+  folder's `.git/hooks`, not committed) now rebuilds it on every fast-forward.
 * **Run Alpha from ONE place:** `Alpha_Translator V 1.0\Alpha_Live_Translator\main.py`
   (has `.env`) or the installed app. Never from `.claude\worktrees\...` (no
   keys). A push from a worktree does not update the main folder: fast-forward
@@ -55,12 +67,12 @@ issue / risk / severity / importance.
 | # | What | Section | Kind |
 |---|---|---|---|
 | 1 | Owner: meeting audio setup (0a); names/terms list for keyterms (0f); a ~5 min reference transcript of `...140417` for the `multi` test (0h) | 0 | Owner |
-| 2 | One real Japanese meeting on 26.5.52 to prove items 38-43, 46-52 and 54 live (section 1) | 1 | Test |
-| 3 | One real English meeting to prove items 35, 37 and 44 live, checked against the audio, not only the pane | 1 | Test |
+| 2 | One real Japanese meeting on 26.5.58 to prove items 38-43, 46-52, 54-58 and 60-61 live (section 1) | 1 | Test |
+| 3 | One real English meeting to prove items 35, 37, 44 and 56 live, checked against the audio, not only the pane | 1 | Test |
 | 4 | 0f and 0h once the owner's inputs arrive | 0 | Config / evaluate |
-| 5 | Final build 1.5 / update package 26.5.52+, owner's call | 2 | Build |
+| 5 | Final build 1.5 / update package 26.5.58+, owner's call | 2 | Build |
 | 6 | Deliver | 3 | Owner |
-| 7 | Open defects (a)-(j) and (p)-(u) (section 4); (k)-(o) are closed | 4 | Code, lower |
+| 7 | Open defects left (section 4): each needs the owner, live data or a product choice | 4 | Owner / evidence |
 * Deepgram: the owner's original account was deactivated ("Deactivated token")
   and blocked. `Alpha_Live_Translator/.env` now holds a working key from
   another account, verified live on 2026-09-25 (English and Japanese sockets
@@ -91,6 +103,13 @@ issue / risk / severity / importance.
 | `4938d87` | 26.5.50 | Item 52: the pending log pile stops rotating its own backups |
 | `034b31a` | 26.5.51 | Item 53 withdrawn: ping timeout stays 5 s (9 s found a dead socket after 35-90 s) |
 | `1975665` | 26.5.52 | Item 54: a held revision stays a revision on every way out; a 「。…」 final joins the newest line |
+| `525562b` | 26.5.53 | Item 55: a reply that repeats the line before is kept (only a repeat within 1 s is a re-send) |
+| `de1fde4` | 26.5.54 | Item 56: English words said again after a pause are not cut (only overlapping audio is a re-send) |
+| `3a1c3f8` | 26.5.55 | Item 57: a message from Deepgram is proof of life (late pong no longer drops a talking socket) |
+| `ee87ea4` | 26.5.56 | Item 58: the words in progress at Stop reach the export |
+| `cd9c0ab` | (tests) | Item 59: the eight stale tests fixed or removed; the suite passes clean |
+| `d30e3fa` | 26.5.57 | Item 60: one Start, one run folder |
+| `7d32469` | 26.5.58 | Item 61: a buffer join ends its sentence; unused speaker state removed |
 
 ---
 
@@ -332,19 +351,19 @@ checked** (only the portable zip was unpacked and inspected). Do that once for
 | f | `Ctrl+L` toggles listening app-wide (`bind_all`) while Alpha has focus; a browser habit (Ctrl+L = address bar) can start or stop a meeting | Accidental Start/Stop | Low | Medium |
 | g | The app's visible-error audit flags `duplicate_line_continuation` on two people ("Good afternoon." / "Good afternoon. How are you?", different speaker, 3.7 s apart) | False alarm in log analysis | Low | Low |
 | h | Every transcript line reads "Speaker:" with no number under a "Speaker 2 · time" header | Looks unfinished; not checked whether new | Low | Low |
-| i | Each Japanese Start leaves an empty skeleton run folder next to the real one (e.g. `...-161849` + `...-161850`) | Folder clutter | Low | Low |
-| j | Eight stale failing tests in the baseline (section 7) | A new regression can hide in the noise | Low | Low |
+| ~~i~~ | ~~Each Japanese Start leaves an empty skeleton run folder next to the real one (e.g. `...-161849` + `...-161850`)~~ **FIXED, item 60** (one run folder per Start; the session runtime was bound to the empty one) | -- | -- | -- |
+| ~~j~~ | ~~Eight stale failing tests in the baseline (section 7)~~ **FIXED, item 59** (the suite's failing set is empty) | -- | -- | -- |
 | ~~k~~ | ~~Re-opening a line that item 66 trimmed at creation brings the trimmed head back~~ **FIXED, item 44** -- and five more paths to the same repeat, plus an older shorter guess that dropped words (see `CODE_REVIEW_20260904.md` item 44) | -- | -- | -- |
 | ~~l~~ | ~~`run_english_accuracy_experiment.py` still sends `numerals=true`; the allowlist still accepts it~~ **FIXED, item 45** | -- | -- | -- |
 | ~~m~~ | ~~"● Audio device switched" logged at ERROR~~ **FIXED, item 46** (INFO now) | -- | -- | -- |
 | ~~n~~ | ~~Item 73's "cannot follow the change" text~~ **FIXED, item 46** (says Alpha is switching; translated) | -- | -- | -- |
 | ~~o~~ | ~~Lineage matcher's 6-line window~~ **FIXED, item 47** (identical on all 84 retained runs) | -- | -- | -- |
-| p | A Japanese line the boundary stabilizer still holds at Stop is dropped if under 8 Japanese characters (`BOUNDARY_STABILIZER_STOP_FLUSH_DROPPED`, e.g. 「メインで」); by design, found by the item 50 review | The last few words before Stop can be lost | Medium | Medium — measure how often on retained runs before changing |
+| ~~p~~ | ~~A Japanese line the boundary stabilizer still holds at Stop is dropped if under 8 Japanese characters (`BOUNDARY_STABILIZER_STOP_FLUSH_DROPPED`, e.g. 「メインで」); by design, found by the item 50 review~~ **FIXED, item 58** (and the sentence in progress at Stop, which `SUPPRESS_INCOMPLETE_STOP_TAIL_FROM_ALPHA` dropped: 10 of 12 dropped texts were lost) | -- | -- | -- |
 | q | Lines committed by `hold_timeout_safe_prefix` / `safe_chunk_boundary_commit` still wait 11-14 s (5 lines in the meeting replay, one 47 s) | Some lines still late | Medium | Medium — tune with live measurement, not a replay |
-| r | A Deepgram pong more than 5 s late drops a live socket (once in the 2026-09-29 meeting, 2.2 s of audio). A longer timeout is NOT the fix (item 53, withdrawn): count a received data frame as proof of life instead | Short gap, reconnect | Low | Low |
+| ~~r~~ | ~~A Deepgram pong more than 5 s late drops a live socket (once in the 2026-09-29 meeting, 2.2 s of audio). A longer timeout is NOT the fix (item 53, withdrawn): count a received data frame as proof of life instead~~ **FIXED, item 57** (a message is proof of life; dead sockets found as fast as before) | -- | -- | -- |
 | s | Separated list items where the second extends the first collapse: 「日本、日本語」 -> 「日本語」 (the same rule as the restart 「Java、Javaの」, which it cannot tell apart); no retained final has one | A word dropped in a list | Low | Low |
 | t | The in-app lineage report reads `stable_line_revision`'s active lines while the export comes from the frozen ledger, so it can report a loss the export does not have | False alarm in evidence | Low | Low |
-| u | `last_speech_time` / `fallback_speaker` are still written (deepgram_client, main_window) though nothing reads them since item 50 | Dead state | Low | Low |
+| ~~u~~ | ~~`last_speech_time` / `fallback_speaker` are still written (deepgram_client, main_window) though nothing reads them since item 50~~ **FIXED, item 61** | -- | -- | -- |
 
 Notes:
 
@@ -360,6 +379,14 @@ Notes:
 * **(c)**: the probe script used Windows TTS (Haruka). The owner's earlier
   Japanese TTS run through Alpha kept 「十二パーセント」, so this may be Deepgram
   variance. Collect evidence before touching anything.
+* **2026-09-30, "fix all pending issues":** (i), (j), (p), (r), (u) closed as
+  items 57-61. The rest were reviewed and left, each for a reason that is not
+  code: (a) needs a new signal, (b) a live English meeting, (c) evidence, (d)
+  Deepgram's own formatting, (e) the owner's key file, (f) a product choice, (h)
+  cosmetic, (q) live timing data, (s) 「日本、日本語」 and 「Java、Javaの」 cannot
+  be told apart by text; (g) the audit has no timing to tell two people from a
+  re-send, and (t) has no failing case since 26.5.46 (every replay passes
+  lineage). See `CODE_REVIEW_20260904.md`, items 55-61.
 
 ## 5. Deliberately NOT changed — do not "fix" without new evidence
 
@@ -429,18 +456,12 @@ the owner's machine.
 
 * Tests, from `Alpha_Live_Translator/`:
   `py -m unittest discover -s tests -t tests -p "test_*.py"` (summary on
-  stderr). At `1975665`: `Ran 1777 tests` (~6.8 min), and exactly these eight
-  fail (stale):
-  * `test_final_transcript_commit_v3_2_5::test_commit_allowed_while_finalizing`
-  * `test_final_transcript_commit_v3_2_5::test_commit_allowed_while_listening`
-  * `test_keepalive_ping_thread_cannot_crash::test_the_crash_is_reproducible_on_the_unguarded_base_class`
-  * `test_package_glossary_flags_85253::test_glossary_helper_absent`
-  * `test_package_glossary_flags_85253::test_glossary_helper_present`
-  * `test_package_glossary_flags_85253::test_main_glossary_absent_no_unbound_local`
-  * `test_package_glossary_flags_85253::test_main_glossary_present_after_successful_inclusion`
-  * `test_stop_finalize_v3_2_3::test_phase_constants_match_spec`
+  stderr). After item 59 (2026-09-30) **nothing fails**: `Ran 1785 tests`
+  (~6.5 min), `OK`. The eight stale tests that failed on every run before were
+  fixed or removed (see item 59), so any failure now is news.
 
-  Timing-sensitive, pass alone: `test_item48_audio_manifest_bounded` and
+  Timing-sensitive, pass alone: `test_task12_report` (failed once with a meeting
+  replay running at the same time), `test_item48_audio_manifest_bounded` and
   `test_item71_startup_and_hamburger::test_map_corrects_it_before_any_human_could_see_it`.
   Compare failing NAMES, never counts.
 * A regression test must fail before the fix. Prove each part of a fix is
