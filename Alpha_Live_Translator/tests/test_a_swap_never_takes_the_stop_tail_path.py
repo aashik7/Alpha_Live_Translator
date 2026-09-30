@@ -170,15 +170,19 @@ class ASwapNeverTakesTheStopTailPathTest(unittest.TestCase):
             % (fired,),
         )
 
-    def test_a_stop_still_suppresses_its_incomplete_tail(self):
-        """Guard. Stop-tail suppression is correct at Stop and must not have
-        been weakened to fix the swap."""
+    def test_a_stop_keeps_its_incomplete_tail(self):
+        """~~Guard. Stop-tail suppression is correct at Stop and must not have
+        been weakened to fix the swap.~~
+
+        Retracted 2026-09-30 (item 58): measured on the retained runs, 10 of
+        the 12 stop tails it suppressed were nowhere in the export -- up to 104
+        characters of speech -- so "noise at the edge of a finished session"
+        was wrong at Stop too. Stop still routes the fragment down the
+        stop-tail path; it is no longer suppressed there."""
         captured = _flush_with_a_sentence_in_flight("stop_listening")
         self.assertIn("stop_flush_incomplete_tail", [r for r, _ in captured.flush_calls])
-        self.assertTrue(
-            SUPPRESSION_EVENTS & set(captured.events),
-            "the fix disabled stop-tail suppression for Stop too",
-        )
+        fired = sorted(SUPPRESSION_EVENTS & set(captured.events))
+        self.assertEqual(fired, [], "Stop dropped the sentence in progress: %r" % (fired,))
 
     def test_a_swap_with_nothing_buffered_is_still_a_no_op(self):
         """The one-shot boundary is raised; nothing is committed."""

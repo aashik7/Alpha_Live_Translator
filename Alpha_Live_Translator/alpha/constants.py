@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-APP_VERSION = "3.3.5.5.8.5.26.5.55"
+APP_VERSION = "3.3.5.5.8.5.26.5.56"
 APP_CODENAME = "Preserve Real Silence Multi-Stream Retention"
 FROZEN_INFRASTRUCTURE_BASELINE = "3.3.5.5.8.5.25.3.3.2.8"
 
@@ -471,7 +471,11 @@ AUTO_EXPORT_ALPHA_TXT_ENABLED = True
 AUTO_EXPORT_ALPHA_TXT_ON_STOP = True
 STABLE_LAYER_BUSINESS_CORRECTION_ENABLED = True
 STOP_TAIL_CLEANUP_ENABLED = True
-SUPPRESS_INCOMPLETE_STOP_TAIL_FROM_ALPHA = True
+# Item 58 (2026-09-30): False. True dropped the line in progress at Stop from
+# the export whenever it had no sentence end -- 10 of the 12 it dropped in the
+# retained runs were nowhere in the export, up to 104 characters of speech
+# (「こそ二、三十年間デフレだった状態から…」, 「さようなら」). The words were said.
+SUPPRESS_INCOMPLETE_STOP_TAIL_FROM_ALPHA = False
 WRITE_INCOMPLETE_STOP_TAIL_TO_DEBUG_FILE = True
 SHOW_INCOMPLETE_STOP_TAIL = False
 BUSINESS_CORRECTION_GUARD_85221_ENABLED = True

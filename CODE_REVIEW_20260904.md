@@ -3189,3 +3189,18 @@ late with Results flowing no longer drop the socket (10/5 dropped it at 26 s); a
 silent socket with a late pong still drops; dead sockets are still found in 14.0
 s, 9.5 s and 25 s -- unchanged. `tests/test_deepgram_keepalive.py` +2; one
 mutant caught.
+
+### Item 58 — the words in progress at Stop were dropped (open defect p)
+
+Two rules threw the end of a meeting away:
+`SUPPRESS_INCOMPLETE_STOP_TAIL_FROM_ALPHA` left the assembler's buffer out of
+the ledger and export at Stop when it had no sentence end, and the boundary
+stabilizer's Stop flush dropped a held line under 8 characters. Of the 12 texts
+they dropped in the retained runs, 10 are nowhere in the export: up to 104
+characters (「こそ二、三十年間デフレだった状態から…」), 「さようなら。」,
+「今の日本で一番大切なのは、」. **The change:** the flag is False and only a held
+line of nothing but punctuation is dropped. `test_a_stop_still_suppresses_its_incomplete_tail`
+asserted the opposite ("noise at the edge of a finished session"); retracted
+visibly and turned into `test_a_stop_keeps_its_incomplete_tail`. **Verified:**
+`tests/test_the_last_words_survive_stop.py` (both fail on 26.5.52); three
+mutants caught.

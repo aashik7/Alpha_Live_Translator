@@ -749,6 +749,7 @@ taking.
 | review of 26.5.52 (item 50's side effect) | **Item 55** — a reply that repeats the start or end of the line before (「ありがとうございました。」 thanked back, 「はい。」) is kept; only a repeat within 1 s of the line is a re-send | ✅ fixed, 26.5.53 |
 | review of 26.5.52 (item 50's side effect) | **Item 56** — English: words someone says again after a pause are not cut as a re-sent tail; with timing only overlapping audio is a re-send | ✅ fixed, 26.5.54 |
 | item 53's real problem | **Item 57** — a message from Deepgram is proof of life: a late pong no longer drops a socket that is still sending Results; dead sockets are found as fast as before | ✅ fixed, 26.5.55 |
+| PENDING_TASKS open defect (p) | **Item 58** — the sentence in progress at Stop and a short held line reach the export (10 of 12 dropped texts in the retained runs were lost, up to 104 characters) | ✅ fixed, 26.5.56 |
 
 Phase 3's audits are complete — 5 of 5, as the table above says. (This line used
 to read "Phase 3's four remaining audits", contradicting the table two rows

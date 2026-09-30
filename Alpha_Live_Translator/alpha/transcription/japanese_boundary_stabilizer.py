@@ -914,7 +914,10 @@ class JapaneseBoundaryStabilizer:
         if not pending:
             _jp_log("BOUNDARY_STABILIZER_PENDING_CLEARED_ON_STOP")
             return None
-        if count_japanese_chars(pending) < 8:
+        # Item 58 (2026-09-30): a held line under 8 characters used to be
+        # dropped here -- 「さようなら。」 at the end of a meeting. Only a line
+        # of nothing but punctuation is dropped now.
+        if not re.sub(r"[\s、。，,．.！？!?]", "", pending):
             self._stop_flush_drop_count += 1
             _jp_log("BOUNDARY_STABILIZER_STOP_FLUSH_DROPPED", text_preview=pending[:40])
             return None
