@@ -2897,3 +2897,68 @@ cursor past every commit in between and reports THEM lost; without the second
   particle rule, unchanged.)
 * Full suite, on items 44-48 together: `Ran 1751 tests`, the same eight stale
   failures and nothing else.
+
+---
+
+## Items 49-54 — the owner's Japanese meeting of 2026-09-29
+
+The owner reported wrong translations, slowness and lag. That meeting
+(`...26.5.34-20260929-140302`) ran **26.5.34**: the main checkout was 16 commits
+behind `origin/main`, so items 37-48 were not in it. Replaying the meeting's own
+recorded Deepgram finals through the real app (`main.py`, a local stand-in for
+Deepgram at the recorded arrival times, DeepL stubbed) reproduced it on 26.5.34
+(commit delay p50 8.5 s vs 8.6 s real, p90 24.3 s both) and measured what 26.5.46
+already fixed (p50 3.3 s, p90 11.0 s, no translation only at Stop). What was
+still wrong in current code is below.
+
+### Item 49 — Japanese text cleanup rewrote words and numbers
+
+`collapse_exact_duplicate_phrase` ran on every final, again on every merged
+assembler buffer and at commit, and removed ANY adjacent repeat of 1-6
+characters. All 125 distinct inputs it collapsed in the retained meetings were
+read: ここ -> こ, 課題ナンバー二二七 -> 二七, スリーセブンセブン -> スリーセブン,
+サーバーバージョン -> サーバージョン, もったいないな -> もったいな, いい街 -> い街,
+ぼそぼそ -> ぼそ (dozens of lines of one August meeting), Thisis -> This, and the
+rebuild from a punctuation-free copy dropped the 。 between sentences (町田市。
+はいはい。 -> 町田市はい。). Its natural-repeat guard (はいはい, うんうん, そうそう,
+まあまあ) never applied: it checked the unit, not the doubled form. The sibling
+`collapse_prefix_extension_duplicate` had the same rebuild (ください。ありがとう
+ございありがとうございます。 lost its 。) and collapsed number words.
+
+**The change:** a repeat is collapsed only when the speaker separated the copies
+(、 。 space) at the start of a phrase (サンプル、サンプル, Java、Javaの); only the
+second copy and its separator go, so nothing after them changes. The prefix
+rule works on the text itself, needs the second copy to go on (an extension),
+and never touches a unit holding a number word. The guard checks the doubled
+form. Of the 125 historical inputs, 109 now stay exactly as said; the 16 that
+change are all separated repeats (サンプル、サンプル, さようなら。さようなら。).
+
+**Verified:** `tests/test_japanese_cleanup_keeps_words.py` (8, including the
+real assembler: 「これは」+「ここ」+「を直してください。」 and 課題ナンバー二二七): 47
+failing assertions before the change. Nine mutants caught (phrase-start guard,
+2-char minimum, separator required, protection, doubled check; prefix: number
+guard, extension required, 4-char minimum, and ADDING a phrase-start guard,
+which would block a real restart such as ご確認くださいくださいませ).
+
+**Reviewed 2026-09-30:** every distinct raw final of the retained runs (1,960) and
+every committed line (1,157) was run through both versions, 6,543 real fragment
+sequences through the real merge, and the rules timed on adversarial input
+(worst 2.7 ms, no backtracking). Two gaps, both also in the code before:
+
+* **Numbers.** The number guard was only in the prefix rule; the exact rule
+  collapses 「X、X…」 too, so 「二十、二十一、二十二」 lost the 20, 「10、100、1000」
+  the 10, and the real final 「ナンバースリー、ナンバースリーオンリーですね。」 was
+  cut in production (per-fragment and precision cleanup), while the test only
+  ran it through the prefix rule.
+* **A sentence and its echo.** With a sentence end between the copies and the
+  second going on, it is a new sentence, usually the other person's: a real
+  lesson, 「声の高さです。声の高さですか。」, lost the statement and read as a
+  question; 「面白いです。面白いですよね。」 lost 「面白いです。」.
+
+Now `_repeat_is_speech` keeps both in both rules. 「ルーパル。ルーパルイズ。」,
+collapsed by the first version, is kept as said: across a sentence end a
+restart and an echo look the same, and keeping costs a visible repeat where
+cutting cost a sentence. Of now 133 historical inputs, 119 stay as said; the 14
+that change are separated restarts and exact repeats (サンプル、サンプル,
+さようなら。さようなら。). +6 cases, the production cleanups now run both lists;
+three mutants caught (number guard, sentence-end guard, "goes on").

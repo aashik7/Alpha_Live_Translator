@@ -56,7 +56,6 @@ _NATURAL_SHORT_REPEATS_ZH = frozenset({"谢谢谢谢"})
 _CJK_CHAR_RE = re.compile(r"[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]")
 _JAPANESE_CHAR_RE = re.compile(r"[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]")
 _CHINESE_CHAR_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff]")
-_KANJI_CHAR_RE = re.compile(r"[\u4e00-\u9fff]")
 _LATIN_WORD_RE = re.compile(r"[A-Za-z0-9]")
 _SPEAKER_PREFIX_RE = re.compile(r"^\s*\[speaker\s+\d+\]\s*", re.I)
 _COMPACT_PUNCT_RE = re.compile(r'[.,!?;:。、！？，．・"\'“”‘’`~()\[\]{}<>]')
@@ -401,17 +400,6 @@ def fix_cjk_boundary_punctuation_with_log(
     return cleaned
 
 
-def _is_kanji_char(ch: str) -> bool:
-    return bool(_KANJI_CHAR_RE.match(ch or ""))
-
-
-def _allow_mid_fragment_single_char_dup(unit: str, start: int) -> bool:
-    """Allow 1-char A+A collapse after start when unit is kanji (STT glitch)."""
-    if start <= 0:
-        return True
-    return _is_kanji_char(unit)
-
-
 _PROTECTED_DUPLICATE_UNITS = frozenset(
     {
         "そもそも",
@@ -436,74 +424,81 @@ def _should_protect_duplicate_unit(unit: str) -> bool:
     doubled = unit + unit
     if doubled in _PROTECTED_DUPLICATE_UNITS:
         return True
+    # Item 49: the natural repeats are stored doubled (はいはい), so the unit
+    # (はい) has to be checked doubled too -- it never matched before.
+    if doubled in _NATURAL_SHORT_REPEATS_JA:
+        return True
     return False
+
+
+# Item 49: a phrase the speaker said twice with a pause written between the
+# copies, starting a phrase: 「サンプル、サンプル」「Java、Javaの」.
+_REPEAT_SEPARATORS = r"\s、。，,．.！？!?"
+_SEPARATED_REPEAT_RE = re.compile(
+    rf"(?<![^{_REPEAT_SEPARATORS}])(?P<unit>[^{_REPEAT_SEPARATORS}]{{2,}}?)"
+    rf"[{_REPEAT_SEPARATORS}]+(?P=unit)"
+)
+# A repeat that holds a number is a number ("スリーセブンスリーセブン" is 3737,
+# 「二十、二十一」 is 20 and 21).
+_NUMBER_WORD_RE = re.compile(
+    r"[0-9０-９〇一二三四五六七八九十百千万億]"
+    r"|ゼロ|ワン|ツー|スリー|フォー|ファイブ|シックス|セブン|エイト|ナイン"
+)
+_SENTENCE_ENDS = "。．.！？!?"
+
+
+def _repeat_is_speech(unit: str, separator: str, goes_on: bool) -> bool:
+    """A repeat both collapse rules leave as said. Review of item 49, 2026-09-30.
+
+    * a number: 「二十、二十一、二十二」 lost the 20, 「10、100、1000」 the 10 and 100
+    * a sentence end between the copies with the second going on: that is a new
+      sentence -- usually the other person's echo, 「声の高さです。声の高さですか。」
+      -- and collapsing it deleted the first sentence
+    """
+    if _NUMBER_WORD_RE.search(unit):
+        return True
+    return goes_on and any(ch in _SENTENCE_ENDS for ch in separator)
 
 
 def collapse_exact_duplicate_phrase(
     text: str,
     language_code: str = "ja",
 ) -> tuple[str, bool]:
-    """Collapse exact adjacent duplicate unit A+A anywhere in fragment (unit len 1–6)."""
+    """Collapse a repeat the speaker separated: 「サンプル、サンプル」 -> 「サンプル」.
+
+    Item 49 (2026-09-29). This collapsed ANY adjacent repeat of 1-6 characters,
+    and in Japanese those are words far more often than glitches: it turned
+    ここ into こ, 課題ナンバー二二七 into 二七, スリーセブンセブン into
+    スリーセブン, サーバーバージョン into サーバージョン and もったいないな into
+    もったいな, and rebuilt the text without the 。 between sentences -- 20+
+    lines of the retained meetings, every one then translated wrong. Now only a
+    repeat with punctuation or a space between the two copies, at the start of
+    a phrase, is collapsed, and only the second copy and its separator go, so
+    nothing that follows is touched. An adjacent repeat is left as said, and so
+    are a number and a sentence the next one echoes (`_repeat_is_speech`).
+    """
+    _ = language_code
     segment = (text or "").strip()
-    if not segment:
-        return segment, False
     changed = False
-    max_unit = 6
+
+    def is_speech(m: re.Match) -> bool:
+        unit = m.group("unit")
+        after = segment[m.end() : m.end() + 1]
+        return _should_protect_duplicate_unit(unit) or _repeat_is_speech(
+            unit,
+            segment[m.end("unit") : m.end() - len(unit)],
+            goes_on=bool(after) and not re.match(rf"[{_REPEAT_SEPARATORS}]", after),
+        )
+
     for _ in range(12):
-        compact = compact_cjk_for_compare(segment, language_code)
-        if len(compact) < 2:
+        match = next(
+            (m for m in _SEPARATED_REPEAT_RE.finditer(segment) if not is_speech(m)),
+            None,
+        )
+        if match is None:
             break
-        found = False
-        upper = min(max_unit, len(compact) // 2)
-        for unit_len in range(upper, 0, -1):
-            for start in range(0, len(compact) - unit_len * 2 + 1):
-                unit = compact[start : start + unit_len]
-                if unit_len == 1 and start > 0:
-                    if not _allow_mid_fragment_single_char_dup(unit, start):
-                        continue
-                if _should_protect_duplicate_unit(unit):
-                    continue
-                if compact[start + unit_len : start + unit_len * 2] != unit:
-                    continue
-                target_compact = (
-                    compact[:start] + unit + compact[start + unit_len * 2 :]
-                )
-                collapsed = _reconstruct_segment_from_compact_target(
-                    segment, target_compact, language_code
-                )
-                if collapsed != segment:
-                    segment = collapsed
-                    changed = True
-                    found = True
-                    break
-            if found:
-                break
-        if not found:
-            break
-
-    # Whole-fragment A+A (+ optional trailing punct), len(A) >= 3
-    compact = compact_cjk_for_compare(segment, language_code)
-    trail_punct = ""
-    if segment and segment.rstrip()[-1] in "。！？":
-        trail_punct = segment.rstrip()[-1]
-    body = compact
-    n = len(body)
-    if n >= 6 and n % 2 == 0:
-        half = n // 2
-        unit = body[:half]
-        if (
-            body[half:] == unit
-            and len(unit) >= 3
-            and not _should_protect_duplicate_unit(unit)
-        ):
-            collapsed = _reconstruct_segment_from_compact_target(
-                segment, unit, language_code
-            )
-            if collapsed != segment:
-                if trail_punct and not collapsed.rstrip().endswith(trail_punct):
-                    collapsed = collapsed.rstrip() + trail_punct
-                return collapsed, True
-
+        segment = segment[: match.start()] + match.group("unit") + segment[match.end() :]
+        changed = True
     return segment, changed
 
 
@@ -611,49 +606,47 @@ def normalize_latin_acronym_spacing(text: str) -> tuple[str, bool]:
     return normalized, changed
 
 
-_PREFIX_EXT_MIN_A = 4
-_PREFIX_EXT_MAX_A = 30
+# Item 49: a restart the speaker (or the provider) made, the second copy going
+# on: 「ありがとうございありがとうございます」「inTokyo、inTokyoの」.
+_PREFIX_EXTENSION_RE = re.compile(
+    rf"(?P<unit>[^{_REPEAT_SEPARATORS}]{{4,30}}?)"
+    rf"[{_REPEAT_SEPARATORS}]*(?=(?P=unit)[^{_REPEAT_SEPARATORS}])"
+)
 
 
 def collapse_prefix_extension_duplicate(
     text: str,
     language_code: str = "ja",
 ) -> tuple[str, bool]:
-    """Collapse A + B where B starts with A (prefix-extension STT duplicate)."""
+    """Collapse A + B where B starts with A (prefix-extension STT duplicate).
+
+    Item 49 (2026-09-29): works on the text itself, dropping the first copy
+    and the separator after it. It used to rebuild the line from a
+    punctuation-free copy, which dropped the 。 before the repeat
+    (「がんばってください。ありがとうございありがとうございます。」 ->
+    「がんばってくださいありがとうございます。」), and it cut a natural
+    「もちろんもちろん」 that nothing followed. The second copy must now go on
+    (an extension, not an exact repeat), and `_repeat_is_speech` keeps numbers
+    and a sentence the next one echoes.
+    """
+    _ = language_code
     segment = (text or "").strip()
-    if not segment:
-        return segment, False
     changed = False
     for _ in range(10):
-        compact = compact_cjk_for_compare(segment, language_code)
-        if len(compact) < _PREFIX_EXT_MIN_A * 2:
-            break
-        found = False
-        for start in range(len(compact)):
-            max_a = min(_PREFIX_EXT_MAX_A, len(compact) - start - _PREFIX_EXT_MIN_A)
-            for a_len in range(max_a, _PREFIX_EXT_MIN_A - 1, -1):
-                a_end = start + a_len
-                if a_end >= len(compact):
-                    continue
-                unit_a = compact[start:a_end]
-                if _should_protect_duplicate_unit(unit_a):
-                    continue
-                rest = compact[a_end:]
-                if not rest.startswith(unit_a) or len(rest) <= len(unit_a):
-                    continue
-                target_compact = compact[:start] + rest
-                collapsed = _reconstruct_segment_from_compact_target(
-                    segment, target_compact, language_code
+        match = next(
+            (
+                m
+                for m in _PREFIX_EXTENSION_RE.finditer(segment)
+                if not _repeat_is_speech(
+                    m.group("unit"), segment[m.end("unit") : m.end()], goes_on=True
                 )
-                if collapsed != segment:
-                    segment = collapsed
-                    changed = True
-                    found = True
-                    break
-            if found:
-                break
-        if not found:
+            ),
+            None,
+        )
+        if match is None:
             break
+        segment = segment[: match.start()] + segment[match.end() :]
+        changed = True
     return segment, changed
 
 
