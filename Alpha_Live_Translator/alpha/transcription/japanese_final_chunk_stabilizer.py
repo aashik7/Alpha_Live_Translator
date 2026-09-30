@@ -423,12 +423,33 @@ def install_japanese_stabilizer_hooks(app_cls: type) -> None:
                 create_initial_run_artifacts_index,
                 reset_run_artifacts_session,
             )
-            from alpha.utils.run_identity import init_live_run_from_host
+            from alpha.utils.run_identity import get_current_run_identity, init_live_run_from_host
             from alpha.utils.runtime_evidence import reset_runtime_evidence_session
 
             reset_run_artifacts_session()
             reset_runtime_evidence_session()
-            identity = init_live_run_from_host(self)
+            # Item 60 (2026-09-30): the UI Start path (session_runtime) has
+            # already created this Start's identity. Creating another here --
+            # init_live_run_from_host always rotates -- left an empty run
+            # folder beside every run (`...-131613` + `...-131614`) and the
+            # live session runtime bound to the empty one while the ledger
+            # wrote to the other. Reused unless it is from a finished session.
+            identity = getattr(self, "_run_identity", None)
+            ledger_frozen = False
+            try:
+                from alpha.transcription.canonical_transcript_ledger import is_frozen
+
+                ledger_frozen = bool(is_frozen())
+            except Exception:
+                pass
+            if (
+                identity is None
+                or identity is not get_current_run_identity()
+                or getattr(identity, "stop_finalize_completed", False)
+                or ledger_frozen
+            ):
+                identity = init_live_run_from_host(self)
+            self._run_identity = identity
             create_initial_run_artifacts_index(identity=identity, host=self)
             try:
                 from alpha.utils.diagnostic_test_log import write_diagnostic_run_header

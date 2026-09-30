@@ -3215,3 +3215,14 @@ the contract that holds (the commit is allowed). The keepalive crash test is
 skipped where websocket-client guards `_send_ping` itself (1.9.0 here; the app
 bundles 1.6.0). `test_phase_constants_match_spec` pins the deliberate 25 s drain.
 The suite's failing set is now empty.
+
+### Item 60 — one Start made two run folders (open defect i)
+
+The UI Start path creates the Start's run identity; the start-worker wrapper
+(`install_japanese_stabilizer_hooks`, installed for every language) called
+`init_live_run_from_host` again, which always rotates: an empty run folder beside
+every run (`...-131613`, 38 files, next to `...-131614`), and the live session
+runtime left on the empty one (its Stop logged `RUNTIME_AUDIO_COUNTERS_FROZEN`
+for `...-131613`). **The change:** the wrapper reuses the Start's identity unless
+it belongs to a finished session. **Verified:** `tests/test_one_start_one_run_folder.py`
+(fails on 26.5.52); one mutant caught.
