@@ -336,6 +336,22 @@ class JapaneseBoundaryStabilizer:
         self._timer_release_count += 1
         return self._release_pending("pending_timeout_emit", commit_reason="boundary_pending_timer")
 
+    def release_pending_now(self, *, commit_reason: str = "") -> Optional[dict[str, Any]]:
+        """Release the held line now, as a newer line would. Item 54.
+
+        For the owner's punctuation-start merge, which joins a final starting
+        with 、/。 onto the line before it: while a line is held here, THAT is
+        the line before, not the last one published -- merged onto the older
+        one, the fragment's words landed ahead of the held line's (and a held
+        revision was committed a second time).
+        """
+        speaker = self._pending_speaker
+        released = self._release_pending("pending_superseded_emit", commit_reason=commit_reason)
+        if released is not None:
+            self._previous_line = str(released.get("output_text") or "")
+            self._previous_speaker = speaker
+        return released
+
     def _release_pending(self, reason: str, *, commit_reason: str = "") -> Optional[dict[str, Any]]:
         """Emit the held line on its own and clear the hold. Section 0b.
 
@@ -581,7 +597,14 @@ class JapaneseBoundaryStabilizer:
         speaker: Any = None,
         stop_flush: bool = False,
         timestamp: float | None = None,
+        revises_previous: bool = False,
     ) -> dict[str, Any]:
+        """`revises_previous`: the text already holds the previous line (the
+        stable layer's punctuation-start merge), so it is never merged with
+        that line again, and is a duplicate of it only if it adds nothing.
+        Item 54: after a line ending mid-clause (「資料の件については」),
+        「。はい、分かりました。」 was committed as
+        「資料の件については資料の件については。はい、分かりました。」."""
         if not JAPANESE_BOUNDARY_STABILIZER_ENABLED:
             cleaned, _ = cleanup_midline_punctuation(input_text)
             return self._build_result(
@@ -703,7 +726,19 @@ class JapaneseBoundaryStabilizer:
             and self._previous_line
             and previous_speaker_confirmed
         ):
-            ratio = duplicate_continuation_ratio(self._previous_line, text)
+            if revises_previous:
+                # Item 54: a revision holds the previous line by construction,
+                # so only a revision that adds nothing is a duplicate. Measured
+                # as a whole, 「。はい。」 joined onto a 38-character line scored
+                # 0.95 and the はい was dropped.
+                ratio = (
+                    1.0
+                    if compact_cjk_for_compare(text, "ja")
+                    == compact_cjk_for_compare(self._previous_line, "ja")
+                    else 0.0
+                )
+            else:
+                ratio = duplicate_continuation_ratio(self._previous_line, text)
             if ratio >= 0.95:
                 self._duplicate_suppressed_count += 1
                 _jp_log("DUPLICATE_CONTINUATION_SUPPRESSED", ratio=ratio)
@@ -740,6 +775,7 @@ class JapaneseBoundaryStabilizer:
 
         if (
             JAPANESE_SAFE_MERGE_ENABLED
+            and not revises_previous
             and previous_speaker_confirmed
             and self._previous_line
             and (is_leading or prev_incomplete or not has_strong_terminal_boundary(self._previous_line))

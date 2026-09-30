@@ -3043,3 +3043,95 @@ the rule (timeout at most half the interval) and the measurement, and
 "detects a dead socket within ~15s" was not measured either (9.5-25 s). A late
 pong is still a drop; tolerating one needs a different liveness signal (a data
 frame as proof of life), not a longer timeout.
+
+### Item 54 — a held revision was released as a second line
+
+Found by the replay of items 49-53. 「。ここでしっけ価格登録…」 starts with
+punctuation, so the stable layer merges it into the line before and marks the
+result a revision. The merged text starts with the particle か, so the boundary
+stabilizer holds it; the section 0b release (item 38) republished it with
+`stable_layer_update_previous=False`, and the export kept both 「…よね。」 and
+「…よね。ここでしっけ…」 (and that line's translation found no row). The fake
+speakers of item 50 had hidden it by blocking the merge. **The change:** the held
+context carries the flag and the release passes it. **Verified:**
+`tests/test_a_held_line_leaves_on_time.py` +2 (released by the timer, and by a
+newer line): both fail before; two mutants caught.
+
+**Reviewed 2026-09-30 (an independent reviewer per item, each claim reproduced
+through the real assembler, stabilizer, lifecycle and ledger, then re-run by two
+others): incomplete as first written.** The timer and a newer line were fixed;
+three other ways out of the hold still wrote the line twice, and the same seam
+had two older defects:
+
+* **Stop.** `flush("stop_listening")` republished the held revision through
+  `_route_stable_publish`, which could not be told it was one: the export ended
+  「…よね。」 and 「…よね。ここでしっけ…」. Now passed as `held_update_previous`.
+* **The next final merged into it** (`merge_pending_and_current`, e.g.
+  「で登録してから…」): the merged line kept the held raw ids but not the revision.
+  Now it does.
+* **A punctuation-start final while a line is held** was joined onto
+  `_last_stable_commit`, the line BEFORE the held one. With a held revision
+  that wrote the first line twice; with any held line it put the fragment's
+  words, and the older line, after later speech (「資料の件については今日はよろしく
+  お願いします。はい、…」, also on the code before item 49). The held line now goes
+  out first (`release_pending_now`) and the fragment joins it.
+* **A punctuation-start final after a line that ended mid-clause** was merged
+  with that line a second time by the stabilizer, which did not know the text
+  already held it: 「資料の件については資料の件については。はい、分かりました。」.
+  Before item 49 the old prefix collapse cut that repeat at commit and hid it;
+  item 49 stopped that collapse cutting real words, so it would now show. The
+  stabilizer is told (`revises_previous`) and does not merge it again. Checked
+  first that a general "current starts with previous" rule in `safe_merge_text`
+  would be wrong: two finals saying はい and はい、そうです are two things said.
+* **A short answer after a long line was dropped** (second review round, also
+  on the code before): the stabilizer's duplicate guard scored the joined text
+  against the line it contains -- 38 characters of it and a 2-character はい
+  score 0.95 -- and suppressed it. 「。はい。」 after a long sentence was lost.
+  For a revision only "adds nothing" is a duplicate now. 12 of the 6,188 raw
+  finals in the retained runs are that shape (a 1-4 character answer after 、/。).
+
+**Verified:** +6 tests (Stop; merged with the next final; a second
+punctuation-start final; a punctuation-start final while a line is held; after a
+line that ended mid-clause; はい after a long line), 8 for the item: 7 fail on
+the code before it; the mid-clause test passes there only because of the old
+collapse. Seven mutants, one per part, each caught.
+
+### Not changed
+
+* The in-app lineage report builds its line list from `stable_line_revision`'s
+  active lines while the sealed export comes from the frozen canonical ledger,
+  so the two can differ (a `LINEAGE_EXPORT_COVERAGE_FAILED` over a line the
+  export has). Report only; reconciling the two evidence sources is a larger
+  change than the false alarm is worth now.
+* Lines committed by `hold_timeout_safe_prefix` / `safe_chunk_boundary_commit`
+  still wait 11-14 s in the replay (5 lines, and one 47 s outlier); tuning holds
+  needs live measurement, not a replay.
+* Deepgram's own misrecognitions (「くだい」「設備後」, names) are unchanged; a
+  reference transcript (PENDING_TASKS 0h) and a names list (0f) are the owner's.
+
+### Measured: the same meeting, replayed
+
+The meeting's 178 recorded finals, sent at their recorded times into the real
+app, DeepL stubbed. The last column is production-faithful: the finals carry no
+speaker, as Deepgram sends them without diarization. Cells left empty were not
+kept for those two earlier replays.
+
+| | real meeting, 26.5.34 | replay, 26.5.34 | replay, 26.5.46 | replay, items 49-54 |
+|---|---|---|---|---|
+| final to commit, p50 / p90 | 8.6 / 24.3 s | 8.5 / 24.3 s | 3.3 / 11.0 s | 2.9 / 7.9 s |
+| lines committed more than 10 s late | 39 | | | 5 |
+| longest wait | 233 s | | | 47 s |
+| translations queued more than 5 s after commit | 7 | | | 0 |
+| `TRANSLATION_STORE_ID_MATCH_NOT_FOUND` | 17 | | | 0 |
+| export lines | 90 | | | 67 |
+| a line exported twice (the next line repeats it) | 1 | | | 0 |
+| window wiped by the ghost watchdog | 11 | | | 0 |
+| lineage coverage | FAILED | | | PASSED |
+
+The last column is the final code, after the review of 2026-09-30 (replayed
+again). Fewer export lines is not less text: sentences the fake speakers of item
+50 cut in two are one line again, lineage finds every commit in the export, and
+the export keeps 1,569 of the 1,577 characters Deepgram sent (the real meeting
+kept 1,564).
+Stop took 3.2 s, no dialog. Found by the replay of items 49-53 and fixed by
+item 54: one line exported twice and one `TRANSLATION_STORE_ID_MATCH_NOT_FOUND`.

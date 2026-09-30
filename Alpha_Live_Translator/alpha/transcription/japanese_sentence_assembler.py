@@ -1148,6 +1148,9 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
                             raw_fragments=list(held_ctx.get("raw_fragments") or []),
                             stop_incomplete=True,
                             force_release=True,
+                            held_update_previous=bool(
+                                held_ctx.get("stable_layer_update_previous")
+                            ),
                         )
                 except Exception:
                     pass
@@ -2360,7 +2363,7 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
                 boundary_type=str(ctx.get("boundary_type") or ""),
                 stop_incomplete=bool(ctx.get("stop_incomplete")),
                 incomplete_reason=str(ctx.get("incomplete_reason") or ""),
-                stable_layer_update_previous=False,
+                stable_layer_update_previous=bool(ctx.get("stable_layer_update_previous")),
             )
         except Exception as exc:
             self._quarantine_recovery_pending.append(
@@ -2483,6 +2486,7 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
         stop_incomplete: bool = False,
         incomplete_reason: str = "",
         force_release: bool = False,
+        held_update_previous: bool = False,
     ) -> None:
         if not JAPANESE_STABLE_ACCURACY_FIX_ENABLED:
             self._publish_sentence(
@@ -2613,7 +2617,8 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
             return
 
         metadata = dict(metadata)
-        update_previous = False
+        # Item 54: a held revision released at Stop is still a revision.
+        update_previous = bool(held_update_previous)
         merge_reason = ""
         if (
             STABLE_LAYER_SAFE_MERGE_ENABLED
@@ -2621,6 +2626,30 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
             and is_punctuation_start_fragment(segment)
         ):
             self._punctuation_start_count += 1
+            if JAPANESE_BOUNDARY_STABILIZER_ENABLED and not is_stop_flush:
+                # Item 54: a line the boundary stabilizer holds is newer than
+                # `_last_stable_commit`, so it goes out first and the fragment
+                # joins IT. Merged onto the older line instead, the fragment
+                # put that line's words after later speech, or committed a
+                # held revision's line a second time.
+                try:
+                    from alpha.transcription.japanese_boundary_stabilizer import (
+                        get_boundary_stabilizer,
+                    )
+
+                    released = get_boundary_stabilizer().release_pending_now(commit_reason=reason)
+                    if released is not None:
+                        held_ctx = self._boundary_pending_ctx
+                        self._boundary_pending_ctx = None
+                        self._schedule_boundary_release_locked(None)
+                        self._publish_boundary_release_locked(
+                            released, held_ctx, released_by="before_punctuation_start"
+                        )
+                except Exception as exc:
+                    jp_accuracy_log(
+                        "BOUNDARY_STABILIZER_CALL_FAILED",
+                        reason=f"{type(exc).__name__}:{exc}",
+                    )
             can_merge, merge_reason = can_merge_punctuation_with_previous(
                 segment,
                 self._last_stable_commit,
@@ -2697,6 +2726,10 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
                     "boundary_type": boundary_type,
                     "stop_incomplete": stop_incomplete,
                     "incomplete_reason": incomplete_reason,
+                    # Item 54: a held punctuation-start merge is a REVISION of
+                    # the line before; released without this it became a
+                    # second line beside the one it revises.
+                    "stable_layer_update_previous": update_previous,
                 }
                 held_ctx = self._boundary_pending_ctx
                 stab = stabilizer.process(
@@ -2710,6 +2743,7 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
                     previous_speaker=self._last_reliable_speaker,
                     speaker=speaker,
                     stop_flush=is_stop_flush,
+                    revises_previous=update_previous,
                 )
                 # Section 0b: a held line the stabilizer released on this call
                 # is older than this text and goes out first, with its own
@@ -2727,6 +2761,11 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
                     raw_fragments = list(held_ctx.get("raw_fragments") or []) + list(
                         raw_fragments or []
                     )
+                    # Item 54: and their revision -- the output still holds
+                    # the line the held text revises.
+                    if held_ctx.get("stable_layer_update_previous"):
+                        update_previous = True
+                        current_ctx["stable_layer_update_previous"] = True
                     held_ids = list(
                         (held_ctx.get("metadata") or {}).get("source_raw_event_ids") or []
                     )

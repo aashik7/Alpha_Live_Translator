@@ -119,7 +119,7 @@ class _Case(unittest.TestCase):
         ctl.reset_for_run("teardown-section0b")
         reset_for_session("teardown-section0b")
 
-    def commit(self, text, *, speaker=1, reason="hold_timeout_sentence_end_punctuation"):
+    def commit(self, text, *, speaker=1, reason="hold_timeout_sentence_end_punctuation", **kw):
         """One sentence leaving the assembler's buffer, as `_flush_locked` hands it on."""
         self.n += 1
         with self.asm._lock:
@@ -129,6 +129,7 @@ class _Case(unittest.TestCase):
                 {"source_raw_event_ids": [f"raw-{self.n}"]},
                 reason,
                 raw_fragments=[text],
+                **kw,
             )
 
     def tick(self, seconds):
@@ -168,6 +169,167 @@ class AHeldLineLeavesOnItsTimerTest(_Case):
         self.clock[0] += 10
         self.asm.try_release_boundary_pending(stale)
         self.assertEqual(self.host.published, [HELD, LATER], "each line exactly once")
+
+
+class AHeldRevisionStaysARevisionTest(_Case):
+    """Item 54 (2026-09-29), found replaying the owner's meeting of that day.
+
+    「。ここでしっけ…」 starts with punctuation, so the stable layer merges it
+    into the line before and marks the result a revision of that line. The
+    merged text starts with the particle か, so the boundary stabilizer holds
+    it -- and the release (section 0b) republished it with
+    `stable_layer_update_previous=False`: the export kept BOTH lines, 「…よね。」
+    and 「…よね。ここでしっけ…」, and the revised line's translation found no
+    row (`TRANSLATION_STORE_ID_MATCH_NOT_FOUND`)."""
+
+    FIRST = "かリザ、前、タレントデートの不具合なんかありましたよね。"
+    REST = "。ここでしっけ価格登録かどっかで。"
+
+    def test_released_by_the_timer(self):
+        self.commit(self.FIRST)
+        self.tick(4.1)
+        self.assertEqual([t for t, _i, _r in self.ledger()], [self.FIRST], "fixture")
+        self.commit(self.REST)
+        self.tick(4.1)
+        self.assertEqual(
+            [t for t, _i, _r in self.ledger()],
+            [self.FIRST + "ここでしっけ価格登録かどっかで。"],
+            "the held revision became a second line",
+        )
+
+    def test_released_by_a_newer_line(self):
+        self.commit(self.FIRST)
+        self.tick(4.1)
+        self.commit(self.REST)
+        self.commit(LATER)  # releases the held revision first
+        self.assertEqual(
+            [t for t, _i, _r in self.ledger()],
+            [self.FIRST + "ここでしっけ価格登録かどっかで。", LATER],
+        )
+
+    # Added 2026-09-30 by the review of item 54: the timer and a newer line
+    # were fixed, three more ways out of the hold were not.
+
+    def test_released_at_stop(self):
+        self.commit(self.FIRST)
+        self.tick(4.1)
+        self.commit(self.REST)
+        self.asm.flush("stop_listening")
+        self.assertEqual(
+            [t for t, _i, _r in self.ledger()],
+            [self.FIRST + "ここでしっけ価格登録かどっかで。"],
+        )
+
+    def test_merged_with_the_next_final(self):
+        nxt = "で登録してから確認する流れになっていたと思います。"
+        self.commit(self.FIRST)
+        self.tick(4.1)
+        self.commit(self.REST)
+        self.clock[0] += 1.0
+        self.commit(nxt)  # the stabilizer merges it into the held revision
+        self.tick(4.1)
+        self.assertEqual(
+            [t for t, _i, _r in self.ledger()],
+            [self.FIRST + "ここでしっけ価格登録かどっかで。" + nxt],
+        )
+
+    def test_a_second_punctuation_start_final(self):
+        self.commit(self.FIRST)
+        self.tick(4.1)
+        self.commit(self.REST)
+        self.clock[0] += 1.0
+        self.commit("。それで登録の画面を確認しました。")
+        self.tick(4.1)
+        self.assertEqual(
+            [t for t, _i, _r in self.ledger()],
+            [self.FIRST + "ここでしっけ価格登録かどっかで。それで登録の画面を確認しました。"],
+        )
+
+
+class APunctuationStartFinalJoinsTheNewestLineTest(_Case):
+    """Item 54's review, 2026-09-30.
+
+    The stable layer joins a final that starts with 、/。 onto
+    `_last_stable_commit`. While the boundary stabilizer held a newer line,
+    that was the wrong line: the fragment's words went in front of the held
+    line's (fails on the code before item 49 too). And a line that had ended
+    mid-clause was merged in again by the stabilizer, which did not know the
+    text already held it: 「資料の件については資料の件については。…」. Before
+    item 49 the old prefix collapse cut that repeat at commit, so it never
+    showed; item 49 stopped that collapse cutting real words, so now it would."""
+
+    A = "今日はよろしくお願いします。"
+    MID = "資料の件については"  # ends mid-clause: the stabilizer holds it
+
+    def setUp(self):
+        super().setUp()
+        self.commit(self.A)
+        self.tick(4.1)
+        self.commit(self.MID, force_release=True)  # past the stable layer's own hold
+        self.assertEqual([t for t, _i, _r in self.ledger()], [self.A], "fixture: held")
+
+    def test_while_a_newer_line_is_held(self):
+        self.clock[0] += 1.0
+        self.commit("。はい、分かりました。")
+        self.tick(4.1)
+        self.assertEqual(
+            [t for t, _i, _r in self.ledger()],
+            [self.A, self.MID + "。はい、分かりました。"],
+        )
+
+    def test_after_a_line_that_ended_mid_clause(self):
+        self.tick(4.1)  # the held line goes out on its own
+        self.clock[0] += 1.0
+        self.commit("。はい、分かりました。")
+        self.assertEqual(
+            [t for t, _i, _r in self.ledger()],
+            [self.A, self.MID + "。はい、分かりました。"],
+            "the line before was merged in a second time",
+        )
+
+
+class AShortAnswerAfterALongLineIsKeptTest(_Case):
+    """Review of item 54, also on the code before it: the text a
+    punctuation-start final makes by joining the line before was scored as a
+    duplicate of that line -- 38 characters of it against a 2-character はい
+    scored 0.95 -- and dropped."""
+
+    def test_hai_after_a_long_line(self):
+        long_line = "本日の定例会議では来月のリリース計画と品質保証の進め方について詳しく確認しました。"
+        self.commit(long_line)
+        self.tick(4.1)
+        self.clock[0] += 1.0
+        self.commit("。はい。")
+        self.assertEqual(
+            [t for t, _i, _r in self.ledger()],
+            [long_line + "はい。"],
+            "the はい was dropped as a duplicate of the line it joined",
+        )
+
+    def test_only_punctuation_adds_nothing(self):
+        self.commit(LATER)
+        self.tick(4.1)
+        self.commit("。")
+        self.assertEqual([t for t, _i, _r in self.ledger()], [LATER])
+
+
+class ACommittedLineIsNotRewrittenTest(_Case):
+    """Review of item 51, 2026-09-30, also on the code before it: joining
+    「。はい、そうです。」 onto a committed 「…けど、」 changed that line's 、 to
+    。, the result no longer started with the committed line, and it was
+    committed a second time: the export held 「…けど、」 AND 「…けど。はい…」."""
+
+    def test_a_line_ending_in_a_comma(self):
+        line = "今日の会議では予算について話しましたけど、"
+        self.commit(line)
+        self.tick(4.1)
+        self.clock[0] += 1.0
+        self.commit("。はい、そうです。")
+        self.tick(4.1)
+        self.assertEqual(
+            [t for t, _i, _r in self.ledger()],
+            [line + "はい、そうです。"],
+        )
 
 
 class TheTimerSurvivesAnAssemblerFlushTest(unittest.TestCase):
