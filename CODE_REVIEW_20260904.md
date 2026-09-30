@@ -3135,3 +3135,29 @@ the export keeps 1,569 of the 1,577 characters Deepgram sent (the real meeting
 kept 1,564).
 Stop took 3.2 s, no dialog. Found by the replay of items 49-53 and fixed by
 item 54: one line exported twice and one `TRANSLATION_STORE_ID_MATCH_NOT_FOUND`.
+
+---
+
+## Items 55-61 — the review of items 49-54, and the pending list
+
+The owner asked for every pending issue to be fixed. A code review of the
+shipped 26.5.52 found that item 50 (one speaker without diarization) had removed
+an accidental gate two guards relied on; the rest are the open defects of
+PENDING_TASKS section 4 that code can close. Each was reproduced on the real
+code first, and each test below fails on 26.5.52.
+
+### Item 55 — a reply that repeats the line before was dropped
+
+The boundary stabilizer drops a line that equals the start or end of the
+previous one, meant for a re-send. It was gated only on "same speaker". Without
+diarization the old speaker guess changed after any 4 s pause, which by accident
+let a later reply through; item 50 made every line speaker 1, so on 26.5.52 the
+other side's 「ありがとうございました。」, a 「はい。」 after 「はい、分かりました。…」, or
+「送ります。」 were dropped however late they came. The retained Japanese runs hold
+9 pairs of consecutive finals of that shape, 3.8-10.4 s apart, all speech; the
+guard had fired on one old record in all of them (an identical sentence 10.4 s
+later). Deepgram's finals never cover the same audio twice. **The change:** only
+a repeat arriving within `DUPLICATE_RESEND_WINDOW_S` (1 s) of the last line let
+out is a re-send. **Verified:** `tests/test_a_reply_is_not_a_duplicate.py` (the
+three replies fail on 26.5.52; a same-moment re-send is still dropped); two
+mutants caught.

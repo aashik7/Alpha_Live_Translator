@@ -230,6 +230,11 @@ def safe_merge_text(previous: str, current: str) -> tuple[str, str, bool]:
     return cur, "uncertain", False
 
 
+# Item 55 (2026-09-30): a re-send of the line just let out arrives with it, in
+# the same flush; a repeat that comes later is someone saying it again.
+DUPLICATE_RESEND_WINDOW_S = 1.0
+
+
 def duplicate_continuation_ratio(previous: str, current: str) -> float:
     prev_c = compact_cjk_for_compare(previous or "", "ja")
     cur_c = compact_cjk_for_compare(current or "", "ja")
@@ -270,6 +275,7 @@ class JapaneseBoundaryStabilizer:
         self._pending_speaker: Any = None
         self._previous_line = ""
         self._previous_speaker: Any = None
+        self._last_output_mono = 0.0
         self._input_count = 0
         self._output_count = 0
         self._held_count = 0
@@ -425,6 +431,7 @@ class JapaneseBoundaryStabilizer:
             self._translation_ready_before += 1
 
     def _record_output_metrics(self, text: str) -> None:
+        self._last_output_mono = time.monotonic()  # item 55: every line this lets out
         if is_leading_fragment_line(text)[0]:
             self._leading_after += 1
         if re.search(r"。、|、。|\.\.|、、", text or ""):
@@ -737,8 +744,20 @@ class JapaneseBoundaryStabilizer:
                     == compact_cjk_for_compare(self._previous_line, "ja")
                     else 0.0
                 )
-            else:
+            elif (
+                self._last_output_mono
+                and now - self._last_output_mono <= DUPLICATE_RESEND_WINDOW_S
+            ):
                 ratio = duplicate_continuation_ratio(self._previous_line, text)
+            else:
+                # Item 55: later than that it is new speech. Deepgram's finals
+                # never cover the same audio twice, so a line that repeats the
+                # start or end of the last one after a pause is someone saying
+                # it -- 「ありがとうございました。」 thanked back, 「はい。」 after
+                # 「はい、分かりました。…」. Only the speaker label kept those
+                # before: without diarization it changed after any 4 s pause,
+                # and item 50 made every line speaker 1.
+                ratio = 0.0
             if ratio >= 0.95:
                 self._duplicate_suppressed_count += 1
                 _jp_log("DUPLICATE_CONTINUATION_SUPPRESSED", ratio=ratio)
