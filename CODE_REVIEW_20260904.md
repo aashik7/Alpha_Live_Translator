@@ -2962,3 +2962,15 @@ cutting cost a sentence. Of now 133 historical inputs, 119 stay as said; the 14
 that change are separated restarts and exact repeats (サンプル、サンプル,
 さようなら。さようなら。). +6 cases, the production cleanups now run both lists;
 three mutants caught (number guard, sentence-end guard, "goes on").
+
+### Item 50 — without diarization, pauses became speaker changes
+
+Japanese (profile `no_diarize`) and English (`ENGLISH_DIARIZATION_ENABLED =
+False`) ask Deepgram for no diarization, so every speaker came from
+`_fallback_speaker_detection`, which rotated 1 -> 2 -> 3 -> 4 after any 4 s
+without a Results message. The assembler treats a speaker change as a hard
+boundary: that meeting had 45 flips, 20 mid-sentence (「メインで」 / 「はこれです。」
+translated "As the main one," / "This is my go-to."). **The change:** no speaker
+data means one speaker. **Verified:** `tests/test_no_diarization_means_one_speaker.py`
+(3; 2 fail before: `[1, 2, 3] != [1, 1, 1]`); a response that does carry
+speakers still splits by them.

@@ -1,7 +1,5 @@
 """Nova-3 speaker diarization and mid-utterance speaker splitting."""
 
-import time
-
 
 class SpeakerDetectionMixin:
     """Mixin providing speaker extraction from Deepgram Nova-3 responses."""
@@ -73,25 +71,16 @@ class SpeakerDetectionMixin:
                 return [{"speaker": 1, "text": ""}]
 
     def _fallback_speaker_detection(self):
-            """Time-based fallback ONLY when no diarization metadata exists."""
-            current_time = time.time()
+            """The speaker when the provider sent no diarization: one speaker.
 
-            if not hasattr(self, "last_speech_time"):
-                self.last_speech_time = current_time
-                self.fallback_speaker = 1
-                return 1
-
-            time_gap = current_time - self.last_speech_time
-            self.last_speech_time = current_time
-
-            if time_gap > 4.0:
-                if not hasattr(self, "fallback_speaker"):
-                    self.fallback_speaker = 1
-                self.fallback_speaker = (self.fallback_speaker % 4) + 1
-                print(
-                    f"[Speaker] Fallback (gap {time_gap:.1f}s): "
-                    f"Speaker {self.fallback_speaker}"
-                )
-                return self.fallback_speaker
-
-            return getattr(self, "fallback_speaker", 1)
+            Item 50 (2026-09-29). This rotated the speaker 1 -> 2 -> 3 -> 4
+            whenever 4 s passed without a Results message, and Japanese and
+            English both run without diarization, so every speaker label was a
+            guess from pauses -- and the Japanese assembler treats a speaker
+            change as a hard boundary. A pause split sentences in half (the
+            owner's meeting of 2026-09-29: 45 flips, 20 mid-sentence), each half
+            translated alone. Replayed on that meeting's own finals, one speaker
+            gave 68 lines instead of 96 and halved the lines shown >10 s late.
+            Nothing here knows who is talking, so it says one person is.
+            """
+            return 1
