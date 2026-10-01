@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-APP_VERSION = "3.3.5.5.8.5.26.5.59"
+APP_VERSION = "3.3.5.5.8.5.26.5.60"
 APP_CODENAME = "Preserve Real Silence Multi-Stream Retention"
 FROZEN_INFRASTRUCTURE_BASELINE = "3.3.5.5.8.5.25.3.3.2.8"
 
@@ -623,6 +623,14 @@ JAPANESE_CONTINUITY_MAX_HOLD_MS = 8000
 # split in two, never a word lost.
 JAPANESE_SPEECH_FINAL_SENTENCE_COMMIT_ENABLED = True
 JAPANESE_EMERGENCY_LAST_FRAG_GRACE_MS = 3500
+# Item 64 (2026-10-01): off. The quarantine held a short fragment that came
+# after 15 s without a commit as possible noise. Since item 43 every held
+# fragment is committed anyway, so it only delayed it (8 s, then until the next
+# final), put it after later speech, and lost its lineage. In 11 retained live
+# runs it held 73 fragments: 72 were speech, one was a bare 「、」. In the live
+# meeting of 2026-10-01, 14 of 14 were speech, and 「画面の画面に表示する」 was
+# exported after the 「ラベル名は」 spoken after it.
+JAPANESE_NOISE_QUARANTINE_ENABLED = False
 JAPANESE_NOISE_QUARANTINE_SILENCE_S = 15.0
 JAPANESE_NOISE_QUARANTINE_MAX_COMPACT = 20
 JAPANESE_NOISE_QUARANTINE_RELEASE_COMPACT = 25

@@ -24,6 +24,8 @@ and the worker's timer heap are stand-ins, run in time order.
 * a short buffer past 8 s leaves once it is 12 s old, with no further speech
 * a lone short fragment followed by silence leaves too
 * a buffer that is still growing is not cut by the re-armed timer
+* speech after a silence keeps its order and is not held as noise (item 64)
+* a final of only 、/。 joins a sentence being built but is never a line (item 64)
 """
 
 import sys
@@ -215,6 +217,57 @@ class AShortBufferPastItsHoldLeavesTest(_Case):
             any("画面の" in text for _t, text in shown),
             f"the held text never left without another final: {shown}",
         )
+
+
+class SpeechAfterASilenceIsNotQuarantinedTest(_Case):
+    """Item 64. Live meeting of 2026-10-01: after 18 s without a commit,
+    「きれいですっ」, 「画面の」 and 「画面に表示する」 were held as noise for 8 s,
+    came back only with the next final, and reached the export after the
+    later 「ラベル名は」. In 11 retained live runs the quarantine held 73
+    fragments: 72 were speech, one was a bare 「、」, and since item 43 every
+    one is committed anyway -- it only delayed and reordered them."""
+
+    def test_the_words_keep_their_order_and_leave(self):
+        self.final("分かりました。")
+        self.advance(20.0)  # longer than JAPANESE_NOISE_QUARANTINE_SILENCE_S
+        for gap, piece in ((0.0, "きれいですっ"), (1.6, "画面の"), (8.3, "画面に表示する"), (4.6, "ラベル名は")):
+            self.advance(gap)
+            self.final(piece)
+        self.advance(40.0)  # nobody speaks again
+        latest = self.shown()[-1][1] if self.shown() else ""
+        self.assertIn("きれいですっ画面の画面に表示するラベル名は", latest, self.shown())
+
+
+class PunctuationAloneIsNotALineTest(_Case):
+    """Item 64. Without the quarantine a bare 「、」 would reach the screen as a
+    line -- as it already did after a short pause: 4 export lines 「。」 in the
+    retained runs."""
+
+    def test_after_a_silence_and_after_a_short_pause(self):
+        for silence in (20.0, 5.0):
+            with self.subTest(silence=silence):
+                self.setUp()
+                self.final("分かりました。")
+                self.advance(silence)
+                self.final("、")
+                self.advance(20.0)
+                self.final("今日はありがとうございました。")
+                self.advance(10.0)
+                self.assertEqual(
+                    [text for _t, text in self.shown()],
+                    ["分かりました。", "今日はありがとうございました。"],
+                )
+                self.assertFalse(self.asm._assembler_commit_gate_failed)
+                self.tearDown()
+
+    def test_it_still_joins_a_sentence_being_built(self):
+        self.final("今日は", speech_final=False)
+        self.advance(0.5)
+        self.final("、", speech_final=False)
+        self.advance(0.5)
+        self.final("ありがとうございました。")
+        self.advance(10.0)
+        self.assertEqual([text for _t, text in self.shown()], ["今日は、ありがとうございました。"])
 
 
 class AGrowingBufferIsNotCutTest(_Case):

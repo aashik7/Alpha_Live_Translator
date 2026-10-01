@@ -25,6 +25,7 @@ from alpha.constants import (
     JAPANESE_EMERGENCY_LAST_FRAG_GRACE_MS,
     JAPANESE_LIST_LESSON_CONTEXT_CUES,
     JAPANESE_NOISE_QUARANTINE_DROP_S,
+    JAPANESE_NOISE_QUARANTINE_ENABLED,
     JAPANESE_NOISE_QUARANTINE_MAX_COMPACT,
     JAPANESE_NOISE_QUARANTINE_RELEASE_COMPACT,
     JAPANESE_NOISE_QUARANTINE_SILENCE_S,
@@ -708,6 +709,10 @@ def _merge_ordered_lineage_ids(*sources: Any) -> list[str]:
     return ordered
 
 
+def _has_word_characters(text: str) -> bool:
+    return bool(count_japanese_chars(text)) or any(ch.isalnum() for ch in text)
+
+
 def _extract_lineage_from_metadata(metadata: dict[str, Any]) -> list[str]:
     meta = metadata or {}
     return _merge_ordered_lineage_ids(
@@ -1265,6 +1270,17 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
         elif not bypass_quarantine and self._should_quarantine(fragment):
             self._quarantine_fragment(speaker, fragment, raw_orig)
             return
+
+        if not _has_word_characters(fragment):
+            # Item 64: a final of only 、/。 joins a sentence still being built,
+            # but never becomes a line by itself. 11 of 6,444 retained finals;
+            # 4 reached the export as a line 「。」. The quarantine hid this only
+            # after 15 s of silence.
+            with self._lock:
+                joins_a_buffer = bool(self._buffer)
+            if not joins_a_buffer:
+                jp_accuracy_log("PUNCTUATION_ONLY_FRAGMENT_DROPPED", raw_text=raw_orig)
+                return
 
         with self._lock:
             prepared_metadata = _prepare_assembler_ingress_metadata(
@@ -2181,8 +2197,7 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
         character to reach the commit path. Anything rejected here is still
         logged explicitly by the caller, never dropped silently.
         """
-        text = str(entry.get("text") or entry.get("raw") or "")
-        return bool(count_japanese_chars(text)) or any(ch.isalnum() for ch in text)
+        return _has_word_characters(str(entry.get("text") or entry.get("raw") or ""))
 
     def _drain_quarantine_recovery(self) -> None:
         """Commit fragments whose quarantine expired. MUST run unlocked.
@@ -2860,6 +2875,8 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
         return sys_rms < SYSTEM_ACTIVE_RMS_MIN and mic_rms < MIC_ACTIVE_RMS_MIN
 
     def _should_quarantine(self, fragment: str) -> bool:
+        if not JAPANESE_NOISE_QUARANTINE_ENABLED:  # item 64, see constants.py
+            return False
         if BUSINESS_PHRASE_PROTECTION_ENABLED and is_protected_business_phrase(fragment):
             jp_accuracy_log(
                 "BUSINESS_PHRASE_PROTECTED_FROM_DROP",
