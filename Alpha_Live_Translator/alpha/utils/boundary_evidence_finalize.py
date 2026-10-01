@@ -34,14 +34,6 @@ def _resolve_run_folder(run_folder: Path | None = None) -> Path | None:
     if run_folder and run_folder.exists():
         return run_folder
     try:
-        from alpha.utils.troubleshooting_paths import get_run_folder
-
-        run = get_run_folder()
-        if run:
-            return Path(run)
-    except Exception:
-        pass
-    try:
         from alpha.utils.run_identity import get_current_run_identity
 
         ident = get_current_run_identity()
@@ -67,11 +59,11 @@ def finalize_boundary_decisions(run_folder: Path) -> dict[str, str]:
     _jp_log("BOUNDARY_DECISIONS_FINALIZATION_STARTED")
     final_path = run_folder / "accuracy" / "boundary_stabilizer_decisions.jsonl"
     final_path.parent.mkdir(parents=True, exist_ok=True)
-    pending = Path("troubleshooting/runs/_pending/accuracy/boundary_stabilizer_decisions.jsonl")
-    if pending.exists():
-        shutil.copy2(pending, final_path)
-        _jp_log("BOUNDARY_DECISIONS_COPIED_FROM_PENDING", src=str(pending))
-    elif not final_path.exists():
+    # Item 68: the stabilizer writes its decisions into the run folder. The
+    # shared `_pending` file is never copied in: it held every run since
+    # 2026-08, and copying it over this run's own file put 5,500 other runs'
+    # decisions into every run (only 155 lines of 2026-10-01's file were its own).
+    if not final_path.exists():
         final_path.write_text("", encoding="utf-8")
     paths["boundary_decisions_path"] = str(final_path).replace("\\", "/")
     latest = _mirror_latest(final_path, "boundary_stabilizer_decisions.jsonl")

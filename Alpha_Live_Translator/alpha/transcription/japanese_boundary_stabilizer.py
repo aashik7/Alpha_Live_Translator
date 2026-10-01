@@ -16,7 +16,6 @@ from alpha.constants import (
     BOUNDARY_STABILIZER_PENDING_MERGE_MAX_CHARS,
     BOUNDARY_STABILIZER_SAFE_MERGE_MAX_CHARS,
     BOUNDARY_MERGE_REVISION_ENABLED,
-    BOUNDARY_SUMMARY_PATH_FIX_ENABLED,
     JAPANESE_BOUNDARY_DECISION_LOG_ENABLED,
     JAPANESE_BOUNDARY_STABILIZER_ENABLED,
     JAPANESE_BOUNDARY_STABILIZER_MODE,
@@ -127,9 +126,11 @@ def _run_id() -> str:
 
 
 def _decision_log_path() -> Path:
+    # Item 68: `get_run_folder` lives in run_identity. Imported from
+    # troubleshooting_paths it raised ImportError, so every run since 2026-08
+    # appended its decisions to one shared `_pending` file (5,700 lines, 23 runs).
     try:
-        from alpha.constants import BOUNDARY_SUMMARY_PATH_FIX_ENABLED
-        from alpha.utils.troubleshooting_paths import get_run_folder
+        from alpha.utils.run_identity import get_run_folder
 
         run = get_run_folder()
         if run:
@@ -141,7 +142,7 @@ def _decision_log_path() -> Path:
 
 def _summary_path() -> Path:
     try:
-        from alpha.utils.troubleshooting_paths import get_run_folder
+        from alpha.utils.run_identity import get_run_folder
 
         run = get_run_folder()
         if run:
@@ -1025,15 +1026,6 @@ class JapaneseBoundaryStabilizer:
         if extra_fields:
             summary.update(extra_fields)
         path = _summary_path()
-        if BOUNDARY_SUMMARY_PATH_FIX_ENABLED:
-            try:
-                from alpha.utils.troubleshooting_paths import get_run_folder
-
-                run = get_run_folder()
-                if run:
-                    path = Path(run) / "accuracy" / "boundary_stabilizer_summary.json"
-            except Exception:
-                pass
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
         _jp_log("BOUNDARY_STABILIZER_SUMMARY_WRITTEN", path=str(path))
