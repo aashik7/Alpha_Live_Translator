@@ -851,6 +851,7 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
         # and is regenerated on every "append" (a genuinely new committed
         # line) -- Japanese had no such identity before this fix.
         self._current_canonical_utterance_id: str = ""
+        self._current_canonical_channel: Any = None  # item 65
         self._current_source_version: int = 0
         self._last_stable_source_raw_event_ids: list[str] = []
         self._assembler_commit_gate_failed: bool = False
@@ -1028,6 +1029,7 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
             self._stable_line_counter = 0
             self._last_stable_line_id = ""
             self._current_canonical_utterance_id = ""
+            self._current_canonical_channel = None
             self._current_source_version = 0
             self._last_stable_source_raw_event_ids = []
             self._assembler_commit_gate_failed = False
@@ -4629,12 +4631,21 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
                     if (update_previous_requested and revise_is_safe)
                     else "commit_new"
                 )
+                candidate_channel = metadata.get("channel_index", metadata.get("channel"))
                 if proposed_action == "revise_previous" and self._current_canonical_utterance_id:
                     self._current_source_version += 1
+                    # Item 65: the line is registered under the channel it was
+                    # committed on, and the identity registry keys on it. Text
+                    # that lost its metadata on the way (a fragment back from
+                    # quarantine, live 2026-10-01) looked the line up under ""
+                    # instead of "[0, 1]", missed it, and was committed as a
+                    # second copy -- the run-on line exported three times.
+                    proposal_channel = self._current_canonical_channel
                 else:
                     proposed_action = "commit_new"
                     self._current_canonical_utterance_id = f"jp-utt-{uuid.uuid4().hex[:12]}"
                     self._current_source_version = 1
+                    proposal_channel = candidate_channel
                 metadata["canonical_utterance_id"] = self._current_canonical_utterance_id
                 metadata["source_version"] = self._current_source_version
 
@@ -4646,7 +4657,7 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
                     action=proposed_action,
                     text=cleaned,
                     speaker=speaker,
-                    channel=metadata.get("channel_index", metadata.get("channel")),
+                    channel=proposal_channel,
                     canonical_utterance_id=self._current_canonical_utterance_id,
                     source_version=self._current_source_version,
                     revision_target_id=str(
@@ -4693,11 +4704,12 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
                     # and let a brand-new line overwrite the previous one --
                     # the item 20b failure shape.
                     metadata["stable_layer_update_previous"] = False
+                    proposal_channel = candidate_channel
                     proposal_result = controller.accept_boundary_proposal(
                         action="commit_new",
                         text=cleaned,
                         speaker=speaker,
-                        channel=metadata.get("channel_index", metadata.get("channel")),
+                        channel=proposal_channel,
                         canonical_utterance_id=self._current_canonical_utterance_id,
                         source_version=self._current_source_version,
                         revision_target_id="",
@@ -4716,6 +4728,7 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
                         text_preview=cleaned[:120],
                     )
                     return
+                self._current_canonical_channel = proposal_channel
                 metadata = dict(proposal_result.get("metadata") or metadata)
                 metadata["canonical_utterance_id"] = self._current_canonical_utterance_id
                 metadata["source_version"] = self._current_source_version
