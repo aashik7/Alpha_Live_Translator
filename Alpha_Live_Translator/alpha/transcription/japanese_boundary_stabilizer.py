@@ -12,6 +12,7 @@ from alpha.constants import (
     APP_VERSION,
     BOUNDARY_STABILIZER_HOLD_MS_DEFAULT,
     BOUNDARY_STABILIZER_HOLD_MS_MAX,
+    BOUNDARY_STABILIZER_MERGE_MAX_PAUSE_S,
     BOUNDARY_STABILIZER_LEADING_FRAGMENT_MAX_CHARS,
     BOUNDARY_STABILIZER_PENDING_MERGE_MAX_CHARS,
     BOUNDARY_STABILIZER_SAFE_MERGE_MAX_CHARS,
@@ -606,13 +607,18 @@ class JapaneseBoundaryStabilizer:
         stop_flush: bool = False,
         timestamp: float | None = None,
         revises_previous: bool = False,
+        pause_before_s: float | None = None,
     ) -> dict[str, Any]:
         """`revises_previous`: the text already holds the previous line (the
         stable layer's punctuation-start merge), so it is never merged with
         that line again, and is a duplicate of it only if it adds nothing.
         Item 54: after a line ending mid-clause (「資料の件については」),
         「。はい、分かりました。」 was committed as
-        「資料の件については資料の件については。はい、分かりました。」."""
+        「資料の件については資料の件については。はい、分かりました。」.
+
+        `pause_before_s`: the pause in speech before this text (item 69), None
+        when unknown; above `BOUNDARY_STABILIZER_MERGE_MAX_PAUSE_S` the text is
+        not merged into the previous line."""
         if not JAPANESE_BOUNDARY_STABILIZER_ENABLED:
             cleaned, _ = cleanup_midline_punctuation(input_text)
             return self._build_result(
@@ -793,10 +799,14 @@ class JapaneseBoundaryStabilizer:
         is_leading, particle = is_leading_fragment_line(text)
         prev_incomplete = has_incomplete_ending(self._previous_line)[0] if self._previous_line else False
 
+        resumed_after_a_pause = (
+            pause_before_s is not None and pause_before_s > BOUNDARY_STABILIZER_MERGE_MAX_PAUSE_S
+        )
         if (
             JAPANESE_SAFE_MERGE_ENABLED
             and not revises_previous
             and previous_speaker_confirmed
+            and not resumed_after_a_pause
             and self._previous_line
             and (is_leading or prev_incomplete or not has_strong_terminal_boundary(self._previous_line))
         ):

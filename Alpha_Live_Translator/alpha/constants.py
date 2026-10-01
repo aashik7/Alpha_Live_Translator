@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-APP_VERSION = "3.3.5.5.8.5.26.5.63"
+APP_VERSION = "3.3.5.5.8.5.26.5.64"
 APP_CODENAME = "Preserve Real Silence Multi-Stream Retention"
 FROZEN_INFRASTRUCTURE_BASELINE = "3.3.5.5.8.5.25.3.3.2.8"
 
@@ -537,6 +537,12 @@ JAPANESE_STOP_FLUSH_BOUNDARY_SAFE = True
 BOUNDARY_STABILIZER_HOLD_MS_DEFAULT = 2500
 BOUNDARY_STABILIZER_HOLD_MS_MAX = 4000
 BOUNDARY_STABILIZER_SAFE_MERGE_MAX_CHARS = 160
+# Item 69 (2026-10-01): text after a longer pause in speech (Deepgram audio time,
+# end of the previous line to the start of this text) is not merged into the
+# previous line. Before item 50 the fallback speaker changed after a 4 s gap and
+# blocked these merges by accident; without it a line grew for 60 s in the live
+# meeting of 2026-10-01 (8 of 31 merges came after a pause over 4 s, up to 42 s).
+BOUNDARY_STABILIZER_MERGE_MAX_PAUSE_S = 4.0
 BOUNDARY_STABILIZER_PENDING_MERGE_MAX_CHARS = 180
 BOUNDARY_STABILIZER_LEADING_FRAGMENT_MAX_CHARS = 45
 BOUNDARY_MERGE_REVISION_ENABLED = True

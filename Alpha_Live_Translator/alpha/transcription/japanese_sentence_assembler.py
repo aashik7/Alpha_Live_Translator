@@ -709,6 +709,17 @@ def _merge_ordered_lineage_ids(*sources: Any) -> list[str]:
     return ordered
 
 
+def _speech_pause_s(previous_end: Any, start: Any) -> Optional[float]:
+    """Item 69: Deepgram audio time from the end of the previous line to the
+    start of this text. None when either is unknown, or negative because the
+    provider's clock restarted (a reconnect)."""
+    try:
+        pause = float(start) - float(previous_end)
+    except (TypeError, ValueError):
+        return None
+    return pause if pause >= 0 else None
+
+
 def _has_word_characters(text: str) -> bool:
     return bool(count_japanese_chars(text)) or any(ch.isalnum() for ch in text)
 
@@ -2764,6 +2775,10 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
                     speaker=speaker,
                     stop_flush=is_stop_flush,
                     revises_previous=update_previous,
+                    pause_before_s=_speech_pause_s(
+                        (self._last_stable_commit or {}).get("audio_end_time"),
+                        metadata.get("first_start_time", metadata.get("start_time")),
+                    ),
                 )
                 # Section 0b: a held line the stabilizer released on this call
                 # is older than this text and goes out first, with its own
@@ -3289,6 +3304,11 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
                 "speech_final_last_fragment": metadata.get("speech_final"),
             }
             buf["metadata"]["source_raw_event_ids"] = list(incoming_ids)
+            # Item 69: where this text starts in the audio. The merge below
+            # overwrites start_time with each newer fragment's.
+            buf["metadata"]["first_start_time"] = metadata.get(
+                "first_start_time", metadata.get("start_time")
+            )
             self._buffer = buf
             self._last_buffer_speaker = speaker
             jp_accuracy_log(
@@ -4327,6 +4347,10 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
             metadata = dict(metadata)
             metadata["start_time"] = md_timing.get("start_time")
             metadata["end_time"] = md_timing.get("end_time", metadata.get("end_time"))
+        # Item 69: kept for `_last_stable_commit`. The lifecycle proposal below
+        # replaces `metadata` with its own, which has no audio times (so that
+        # record's start_time/end_time are None).
+        commit_end_time = metadata.get("end_time")
         revision_decision: dict[str, Any] = {"action": "append", "reason": "default"}
         final_revision_action = "append"
         decision_reason = ""
@@ -5192,6 +5216,7 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
             "end_time": _commit_md.get("end_time", _nested_md.get("end_time")),
             "utterance_id": _commit_md.get("utterance_id", _nested_md.get("utterance_id")),
             "segment_id": _commit_md.get("segment_id", _nested_md.get("segment_id")),
+            "audio_end_time": commit_end_time,  # item 69, read by the pause check
         }
         canonical_record_id = str(
             metadata.get("canonical_record_id")
