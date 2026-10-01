@@ -82,6 +82,8 @@ from alpha.utils.japanese_accuracy_log import (
 
 SENTENCE_HOLD_MIN_MS = 2000
 SENTENCE_HOLD_MAX_MS = 3500
+# A buffer held this long is committed even when short (`_check_emergency_commit`).
+_VERY_OLD_STUCK_HOLD_MS = JAPANESE_CONTINUITY_MAX_HOLD_MS + 4000
 TARGET_CHUNK_MIN_COMPACT = 45
 TARGET_CHUNK_MAX_COMPACT = 90
 MAX_BUFFER_COMPACT_LEN = 120
@@ -1812,7 +1814,7 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
             or part_count >= JAPANESE_CONTINUITY_MAX_PARTS
         )
         hard_time = hold_ms >= JAPANESE_CONTINUITY_MAX_HOLD_MS
-        very_old_stuck = hold_ms >= (JAPANESE_CONTINUITY_MAX_HOLD_MS + 4000)
+        very_old_stuck = hold_ms >= _VERY_OLD_STUCK_HOLD_MS
 
         if not hard_size and not hard_time:
             return False
@@ -2245,7 +2247,7 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
         due = time.monotonic() + max(0.001, hold_ms / 1000.0)
         from alpha.utils.language_pipeline_worker import get_language_pipeline_worker
 
-        get_language_pipeline_worker().schedule_flush(
+        get_language_pipeline_worker().schedule_stable_hold_release(
             self,
             due,
             generation,
@@ -3588,7 +3590,14 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
         hold_elapsed = self._buffer_hold_ms(buf)
         if incomplete:
             if hold_elapsed >= JAPANESE_CONTINUITY_MAX_HOLD_MS:
-                self._check_emergency_commit(buf)
+                # Item 62: the emergency check above declined (a short buffer
+                # before it is very old, or a fragment still too recent), so
+                # ask it again later. Returning without a timer left the text
+                # waiting for the next final or Stop: 28 s in the live meeting
+                # of 2026-10-01, and forever for a lone 「画面の」 before silence.
+                self._rearm_continuity_hold_locked(
+                    _VERY_OLD_STUCK_HOLD_MS - hold_elapsed, inc_reason
+                )
                 return
             prefix, tail, bname, btype = find_commit_boundary(text)
             if (
@@ -3613,21 +3622,25 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
                 held_fragment_reason=inc_reason,
                 hold_ms=int(hold_elapsed),
             )
-            remaining = max(500, int(JAPANESE_CONTINUITY_MAX_HOLD_MS - hold_elapsed))
-            self._schedule_flush(min(SENTENCE_HOLD_MAX_MS, remaining), inc_reason)
-            flush_due = self._pending_flush_due_mono
-            flush_gen = self._pending_flush_generation
-            flush_reason = self._pending_flush_reason
-            if flush_due is not None:
-                from alpha.utils.language_pipeline_worker import (
-                    get_language_pipeline_worker,
-                )
-
-                get_language_pipeline_worker().schedule_flush(
-                    self, flush_due, flush_gen, flush_reason
-                )
+            self._rearm_continuity_hold_locked(
+                JAPANESE_CONTINUITY_MAX_HOLD_MS - hold_elapsed, inc_reason
+            )
             return
         self._flush_locked(f"hold_timeout_{reason}", force=True)
+
+    def _rearm_continuity_hold_locked(self, delay_ms: float, reason: str) -> None:
+        self._schedule_flush(max(500, min(SENTENCE_HOLD_MAX_MS, int(delay_ms))), reason)
+        flush_due = self._pending_flush_due_mono
+        flush_gen = self._pending_flush_generation
+        flush_reason = self._pending_flush_reason
+        if flush_due is not None:
+            from alpha.utils.language_pipeline_worker import (
+                get_language_pipeline_worker,
+            )
+
+            get_language_pipeline_worker().schedule_flush(
+                self, flush_due, flush_gen, flush_reason
+            )
 
     def _cancel_timer(self) -> None:
         self._pending_flush_due_mono = None

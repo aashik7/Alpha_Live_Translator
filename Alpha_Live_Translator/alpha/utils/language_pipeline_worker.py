@@ -118,7 +118,13 @@ class LanguagePipelineWorker:
             pass
 
     def schedule_flush(
-        self, assembler: Any, due_mono: float, generation: int, reason: str
+        self,
+        assembler: Any,
+        due_mono: float,
+        generation: int,
+        reason: str,
+        *,
+        task_type: str = "flush",
     ) -> None:
         if self._stop.is_set():
             return
@@ -130,13 +136,28 @@ class LanguagePipelineWorker:
                 _ScheduledTask(
                     due_mono=due_mono,
                     seq=self._seq,
-                    task_type="flush",
+                    task_type=task_type,
                     assembler=assembler,
                     generation=generation,
                     reason=reason,
                 ),
             )
             self._cond.notify()
+
+    def schedule_stable_hold_release(
+        self, assembler: Any, due_mono: float, generation: int, reason: str
+    ) -> None:
+        """Item 63: release the stable layer's held tail when it is due.
+
+        Its own task type for the reason `schedule_boundary_release` has one:
+        as a "flush" it was removed by the `cancel_flush` that every commit
+        path runs right after publishing, so a tail held by a timeout or
+        emergency commit waited for the next final (7.5 s in the live meeting
+        of 2026-10-01, 8-18 s in the meetings of 2026-09-28).
+        """
+        self.schedule_flush(
+            assembler, due_mono, generation, reason, task_type="stable_hold_release"
+        )
 
     def cancel_flush(self, assembler: Any) -> None:
         with self._cond:
@@ -221,7 +242,7 @@ class LanguagePipelineWorker:
                     self._cond.wait(timeout=wait_s)
                 continue
             try:
-                if task.task_type == "flush":
+                if task.task_type in ("flush", "stable_hold_release"):
                     self._run_flush(task)
                 elif task.task_type == "quarantine_drop":
                     self._run_quarantine_drop(task)
@@ -271,6 +292,7 @@ class LanguagePipelineWorker:
                     time.monotonic() + 0.05,
                     task.generation,
                     task.reason,
+                    task_type=task.task_type,
                 )
 
     def _run_boundary_release(self, task: _ScheduledTask) -> None:

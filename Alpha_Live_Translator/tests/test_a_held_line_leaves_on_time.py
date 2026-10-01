@@ -85,6 +85,9 @@ class _Worker:
     def schedule_flush(self, *a, **k):
         pass
 
+    def schedule_stable_hold_release(self, *a, **k):
+        pass
+
     def cancel_flush(self, *a, **k):
         pass
 
