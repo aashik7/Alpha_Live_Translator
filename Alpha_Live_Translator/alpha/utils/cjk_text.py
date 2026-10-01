@@ -210,6 +210,16 @@ def _reconstruct_segment_from_compact_target(
     return segment
 
 
+def _is_latin_or_digit_unit(unit: str) -> bool:
+    """Item 67: Deepgram writes Latin text in Japanese without spaces, so a
+    repeat made only of letters or digits is inside a word or a number, not a
+    restart: 「Mississippi」, 「Thisis」 (this is), 「withthis」, 「2020年」."""
+    return bool(unit) and all(
+        (ch.isascii() and ch.isalnum()) or ch.isdigit() or "Ａ" <= ch <= "ｚ"
+        for ch in unit
+    )
+
+
 def _fix_adjacent_repeat_with_suffix(
     segment: str,
     compact: str,
@@ -230,6 +240,8 @@ def _fix_adjacent_repeat_with_suffix(
             if prefix in natural:
                 continue
             if protect_short_kana_repeat and _protected_short_kana_repeat_unit(prefix):
+                continue
+            if _is_latin_or_digit_unit(prefix):
                 continue
             if rest[unit_len : unit_len * 2] != prefix:
                 continue
