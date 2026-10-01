@@ -3556,7 +3556,28 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
                     reason,
                 )
                 return True
+            generation_before = self._flush_generation
             self._execute_continuity_hold_locked(reason)
+            # Item 70: whatever this tick left in the buffer gets its timer.
+            # `_schedule_flush` only records it; the ingest path hands it to the
+            # worker afterwards, nothing did here. A partial commit's tail, a
+            # re-hold and a re-arm all waited for the next final (21.7 s for
+            # 「でテーブル名はテーブルの論理名、」 replaying 2026-10-01).
+            if (
+                self._buffer
+                and self._pending_flush_due_mono is not None
+                and self._flush_generation != generation_before
+            ):
+                from alpha.utils.language_pipeline_worker import (
+                    get_language_pipeline_worker,
+                )
+
+                get_language_pipeline_worker().schedule_flush(
+                    self,
+                    self._pending_flush_due_mono,
+                    self._pending_flush_generation,
+                    self._pending_flush_reason,
+                )
             return True
         except Exception as exc:
             try:
@@ -3668,18 +3689,8 @@ class JapaneseContinuityAssembler(LanguagePipelineBase):
         self._flush_locked(f"hold_timeout_{reason}", force=True)
 
     def _rearm_continuity_hold_locked(self, delay_ms: float, reason: str) -> None:
+        # Recorded only; `try_execute_continuity_hold` hands it to the worker.
         self._schedule_flush(max(500, min(SENTENCE_HOLD_MAX_MS, int(delay_ms))), reason)
-        flush_due = self._pending_flush_due_mono
-        flush_gen = self._pending_flush_generation
-        flush_reason = self._pending_flush_reason
-        if flush_due is not None:
-            from alpha.utils.language_pipeline_worker import (
-                get_language_pipeline_worker,
-            )
-
-            get_language_pipeline_worker().schedule_flush(
-                self, flush_due, flush_gen, flush_reason
-            )
 
     def _cancel_timer(self) -> None:
         self._pending_flush_due_mono = None

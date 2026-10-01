@@ -23,6 +23,7 @@ and the worker's timer heap are stand-ins, run in time order.
 * a tail the stable layer holds after a timeout commit leaves on its 2 s timer
 * a short buffer past 8 s leaves once it is 12 s old, with no further speech
 * a lone short fragment followed by silence leaves too
+* the rest of a buffer whose first sentence a timer committed leaves too (item 70)
 * a buffer that is still growing is not cut by the re-armed timer
 * speech after a silence keeps its order and is not held as noise (item 64)
 * a final of only 、/。 joins a sentence being built but is never a line (item 64)
@@ -268,6 +269,29 @@ class PunctuationAloneIsNotALineTest(_Case):
         self.final("ありがとうございました。")
         self.advance(10.0)
         self.assertEqual([text for _t, text in self.shown()], ["今日は、ありがとうございました。"])
+
+
+class TheTailOfATimerCommitLeavesTest(_Case):
+    """Item 70. The hold timer committed the finished half of
+    「これはこうですね。でテーブル名はテーブルの論理名、」 and kept the rest in the
+    buffer with a new timer recorded but never handed to the worker -- inside
+    the worker's own call nothing posted it. The rest waited 21.7 s for the next
+    final (replay of the live meeting of 2026-10-01, with items 62-69)."""
+
+    def test_the_live_shape(self):
+        self.final("これはこうですね。でテーブル名は", speech_final=False)
+        self.advance(2.5)
+        self.final("テーブルの論理名、", speech_final=False)
+        self.advance(40.0)  # nobody speaks again
+        shown = self.shown()
+        self.assertTrue(any("これはこうですね。" in text for _t, text in shown), shown)
+        self.assertTrue(
+            any("でテーブル名はテーブルの論理名" in text for _t, text in shown),
+            f"the rest of the buffer never left without another final: {shown}",
+        )
+        # the commit at 6.6 s, the rest's own 8 s hold
+        when = min(t for t, text in shown if "でテーブル名は" in text)
+        self.assertLessEqual(when, 15.0, shown)
 
 
 class AGrowingBufferIsNotCutTest(_Case):
