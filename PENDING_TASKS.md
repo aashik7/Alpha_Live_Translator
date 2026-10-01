@@ -5,17 +5,31 @@ updated 2026-09-28 with the owner's two Japanese meetings (section 0) and
 item 37 (`a83dbaa`), and 2026-09-29 with section 0's code done (items 38-43)
 and the open defects (k)-(o) closed (items 44-48), and 2026-09-30 with items
 49-54 from the owner's Japanese meeting of 2026-09-29 and items 55-61 (the
-review of 26.5.52 and every open defect code can close),
-`APP_VERSION = "3.3.5.5.8.5.26.5.58"`. The owner writes Banglish, wants terse
+review of 26.5.52 and every open defect code can close), and 2026-10-01 with
+the owner's first live meeting on 26.5.58 and items 62-70 from it,
+`APP_VERSION = "3.3.5.5.8.5.26.5.65"`. The owner writes Banglish, wants terse
 answers, proof over plausible reads, and findings as a table with
 issue / risk / severity / importance.
 
 ## Where things stand
 
-* Every item through **61** in `CODE_REVIEW_20260904.md` is fixed and pushed,
+* Every item through **70** in `CODE_REVIEW_20260904.md` is fixed and pushed,
   except item 53, withdrawn (measured worse; see there; item 57 fixed its real
-  problem). `FIX_SEQUENCE.md` is the execution-order ledger; read both before
+  problem); number 66 is not used. `FIX_SEQUENCE.md` is the execution-order ledger; read both before
   any fix.
+* **Items 62-70 (2026-10-01), the owner's live Japanese meeting `...140533` on
+  26.5.58:** healthy (0 errors, 0 reconnects, every line translated, the words at
+  Stop kept) but one line grew for a minute, came 27 s and 56 s late, was
+  exported three times, and 6 translations went unmatched. Causes, each proven
+  on the real code: timers never armed or wiped (62, 63, 70), the noise
+  quarantine (72 of 73 held fragments in 11 runs were speech; it delayed and
+  reordered them -- off, 64), a revision looked up under the wrong channel (65),
+  repeat cleanup eating Latin words and digits (67), merges after a long pause
+  (69); and every run's boundary decisions held every run's since August (68).
+  Replaying that meeting on 26.5.65: word latency p90 12.0 -> 9.8 s, slowest
+  40.3 -> 21.3 s, words later than 20 s 11 -> 1, no repeated export line, no
+  speech held as noise, the words in their spoken order; 4 translation
+  mismatches left (defect v). Details in `CODE_REVIEW_20260904.md`.
 * **Items 55-61 (2026-09-30):** a review of 26.5.52 found item 50 (one speaker)
   had removed an accidental gate: replies that repeat the line before were
   dropped in Japanese (55) and repeated words cut in English (56). Also fixed:
@@ -67,7 +81,7 @@ issue / risk / severity / importance.
 | # | What | Section | Kind |
 |---|---|---|---|
 | 1 | Owner: meeting audio setup (0a); names/terms list for keyterms (0f); a ~5 min reference transcript of `...140417` for the `multi` test (0h) | 0 | Owner |
-| 2 | One real Japanese meeting on 26.5.58 to prove items 38-43, 46-52, 54-58 and 60-61 live (section 1) | 1 | Test |
+| 2 | ~~One real Japanese meeting on 26.5.58~~ done 2026-10-01 (items 62-70 came from it). Next: one Japanese meeting on 26.5.65 to prove 62-70 live (section 1) | 1 | Test |
 | 3 | One real English meeting to prove items 35, 37, 44 and 56 live, checked against the audio, not only the pane | 1 | Test |
 | 4 | 0f and 0h once the owner's inputs arrive | 0 | Config / evaluate |
 | 5 | Final build 1.5 / update package 26.5.58+, owner's call | 2 | Build |
@@ -110,6 +124,13 @@ issue / risk / severity / importance.
 | `cd9c0ab` | (tests) | Item 59: the eight stale tests fixed or removed; the suite passes clean |
 | `d30e3fa` | 26.5.57 | Item 60: one Start, one run folder |
 | `7d32469` | 26.5.58 | Item 61: a buffer join ends its sentence; unused speaker state removed |
+| `3c81d63` | 26.5.59 | Items 62-63: held text leaves on its timers (past 8 s; the stable layer's tail timer) |
+| `601be66` | 26.5.60 | Item 64: noise quarantine off; punctuation alone is never a line |
+| `402b485` | 26.5.61 | Item 65: a revision finds its line (the run-on line exported 3 times) |
+| `0fb31bc` | 26.5.62 | Item 67: repeat cleanup keeps Latin words and numbers |
+| `179afaa` | 26.5.63 | Item 68: a run's boundary decisions are its own |
+| `a6bface` | 26.5.64 | Item 69: speech after a pause over 4 s starts a new line |
+| `512d8e4` | 26.5.65 | Item 70: the rest of a buffer a timer split keeps its timer |
 
 ---
 
@@ -359,11 +380,15 @@ checked** (only the portable zip was unpacked and inspected). Do that once for
 | ~~n~~ | ~~Item 73's "cannot follow the change" text~~ **FIXED, item 46** (says Alpha is switching; translated) | -- | -- | -- |
 | ~~o~~ | ~~Lineage matcher's 6-line window~~ **FIXED, item 47** (identical on all 84 retained runs) | -- | -- | -- |
 | ~~p~~ | ~~A Japanese line the boundary stabilizer still holds at Stop is dropped if under 8 Japanese characters (`BOUNDARY_STABILIZER_STOP_FLUSH_DROPPED`, e.g. 「メインで」); by design, found by the item 50 review~~ **FIXED, item 58** (and the sentence in progress at Stop, which `SUPPRESS_INCOMPLETE_STOP_TAIL_FROM_ALPHA` dropped: 10 of 12 dropped texts were lost) | -- | -- | -- |
-| q | Lines committed by `hold_timeout_safe_prefix` / `safe_chunk_boundary_commit` still wait 11-14 s (5 lines in the meeting replay, one 47 s) | Some lines still late | Medium | Medium — tune with live measurement, not a replay |
+| q | Lines committed by `hold_timeout_safe_prefix` / `safe_chunk_boundary_commit` still wait 11-14 s (5 lines in the meeting replay, one 47 s). 2026-10-01: the live meeting gave the data -- timers never armed or wiped (items 62, 63, 70) and the quarantine (64); slowest word 40.3 -> 21.3 s. What is left is (x) | Some lines still late | Medium | Medium — see (x) |
 | ~~r~~ | ~~A Deepgram pong more than 5 s late drops a live socket (once in the 2026-09-29 meeting, 2.2 s of audio). A longer timeout is NOT the fix (item 53, withdrawn): count a received data frame as proof of life instead~~ **FIXED, item 57** (a message is proof of life; dead sockets found as fast as before) | -- | -- | -- |
 | s | Separated list items where the second extends the first collapse: 「日本、日本語」 -> 「日本語」 (the same rule as the restart 「Java、Javaの」, which it cannot tell apart); no retained final has one | A word dropped in a list | Low | Low |
-| t | The in-app lineage report reads `stable_line_revision`'s active lines while the export comes from the frozen ledger, so it can report a loss the export does not have | False alarm in evidence | Low | Low |
+| t | The in-app lineage report reads `stable_line_revision`'s active lines while the export comes from the frozen ledger, so it can report a loss the export does not have. 2026-10-01: FAILED live (8 "lost") and in both replays (8, 11); every one was in the export | False alarm in evidence | Low | Medium now -- it fails on every run of that meeting |
 | ~~u~~ | ~~`last_speech_time` / `fallback_speaker` are still written (deepgram_client, main_window) though nothing reads them since item 50~~ **FIXED, item 61** | -- | -- | -- |
+| v | Replaying 2026-10-01 after items 62-70: 4 `TRANSLATION_STORE_ID_MATCH_NOT_FOUND` (3 on one new line whose text contains the line before, one 「はい。」). Ledger and export are right; the UI store decision is not in the logs, and the obvious hypothesis (text-containment update) did NOT reproduce on item 40's host | The English of such a line may not show on screen | Medium | Medium -- needs the UI's store decision logged in a live run |
+| w | Deepgram's 「。」 is kept before a particle when two finals join: 「これ。は石油腫と」 | Looks wrong | Low | Low -- 「分かりました。で…」 is correct, text alone cannot tell |
+| x | The three holds stack on a sentence that never ends: assembler 8-12 s, stable layer 2-3.5 s, boundary stabilizer 4 s (items 62-63, 70 made each fire) | An unfinished sentence shows 14-20 s late | Medium | Medium -- a design choice; decide on live data |
+| y | `stable_line_revision._run_folder` has item 68's broken import, so its live writes are skipped (the files are written at Stop) | No clean transcript on disk if Alpha crashes mid-meeting | Low | Low |
 
 Notes:
 

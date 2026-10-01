@@ -3261,3 +3261,183 @@ read nowhere since item 50 (open defect u).
 * **The graphify graph** was 22 commits old: its post-commit hook skips worktrees
   by design and nothing ran on a pull. A `post-merge` copy of the hook now
   rebuilds it when the main folder is fast-forwarded (local, not committed).
+
+## Items 62-70 — the owner's first live meeting on 26.5.58 (2026-10-01)
+
+The owner ran a 29-minute Japanese meeting on 26.5.58 from the main folder, watched
+live (run `v3.3.5.5.8.5.26.5.58-20261001-140533`). It was healthy -- 0 errors, 0
+reconnects, every line translated, commit lag p50 3.0 s, the words at Stop kept --
+but one line grew for a minute, reached the screen 27 s and 56 s late, was
+exported three times, and left 6 translations unmatched. Replaying its own 248
+finals through the real app on 26.5.58 reproduced all of it (lag max 55.9 s, 6
+mismatches, 2 repeated export lines). The diagnosis made during the meeting --
+"the merge into the previous line has no time limit" -- was only part of it;
+measured on Deepgram audio time, 23 of the 31 merges came after a pause under
+4 s, which the old speaker guess would also have merged. The delay came from
+timers that were never armed, and from the noise quarantine. Each test below
+fails on 26.5.58.
+
+### Items 62-63 — held text waited for the next final
+
+**62.** Past `JAPANESE_CONTINUITY_MAX_HOLD_MS` (8 s), `_execute_continuity_hold_locked`
+asked `_check_emergency_commit` once and returned without a timer. That check
+declines a short buffer until it is 12 s old, so 「で画面アイテムは」 (8
+characters, held 10.7 s) waited for the next final, 14 s later, and a lone
+「画面の」 before silence never left until the next speech or Stop. **The
+change:** past 8 s the hold re-arms until the buffer is "very old".
+
+**63.** The stable layer holds a committed text that ends mid-clause for 2 s on
+its own timer, queued on the worker as a "flush". The timeout and emergency
+commits that produce such text run `cancel_flush` right after publishing, which
+removed it: 「…ワンレコードオンリーが」 waited 7.5 s live; in the meetings of
+2026-09-28 such holds waited 8-18 s for the next final instead of 2-3.5 s.
+**The change:** its own task type, as section 0b gave the boundary release.
+
+**Verified:** `tests/test_a_held_buffer_keeps_its_timer.py` drives the real
+assembler, stabilizer, lifecycle and ledger with the worker's timer heap run in
+time order (the fake models `cancel_flush` and quarantine expiry as the real
+worker does). The live shapes never leave on 26.5.58; now 「で画面アイテムは」
+leaves at 20 s and the 「ワンレコード」 tail at 14.4 s -- the assembler's, the
+stable layer's and the stabilizer's holds in turn. Mutants caught; a real-worker
+test that `cancel_flush` leaves the tail timer alone.
+
+### Item 64 — the noise quarantine only delayed and reordered speech
+
+A short fragment arriving 15 s after the last commit was held 8 s as possible
+noise, then committed when the next final arrived (item 43 made it
+non-destructive). In 11 retained live runs it held 73 fragments: 72 were speech,
+one a bare 「、」. Live, 14 of 14 were speech, held up to 36 s, and
+「画面の画面に表示する」 was exported after the 「ラベル名は」 spoken after it; the
+recovered fragments also lost their metadata (item 65). **The change:**
+`JAPANESE_NOISE_QUARANTINE_ENABLED = False`. A final of only 、/。 now joins a
+sentence being built but is never a line by itself -- 11 of 6,444 retained finals,
+4 of them already exported as a line 「。」 after a short pause, which the
+quarantine never covered. **Verified:** the live order fails on 26.5.58 (the shown
+text lacked 「画面の」 and 「ラベル名は」); punctuation alone after 20 s and after 5 s,
+and inside a sentence; the quarantine's own tests still pass (they call it
+directly). Mutants caught.
+
+### Item 65 — a revision missed its line and was committed again
+
+The identity registry keys a line on (session, channel, utterance). Deepgram's
+finals carry `channel_index` [0, 1]; text built from a fragment back from
+quarantine carried none, so its revision of the line before was looked up under
+"" and missed (`missing_exact_revision_target`), and item 94's fallback committed
+it as a NEW line. Twice in a row: 「アグアイテムフィズ系なって。分かりました。…」
+exported three times, each version longer, and 2 translations unmatched.
+**The change:** a revision is proposed under the channel its line was committed
+on. **Verified:** `tests/test_a_revision_finds_its_line.py` reproduces the three
+ledger lines on 26.5.58 through the real ledger and registry; one line now.
+Mutants caught. The full suite caught one defect in the first version of this
+fix: the new field was set in `reset()` but not `__init__`, and the assembler is
+built without `reset()` -- the first revision would have raised, tripped the
+commit gate and stopped every later commit. `test_item94_commit_gate_unlatch`
+failed on it; fixed before commit.
+
+### Item 67 — repeat cleanup ate Latin words and numbers
+
+`_fix_adjacent_repeat_with_suffix` collapses a unit repeated back to back.
+Deepgram writes Latin text in Japanese without spaces, so 「Thisiswithtakeね。」
+became 「Thiswithtakeね。」, 「withthis」 「withis」, 「Thisis。isClub」 「ThisClub」 --
+5 of the 9 collapses logged in the retained runs -- and a direct call turns
+「2020年」 into 「20年」 and 「1010円」 into 「10円」 (not yet seen in a run). **The
+change:** a unit made only of letters or digits is not collapsed; Japanese
+restarts (「他は他は」, 「久しぶりですね久しぶりですね」) and a mixed unit
+(「スクリーンからthis」 twice) still are. **Verified:**
+`tests/test_latin_and_numbers_survive_repeat_cleanup.py`; four mutants caught.
+Item number 66 is skipped: "item 66" already names the English re-sent-tail trim
+throughout the code.
+
+### Item 68 — every run's boundary decisions held every run's
+
+`_decision_log_path` and `_summary_path` imported `get_run_folder` from
+`troubleshooting_paths`, which has none (it is in `run_identity`). The ImportError
+was swallowed, so since 2026-08 every run appended its decisions to one shared
+`_pending` file, and Stop copied that whole file into the run folder: the live
+run's file held 155 of its own lines among 5,700 from 23 runs, and the day's
+silent first session got the 2026-09-30 replay's. Analyses of that file since
+August read other runs' decisions. **The change:** the paths come from
+`run_identity`; Stop never copies the shared file. **Verified:**
+`tests/test_a_run_keeps_its_own_decisions.py`; two mutants caught.
+`stable_line_revision._run_folder` has the same broken import, so its live
+writes are skipped; its files are written at Stop from the run folder it is
+given, so it is left (see "Not changed").
+
+### Item 69 — speech after a pause grew the line before
+
+The boundary stabilizer merges text into the previous line when that line ends
+mid-clause or the text starts with a particle, with no time limit. Before item
+50 the speaker guess changed after a 4 s gap and blocked these merges by
+accident. Measured on Deepgram audio time, 8 of the 31 live merges came after a
+pause over 4 s (「これはこうですね。」 21 s after 「…画面に表示する」, a 「はい。」 after
+8 s, 「これはね…」 after 42 s). **The change:** over
+`BOUNDARY_STABILIZER_MERGE_MAX_PAUSE_S` (4 s, from the end of the last line to
+where the new text starts) there is no merge; no timing or a reconnected clock
+changes nothing. The assembler's buffer now keeps its first fragment's start
+time (the merge overwrote it with each newer one), and `_last_stable_commit`'s
+own start/end times turned out to be always None (read from the lifecycle's
+metadata), so the check keeps its own copy. **Verified:**
+`tests/test_a_line_does_not_grow_after_a_pause.py`, including through the buffer;
+five mutants caught.
+
+### Item 70 — the rest of a split buffer waited for the next final
+
+Found replaying the meeting with items 62-69: when the hold timer commits the
+finished half of a buffer (`_commit_partial`) or holds it again,
+`_schedule_flush` records a timer for the rest, and only the ingest path handed
+recorded timers to the worker. 「でテーブル名はテーブルの論理名、」 waited 21.7 s
+after 「これはこうですね。」 was committed. **The change:**
+`try_execute_continuity_hold` hands whatever timer the tick recorded to the
+worker; item 62's re-arm uses the same path. **Verified:** the live shape never
+leaves on 26.5.58 and leaves at 14.6 s now; removing the hand-off fails four tests.
+
+### Not changed, and why
+
+* **4 translation mismatches remain in the replay** (3 on one line, one 「はい。」):
+  a new assembler line whose text contains the previous one's
+  (「答え。」, then Deepgram's 「出してもいいですか。答え。」 + 「が…」). The ledger and
+  export are right. The UI's store decision for these is not in the run's logs
+  (the diagnostic log keeps 3,739 lines), and the window's commit path on item
+  40's test host keeps both rows -- the hypothesis "the UI's text-containment
+  update overwrote the row" did NOT reproduce, so nothing was changed. Open
+  defect (v).
+* **The holds still stack** on a sentence that never ends: the assembler's 8-12 s,
+  then the stable layer's 2-3.5 s, then the stabilizer's 4 s. Items 62-63 and 70
+  make each timer fire; whether the later two should hold text the assembler
+  already waited on is a design choice to make on live data. Open defect (x).
+* **「これ。は」**: Deepgram's 「。」 is kept before a particle when two finals join.
+  「分かりました。で…」 is a correct sentence start, so it cannot be dropped from
+  the text alone; cosmetic. Open defect (w).
+* **`stable_line_revision`'s live writes** (same broken import as item 68) stay
+  skipped: enabling them rewrites the whole clean transcript on every commit.
+  Open defect (y).
+* **The shared `_pending` decisions file** (3.2 MB in the main folder) is no longer
+  read; it is the owner's to delete.
+* **The coverage report** still lists lines as lost that are in the export (11 in
+  the replay, all present): defect (t).
+
+### Measured: the meeting replayed
+
+The live run's 248 finals, sent by a local stand-in for Deepgram at their
+recorded times into the real app (DeepL stubbed), no diarization as in
+production. Word latency = from a final's arrival to the first commit holding
+its words (finals of 2+ characters).
+
+| | live (26.5.58) | replay 26.5.58 | replay 26.5.65 |
+|---|---|---|---|
+| word latency p50 / p90 | 3.3 / 11.7 s | 3.2 / 12.0 s | 3.2 / 9.8 s |
+| slowest word | 40.3 s | 40.3 s | 21.3 s |
+| words later than 10 s / 20 s | 26 / 10 | 28 / 11 | 21 / 1 |
+| export lines repeating the line before | 2 | 2 | 0 |
+| revisions committed as a new line | 2 | 2 | 0 |
+| fragments held as noise | 14 | 18 | 0 |
+| 「画面の画面に表示する」 before 「ラベル名は」 | no | no | yes |
+| 「withis」 in the export | yes | yes | no |
+| `TRANSLATION_STORE_ID_MATCH_NOT_FOUND` | 6 | 6 | 4 (defect v) |
+| last words at Stop 「た。お疲れさまです。」 | kept | kept | kept |
+
+The replay of 26.5.58 matches the live run (slowest line 55.9 vs 56.0 s by
+commit lag, 6 vs 6 mismatches, 2 vs 2 repeats), so it is a faithful stand-in.
+The 21 words still later than 10 s are the stacked holds (defect x). The
+lineage report failed in all three runs; every line it named is in the export
+(defect t). Full suite: 1,808 tests, OK (skipped=5).

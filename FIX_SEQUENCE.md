@@ -753,6 +753,14 @@ taking.
 | PENDING_TASKS open defect (j) | **Item 59** — the eight stale tests fixed or removed; the suite's failing set is empty | ✅ fixed (tests only) |
 | PENDING_TASKS open defect (i) | **Item 60** — one Start makes one run folder, and the session runtime and the ledger use the same one | ✅ fixed, 26.5.57 |
 | review of item 51 | **Item 61** — a line not yet committed ends its sentence at 「…、」+「。」; unused speaker state removed (open defect u) | ✅ fixed, 26.5.58 |
+| owner's live Japanese meeting 2026-10-01 `...140533` | **Items 62-63** — held Japanese text leaves on its timers: a buffer past its 8 s hold re-arms until it is very old (a lone 「画面の」 before silence never left), and the stable layer's tail timer is its own task type, not removed by the commit that armed it | ✅ fixed, 26.5.59 |
+| same meeting | **Item 64** — noise quarantine off (72 of 73 held fragments in 11 runs were speech; it delayed and reordered them); a final of only 、/。 is never a line by itself | ✅ fixed, 26.5.60 |
+| same meeting | **Item 65** — a revision is looked up under the channel its line was committed on: the run-on line exported three times | ✅ fixed, 26.5.61 |
+| — | ~~Item 66~~ not used: "item 66" names the English re-sent-tail trim throughout the code | — |
+| same meeting | **Item 67** — repeat cleanup keeps Latin words and numbers (「withthis」→「withis」 live; 「2020年」→「20年」 by direct call) | ✅ fixed, 26.5.62 |
+| same meeting (the day's first, silent session) | **Item 68** — a run's boundary decisions are its own: a wrong import sent every run's to one shared file since 2026-08, copied into every run at Stop | ✅ fixed, 26.5.63 |
+| same meeting | **Item 69** — speech after a pause over 4 s (Deepgram audio time) starts a new line instead of growing the last one | ✅ fixed, 26.5.64 |
+| replay of items 62-69 | **Item 70** — the rest of a buffer a timer split keeps its timer (waited 21.7 s for the next final) | ✅ fixed, 26.5.65 |
 
 Phase 3's audits are complete — 5 of 5, as the table above says. (This line used
 to read "Phase 3's four remaining audits", contradicting the table two rows
