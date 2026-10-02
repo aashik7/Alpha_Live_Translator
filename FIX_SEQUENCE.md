@@ -761,6 +761,7 @@ taking.
 | same meeting (the day's first, silent session) | **Item 68** — a run's boundary decisions are its own: a wrong import sent every run's to one shared file since 2026-08, copied into every run at Stop | ✅ fixed, 26.5.63 |
 | same meeting | **Item 69** — speech after a pause over 4 s (Deepgram audio time) starts a new line instead of growing the last one | ✅ fixed, 26.5.64 |
 | replay of items 62-69 | **Item 70** — the rest of a buffer a timer split keeps its timer (waited 21.7 s for the next final) | ✅ fixed, 26.5.65 |
+| owner's live Japanese meeting 2026-10-02 `...143752` (open defect v) | **Item 71** — the window keeps every line the Japanese assembler committed as its own row: it no longer overwrites the previous row or drops a line by comparing text; at Stop, held words are left to the assembler's flush | ✅ fixed, 26.5.66 |
 
 Phase 3's audits are complete — 5 of 5, as the table above says. (This line used
 to read "Phase 3's four remaining audits", contradicting the table two rows

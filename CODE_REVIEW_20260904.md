@@ -3399,8 +3399,10 @@ leaves on 26.5.58 and leaves at 14.6 s now; removing the hand-off fails four tes
   export are right. The UI's store decision for these is not in the run's logs
   (the diagnostic log keeps 3,739 lines), and the window's commit path on item
   40's test host keeps both rows -- the hypothesis "the UI's text-containment
-  update overwrote the row" did NOT reproduce, so nothing was changed. Open
-  defect (v).
+  update overwrote the row" ~~did NOT reproduce, so nothing was changed~~.
+  **Corrected 2026-10-02:** that WAS the cause -- the test host had not
+  registered the line ids, so the window never looked at the previous row; see
+  item 71. Open defect (v), fixed as item 71.
 * **The holds still stack** on a sentence that never ends: the assembler's 8-12 s,
   then the stable layer's 2-3.5 s, then the stabilizer's 4 s. Items 62-63 and 70
   make each timer fire; whether the later two should hold text the assembler
@@ -3441,3 +3443,77 @@ commit lag, 6 vs 6 mismatches, 2 vs 2 repeats), so it is a faithful stand-in.
 The 21 words still later than 10 s are the stacked holds (defect x). The
 lineage report failed in all three runs; every line it named is in the export
 (defect t). Full suite: 1,808 tests, OK (skipped=5).
+
+## Item 71 — the window re-decided the assembler's lines by their text (2026-10-02)
+
+The owner's second live meeting ran 26.5.65 (run `...20261002-143752`, 14:38-15:12):
+318 finals, 201 commits, every line translated, word latency p50 3.0 / p90 8.3 s,
+slowest 20.6 s (2 words over 20 s; 10 on 26.5.58), no errors or reconnects, no
+fragment held as noise, no revision committed as a new line, the words at Stop
+kept, and all 318 finals in the export. Items 62, 63 and 70's timers were seen
+firing. One defect remained, open defect (v): 4 `TRANSLATION_STORE_ID_MATCH_NOT_FOUND`.
+
+### Item 71 — the window overwrote or dropped a line the ledger kept
+
+The assembler decides whether a line is new or a revision and writes the ledger;
+`DuplicateProtectionMixin._display_transcript_item` then decided again from the
+text alone (`decide_transcript_action`). A new line CONTAINING the previous row's
+text replaced that row -- 「オッケー。」 was overwritten by 「これオッケーですか。」,
+「ディスクリーン。」 by 「ありきさんディスクリーンね。」 -- and a new line the previous
+row ENDS with was skipped: 「なのかな。」 and 「イニッシュ。」, each said again 1.5 s and
+2.6 s after the line before (separate audio), never showed. The new line's id never
+reached the store, so its English found no row. The ledger and export were right.
+Found from the window's own log (`append_missing_suffix` /
+`japanese_overlap_or_store_unchanged` with the row count unchanged); the window
+consults the previous row only when the identity registry knows the id, which it
+always does in production -- item 40's test host never registered ids, which is
+why the same hypothesis did not reproduce on 2026-10-01 (that claim is struck
+through there; it was the test, not the hypothesis). **The change:** a
+Japanese-assembler line under a new id and with no revision signal is added as
+its own row whatever the text says; a revision (`revision_target_id`) or the same
+id still updates its row; lines from outside the assembler (English, manual mode)
+are unchanged. **Verified:** `tests/test_the_screen_keeps_every_assembler_line.py`
+(registers ids like production; the three meeting shapes fail on 26.5.65); nine
+mutants caught; replaying the meeting through the real app on the fix: 0
+mismatches (4 live) and all four lines kept as their own rows
+(`ASSEMBLER_LINE_KEPT_AS_ITS_OWN_ROW` x4; the replay was cut off by its time limit
+after all 318 finals, before Stop). Full suite: 1,820 tests; one failure,
+`test_item48_audio_manifest_bounded`, the known suite-only intermittent (passes
+3/3 alone).
+
+**Retracted visibly:** `test_decide_transcript_action_containment` (item 20c)
+expected an assembler line under a new id that the previous row starts with to be
+dropped as a provider re-send. By the time an assembler line reaches the window it
+has passed the stabilizer's re-send guard (item 55) and the ledger holds it; the
+drop hid real speech. The test now keeps that drop as a control for a line the
+window decides itself, and pins the assembler case the other way.
+
+**Found by an independent review that had to reproduce each claim** (three
+reviewers: other callers, the window and translation display, revision paths),
+fixed in the same change:
+* At Stop, pending words that start with the last line's text were written onto
+  that row by the Stop-tail recovery (window only) and then committed again by the
+  assembler's Stop flush as their own line -- shown twice once the window keeps
+  assembler lines. 0 occurrences in 33 retained runs. The recovery now leaves
+  words the assembler holds to its flush; pending words it does not hold still
+  reach the window as before.
+* `ASSEMBLER_LINE_KEPT_AS_ITS_OWN_ROW` was logged for a revision the revision
+  signal then turned into an update.
+* The window's `[JAPANESE] commit decision` said `skip_duplicate` for a line it
+  kept; it now reads `commit_new` / `assembler_line_kept_as_its_own_row`.
+
+### Not changed, and why
+
+* **The Japanese display path drops a `retry_pending` verdict**
+  (`AlphaApp._display_transcript_item` calls `_commit_transcript_item_to_store` and
+  returns None), so `_flush_transcript_ui_batch` never re-queues such an item.
+  Latent: no current Japanese producer reaches it (reproduced only with a
+  synthetic item). Open defect (z).
+* **「…、」 then 「。…」 after an 8 s gap is two ledger lines**: the stable layer's
+  punctuation merge refuses it, the boundary stabilizer merges it and
+  `cleanup_midline_punctuation` turns 「、。」 into 「。」, which rewrites the committed
+  line, so the revise is blocked as destructive and committed as a new line
+  holding the old one. The export already had both; the window now shows both too.
+  Open defect (aa); the fix belongs in the stabilizer (strip the fragment's leading
+  punctuation for a committed line, as item 51 did for `join_japanese_fragments`).
+* (x) the stacked holds and the 「。これネーム。」 line start are unchanged.

@@ -6,17 +6,25 @@ item 37 (`a83dbaa`), and 2026-09-29 with section 0's code done (items 38-43)
 and the open defects (k)-(o) closed (items 44-48), and 2026-09-30 with items
 49-54 from the owner's Japanese meeting of 2026-09-29 and items 55-61 (the
 review of 26.5.52 and every open defect code can close), and 2026-10-01 with
-the owner's first live meeting on 26.5.58 and items 62-70 from it,
-`APP_VERSION = "3.3.5.5.8.5.26.5.65"`. The owner writes Banglish, wants terse
+the owner's first live meeting on 26.5.58 and items 62-70 from it, and
+2026-10-02 with the second live meeting (26.5.65) and item 71 from it,
+`APP_VERSION = "3.3.5.5.8.5.26.5.66"`. The owner writes Banglish, wants terse
 answers, proof over plausible reads, and findings as a table with
 issue / risk / severity / importance.
 
 ## Where things stand
 
-* Every item through **70** in `CODE_REVIEW_20260904.md` is fixed and pushed,
+* Every item through **71** in `CODE_REVIEW_20260904.md` is fixed and pushed,
   except item 53, withdrawn (measured worse; see there; item 57 fixed its real
   problem); number 66 is not used. `FIX_SEQUENCE.md` is the execution-order ledger; read both before
   any fix.
+* **Item 71 (2026-10-02), the owner's second live Japanese meeting `...143752`
+  on 26.5.65:** items 62-70 held live -- word latency p50 3.0 / p90 8.3 s,
+  slowest 20.6 s (2 words over 20 s; 10 on 26.5.58), every line translated, no
+  repeated line, nothing held as noise, the words at Stop kept, all 318 finals
+  in the export. Open defect (v) was pinned live and fixed as item 71: the window
+  no longer re-decides the assembler's lines by text (it overwrote 2 rows and hid
+  2 lines; their English never showed). Replay on the fix: 0 mismatches.
 * **Items 62-70 (2026-10-01), the owner's live Japanese meeting `...140533` on
   26.5.58:** healthy (0 errors, 0 reconnects, every line translated, the words at
   Stop kept) but one line grew for a minute, came 27 s and 56 s late, was
@@ -81,7 +89,7 @@ issue / risk / severity / importance.
 | # | What | Section | Kind |
 |---|---|---|---|
 | 1 | Owner: meeting audio setup (0a); names/terms list for keyterms (0f); a ~5 min reference transcript of `...140417` for the `multi` test (0h) | 0 | Owner |
-| 2 | ~~One real Japanese meeting on 26.5.58~~ done 2026-10-01 (items 62-70 came from it). Next: one Japanese meeting on 26.5.65 to prove 62-70 live (section 1) | 1 | Test |
+| 2 | ~~One real Japanese meeting on 26.5.58~~ done 2026-10-01 (items 62-70); ~~on 26.5.65~~ done 2026-10-02 (62-70 held live; item 71). Next: one on 26.5.66 to see item 71 live | 1 | Test |
 | 3 | One real English meeting to prove items 35, 37, 44 and 56 live, checked against the audio, not only the pane | 1 | Test |
 | 4 | 0f and 0h once the owner's inputs arrive | 0 | Config / evaluate |
 | 5 | Final build 1.5 / update package 26.5.58+, owner's call | 2 | Build |
@@ -131,6 +139,7 @@ issue / risk / severity / importance.
 | `179afaa` | 26.5.63 | Item 68: a run's boundary decisions are its own |
 | `a6bface` | 26.5.64 | Item 69: speech after a pause over 4 s starts a new line |
 | `512d8e4` | 26.5.65 | Item 70: the rest of a buffer a timer split keeps its timer |
+| `1a98337` | 26.5.66 | Item 71: the window keeps every assembler line as its own row (open defect v) |
 
 ---
 
@@ -385,9 +394,11 @@ checked** (only the portable zip was unpacked and inspected). Do that once for
 | s | Separated list items where the second extends the first collapse: 「日本、日本語」 -> 「日本語」 (the same rule as the restart 「Java、Javaの」, which it cannot tell apart); no retained final has one | A word dropped in a list | Low | Low |
 | t | The in-app lineage report reads `stable_line_revision`'s active lines while the export comes from the frozen ledger, so it can report a loss the export does not have. 2026-10-01: FAILED live (8 "lost") and in both replays (8, 11); every one was in the export | False alarm in evidence | Low | Medium now -- it fails on every run of that meeting |
 | ~~u~~ | ~~`last_speech_time` / `fallback_speaker` are still written (deepgram_client, main_window) though nothing reads them since item 50~~ **FIXED, item 61** | -- | -- | -- |
-| v | Replaying 2026-10-01 after items 62-70: 4 `TRANSLATION_STORE_ID_MATCH_NOT_FOUND` (3 on one new line whose text contains the line before, one 「はい。」). Ledger and export are right; the UI store decision is not in the logs, and the obvious hypothesis (text-containment update) did NOT reproduce on item 40's host | The English of such a line may not show on screen | Medium | Medium -- needs the UI's store decision logged in a live run |
+| ~~v~~ | ~~4 `TRANSLATION_STORE_ID_MATCH_NOT_FOUND` per meeting: a new line whose text contains or ends the line before~~ **FIXED, item 71** (the window re-decided the assembler's lines by text; the hypothesis was right, the 2026-10-01 test host had not registered the ids) | -- | -- | -- |
 | w | Deepgram's 「。」 is kept before a particle when two finals join: 「これ。は石油腫と」 | Looks wrong | Low | Low -- 「分かりました。で…」 is correct, text alone cannot tell |
 | x | The three holds stack on a sentence that never ends: assembler 8-12 s, stable layer 2-3.5 s, boundary stabilizer 4 s (items 62-63, 70 made each fire) | An unfinished sentence shows 14-20 s late | Medium | Medium -- a design choice; decide on live data |
+| z | The Japanese display path drops a `retry_pending` verdict (`AlphaApp._display_transcript_item` calls `_commit_transcript_item_to_store` and returns None), so the item is never re-queued; found by item 71's review | Latent: no current Japanese producer reaches it | Low | Low |
+| aa | 「…、」 then 「。…」 more than 8 s later becomes two ledger lines: the stabilizer's merge rewrites the committed 「、」 to 「。」, the revise is blocked as destructive and committed as a new line holding the old one (item 71's review) | The export (and now the window) repeats the line | Low | Medium -- fix in the stabilizer, as item 51 did for joins |
 | y | `stable_line_revision._run_folder` has item 68's broken import, so its live writes are skipped (the files are written at Stop) | No clean transcript on disk if Alpha crashes mid-meeting | Low | Low |
 
 Notes:
