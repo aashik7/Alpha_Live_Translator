@@ -353,6 +353,43 @@ class DuplicateProtectionMixin:
                 )
             except Exception:
                 pass
+        # Item 71: the Japanese assembler already decided this is a NEW line
+        # (another id, and no revision signal -- a revision still becomes
+        # "update" just below) and wrote the ledger so. Re-deciding it here from
+        # the text alone overwrote the previous row when the new line contained
+        # it (「オッケー。」 -> 「これオッケーですか。」) and dropped a line the
+        # previous row ended with (「なのかな。」); either way the new id never
+        # reached the store and its translation found no row -- 4 lines in the
+        # owner's meeting of 2026-10-02, the export right, the window not.
+        life_decision = str(item.get("lifecycle_decision") or "").upper()
+        has_authoritative_revision_signal = bool(
+            life_decision in ("SUPERSEDE_PREVIOUS", "REPLACE_ACTIVE", "EXTEND_ACTIVE")
+            or item.get("superseded_record_id")
+            or item.get("revision_target_id")
+        )
+        if (
+            action in ("update", "skip")
+            and not has_authoritative_revision_signal
+            and item.get("_jp_continuity_assembler")
+            and canonical_utterance_id
+            and canonical_utterance_id != previous_utterance_id
+        ):
+            try:
+                from alpha.utils.japanese_accuracy_log import (
+                    jp_accuracy_log as _jal_own_row,
+                )
+
+                _jal_own_row(
+                    "ASSEMBLER_LINE_KEPT_AS_ITS_OWN_ROW",
+                    text_decision=action,
+                    canonical_utterance_id=canonical_utterance_id,
+                    previous_utterance_id=previous_utterance_id,
+                    previous_preview=(previous_text or "")[:120],
+                    current_preview=text[:120],
+                )
+            except Exception:
+                pass
+            action, result_text = "add", text
         # Utterance lifecycle / authoritative same-utterance correction must
         # replace the active permanent record — never append a second version.
         # fixes BUG-G2: previously this only trusted the authoritative
@@ -372,12 +409,7 @@ class DuplicateProtectionMixin:
         # check. execute_pipeline_commit below still independently
         # re-resolves the exact target and still fails closed on its own if
         # it genuinely can't find one -- this does not bypass that check.
-        life_decision = str(item.get("lifecycle_decision") or "").upper()
-        has_authoritative_revision_signal = bool(
-            life_decision in ("SUPERSEDE_PREVIOUS", "REPLACE_ACTIVE", "EXTEND_ACTIVE")
-            or item.get("superseded_record_id")
-            or item.get("revision_target_id")
-        )
+        # (`has_authoritative_revision_signal` is computed above, item 71.)
         if has_authoritative_revision_signal:
             action, result_text = "update", text
         if action == "skip" or not result_text:

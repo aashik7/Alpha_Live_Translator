@@ -141,15 +141,20 @@ class _Host:
         self.applied.append((args, kwargs))
 
 
-def _run_as_japanese_assembler_commit(host, current_text):
+def _run_as_japanese_assembler_commit(host, current_text, *, assembler=True):
     item = {
         "is_final": True,
         "speaker": 1,
         "text": current_text,
         "canonical_utterance_id": "jp-utt-current",
-        "_jp_continuity_assembler": True,
         "session_id": "sess-20c",
     }
+    if assembler:
+        item["_jp_continuity_assembler"] = True
+    else:
+        # A line the window decides itself; the record id makes it a
+        # committed claim, as the assembler flag does above.
+        item["canonical_record_id"] = "canon-000099"
     with patch(
         "alpha.transcription.canonical_identity_registry.resolve_canonical_record_id",
         return_value="canon-000099",
@@ -176,15 +181,35 @@ class TestRealDisplayTranscriptItemDropsOnSkip(unittest.TestCase):
 
     def test_genuine_prefix_containment_is_still_dropped_with_zero_trace(self):
         # Control: the narrowing must not turn genuine containment into a
-        # spurious commit either.
+        # spurious commit either -- for a line the window decides itself.
+        # Until item 71 this test sent an assembler line and expected it
+        # dropped; see the next test for why that expectation was wrong.
+        previous = "so anyway I think the budget"
+        current = "so anyway I think"
+        host = _Host(previous)
+
+        _run_as_japanese_assembler_commit(host, current, assembler=False)
+
+        self.assertFalse(host.applied)
+        self.assertEqual(host._transcript_stability_counters.skipped, 1)
+
+    def test_an_assembler_line_the_previous_row_starts_with_reaches_the_store(self):
+        # Item 71 (2026-10-02) retracts this file's earlier expectation that an
+        # assembler line under a NEW id, which the previous row starts or ends
+        # with, is a provider re-send to drop. By the time an assembler line
+        # reaches the window, the boundary stabilizer's re-send guard (item 55:
+        # a repeat within 1 s) has passed it and the ledger holds it as its
+        # own line; dropping it here hid real speech -- 「なのかな。」 and
+        # 「イニッシュ。」, said again 1.5 s and 2.6 s later in the owner's
+        # meeting -- and left its translation without a row.
         previous = "so anyway I think the budget"
         current = "so anyway I think"
         host = _Host(previous)
 
         _run_as_japanese_assembler_commit(host, current)
 
-        self.assertFalse(host.applied)
-        self.assertEqual(host._transcript_stability_counters.skipped, 1)
+        self.assertTrue(host.applied)
+        self.assertEqual(host._transcript_stability_counters.skipped, 0)
 
 
 if __name__ == "__main__":

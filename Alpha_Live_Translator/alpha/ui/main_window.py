@@ -7509,6 +7509,24 @@ class AlphaApp(
             self._discard_watchdog_orphaned_interim()
             return
         if decision == "append_missing_suffix":
+            # Item 71: words the Japanese assembler still holds are committed by
+            # its Stop flush, which runs right after this -- to the ledger AND
+            # the window, as their own line. Writing them onto the last row
+            # here as well (window only) showed them twice now that the window
+            # keeps every assembler line. Left to the flush only when the
+            # pending text is entirely held words, so nothing can be lost.
+            held_fn = getattr(self, "_pipeline_held_text", None)
+            held = held_fn() if callable(held_fn) else ""
+            if held and self._compact_japanese_for_compare(
+                interim_text
+            ) in self._compact_japanese_for_compare(held):
+                self._interim_log(
+                    "[INTERIM] stop tail skipped",
+                    {"reason": "held_by_assembler_committed_by_its_flush"},
+                )
+                self._clear_interim_tail()
+                self._discard_watchdog_orphaned_interim()
+                return
             merged_text = tail_check.get("commit_text")
             speaker = (
                 tail_check.get("update_speaker")
@@ -9030,6 +9048,16 @@ class AlphaApp(
         if _dp_result == "retry_pending":
             return _dp_result
         store_count_after = self._diag_store_segment_count()
+        if (
+            item.get("_jp_continuity_assembler")
+            and store_count_after > store_count_before
+            and predicted_decision != "commit_new"
+        ):
+            # Item 71: the label above was predicted from the text; an assembler
+            # line the window kept as its own row is a new line, whatever the
+            # text predicted (evidence read "skip_duplicate" for a shown line).
+            predicted_decision = "commit_new"
+            predicted_reason = "assembler_line_kept_as_its_own_row"
         if store_count_after == store_count_before:
             if dup_action == "skip":
                 skip_decision, skip_reason = teams_commit_decision_from_dup_action_diagnostic_only(
